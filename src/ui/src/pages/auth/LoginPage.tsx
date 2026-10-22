@@ -164,19 +164,21 @@ export default function LoginPage() {
             <p className="text-xs text-gray-500 text-center mb-3">Demo accounts</p>
             <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
               {[
-                ['Student', 'student@test.edu'],
-                ['Faculty', 'faculty.cs@bu.edu'],
-                ['Admin', 'admin@bu.edu'],
-                ['Super Admin', 'super_admin@bu.edu'],
-              ].map(([role, email]) => (
+                ['Student', 'student@test.edu', 'Student@123!'],
+                ['Faculty', 'faculty.cs@bu.edu', 'Faculty@123!'],
+                ['Admin', 'admin@bu.edu', 'Admin@123!'],
+                ['Super Admin', 'super_admin@bu.edu', 'SuperAdmin@123!'],
+              ].map(([role, email, password]) => (
                 <div key={email} className="bg-brand-50/60 rounded-lg p-2">
                   <p className="font-medium text-brand-900">{role}</p>
                   <p className="text-gray-400 truncate">{email}</p>
+                  <p className="text-gray-400 font-mono">{password}</p>
                 </div>
               ))}
             </div>
             <p className="text-xs text-gray-400 text-center mt-2">
-              Password: <code className="bg-gray-100 px-1 rounded">see .env.example</code>
+              Run <code className="bg-gray-100 px-1 rounded">npm run seed:users</code> in src/api first
+              so these passwords are actually set.
             </p>
           </div>
         </motion.div>
