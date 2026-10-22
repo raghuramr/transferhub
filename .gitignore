@@ -4,7 +4,6 @@ dist/
 .DS_Store
 
 # Local dev secrets — never commit
-.env
 .env.local
 src/api/.env
 src/api/.env.local
