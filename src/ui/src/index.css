@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/*
+ * Brand palette — BU Transfer Credit Evaluation
+ * Primary: deep maroon (#770816), paired with white.
+ * A full 50-900 scale is derived so Tailwind utilities like bg-brand-50,
+ * text-brand-700, border-brand-200 etc. all resolve consistently.
+ */
+@theme {
+  --color-brand-50: #fdf2f3;
+  --color-brand-100: #fbe1e4;
+  --color-brand-200: #f6c4cb;
+  --color-brand-300: #ee9aa6;
+  --color-brand-400: #e2677a;
+  --color-brand-500: #cf3a53;
+  --color-brand-600: #a81f3b;
+  --color-brand-700: #88152f;
+  --color-brand-800: #770816;
+  --color-brand-900: #5c0712;
+  --color-brand-950: #3a0309;
+
+  --font-sans: Inter, system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+  --brand: #770816;
+  --brand-foreground: #ffffff;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #faf7f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Subtle scrollbar so long admin tables feel less raw */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #e5c9ce; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #d9a7b0; }

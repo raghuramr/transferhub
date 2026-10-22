@@ -1,0 +1,65 @@
+import {
+  Controller, Get, Post, Patch, Delete, Param, Body, Query, Req, UseGuards, ForbiddenException,
+} from '@nestjs/common';
+import { UsersService } from './users.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+
+@Controller('users')
+@UseGuards(JwtAuthGuard, RolesGuard)
+export class UsersController {
+  constructor(private usersService: UsersService) {}
+
+  @Get()
+  @Roles('admin', 'super_admin')
+  findAll(@Query('role') role?: string, @Query('isActive') isActive?: string) {
+    return this.usersService.findAll({
+      role,
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
+    });
+  }
+
+  @Get(':id')
+  @Roles('admin', 'super_admin')
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    // Allow users to view their own profile
+    if (req.user.id !== id && !['admin', 'super_admin'].includes(req.user.role)) {
+      throw new ForbiddenException();
+    }
+    return this.usersService.findById(id);
+  }
+
+  @Post()
+  @Roles('super_admin')
+  create(@Body() dto: CreateUserDto, @Req() req: any) {
+    return this.usersService.create(dto, req.user.id);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req: any) {
+    // Self or admin/super_admin
+    if (req.user.id !== id && !['admin', 'super_admin'].includes(req.user.role)) {
+      throw new ForbiddenException();
+    }
+    // Non-admins cannot set isActive
+    if (dto.isActive !== undefined && !['admin', 'super_admin'].includes(req.user.role)) {
+      delete dto.isActive;
+    }
+    return this.usersService.update(id, dto, req.user.id);
+  }
+
+  @Delete(':id')
+  @Roles('super_admin')
+  deactivate(@Param('id') id: string, @Req() req: any) {
+    return this.usersService.deactivate(id, req.user.id);
+  }
+
+  @Post(':id/unlock')
+  @Roles('admin', 'super_admin')
+  unlock(@Param('id') id: string, @Req() req: any) {
+    return this.usersService.unlock(id, req.user.id);
+  }
+}
