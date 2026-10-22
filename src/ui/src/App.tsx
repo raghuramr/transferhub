@@ -26,6 +26,9 @@ import CourseDatabase from './pages/admin/CourseDatabase';
 import UserManagement from './pages/admin/UserManagement';
 import PagesList from './pages/admin/PagesList';
 import PageEditor from './pages/admin/PageEditor';
+import FormsList from './pages/admin/FormsList';
+import FormEditor from './pages/admin/FormEditor';
+import FormSubmissions from './pages/admin/FormSubmissions';
 
 // Super Admin pages
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
@@ -34,6 +37,12 @@ import SystemSettings from './pages/superadmin/SystemSettings';
 
 // Custom Pages (CMS) — public-facing view, any authenticated role
 import CmsPageView from './pages/cms/CmsPageView';
+
+// Custom Forms — fill-out view, any authenticated role
+import FormFillView from './pages/forms/FormFillView';
+
+// Public landing / hero page
+import HomePage from './pages/public/HomePage';
 
 // Guards
 function RequireAuth({ children, roles }: { children: React.ReactElement; roles?: Role[] }) {
@@ -57,6 +66,12 @@ function RoleRedirect() {
   return <Navigate to={map[user.role] ?? '/login'} replace />;
 }
 
+/** Signed-in users are sent to their dashboard; anonymous visitors see the public landing page. */
+function RootRoute() {
+  const { isAuthenticated } = useAuthStore();
+  return isAuthenticated ? <RoleRedirect /> : <HomePage />;
+}
+
 export default function App() {
   const { initFromStorage } = useAuthStore();
   useEffect(() => { initFromStorage(); }, [initFromStorage]);
@@ -69,8 +84,8 @@ export default function App() {
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/unauthorized" element={<div className="p-8 text-center text-red-600 text-xl">Not authorised</div>} />
 
-        {/* Root → role-based redirect */}
-        <Route path="/" element={<RequireAuth><RoleRedirect /></RequireAuth>} />
+        {/* Root → public landing page, or role-based redirect if already signed in */}
+        <Route path="/" element={<RootRoute />} />
 
         {/* Student & Agency */}
         <Route path="/student" element={<RequireAuth roles={['student','agency']}><AppLayout /></RequireAuth>}>
@@ -94,6 +109,10 @@ export default function App() {
           <Route path="pages" element={<PagesList />} />
           <Route path="pages/new" element={<PageEditor />} />
           <Route path="pages/:id" element={<PageEditor />} />
+          <Route path="forms" element={<FormsList />} />
+          <Route path="forms/new" element={<FormEditor />} />
+          <Route path="forms/:id" element={<FormEditor />} />
+          <Route path="forms/:id/submissions" element={<FormSubmissions />} />
         </Route>
 
         {/* Super Admin */}
@@ -107,6 +126,11 @@ export default function App() {
         {/* Shared CMS page view (any authenticated role) */}
         <Route path="/pages/:slug" element={<RequireAuth><AppLayout /></RequireAuth>}>
           <Route index element={<CmsPageView />} />
+        </Route>
+
+        {/* Shared form fill-out view (any authenticated role) */}
+        <Route path="/forms/:slug" element={<RequireAuth><AppLayout /></RequireAuth>}>
+          <Route index element={<FormFillView />} />
         </Route>
 
         {/* Fallback */}

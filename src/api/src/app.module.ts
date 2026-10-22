@@ -9,6 +9,7 @@ import { TranscriptsModule } from './transcripts/transcripts.module';
 import { EvaluationsModule } from './evaluations/evaluations.module';
 import { AiModule } from './ai/ai.module';
 import { PagesModule } from './pages/pages.module';
+import { FormsModule } from './forms/forms.module';
 import { AuditController } from './common/audit.controller';
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
@@ -29,6 +30,7 @@ const envFilePath =
     EvaluationsModule,
     AiModule,
     PagesModule,
+    FormsModule,
   ],
   controllers: [AuditController],
 })

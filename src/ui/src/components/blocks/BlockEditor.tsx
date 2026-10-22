@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Eye, EyeOff,
-  Heading1, FileText, Bell, LayoutGrid, MousePointerClick, Minus, Image as ImageIcon,
+  Heading1, FileText, Bell, LayoutGrid, MousePointerClick, Minus, Image as ImageIcon, Sparkle,
 } from 'lucide-react';
 import type { Block, BlockType, CardItem } from '../../types';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 
 const BLOCK_META: Record<BlockType, { label: string; icon: React.ReactNode }> = {
+  hero:     { label: 'Hero banner', icon: <Sparkle size={14} /> },
   heading:  { label: 'Heading',    icon: <Heading1 size={14} /> },
   richtext: { label: 'Rich text',  icon: <FileText size={14} /> },
   notice:   { label: 'Notice',     icon: <Bell size={14} /> },
@@ -22,6 +23,7 @@ function newBlock(type: BlockType): Block {
   const id = `b${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const base = { id, visible: true } as const;
   switch (type) {
+    case 'hero':     return { ...base, type, title: 'Welcome', subtitle: '', ctaLabel: 'Sign in', ctaHref: '/login' };
     case 'heading':  return { ...base, type, text: 'New heading', subtitle: '' };
     case 'richtext': return { ...base, type, html: '<p>Edit this text&hellip;</p>' };
     case 'notice':   return { ...base, type, tone: 'info', text: 'New announcement' };
@@ -137,6 +139,22 @@ export function BlockEditor({
 
 function BlockFields({ block, onChange }: { block: Block; onChange: (patch: Partial<Block>) => void }) {
   switch (block.type) {
+    case 'hero':
+      return (
+        <div className="space-y-2">
+          <input className={inputCls} value={block.title} placeholder="Hero title"
+            onChange={(e) => onChange({ title: e.target.value } as Partial<Block>)} />
+          <input className={inputCls} value={block.subtitle ?? ''} placeholder="Subtitle (optional)"
+            onChange={(e) => onChange({ subtitle: e.target.value } as Partial<Block>)} />
+          <div className="grid grid-cols-2 gap-2">
+            <input className={inputCls} value={block.ctaLabel ?? ''} placeholder="Button label (optional)"
+              onChange={(e) => onChange({ ctaLabel: e.target.value } as Partial<Block>)} />
+            <input className={inputCls} value={block.ctaHref ?? ''} placeholder="Button link (e.g. /login)"
+              onChange={(e) => onChange({ ctaHref: e.target.value } as Partial<Block>)} />
+          </div>
+        </div>
+      );
+
     case 'heading':
       return (
         <div className="space-y-2">

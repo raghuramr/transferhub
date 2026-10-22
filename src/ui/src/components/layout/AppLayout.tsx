@@ -6,7 +6,7 @@ import { authApi, pagesApi } from '../../lib/api';
 import { PageTransition } from '../ui/PageTransition';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
-  Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion
+  Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -28,12 +28,14 @@ const navItems: Record<Role, { to: string; label: string; icon: React.ReactNode 
     { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
     { to: '/admin/users', label: 'Users', icon: <Users size={18} /> },
     { to: '/admin/pages', label: 'Custom Pages', icon: <FileEdit size={18} /> },
+    { to: '/admin/forms', label: 'Custom Forms', icon: <ListChecks size={18} /> },
   ],
   super_admin: [
     { to: '/superadmin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { to: '/admin/transcripts', label: 'Transcripts', icon: <FileText size={18} /> },
     { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
     { to: '/admin/pages', label: 'Custom Pages', icon: <FileEdit size={18} /> },
+    { to: '/admin/forms', label: 'Custom Forms', icon: <ListChecks size={18} /> },
     { to: '/superadmin/users', label: 'Users', icon: <Users size={18} /> },
     { to: '/superadmin/audit', label: 'Audit Log', icon: <ScrollText size={18} /> },
     { to: '/superadmin/settings', label: 'Settings', icon: <Settings size={18} /> },

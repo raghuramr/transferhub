@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import { DatabaseService } from '../database/database.service';
@@ -12,6 +12,8 @@ interface CourseMatchResult {
   confidenceScore: number;
   rationale: string;
 }
+
+const AUTO_LIKELY_THRESHOLD = 0.75;
 
 @Injectable()
 export class AiService {
@@ -27,34 +29,28 @@ export class AiService {
     });
   }
 
-  async matchCourse(transcriptCourseId: number, requestedByUserId: string): Promise<CourseMatchResult[]> {
-    // Load transcript course details
-    const courseRes = await this.db.query<any>(
-      `SELECT tc.Id, tc.ExternalCode, tc.ExternalTitle, tc.CreditsConverted, tc.CreditType,
-              i.Name AS InstitutionName, i.State AS InstitutionState
-       FROM TranscriptCourses tc
-       JOIN Transcripts t ON t.Id = tc.TranscriptId
-       JOIN Institutions i ON i.Id = t.InstitutionId
-       WHERE tc.Id = @id`,
-      [{ name: 'id', type: sql.Int, value: transcriptCourseId }],
+  async matchCourse(evaluationId: string, requestedByUserId: string): Promise<CourseMatchResult[]> {
+    const evalRes = await this.db.query<any>(
+      `SELECT e.Id AS EvalId, tc.Id AS TcId, tc.CourseCode, tc.CourseTitle,
+              tc.OriginalCredits, tc.NormalisedCredits,
+              i.Name AS InstitutionName, i.Calendar
+       FROM Evaluations e
+       JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId
+       JOIN Transcripts t        ON t.Id = tc.TranscriptId
+       JOIN Institutions i       ON i.Id = t.InstitutionId
+       WHERE e.Id = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: evaluationId }],
     );
+    if (!evalRes.recordset[0]) throw new NotFoundException('Evaluation not found');
+    const extCourse = evalRes.recordset[0];
 
-    if (!courseRes.recordset[0]) {
-      throw new Error('Transcript course not found');
-    }
-
-    const extCourse = courseRes.recordset[0];
-
-    // Load BU courses for context
     const buRes = await this.db.query<any>(
-      `SELECT c.Id, c.Code, c.Title, c.Credits, c.Description, d.Name AS Dept
+      `SELECT c.Id, c.Code, c.Title, c.Credits, c.ProgramArea, c.Description
        FROM Courses c
        JOIN Institutions i ON i.Id = c.InstitutionId
-       LEFT JOIN Departments d ON d.Id = c.DepartmentId
        WHERE i.Code = 'BU' AND c.IsActive = 1
        ORDER BY c.Code`,
     );
-
     const buCourses = buRes.recordset;
 
     const systemPrompt = `You are an expert academic advisor at Boston University (BU) specializing in transfer credit evaluation.
@@ -64,13 +60,13 @@ You must return ONLY a valid JSON array with exactly 3 elements, no markdown, no
     const userPrompt = `Evaluate this external course and identify the top 3 BU course equivalents.
 
 EXTERNAL COURSE:
-- Institution: ${extCourse.InstitutionName} (${extCourse.InstitutionState})
-- Course Code: ${extCourse.ExternalCode}
-- Course Title: ${extCourse.ExternalTitle}
-- Credits: ${extCourse.CreditsConverted} (${extCourse.CreditType})
+- Institution: ${extCourse.InstitutionName} (${extCourse.Calendar} calendar)
+- Course Code: ${extCourse.CourseCode}
+- Course Title: ${extCourse.CourseTitle}
+- Credits: ${extCourse.NormalisedCredits ?? extCourse.OriginalCredits}
 
 BU COURSE CATALOG (${buCourses.length} courses):
-${buCourses.map(c => `[ID:${c.Id}] ${c.Code} - ${c.Title} (${c.Credits} cr) | Dept: ${c.Dept || 'N/A'} | ${c.Description ? c.Description.substring(0, 100) : 'No description'}`).join('\n')}
+${buCourses.map((c: any) => `[ID:${c.Id}] ${c.Code} - ${c.Title} (${c.Credits} cr) | ${c.ProgramArea || 'N/A'} | ${c.Description ? c.Description.substring(0, 100) : 'No description'}`).join('\n')}
 
 Return a JSON array of exactly 3 objects with this structure:
 [
@@ -86,10 +82,10 @@ Return a JSON array of exactly 3 objects with this structure:
 
 Rank by confidence (highest first). If fewer than 3 good matches exist, still return 3 with lower confidence scores for the weaker candidates.`;
 
-    this.logger.log(`Calling Claude API for course matching: ${extCourse.ExternalCode}`);
+    this.logger.log(`Calling Claude API for course matching: ${extCourse.CourseCode}`);
 
     const message = await this.client.messages.create({
-      model: 'claude-opus-4-5',
+      model: this.config.get<string>('ANTHROPIC_MODEL', 'claude-opus-4-5'),
       max_tokens: 2000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
@@ -105,58 +101,78 @@ Rank by confidence (highest first). If fewer than 3 good matches exist, still re
       throw new Error('AI returned invalid response');
     }
 
-    // Store candidates in database
+    // Replace any previous candidates for this evaluation.
+    await this.db.query(`DELETE FROM AIMatchCandidates WHERE EvaluationId = @id`, [
+      { name: 'id', type: sql.UniqueIdentifier, value: evaluationId },
+    ]);
+
     for (const candidate of candidates) {
       await this.db.query(
-        `MERGE AIMatchCandidates AS target
-         USING (SELECT @tcId, @buId) AS src(TcId, BuId)
-         ON target.TranscriptCourseId = src.TcId AND target.BuCourseId = src.BuId
-         WHEN MATCHED THEN UPDATE SET Rank = @rank, ConfidenceScore = @score, Rationale = @rationale, GeneratedAt = SYSUTCDATETIME()
-         WHEN NOT MATCHED THEN INSERT (TranscriptCourseId, BuCourseId, Rank, ConfidenceScore, Rationale, RequestedByUserId)
-                           VALUES (@tcId, @buId, @rank, @score, @rationale, @reqBy);`,
+        `INSERT INTO AIMatchCandidates (EvaluationId, Rank, BUCourseId, Score, Rationale)
+         VALUES (@evalId, @rank, @buId, @score, @rationale)`,
         [
-          { name: 'tcId', type: sql.Int, value: transcriptCourseId },
-          { name: 'buId', type: sql.Int, value: candidate.buCourseId },
+          { name: 'evalId', type: sql.UniqueIdentifier, value: evaluationId },
           { name: 'rank', type: sql.Int, value: candidate.rank },
-          { name: 'score', type: sql.Decimal(3, 2), value: candidate.confidenceScore },
+          { name: 'buId', type: sql.Int, value: candidate.buCourseId },
+          { name: 'score', type: sql.Decimal(5, 4), value: candidate.confidenceScore },
           { name: 'rationale', type: sql.NVarChar(sql.MAX), value: candidate.rationale },
-          { name: 'reqBy', type: sql.UniqueIdentifier, value: requestedByUserId },
         ],
       ).catch(err => this.logger.error(`Failed to store candidate ${candidate.buCourseId}: ${err.message}`));
     }
 
-    // Update lane to indicate AI candidates are available
-    await this.db.query(
-      `UPDATE TranscriptCourses SET Lane = 'pending' WHERE Id = @id AND Lane = 'pending'`,
-      [{ name: 'id', type: sql.Int, value: transcriptCourseId }],
-    );
+    const top = [...candidates].sort((a, b) => a.rank - b.rank)[0];
+    if (top) {
+      await this.db.query(
+        `UPDATE Evaluations
+         SET AISuggestionRaw = @raw, AISuggestedCourseId = @courseId,
+             AIConfidence = @conf, AIRationale = @rationale,
+             Status = CASE WHEN Status = 'queued' THEN 'in_progress' ELSE Status END,
+             UpdatedAt = SYSUTCDATETIME()
+         WHERE Id = @id`,
+        [
+          { name: 'raw', type: sql.NVarChar(sql.MAX), value: JSON.stringify(candidates) },
+          { name: 'courseId', type: sql.Int, value: top.buCourseId },
+          { name: 'conf', type: sql.Decimal(5, 4), value: top.confidenceScore },
+          { name: 'rationale', type: sql.NVarChar(sql.MAX), value: top.rationale },
+          { name: 'id', type: sql.UniqueIdentifier, value: evaluationId },
+        ],
+      );
+
+      // Confident top match -> surface it as "likely" on the student's transcript view.
+      if (top.confidenceScore >= AUTO_LIKELY_THRESHOLD) {
+        await this.db.query(
+          `UPDATE TranscriptCourses SET Lane = 'likely', UpdatedAt = SYSUTCDATETIME()
+           WHERE Id = @id AND Lane = 'needs_syllabus'`,
+          [{ name: 'id', type: sql.UniqueIdentifier, value: extCourse.TcId }],
+        );
+      }
+    }
 
     return candidates;
   }
 
-  async generateSummary(transcriptId: number): Promise<string> {
+  async generateSummary(transcriptId: string): Promise<string> {
     const res = await this.db.query<any>(
       `SELECT t.Id, t.Status,
               u.FirstName + ' ' + u.LastName AS StudentName,
               i.Name AS InstitutionName,
               (SELECT COUNT(*) FROM TranscriptCourses WHERE TranscriptId = t.Id) AS TotalCourses,
               (SELECT COUNT(*) FROM TranscriptCourses WHERE TranscriptId = t.Id AND Lane = 'applied') AS Applied,
-              (SELECT COUNT(*) FROM TranscriptCourses WHERE TranscriptId = t.Id AND Lane = 'pending') AS Pending,
+              (SELECT COUNT(*) FROM TranscriptCourses WHERE TranscriptId = t.Id AND Lane IN ('pending','needs_syllabus','likely')) AS Pending,
               (SELECT COUNT(*) FROM TranscriptCourses WHERE TranscriptId = t.Id AND Lane = 'not_eligible') AS NotEligible,
               (SELECT COUNT(*) FROM TranscriptCourses WHERE TranscriptId = t.Id AND Lane = 'elective_only') AS Elective
        FROM Transcripts t
-       JOIN StudentProfiles sp ON sp.Id = t.StudentProfileId
-       JOIN Users u ON u.Id = sp.UserId
+       JOIN Users u        ON u.Id = t.StudentUserId
        JOIN Institutions i ON i.Id = t.InstitutionId
        WHERE t.Id = @id`,
-      [{ name: 'id', type: sql.Int, value: transcriptId }],
+      [{ name: 'id', type: sql.UniqueIdentifier, value: transcriptId }],
     );
 
-    if (!res.recordset[0]) throw new Error('Transcript not found');
+    if (!res.recordset[0]) throw new NotFoundException('Transcript not found');
     const data = res.recordset[0];
 
     const message = await this.client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: this.config.get<string>('ANTHROPIC_MODEL_SUMMARY', 'claude-haiku-4-5'),
       max_tokens: 500,
       messages: [{
         role: 'user',

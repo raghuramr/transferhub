@@ -66,10 +66,10 @@ export default function FacultyQueue() {
                   <Clock size={12} />
                   {new Date(ev.queuedAt).toLocaleDateString()}
                 </span>
-                {ev.aiCandidates?.length > 0 && (
+                {ev.aiCandidatesCount > 0 && (
                   <span className="flex items-center gap-1 text-blue-600 font-medium">
                     <Sparkles size={12} />
-                    {ev.aiCandidates.length} AI candidates
+                    {ev.aiCandidatesCount} AI candidates
                   </span>
                 )}
               </div>

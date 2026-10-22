@@ -12,6 +12,7 @@ sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/003_institutions_and_courses.sq
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/004_transcripts_and_evaluations.sql
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/005_views_and_procedures.sql
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/006_pages.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/007_forms.sql
 
 # 2. Seed reference data + course catalog
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/001_reference_data.sql
@@ -19,6 +20,7 @@ sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/002_bu_courses.sql
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/003_peer_courses_and_matches.sql
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/004_demo_users.sql
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/005_pages.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/006_forms.sql
 
 # 3. Set real password hashes (run from src/api)
 cd ../src/api && npm run seed:users
@@ -50,7 +52,9 @@ sqlcmd -S "localhost,1433" -U sa -P "Dev_Passw0rd!" -C -i migrations/001_create_
 | `Syllabi` | Uploaded syllabi files + extracted text |
 | `Evaluations` | Department review record; AI suggestion + human decision |
 | `AIMatchCandidates` | Ranked BU course suggestions from AI |
-| `Pages` | Admin-editable custom pages — one row per page, body stored as a JSON array of content "blocks" (heading, richtext, notice, cards, cta, divider, image). Saving a page from Admin -> Custom Pages is immediately live for every signed-in user; the `dashboard-announcements` slug drives the banner shown at the top of every role's dashboard. |
+| `Pages` | Admin-editable custom pages — one row per page, body stored as a JSON array of content "blocks" (hero, heading, richtext, notice, cards, cta, divider, image). Saving a page from Admin -> Custom Pages is immediately live for every signed-in user; `dashboard-announcements` drives the banner on every dashboard, and `home` is the public landing page shown at "/" before login. |
+| `Forms` | Admin-built JSON-schema forms (text/select/radio/checkboxes/yesno/etc. questions) — no code required per form. `Status` gates whether it accepts submissions (draft/open/closed). |
+| `FormSubmissions` | One row per response to a Form; `Data` is a JSON object keyed by field, reviewed/approved/rejected by staff. |
 
 ## Views
 

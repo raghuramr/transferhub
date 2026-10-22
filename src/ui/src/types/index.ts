@@ -116,13 +116,21 @@ export interface Evaluation {
 }
 
 // ─── Custom Pages (CMS) ────────────────────────────────────────
-export type BlockType = 'heading' | 'richtext' | 'notice' | 'cards' | 'cta' | 'divider' | 'image';
+export type BlockType = 'hero' | 'heading' | 'richtext' | 'notice' | 'cards' | 'cta' | 'divider' | 'image';
 export type NoticeTone = 'info' | 'warning' | 'success';
 
 export interface BlockBase {
   id: string;
   type: BlockType;
   visible: boolean;
+}
+
+export interface HeroBlock extends BlockBase {
+  type: 'hero';
+  title: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
 }
 
 export interface HeadingBlock extends BlockBase {
@@ -172,6 +180,7 @@ export interface ImageBlock extends BlockBase {
 }
 
 export type Block =
+  | HeroBlock
   | HeadingBlock
   | RichTextBlock
   | NoticeBlock
@@ -191,6 +200,50 @@ export interface CmsPage {
   navOrder: number;
   createdAt: string;
   updatedAt: string;
+}
+
+// ─── Custom Forms (JSON-schema driven) ─────────────────────────
+export type FormFieldType =
+  | 'text' | 'textarea' | 'email' | 'phone' | 'number' | 'date'
+  | 'select' | 'radio' | 'checkboxes' | 'yesno';
+
+export interface FormField {
+  key: string;
+  label: string;
+  type: FormFieldType;
+  required?: boolean;
+  options?: string[];       // select | radio | checkboxes
+  placeholder?: string;
+  helpText?: string;
+}
+
+export type FormStatus = 'draft' | 'open' | 'closed';
+
+export interface FormDef {
+  id: number;
+  slug: string;
+  title: string;
+  description?: string;
+  status: FormStatus;
+  schema: { fields: FormField[] };
+  successMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SubmissionStatus = 'new' | 'reviewed' | 'approved' | 'rejected';
+
+export interface FormSubmission {
+  id: string;
+  formId: number;
+  formTitle: string;
+  submittedByName?: string;
+  submittedByEmail?: string;
+  data: Record<string, any>;
+  status: SubmissionStatus;
+  adminNotes?: string;
+  submittedAt: string;
+  decidedAt?: string;
 }
 
 // ─── Common ───────────────────────────────────────────────────

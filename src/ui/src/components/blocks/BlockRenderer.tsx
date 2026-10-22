@@ -38,6 +38,45 @@ export function BlockRenderer({ blocks }: { blocks: Block[] }) {
 
 function BlockView({ block }: { block: Block }) {
   switch (block.type) {
+    case 'hero':
+      return (
+        <div className="relative overflow-hidden rounded-3xl bg-brand-950 px-8 py-16 md:py-24 text-center">
+          <motion.div
+            className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-brand-700/40 blur-3xl"
+            animate={{ x: [0, 30, 0], y: [0, 20, 0] }}
+            transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <motion.div
+            className="absolute -bottom-24 -right-16 w-[28rem] h-[28rem] rounded-full bg-brand-500/30 blur-3xl"
+            animate={{ x: [0, -24, 0], y: [0, -24, 0] }}
+            transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <div className="relative max-w-2xl mx-auto">
+            <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight">{block.title}</h1>
+            {block.subtitle && (
+              <p className="mt-4 text-brand-200 text-base md:text-lg">{block.subtitle}</p>
+            )}
+            {block.ctaLabel && block.ctaHref && (
+              <div className="mt-8">
+                {isInternalHref(block.ctaHref) ? (
+                  <Link to={block.ctaHref}>
+                    <Button size="lg" variant="secondary" icon={<ArrowRight size={18} />}>
+                      {block.ctaLabel}
+                    </Button>
+                  </Link>
+                ) : (
+                  <a href={block.ctaHref} target="_blank" rel="noopener noreferrer">
+                    <Button size="lg" variant="secondary" icon={<ArrowRight size={18} />}>
+                      {block.ctaLabel}
+                    </Button>
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+
     case 'heading':
       return (
         <div>
