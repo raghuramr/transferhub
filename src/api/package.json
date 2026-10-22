@@ -33,6 +33,9 @@
     "tedious": "^18.6.1",
     "uuid": "^11.0.5"
   },
+  "optionalDependencies": {
+    "msnodesqlv8": "^4.4.1"
+  },
   "devDependencies": {
     "@nestjs/testing": "^10.4.15",
     "@types/express": "^5.0.1",

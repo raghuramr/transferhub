@@ -7,9 +7,16 @@
  *   npm run seed:users:test          # uses .env.test
  *   npm run seed:users:prod          # uses .env.production
  *   tsx scripts/seed-users.ts --env .env.test   # explicit file
+ *
+ * IMPORTANT — LocalDB users:
+ *   Node's default SQL driver (tedious) is TCP-only. It cannot reach
+ *   "(localdb)\MSSQLLocalDB" directly — that's a named-pipe connection,
+ *   the same kind sqlcmd/SSMS use, not a network hostname. If DB_SERVER
+ *   starts with "(localdb)" you must also set DB_DRIVER=msnodesqlv8 in
+ *   your .env and run "npm install msnodesqlv8" once (native addon —
+ *   needs Windows build tools the first time it compiles).
  */
 import * as argon2 from 'argon2';
-import * as sql   from 'mssql';
 import * as fs    from 'fs';
 import * as path  from 'path';
 
@@ -47,16 +54,21 @@ if (fs.existsSync(envPath)) {
 
 // ── 2. Build mssql config from env (Windows Auth by default) ─
 const trustedConnection = (process.env.DB_TRUSTED_CONNECTION ?? 'true') === 'true';
-const server   = process.env.DB_SERVER   ?? '(localdb)\\MSSQLLocalDB';
+const server    = process.env.DB_SERVER   ?? '(localdb)\\MSSQLLocalDB';
 const database  = process.env.DB_NAME     ?? 'CreditEvalManager';
 const portStr   = process.env.DB_PORT;
 const port      = portStr ? parseInt(portStr, 10) : undefined;
 const encrypt   = (process.env.DB_ENCRYPT ?? 'false') === 'true';
+const driverName = process.env.DB_DRIVER ?? 'tedious';
 
 console.log(`\nTarget: ${server} / ${database}`);
-console.log(`Auth  : ${trustedConnection ? 'Windows Integrated' : 'SQL login'}\n`);
+console.log(`Auth  : ${trustedConnection ? 'Windows Integrated' : 'SQL login'}`);
+console.log(`Driver: ${driverName}\n`);
 
-const dbConfig: sql.config = {
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const sql = driverName === 'msnodesqlv8' ? require('mssql/msnodesqlv8') : require('mssql');
+
+const dbConfig: any = {
   server,
   database,
   options: {
@@ -118,11 +130,26 @@ async function main() {
 
 main().catch(err => {
   console.error('\n❌  Seed failed:', err.message);
-  if (err.message?.includes('connect') || err.message?.includes('sequence')) {
-    console.error('\nCould not reach SQL Server. Check:');
-    console.error('  1. DB_SERVER in your .env file matches your SQL Server instance name');
-    console.error('  2. For LocalDB: DB_SERVER=(localdb)\\MSSQLLocalDB  and  DB_TRUSTED_CONNECTION=true');
-    console.error('  3. Run "npm run setup:env" to create a .env from the example template');
+
+  const isLocalDbAddr = /^\(localdb\)/i.test(server);
+  const isAddrNotFound = /ENOTFOUND/i.test(err.message ?? '') || /sequence/i.test(err.message ?? '');
+
+  if (isLocalDbAddr && isAddrNotFound && driverName !== 'msnodesqlv8') {
+    console.error('\n⚠  This is the classic "Node can\'t reach (localdb)\\..." problem.');
+    console.error('   Node\'s default SQL driver (tedious) only speaks TCP — it cannot');
+    console.error('   resolve "(localdb)\\..." the way sqlcmd/SSMS do (named pipes).');
+    console.error('\n   Fix:');
+    console.error('     1. cd src/api');
+    console.error('     2. npm install msnodesqlv8      (one-time native build)');
+    console.error('     3. In your .env, add:  DB_DRIVER=msnodesqlv8');
+    console.error('     4. Re-run: npm run seed:users');
+    console.error('\n   Alternative: point DB_SERVER at a real SQL Server/Express instance');
+    console.error('   with TCP/IP enabled instead of LocalDB (DB_SERVER=localhost, DB_PORT=1433).');
+  } else {
+    console.error('\nCheck:');
+    console.error('  1. DB_SERVER in your .env matches your SQL Server instance name');
+    console.error('  2. SQL Server (or LocalDB) is actually running');
+    console.error('  3. Run "npm run setup:env" if .env is missing');
   }
   process.exit(1);
 });
