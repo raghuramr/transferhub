@@ -118,3 +118,14 @@ export const aiApi = {
   candidates: (evaluationId: string) =>
     api.get(`/ai/candidates/${evaluationId}`),
 };
+
+// ── Custom Pages (CMS) endpoints ──────────────────────────────
+export const pagesApi = {
+  list: () => api.get('/pages'),
+  nav: () => api.get('/pages/nav'),
+  bySlug: (slug: string) => api.get(`/pages/by-slug/${slug}`),
+  get: (id: number) => api.get(`/pages/${id}`),
+  create: (data: unknown) => api.post('/pages', data),
+  update: (id: number, data: unknown) => api.put(`/pages/${id}`, data),
+  remove: (id: number) => api.delete(`/pages/${id}`),
+};

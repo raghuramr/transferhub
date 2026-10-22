@@ -19,7 +19,7 @@ export default function CourseDatabase() {
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-8">
-        <BookOpen className="text-indigo-600" size={24} />
+        <BookOpen className="text-brand-800" size={24} />
         <div>
           <h1 className="text-2xl font-bold text-gray-900">BU Course Database</h1>
           <p className="text-gray-500">Boston University course catalog</p>
@@ -32,7 +32,7 @@ export default function CourseDatabase() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by code or title…"
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
       </div>
 
@@ -51,7 +51,7 @@ export default function CourseDatabase() {
           <tbody className="divide-y divide-gray-100">
             {filtered.map((c: any) => (
               <tr key={c.Id} className="hover:bg-gray-50">
-                <td className="px-6 py-3 font-mono text-indigo-700 font-medium">{c.Code}</td>
+                <td className="px-6 py-3 font-mono text-brand-900 font-medium">{c.Code}</td>
                 <td className="px-6 py-3 text-gray-900">{c.Title}</td>
                 <td className="px-6 py-3 text-gray-500">{c.DepartmentCode || '—'}</td>
                 <td className="px-6 py-3 text-right text-gray-700">{c.Credits}</td>

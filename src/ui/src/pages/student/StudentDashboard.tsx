@@ -2,6 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { transcriptsApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
+import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner';
+import { MotionCard } from '../../components/ui/Card';
+import { Reveal } from '../../components/ui/PageTransition';
 import {
   Upload, Clock, CheckCircle, AlertCircle, ChevronRight, GraduationCap
 } from 'lucide-react';
@@ -42,29 +45,30 @@ export default function StudentDashboard() {
   return (
     <div className="p-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
           Welcome, {user?.firstName}
         </h1>
         <p className="text-gray-500 mt-1">Track your transfer credit evaluation progress.</p>
       </div>
 
+      <AnnouncementsBanner />
+
       {/* Quick actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <Link
-          to="/student/upload"
-          className="flex items-center gap-4 p-5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors"
-        >
-          <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-            <Upload size={20} />
-          </div>
-          <div>
-            <p className="font-semibold">Submit Transcript</p>
-            <p className="text-sm text-indigo-200">Start a new evaluation</p>
-          </div>
+        <Link to="/student/upload">
+          <MotionCard index={0} className="flex items-center gap-4 p-5 bg-brand-800 border-none text-white hover:bg-brand-900 h-full">
+            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+              <Upload size={20} />
+            </div>
+            <div>
+              <p className="font-semibold">Submit Transcript</p>
+              <p className="text-sm text-brand-200">Start a new evaluation</p>
+            </div>
+          </MotionCard>
         </Link>
 
-        <div className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl">
+        <MotionCard index={1} className="flex items-center gap-4 p-5">
           <div className="w-10 h-10 bg-amber-50 rounded-lg flex items-center justify-center">
             <Clock className="text-amber-600" size={20} />
           </div>
@@ -74,9 +78,9 @@ export default function StudentDashboard() {
             </p>
             <p className="text-sm text-gray-500">In progress</p>
           </div>
-        </div>
+        </MotionCard>
 
-        <div className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl">
+        <MotionCard index={2} className="flex items-center gap-4 p-5">
           <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
             <CheckCircle className="text-green-600" size={20} />
           </div>
@@ -86,11 +90,12 @@ export default function StudentDashboard() {
             </p>
             <p className="text-sm text-gray-500">Completed</p>
           </div>
-        </div>
+        </MotionCard>
       </div>
 
       {/* Transcripts */}
-      <div className="bg-white rounded-xl border border-gray-200">
+      <Reveal index={3}>
+      <div className="bg-white rounded-2xl border border-brand-100/60">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">My Transcripts</h2>
         </div>
@@ -110,7 +115,7 @@ export default function StudentDashboard() {
             <p className="text-gray-500 mb-4">No transcripts submitted yet.</p>
             <Link
               to="/student/upload"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
             >
               <Upload size={16} />
               Submit your first transcript
@@ -155,6 +160,7 @@ export default function StudentDashboard() {
           </Link>
         ))}
       </div>
+      </Reveal>
     </div>
   );
 }

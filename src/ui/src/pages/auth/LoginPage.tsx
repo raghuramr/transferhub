@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { GraduationCap, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { GraduationCap, Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
 import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
+import { Button } from '../../components/ui/Button';
 import type { AxiosError } from 'axios';
 import type { ApiError } from '../../types';
 
@@ -44,26 +46,58 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="relative min-h-screen bg-brand-950 flex items-center justify-center p-4 overflow-hidden">
+      {/* Fluid gradient blobs — 21st.dev-style ambient background */}
+      <motion.div
+        className="absolute -top-32 -left-32 w-[32rem] h-[32rem] rounded-full bg-brand-700/40 blur-3xl"
+        animate={{ x: [0, 40, 0], y: [0, 30, 0] }}
+        transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        className="absolute -bottom-40 -right-20 w-[36rem] h-[36rem] rounded-full bg-brand-500/30 blur-3xl"
+        animate={{ x: [0, -30, 0], y: [0, -40, 0] }}
+        transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.08),transparent_60%)]" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="relative w-full max-w-md"
+      >
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600 mb-4">
-            <GraduationCap className="text-white" size={32} />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
+          className="text-center mb-8"
+        >
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-lg mb-4">
+            <GraduationCap className="text-brand-800" size={32} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Transfer Credit Portal</h1>
-          <p className="text-gray-600 mt-1">Boston University</p>
-        </div>
+          <h1 className="text-2xl font-bold text-white">Transfer Credit Portal</h1>
+          <p className="text-brand-200 mt-1">Boston University</p>
+        </motion.div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-8">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.4 }}
+          className="bg-white rounded-2xl shadow-2xl shadow-black/20 p-8"
+        >
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Sign in to your account</h2>
 
           {serverError && (
-            <div className="flex items-center gap-3 p-4 mb-6 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="flex items-center gap-3 p-4 mb-6 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+            >
               <AlertCircle size={18} className="shrink-0" />
               {serverError}
-            </div>
+            </motion.div>
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -77,7 +111,7 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 placeholder="you@bu.edu"
-                className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-colors ${
                   errors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'
                 }`}
               />
@@ -97,7 +131,7 @@ export default function LoginPage() {
                   type={showPass ? 'text' : 'password'}
                   autoComplete="current-password"
                   placeholder="••••••••"
-                  className={`w-full px-4 py-2.5 pr-11 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                  className={`w-full px-4 py-2.5 pr-11 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-colors ${
                     errors.password ? 'border-red-400 bg-red-50' : 'border-gray-300'
                   }`}
                 />
@@ -115,13 +149,14 @@ export default function LoginPage() {
             </div>
 
             {/* Submit */}
-            <button
+            <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="w-full"
+              icon={!isSubmitting ? <ArrowRight size={16} /> : undefined}
             >
               {isSubmitting ? 'Signing in…' : 'Sign in'}
-            </button>
+            </Button>
           </form>
 
           {/* Demo hint */}
@@ -134,8 +169,8 @@ export default function LoginPage() {
                 ['Admin', 'admin@bu.edu'],
                 ['Super Admin', 'super_admin@bu.edu'],
               ].map(([role, email]) => (
-                <div key={email} className="bg-gray-50 rounded-lg p-2">
-                  <p className="font-medium">{role}</p>
+                <div key={email} className="bg-brand-50/60 rounded-lg p-2">
+                  <p className="font-medium text-brand-900">{role}</p>
                   <p className="text-gray-400 truncate">{email}</p>
                 </div>
               ))}
@@ -144,8 +179,8 @@ export default function LoginPage() {
               Password: <code className="bg-gray-100 px-1 rounded">see .env.example</code>
             </p>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

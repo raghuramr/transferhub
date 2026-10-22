@@ -24,7 +24,7 @@ export default function AuditLog() {
     UPDATE:       'bg-amber-100 text-amber-700',
     DELETE:       'bg-red-100 text-red-700',
     DECISION:     'bg-purple-100 text-purple-700',
-    AI_MATCH:     'bg-indigo-100 text-indigo-700',
+    AI_MATCH:     'bg-brand-100 text-brand-900',
     UNLOCK:       'bg-teal-100 text-teal-700',
   };
 
@@ -44,7 +44,7 @@ export default function AuditLog() {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search user or action…"
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
       </div>
 

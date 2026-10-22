@@ -80,7 +80,7 @@ export default function ChangePasswordPage() {
               <input
                 {...register(name)}
                 type="password"
-                className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${
                   errors[name] ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -92,7 +92,7 @@ export default function ChangePasswordPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+            className="w-full py-2.5 bg-brand-800 hover:bg-brand-900 text-white rounded-lg text-sm font-medium transition-colors"
           >
             {isSubmitting ? 'Saving…' : 'Set new password'}
           </button>

@@ -93,7 +93,7 @@ export default function UploadTranscript() {
               <input
                 {...register('institutionName')}
                 placeholder="e.g. Northeastern University"
-                className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.institutionName ? 'border-red-400' : 'border-gray-300'}`}
+                className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${errors.institutionName ? 'border-red-400' : 'border-gray-300'}`}
               />
               {errors.institutionName && <p className="text-xs text-red-600 mt-1">{errors.institutionName.message}</p>}
             </div>
@@ -104,7 +104,7 @@ export default function UploadTranscript() {
               <input
                 {...register('institutionCode')}
                 placeholder="e.g. NU"
-                className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.institutionCode ? 'border-red-400' : 'border-gray-300'}`}
+                className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 ${errors.institutionCode ? 'border-red-400' : 'border-gray-300'}`}
               />
               {errors.institutionCode && <p className="text-xs text-red-600 mt-1">{errors.institutionCode.message}</p>}
             </div>
@@ -114,7 +114,7 @@ export default function UploadTranscript() {
               </label>
               <select
                 {...register('calendar')}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 <option value="semester">Semester</option>
                 <option value="quarter">Quarter (credits ÷ 1.5)</option>
@@ -135,7 +135,7 @@ export default function UploadTranscript() {
             <button
               type="button"
               onClick={addCourse}
-              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+              className="text-sm text-brand-800 hover:text-brand-900 font-medium"
             >
               + Add course
             </button>
@@ -157,13 +157,13 @@ export default function UploadTranscript() {
                   value={course.code}
                   onChange={(e) => updateCourse(i, 'code', e.target.value)}
                   placeholder="CS3500"
-                  className="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 <input
                   value={course.title}
                   onChange={(e) => updateCourse(i, 'title', e.target.value)}
                   placeholder="Object-Oriented Design"
-                  className="col-span-4 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="col-span-4 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 <input
                   value={course.credits}
@@ -171,19 +171,19 @@ export default function UploadTranscript() {
                   placeholder="4"
                   type="number"
                   step="0.5"
-                  className="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 <input
                   value={course.grade}
                   onChange={(e) => updateCourse(i, 'grade', e.target.value)}
                   placeholder="A"
-                  className="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 <input
                   value={course.term}
                   onChange={(e) => updateCourse(i, 'term', e.target.value)}
                   placeholder="F23"
-                  className="col-span-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="col-span-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
                 <button
                   type="button"
@@ -210,7 +210,7 @@ export default function UploadTranscript() {
           <button
             type="submit"
             disabled={submitting}
-            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:bg-indigo-400"
+            className="flex items-center gap-2 px-6 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
           >
             <Upload size={16} />
             {submitting ? 'Submitting…' : 'Submit Transcript'}

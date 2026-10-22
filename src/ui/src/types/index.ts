@@ -115,6 +115,84 @@ export interface Evaluation {
   queuedAt: string;
 }
 
+// ─── Custom Pages (CMS) ────────────────────────────────────────
+export type BlockType = 'heading' | 'richtext' | 'notice' | 'cards' | 'cta' | 'divider' | 'image';
+export type NoticeTone = 'info' | 'warning' | 'success';
+
+export interface BlockBase {
+  id: string;
+  type: BlockType;
+  visible: boolean;
+}
+
+export interface HeadingBlock extends BlockBase {
+  type: 'heading';
+  text: string;
+  subtitle?: string;
+}
+
+export interface RichTextBlock extends BlockBase {
+  type: 'richtext';
+  html: string;
+}
+
+export interface NoticeBlock extends BlockBase {
+  type: 'notice';
+  tone: NoticeTone;
+  text: string;
+}
+
+export interface CardItem {
+  id: string;
+  visible: boolean;
+  title: string;
+  body: string;
+}
+
+export interface CardsBlock extends BlockBase {
+  type: 'cards';
+  items: CardItem[];
+}
+
+export interface CtaBlock extends BlockBase {
+  type: 'cta';
+  text: string;
+  buttonLabel: string;
+  buttonHref: string;
+}
+
+export interface DividerBlock extends BlockBase {
+  type: 'divider';
+}
+
+export interface ImageBlock extends BlockBase {
+  type: 'image';
+  url: string;
+  caption?: string;
+}
+
+export type Block =
+  | HeadingBlock
+  | RichTextBlock
+  | NoticeBlock
+  | CardsBlock
+  | CtaBlock
+  | DividerBlock
+  | ImageBlock;
+
+export interface CmsPage {
+  id: number;
+  slug: string;
+  title: string;
+  blocks: Block[];
+  published: boolean;
+  showInNav: boolean;
+  navLabel?: string;
+  navOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Common ───────────────────────────────────────────────────
 export interface PagedResult<T> {
   data: T[];

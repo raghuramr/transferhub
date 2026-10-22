@@ -24,11 +24,16 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import TranscriptList from './pages/admin/TranscriptList';
 import CourseDatabase from './pages/admin/CourseDatabase';
 import UserManagement from './pages/admin/UserManagement';
+import PagesList from './pages/admin/PagesList';
+import PageEditor from './pages/admin/PageEditor';
 
 // Super Admin pages
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import AuditLog from './pages/superadmin/AuditLog';
 import SystemSettings from './pages/superadmin/SystemSettings';
+
+// Custom Pages (CMS) — public-facing view, any authenticated role
+import CmsPageView from './pages/cms/CmsPageView';
 
 // Guards
 function RequireAuth({ children, roles }: { children: React.ReactElement; roles?: Role[] }) {
@@ -86,6 +91,9 @@ export default function App() {
           <Route path="transcripts" element={<TranscriptList />} />
           <Route path="courses" element={<CourseDatabase />} />
           <Route path="users" element={<UserManagement />} />
+          <Route path="pages" element={<PagesList />} />
+          <Route path="pages/new" element={<PageEditor />} />
+          <Route path="pages/:id" element={<PageEditor />} />
         </Route>
 
         {/* Super Admin */}
@@ -94,6 +102,11 @@ export default function App() {
           <Route path="audit" element={<AuditLog />} />
           <Route path="settings" element={<SystemSettings />} />
           <Route path="users" element={<UserManagement />} />
+        </Route>
+
+        {/* Shared CMS page view (any authenticated role) */}
+        <Route path="/pages/:slug" element={<RequireAuth><AppLayout /></RequireAuth>}>
+          <Route index element={<CmsPageView />} />
         </Route>
 
         {/* Fallback */}

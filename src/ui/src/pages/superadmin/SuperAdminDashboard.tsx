@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { LayoutDashboard, Users, ScrollText, Activity } from 'lucide-react';
 import { usersApi, transcriptsApi } from '../../lib/api';
+import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner';
 import { Link } from 'react-router-dom';
 
 export default function SuperAdminDashboard() {
@@ -19,18 +20,20 @@ export default function SuperAdminDashboard() {
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-8">
-        <LayoutDashboard className="text-purple-600" size={24} />
+        <LayoutDashboard className="text-brand-800" size={24} />
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Super Admin Dashboard</h1>
           <p className="text-gray-500">Full system overview and controls</p>
         </div>
       </div>
 
+      <AnnouncementsBanner />
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-medium text-gray-500">Total Users</p>
-            <Users className="text-purple-500" size={20} />
+            <Users className="text-brand-700" size={20} />
           </div>
           <p className="text-3xl font-bold text-gray-900">{allUsers.length}</p>
         </div>
@@ -83,7 +86,7 @@ export default function SuperAdminDashboard() {
               <Link
                 key={to}
                 to={to}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-colors text-sm"
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-brand-50 hover:text-brand-900 transition-colors text-sm"
               >
                 {label}
                 <span>→</span>

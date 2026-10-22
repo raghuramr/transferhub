@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { LayoutDashboard, FileText, Users, BookOpen, Clock, CheckCircle } from 'lucide-react';
 import { transcriptsApi, usersApi } from '../../lib/api';
+import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner';
 import { Link } from 'react-router-dom';
 
 function StatCard({ label, value, icon, to }: { label: string; value: string | number; icon: React.ReactNode; to: string }) {
@@ -8,7 +9,7 @@ function StatCard({ label, value, icon, to }: { label: string; value: string | n
     <Link to={to} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm font-medium text-gray-500">{label}</p>
-        <span className="text-indigo-500">{icon}</span>
+        <span className="text-brand-500">{icon}</span>
       </div>
       <p className="text-3xl font-bold text-gray-900">{value}</p>
     </Link>
@@ -34,12 +35,14 @@ export default function AdminDashboard() {
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-8">
-        <LayoutDashboard className="text-indigo-600" size={24} />
+        <LayoutDashboard className="text-brand-800" size={24} />
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
           <p className="text-gray-500">System overview</p>
         </div>
       </div>
+
+      <AnnouncementsBanner />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total Transcripts" value={allTranscripts.length} icon={<FileText size={20} />} to="/admin/transcripts" />
@@ -52,7 +55,7 @@ export default function AdminDashboard() {
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="font-semibold text-gray-900">Recent Transcripts</h2>
-          <Link to="/admin/transcripts" className="text-sm text-indigo-600 hover:underline">View all</Link>
+          <Link to="/admin/transcripts" className="text-sm text-brand-800 hover:underline">View all</Link>
         </div>
         <div className="divide-y divide-gray-100">
           {allTranscripts.slice(0, 5).map((t: any) => (

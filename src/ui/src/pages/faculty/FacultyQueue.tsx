@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { evaluationsApi } from '../../lib/api';
+import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner';
 import { ClipboardList, ChevronRight, Sparkles, Clock } from 'lucide-react';
 
 const statusBadge: Record<string, string> = {
@@ -22,12 +23,14 @@ export default function FacultyQueue() {
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-8">
-        <ClipboardList className="text-indigo-600" size={24} />
+        <ClipboardList className="text-brand-800" size={24} />
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Review Queue</h1>
           <p className="text-gray-500">Transfer credit evaluations assigned to you</p>
         </div>
       </div>
+
+      <AnnouncementsBanner />
 
       {isLoading && <div className="text-center text-gray-400 py-8">Loading queue…</div>}
 
@@ -43,7 +46,7 @@ export default function FacultyQueue() {
           <Link
             key={ev.id}
             to={`/faculty/evaluation/${ev.id}`}
-            className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl hover:border-indigo-300 hover:shadow-sm transition-all"
+            className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl hover:border-brand-300 hover:shadow-sm transition-all"
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-1">

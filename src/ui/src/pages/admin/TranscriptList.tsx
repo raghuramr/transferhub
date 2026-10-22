@@ -19,7 +19,7 @@ export default function TranscriptList() {
     <div className="p-8 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <FileText className="text-indigo-600" size={24} />
+          <FileText className="text-brand-800" size={24} />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Transcripts</h1>
             <p className="text-gray-500">All submitted transfer transcripts</p>
@@ -32,8 +32,8 @@ export default function TranscriptList() {
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 statusFilter === s
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-indigo-300'
+                  ? 'bg-brand-800 text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-brand-300'
               }`}
             >
               {s === 'all' ? 'All' : s.replace('_', ' ')}
