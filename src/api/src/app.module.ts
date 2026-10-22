@@ -10,9 +10,15 @@ import { EvaluationsModule } from './evaluations/evaluations.module';
 import { AiModule } from './ai/ai.module';
 import { AuditController } from './common/audit.controller';
 
+const nodeEnv = process.env.NODE_ENV ?? 'development';
+const envFilePath =
+  nodeEnv === 'test' ? ['.env.test', '.env']
+  : nodeEnv === 'production' ? ['.env.production', '.env']
+  : ['.env'];
+
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     DatabaseModule,
     AuthModule,

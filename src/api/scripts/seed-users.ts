@@ -1,76 +1,78 @@
 /**
- * Seed script: generates real argon2id password hashes for demo users.
+ * Seed script: generates real argon2id password hashes for demo users
+ * and writes them into the Users table.
  *
- * Usage:
- *   npm run seed:users          # loads .env
- *   npm run seed:users:test     # loads .env.test
- *   npm run seed:users:prod     # loads .env.production
- *
- * Or pass the env file directly:
- *   tsx scripts/seed-users.ts --env .env.test
+ * Usage (PowerShell / CMD):
+ *   npm run seed:users               # uses .env (or falls back to LocalDB Windows Auth)
+ *   npm run seed:users:test          # uses .env.test
+ *   npm run seed:users:prod          # uses .env.production
+ *   tsx scripts/seed-users.ts --env .env.test   # explicit file
  */
 import * as argon2 from 'argon2';
-import * as sql from 'mssql';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as sql   from 'mssql';
+import * as fs    from 'fs';
+import * as path  from 'path';
 
-// ── Load env file ─────────────────────────────────────────────
-const args = process.argv.slice(2);
-const envFlagIdx = args.indexOf('--env');
-const explicitEnvFile = envFlagIdx !== -1 ? args[envFlagIdx + 1] : null;
+// ── 1. Resolve which .env file to load ───────────────────────
+const args        = process.argv.slice(2);
+const envFlagIdx  = args.indexOf('--env');
+const explicitEnv = envFlagIdx !== -1 ? args[envFlagIdx + 1] : null;
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
-const envFile = explicitEnvFile
+const envFile = explicitEnv
   ?? (nodeEnv === 'test'       ? '.env.test'
     : nodeEnv === 'production' ? '.env.production'
     : '.env');
 
-const envPath = path.resolve(__dirname, '..', envFile);
+const apiRoot = path.resolve(__dirname, '..');   // src/api/
+const envPath = path.join(apiRoot, envFile);
+
 if (fs.existsSync(envPath)) {
-  const lines = fs.readFileSync(envPath, 'utf8').split('\n');
-  for (const line of lines) {
+  console.log(`Loading env: ${envPath}`);
+  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
     const eqIdx = trimmed.indexOf('=');
     if (eqIdx < 0) continue;
     const key = trimmed.slice(0, eqIdx).trim();
-    const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
-    if (!(key in process.env)) process.env[key] = val; // don't override shell env
+    const raw = trimmed.slice(eqIdx + 1).trim();
+    const val = raw.replace(/^["']|["']$/g, '');     // strip optional quotes
+    if (!(key in process.env)) process.env[key] = val;
   }
-  console.log(`Loaded env: ${envPath}`);
 } else {
-  console.warn(`Env file not found: ${envPath} — using shell environment`);
+  console.warn(`⚠  Env file not found: ${envPath}`);
+  console.warn('   Falling back to: (localdb)\\MSSQLLocalDB / Windows Auth');
+  console.warn('   Run "npm run setup:env" to create a .env file first.\n');
 }
 
-// ── Build mssql config ────────────────────────────────────────
-const trustedConnection = process.env.DB_TRUSTED_CONNECTION === 'true';
-const server   = process.env.DB_SERVER   ?? 'localhost';
+// ── 2. Build mssql config from env (Windows Auth by default) ─
+const trustedConnection = (process.env.DB_TRUSTED_CONNECTION ?? 'true') === 'true';
+const server   = process.env.DB_SERVER   ?? '(localdb)\\MSSQLLocalDB';
 const database  = process.env.DB_NAME     ?? 'CreditEvalManager';
-const port      = parseInt(process.env.DB_PORT ?? '1433', 10);
-const encrypt   = process.env.DB_ENCRYPT === 'true';
+const portStr   = process.env.DB_PORT;
+const port      = portStr ? parseInt(portStr, 10) : undefined;
+const encrypt   = (process.env.DB_ENCRYPT ?? 'false') === 'true';
+
+console.log(`\nTarget: ${server} / ${database}`);
+console.log(`Auth  : ${trustedConnection ? 'Windows Integrated' : 'SQL login'}\n`);
 
 const dbConfig: sql.config = {
   server,
   database,
   options: {
     encrypt,
-    trustServerCertificate: !encrypt,
+    trustServerCertificate: true,   // always trust for dev / LocalDB
     trustedConnection,
   },
 };
 
-if (!isNaN(port)) dbConfig.port = port;
-
+if (port && !isNaN(port)) dbConfig.port = port;
 if (!trustedConnection) {
-  dbConfig.user     = process.env.DB_USER     ?? 'sa';
+  dbConfig.user     = process.env.DB_USER     ?? '';
   dbConfig.password = process.env.DB_PASSWORD ?? '';
-} else {
-  // Windows Integrated Auth — credentials come from the process token
-  console.log('Using Windows Integrated Authentication');
 }
 
-// ── Demo accounts ─────────────────────────────────────────────
-// Emails must exactly match what was inserted in seed/004_demo_users.sql
+// ── 3. Demo accounts — emails must match seed/004_demo_users.sql ─
 const demoPasswords: Record<string, string> = {
   'student@test.edu':    'Student@123!',
   'faculty.cs@bu.edu':   'Faculty@123!',
@@ -79,9 +81,9 @@ const demoPasswords: Record<string, string> = {
   'super_admin@bu.edu':  'SuperAdmin@123!',
 };
 
-// ── Main ──────────────────────────────────────────────────────
+// ── 4. Run ────────────────────────────────────────────────────
 async function main() {
-  console.log(`\nConnecting to ${server}/${database}…`);
+  console.log('Connecting…');
   const pool = await sql.connect(dbConfig);
   console.log('Connected.\n');
 
@@ -93,28 +95,34 @@ async function main() {
       parallelism: 4,
     });
 
-    const result = await pool
+    const res = await pool
       .request()
       .input('email', sql.NVarChar(254), email)
       .input('hash',  sql.NVarChar(500), hash)
-      .query(
-        `UPDATE Users SET PasswordHash = @hash WHERE Email = @email;
-         SELECT @@ROWCOUNT AS Updated;`
-      );
+      .query(`UPDATE Users SET PasswordHash = @hash WHERE Email = @email;
+              SELECT @@ROWCOUNT AS Updated;`);
 
-    const updated = result.recordset[0]?.Updated ?? 0;
-    if (updated > 0) {
-      console.log(`  ✓  ${email}  →  ${password}`);
-    } else {
-      console.log(`  ✗  ${email}  →  user not found (check seed/004_demo_users.sql)`);
-    }
+    const updated = res.recordset[0]?.Updated ?? 0;
+    console.log(updated > 0
+      ? `  ✓  ${email}  →  password = ${password}`
+      : `  ✗  ${email}  →  user not found (check seed/004_demo_users.sql)`);
   }
 
   await pool.close();
-  console.log('\n✅  Done — all demo user passwords set with argon2id.\n');
+  console.log('\n✅  Done — demo passwords set with argon2id.\n');
+  console.log('Demo credentials:');
+  for (const [email, pw] of Object.entries(demoPasswords)) {
+    console.log(`   ${email.padEnd(26)} ${pw}`);
+  }
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error('\n❌  Seed failed:', err.message);
+  if (err.message?.includes('connect') || err.message?.includes('sequence')) {
+    console.error('\nCould not reach SQL Server. Check:');
+    console.error('  1. DB_SERVER in your .env file matches your SQL Server instance name');
+    console.error('  2. For LocalDB: DB_SERVER=(localdb)\\MSSQLLocalDB  and  DB_TRUSTED_CONNECTION=true');
+    console.error('  3. Run "npm run setup:env" to create a .env from the example template');
+  }
   process.exit(1);
 });
