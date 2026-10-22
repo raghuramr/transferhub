@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "description": "University Transfer Credit Evaluation API",
   "scripts": {
-    "setup:env":        "tsx scripts/setup-env.ts",
-    "seed:users":       "tsx scripts/seed-users.ts",
-    "seed:users:test":  "cross-env NODE_ENV=test tsx scripts/seed-users.ts",
-    "seed:users:prod":  "cross-env NODE_ENV=production tsx scripts/seed-users.ts",
-    "start:dev":        "ts-node-dev --respawn --transpile-only src/main.ts",
-    "build":            "tsc",
-    "start:prod":       "node dist/main"
+    "setup:env": "tsx scripts/setup-env.ts",
+    "seed:users": "tsx scripts/seed-users.ts",
+    "seed:users:test": "cross-env NODE_ENV=test tsx scripts/seed-users.ts",
+    "seed:users:prod": "cross-env NODE_ENV=production tsx scripts/seed-users.ts",
+    "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "build": "tsc",
+    "start:prod": "node dist/main"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.3",
@@ -34,7 +34,7 @@
     "uuid": "^11.0.5"
   },
   "optionalDependencies": {
-    "msnodesqlv8": "^4.4.1"
+    "msnodesqlv8": "^4.5.0"
   },
   "devDependencies": {
     "@nestjs/testing": "^10.4.15",
