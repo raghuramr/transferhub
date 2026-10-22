@@ -6,7 +6,9 @@
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
     "build": "tsc",
     "start:prod": "node dist/main",
-    "seed:users": "ts-node scripts/seed-users.ts"
+    "seed:users": "tsx scripts/seed-users.ts",
+    "seed:users:test": "cross-env NODE_ENV=test tsx scripts/seed-users.ts",
+    "seed:users:prod": "cross-env NODE_ENV=production tsx scripts/seed-users.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "*",
@@ -38,8 +40,10 @@
     "@types/passport-jwt": "*",
     "@types/passport-local": "*",
     "@types/uuid": "*",
+    "cross-env": "*",
     "ts-node": "*",
     "ts-node-dev": "*",
+    "tsx": "*",
     "typescript": "*"
   }
 }

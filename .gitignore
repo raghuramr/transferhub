@@ -1,5 +1,13 @@
 node_modules/
 dist/
-.env
 *.log
 .DS_Store
+
+# Local dev secrets — never commit
+.env
+.env.local
+src/api/.env
+src/api/.env.local
+
+# .env.test and .env.production ARE committed (no real secrets, just DB name + flags)
+# Add real secrets via your hosting platform's secret manager or CI environment vars
