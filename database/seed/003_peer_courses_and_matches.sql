@@ -1,7 +1,7 @@
 -- ============================================================
 -- Seed 003 – Northeastern, NYU courses + equivalency mappings
 -- ============================================================
-USE UniversityManager;
+USE CreditEvalManager;
 GO
 
 -- ─── Northeastern Courses ────────────────────────────────────

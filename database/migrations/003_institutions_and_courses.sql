@@ -1,7 +1,7 @@
 -- ============================================================
 -- Migration 003 – Institutions, Programs & Courses
 -- ============================================================
-USE UniversityManager;
+USE CreditEvalManager;
 GO
 
 -- ─── Institutions ────────────────────────────────────────────

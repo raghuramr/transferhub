@@ -1,7 +1,7 @@
 -- ============================================================
 -- Seed 001 – Reference data: roles, departments, institutions
 -- ============================================================
-USE UniversityManager;
+USE CreditEvalManager;
 GO
 
 -- ─── Roles ───────────────────────────────────────────────────

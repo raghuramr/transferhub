@@ -1,7 +1,7 @@
 -- ============================================================
 -- Migration 005 – Useful views and stored procedures
 -- ============================================================
-USE UniversityManager;
+USE CreditEvalManager;
 GO
 
 -- ─── View: student-facing transcript summary ─────────────────

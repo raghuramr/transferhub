@@ -1,7 +1,7 @@
 -- ============================================================
 -- Seed 002 – BU Course Catalog (from BU_Transfer_Program_Course_Match.xlsx)
 -- ============================================================
-USE UniversityManager;
+USE CreditEvalManager;
 GO
 
 DECLARE @BUID INT = (SELECT Id FROM Institutions WHERE Code = 'BU');

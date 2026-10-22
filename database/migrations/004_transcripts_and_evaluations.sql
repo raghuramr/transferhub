@@ -1,7 +1,7 @@
 -- ============================================================
 -- Migration 004 – Transcripts, Evaluations & Syllabi
 -- ============================================================
-USE UniversityManager;
+USE CreditEvalManager;
 GO
 
 -- ─── Students (extended profile for Users with role=student) ─
