@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Starts the API (NestJS) and UI (Vite/React) dev servers together, each in
@@ -53,7 +53,7 @@ function Write-Ok($msg)   { Write-Host "    $msg" -ForegroundColor Green }
 function Write-Warn($msg) { Write-Host "    $msg" -ForegroundColor Yellow }
 function Write-Err($msg)  { Write-Host "    $msg" -ForegroundColor Red }
 
-# ── 1. Sanity checks ──────────────────────────────────────────
+# --- 1. Sanity checks -----------------------------------------
 Write-Step 'Checking prerequisites'
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
@@ -71,7 +71,7 @@ if (-not (Test-Path $uiDir))  { Write-Err "UI folder not found: $uiDir";   exit 
 Write-Ok "Node:  $(node --version)"
 Write-Ok "npm:   $(npm --version)"
 
-# ── 2. .env check ─────────────────────────────────────────────
+# --- 2. .env check ----------------------------------------------
 $apiEnv = Join-Path $apiDir '.env'
 if (-not (Test-Path $apiEnv)) {
     Write-Step 'Creating src/api/.env from .env.example'
@@ -81,7 +81,7 @@ if (-not (Test-Path $apiEnv)) {
     Write-Warn 'Review src/api/.env (DB_SERVER, DB_ODBC_DRIVER, JWT_SECRET, ANTHROPIC_API_KEY) before continuing.'
 }
 
-# ── 3. Install dependencies if missing ────────────────────────
+# --- 3. Install dependencies if missing --------------------------
 if (-not $SkipInstall) {
     if (-not (Test-Path (Join-Path $apiDir 'node_modules'))) {
         Write-Step 'Installing API dependencies (npm install)'
@@ -102,7 +102,7 @@ if (-not $SkipInstall) {
     }
 }
 
-# ── 4. Optional: seed demo user passwords ─────────────────────
+# --- 4. Optional: seed demo user passwords -----------------------
 if ($Seed) {
     Write-Step 'Seeding demo user passwords (npm run seed:users)'
     Push-Location $apiDir
@@ -110,7 +110,7 @@ if ($Seed) {
     Pop-Location
 }
 
-# ── 5. Launch API and UI, each in its own window ──────────────
+# --- 5. Launch API and UI, each in its own window -----------------
 Write-Step 'Starting API dev server'
 Start-Process powershell -ArgumentList @(
     '-NoExit', '-Command',
@@ -125,7 +125,7 @@ Start-Process powershell -ArgumentList @(
 ) -WindowStyle Normal
 Write-Ok "UI window launched ($uiUrl)"
 
-# ── 6. Open browser once the UI is likely ready ───────────────
+# --- 6. Open browser once the UI is likely ready ------------------
 if (-not $NoBrowser) {
     Write-Step 'Waiting for the UI dev server to come up...'
     $maxWaitSeconds = 30
@@ -138,10 +138,10 @@ if (-not $NoBrowser) {
         } catch { }
     }
     if ($ready) {
-        Write-Ok 'UI is up — opening browser'
+        Write-Ok 'UI is up - opening browser'
         Start-Process $uiUrl
     } else {
-        Write-Warn "UI didn't respond within $maxWaitSeconds s — check its window for errors. You can open $uiUrl manually."
+        Write-Warn "UI didn't respond within $maxWaitSeconds seconds - check its window for errors. You can open $uiUrl manually."
     }
 }
 
