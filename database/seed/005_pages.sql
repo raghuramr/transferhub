@@ -4,6 +4,38 @@
 USE CreditEvalManager;
 GO
 
+-- "home" is the public landing page shown at "/" to anonymous visitors,
+-- before they sign in. Fully editable from Admin -> Custom Pages, same
+-- as every other page in this system.
+INSERT INTO Pages (Slug, Title, Blocks, Published, ShowInNav, NavLabel, NavOrder)
+VALUES (
+    'home',
+    'Home',
+    N'[
+        {
+          "id": "b1",
+          "type": "hero",
+          "visible": true,
+          "title": "Smarter Transfer Credit Evaluation",
+          "subtitle": "Boston University''s AI-assisted platform for evaluating transfer credit — for students, faculty, agencies, and administrators.",
+          "ctaLabel": "Get started",
+          "ctaHref": "/login"
+        },
+        {
+          "id": "b2",
+          "type": "cards",
+          "visible": true,
+          "items": [
+            { "id": "c1", "visible": true, "title": "For Students & Agencies", "body": "Submit transcripts and track evaluation status in real time." },
+            { "id": "c2", "visible": true, "title": "For Faculty", "body": "Review AI-ranked course matches and record transfer decisions quickly." },
+            { "id": "c3", "visible": true, "title": "For Administrators", "body": "Manage the course catalog, users, and system-wide content from one place." }
+          ]
+        }
+      ]',
+    1, 0, NULL, 0
+);
+GO
+
 -- "dashboard-announcements" is rendered as a banner at the top of every
 -- role's dashboard. Edit it from Admin -> Pages in the UI and it updates
 -- live for every signed-in user — no deploy, no publish step.

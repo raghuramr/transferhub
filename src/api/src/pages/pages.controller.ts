@@ -17,51 +17,56 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
 @Controller('pages')
-@UseGuards(JwtAuthGuard)
 export class PagesController {
   constructor(private pagesService: PagesService) {}
 
   /** Full list — any signed-in role may read (admin screens filter client-side by edit rights). */
   @Get()
+  @UseGuards(JwtAuthGuard)
   findAll() {
     return this.pagesService.findAll();
   }
 
-  /** Pages to surface in the sidebar nav. */
+  /** Pages to surface in the sidebar nav (signed-in users only). */
   @Get('nav')
+  @UseGuards(JwtAuthGuard)
   findNavPages() {
     return this.pagesService.findNavPages();
   }
 
-  /** Public (published-only) lookup by slug — used by the block renderer and dashboard banner. */
+  /**
+   * Public (published-only) lookup by slug — no auth required. Used by the
+   * block renderer, the dashboard announcements banner, AND the public
+   * landing page (slug "home") that anonymous visitors see before login.
+   */
   @Get('by-slug/:slug')
   findBySlug(@Param('slug') slug: string) {
     return this.pagesService.findPublishedBySlug(slug);
   }
 
   @Get(':id')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'super_admin')
   findById(@Param('id', ParseIntPipe) id: number) {
     return this.pagesService.findById(id);
   }
 
   @Post()
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'super_admin')
   create(@Body() dto: UpsertPageDto, @Req() req: any) {
     return this.pagesService.create(dto, req.user.id);
   }
 
   @Put(':id')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin', 'super_admin')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpsertPageDto, @Req() req: any) {
     return this.pagesService.update(id, dto, req.user.id);
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.pagesService.remove(id);

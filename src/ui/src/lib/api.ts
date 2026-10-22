@@ -129,3 +129,17 @@ export const pagesApi = {
   update: (id: number, data: unknown) => api.put(`/pages/${id}`, data),
   remove: (id: number) => api.delete(`/pages/${id}`),
 };
+
+// ── Custom Forms (JSON-schema) endpoints ──────────────────────
+export const formsApi = {
+  list: () => api.get('/forms'),
+  bySlug: (slug: string) => api.get(`/forms/by-slug/${slug}`),
+  get: (id: number) => api.get(`/forms/${id}`),
+  create: (data: unknown) => api.post('/forms', data),
+  update: (id: number, data: unknown) => api.put(`/forms/${id}`, data),
+  remove: (id: number) => api.delete(`/forms/${id}`),
+  submit: (id: number, data: unknown) => api.post(`/forms/${id}/submit`, { data }),
+  submissions: (id: number) => api.get(`/forms/${id}/submissions`),
+  decideSubmission: (submissionId: string, data: unknown) =>
+    api.post(`/forms/submissions/${submissionId}/decide`, data),
+};

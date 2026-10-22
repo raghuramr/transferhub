@@ -9,6 +9,7 @@ import * as sql from 'mssql';
 import { UpsertPageDto } from './dto/upsert-page.dto';
 
 const VALID_BLOCK_TYPES = [
+  'hero',
   'heading',
   'richtext',
   'notice',
