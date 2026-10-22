@@ -29,8 +29,8 @@ export default function AdminDashboard() {
   const allTranscripts: any[] = (transcripts?.data as any) ?? [];
   const allUsers: any[] = (users?.data as any) ?? [];
 
-  const pending = allTranscripts.filter((t) => t.Status === 'pending').length;
-  const complete = allTranscripts.filter((t) => t.Status === 'complete').length;
+  const pending = allTranscripts.filter((t) => t.status === 'received' || t.status === 'processing').length;
+  const complete = allTranscripts.filter((t) => t.status === 'complete').length;
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -46,7 +46,7 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total Transcripts" value={allTranscripts.length} icon={<FileText size={20} />} to="/admin/transcripts" />
-        <StatCard label="Pending Review" value={pending} icon={<Clock size={20} />} to="/admin/transcripts?status=pending" />
+        <StatCard label="Pending Review" value={pending} icon={<Clock size={20} />} to="/admin/transcripts?status=processing" />
         <StatCard label="Completed" value={complete} icon={<CheckCircle size={20} />} to="/admin/transcripts?status=complete" />
         <StatCard label="Total Users" value={allUsers.length} icon={<Users size={20} />} to="/admin/users" />
       </div>
@@ -59,16 +59,16 @@ export default function AdminDashboard() {
         </div>
         <div className="divide-y divide-gray-100">
           {allTranscripts.slice(0, 5).map((t: any) => (
-            <div key={t.Id} className="flex items-center justify-between px-6 py-4">
+            <div key={t.id} className="flex items-center justify-between px-6 py-4">
               <div>
-                <p className="font-medium text-sm text-gray-900">{t.StudentName}</p>
-                <p className="text-xs text-gray-500">{t.InstitutionName} · {t.CourseCount} courses</p>
+                <p className="font-medium text-sm text-gray-900">{t.studentName}</p>
+                <p className="text-xs text-gray-500">{t.institution?.name} · {t.courseCount} courses</p>
               </div>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                t.Status === 'complete' ? 'bg-green-100 text-green-700' :
-                t.Status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'
+                t.status === 'complete' ? 'bg-green-100 text-green-700' :
+                t.status === 'received' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'
               }`}>
-                {t.Status}
+                {t.status}
               </span>
             </div>
           ))}

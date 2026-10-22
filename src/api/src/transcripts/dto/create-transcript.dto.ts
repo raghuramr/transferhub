@@ -1,19 +1,28 @@
-import { IsString, IsOptional, IsNumber, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray, ValidateNested, IsIn } from 'class-validator';
+import { Type } from 'class-transformer';
 
-export class CreateTranscriptDto {
-  @IsOptional() @IsString() studentUserId?: string;
-  @IsNumber() institutionId: number;
-  @IsOptional() @IsString() programName?: string;
-  @IsOptional() @IsString() termRange?: string;
-  @IsOptional() @IsString() notes?: string;
+export class TranscriptCourseInputDto {
+  @IsString() courseCode: string;
+  @IsString() courseTitle: string;
+  @IsNumber() originalCredits: number;
+  @IsString() grade: string;
+  @IsOptional() @IsString() term?: string;
 }
 
-export class AddTranscriptCourseDto {
-  @IsString() externalCode: string;
-  @IsString() externalTitle: string;
-  @IsNumber() creditsEarned: number;
-  @IsOptional() @IsString() grade?: string;
-  @IsOptional() @IsIn(['semester', 'quarter']) creditType?: string;
-  @IsOptional() @IsNumber() termYear?: number;
-  @IsOptional() @IsString() termSeason?: string;
+/**
+ * Matches the single combined payload the Upload Transcript screen sends:
+ * institution details + an inline list of courses, submitted in one call.
+ */
+export class SubmitTranscriptDto {
+  @IsString() institutionName: string;
+  @IsString() institutionCode: string;
+  @IsIn(['semester', 'quarter', 'trimester']) calendar: string;
+  @IsOptional() @IsString() studentName?: string;
+  @IsOptional() @IsString() studentId?: string;
+  @IsOptional() @IsString() notes?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TranscriptCourseInputDto)
+  courses: TranscriptCourseInputDto[];
 }

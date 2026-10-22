@@ -12,13 +12,25 @@ export class CoursesController {
 
   @Get('bu')
   findBuCourses(
-    @Query('departmentId') departmentId?: string,
+    @Query('program') programArea?: string,
     @Query('search') search?: string,
   ) {
-    return this.coursesService.findBuCourses({
-      departmentId: departmentId ? parseInt(departmentId) : undefined,
-      search,
-    });
+    return this.coursesService.findBuCourses({ programArea, search });
+  }
+
+  @Get('external')
+  findExternalCourses(
+    @Query('institution') institutionCode?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.coursesService.findExternalCourses(institutionCode, search);
+  }
+
+  @Get('search')
+  search(@Query('q') q: string, @Query('institution') institutionCode?: string) {
+    return institutionCode
+      ? this.coursesService.findExternalCourses(institutionCode, q)
+      : this.coursesService.findBuCourses({ search: q });
   }
 
   @Get('institutions')

@@ -1,8 +1,8 @@
 import {
-  Controller, Get, Post, Patch, Param, Body, Query, Req, UseGuards, ForbiddenException, ParseIntPipe,
+  Controller, Get, Post, Patch, Param, Body, Query, Req, UseGuards, ForbiddenException,
 } from '@nestjs/common';
 import { TranscriptsService } from './transcripts.service';
-import { CreateTranscriptDto, AddTranscriptCourseDto } from './dto/create-transcript.dto';
+import { SubmitTranscriptDto } from './dto/create-transcript.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -16,6 +16,7 @@ export class TranscriptsController {
   findAll(@Req() req: any, @Query('status') status?: string) {
     const { id: userId, role } = req.user;
     const filters: any = { status };
+    // Students & agencies only ever see their own submissions; staff see everything.
     if (role === 'student') {
       filters.studentUserId = userId;
     } else if (role === 'agency') {
@@ -25,51 +26,25 @@ export class TranscriptsController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+  async findOne(@Param('id') id: string, @Req() req: any) {
     const transcript = await this.transcriptsService.findById(id);
-    const { id: userId, role } = req.user;
-    if (role === 'student' && transcript.StudentEmail !== req.user.email) {
+    const { email, role } = req.user;
+    if (role === 'student' && transcript.studentEmail !== email) {
       throw new ForbiddenException();
     }
     return transcript;
   }
 
   @Post()
-  create(@Body() dto: CreateTranscriptDto, @Req() req: any) {
-    const { role } = req.user;
-    if (role === 'student') {
-      dto.studentUserId = req.user.id;
-    } else if (role === 'agency' && !dto.studentUserId) {
-      throw new ForbiddenException('Agency must specify studentUserId');
-    }
-    return this.transcriptsService.create(dto, req.user.id);
-  }
-
-  @Post(':id/courses')
-  addCourse(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: AddTranscriptCourseDto,
-  ) {
-    return this.transcriptsService.addCourse(id, dto);
-  }
-
-  @Patch(':id/courses/:courseId')
-  @UseGuards(RolesGuard)
-  @Roles('faculty', 'admin', 'super_admin')
-  updateCourseStatus(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('courseId', ParseIntPipe) courseId: number,
-    @Body() body: { lane: string; notes?: string },
-    @Req() req: any,
-  ) {
-    return this.transcriptsService.updateCourseStatus(id, courseId, body.lane, req.user.id, body.notes);
+  create(@Body() dto: SubmitTranscriptDto, @Req() req: any) {
+    return this.transcriptsService.submit(dto, req.user.id);
   }
 
   @Patch(':id/status')
   @UseGuards(RolesGuard)
   @Roles('faculty', 'admin', 'super_admin')
   updateStatus(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() body: { status: string },
     @Req() req: any,
   ) {

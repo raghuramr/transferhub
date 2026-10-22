@@ -1,9 +1,12 @@
-import { IsNumber, IsString, IsOptional, IsIn } from 'class-validator';
+import { IsNumber, IsString, IsOptional, IsIn, IsUUID } from 'class-validator';
 
-export class CreateEvaluationDto {
-  @IsNumber() transcriptCourseId: number;
-  @IsNumber() recommendedBuCourseId: number;
+export class DecideEvaluationDto {
   @IsIn(['equivalent', 'elective', 'no_credit', 'bu_only']) outcome: string;
-  @IsOptional() @IsString() rationale?: string;
-  @IsOptional() @IsNumber() creditsGranted?: number;
+  @IsOptional() @IsNumber() buCourseId?: number;
+  @IsOptional() @IsNumber() awardedCredits?: number;
+  @IsOptional() @IsString() notes?: string;
+}
+
+export class AssignEvaluationDto {
+  @IsUUID() userId: string;
 }

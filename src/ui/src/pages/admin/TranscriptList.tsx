@@ -1,10 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { FileText, ChevronRight } from 'lucide-react';
 import { transcriptsApi } from '../../lib/api';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 
-const STATUS_FILTERS = ['all', 'pending', 'in_review', 'complete'];
+const STATUS_FILTERS = ['all', 'received', 'processing', 'complete'];
 
 export default function TranscriptList() {
   const [statusFilter, setStatusFilter] = useState('all');
@@ -49,16 +48,19 @@ export default function TranscriptList() {
           <div className="text-center py-16 text-gray-400">No transcripts found.</div>
         )}
         {transcripts.map((t: any) => (
-          <div key={t.Id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50">
+          <div key={t.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50">
             <div className="flex-1">
-              <p className="font-medium text-sm text-gray-900">{t.StudentName}</p>
-              <p className="text-xs text-gray-500">{t.InstitutionName} · {t.CourseCount} courses · Submitted {new Date(t.SubmittedAt).toLocaleDateString()}</p>
+              <p className="font-medium text-sm text-gray-900">{t.studentName}</p>
+              <p className="text-xs text-gray-500">
+                {t.institution?.name} · {t.courseCount} courses · Submitted{' '}
+                {new Date(t.receivedAt).toLocaleDateString()}
+              </p>
             </div>
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              t.Status === 'complete' ? 'bg-green-100 text-green-700' :
-              t.Status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
+              t.status === 'complete' ? 'bg-green-100 text-green-700' :
+              t.status === 'received' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
             }`}>
-              {t.Status}
+              {t.status}
             </span>
             <ChevronRight className="text-gray-400" size={16} />
           </div>

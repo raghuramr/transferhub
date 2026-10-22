@@ -1,168 +1,160 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import * as sql from 'mssql';
-import { CreateEvaluationDto } from './dto/create-evaluation.dto';
+import { DecideEvaluationDto, AssignEvaluationDto } from './dto/create-evaluation.dto';
 
 @Injectable()
 export class EvaluationsService {
   constructor(private db: DatabaseService) {}
 
-  async getQueue(facultyUserId?: string) {
-    let where = 'tc.Lane IN (\'pending\', \'needs_syllabus\')';
+  /**
+   * assignedToMe=true + userId means "my queue": evaluations already
+   * assigned to this faculty member, plus anything still unassigned
+   * (simplification — this app doesn't yet map course ProgramArea text
+   * to a specific Department, so any faculty can pick up an unassigned
+   * item rather than nobody ever seeing it).
+   */
+  async list(filters: { statusList?: string[]; assignedToMe?: boolean; userId?: string } = {}) {
+    let where = '1=1';
     const inputs: any[] = [];
-    if (facultyUserId) {
-      where += ' AND (e.FacultyUserId = @fid OR e.FacultyUserId IS NULL)';
-      inputs.push({ name: 'fid', type: sql.UniqueIdentifier, value: facultyUserId });
+
+    if (filters.statusList?.length) {
+      const names = filters.statusList.map((_, i) => `@s${i}`);
+      filters.statusList.forEach((s, i) => inputs.push({ name: `s${i}`, type: sql.VarChar(20), value: s }));
+      where += ` AND e.Status IN (${names.join(',')})`;
+    }
+    if (filters.assignedToMe && filters.userId) {
+      where += ' AND (e.AssignedToUserId = @uid OR e.AssignedToUserId IS NULL)';
+      inputs.push({ name: 'uid', type: sql.UniqueIdentifier, value: filters.userId });
     }
 
     const res = await this.db.query<any>(
-      `SELECT tc.Id AS CourseId, tc.ExternalCode, tc.ExternalTitle, tc.CreditsConverted, tc.Lane,
-              t.Id AS TranscriptId, t.Status AS TranscriptStatus,
+      `SELECT e.Id, e.Status, e.CreatedAt AS QueuedAt,
+              tc.CourseCode, tc.CourseTitle, tc.Grade,
               i.Name AS InstitutionName,
-              u.FirstName + ' ' + u.LastName AS StudentName,
-              (SELECT COUNT(*) FROM AIMatchCandidates WHERE TranscriptCourseId = tc.Id) AS AiCandidatesCount
-       FROM TranscriptCourses tc
-       JOIN Transcripts t ON t.Id = tc.TranscriptId
-       JOIN StudentProfiles sp ON sp.Id = t.StudentProfileId
-       JOIN Users u ON u.Id = sp.UserId
-       JOIN Institutions i ON i.Id = t.InstitutionId
-       LEFT JOIN Evaluations e ON e.TranscriptCourseId = tc.Id AND e.FinalDecision IS NULL
+              (SELECT COUNT(*) FROM AIMatchCandidates WHERE EvaluationId = e.Id) AS AiCandidateCount
+       FROM Evaluations e
+       JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId
+       JOIN Transcripts t        ON t.Id = tc.TranscriptId
+       JOIN Institutions i       ON i.Id = t.InstitutionId
        WHERE ${where}
-       ORDER BY t.SubmittedAt ASC`,
+       ORDER BY e.CreatedAt ASC`,
       inputs,
     );
-    return res.recordset;
+
+    return res.recordset.map((r: any) => ({
+      id: r.Id,
+      status: r.Status,
+      queuedAt: r.QueuedAt,
+      aiCandidatesCount: r.AiCandidateCount,
+      transcriptCourse: {
+        courseCode: r.CourseCode,
+        courseTitle: r.CourseTitle,
+        grade: r.Grade,
+        transcript: { institution: { name: r.InstitutionName } },
+      },
+    }));
   }
 
-  async getAiCandidates(transcriptCourseId: number) {
+  async findById(id: string) {
     const res = await this.db.query<any>(
-      `SELECT amc.Id, amc.Rank, amc.ConfidenceScore, amc.Rationale,
-              c.Code AS BuCode, c.Title AS BuTitle, c.Credits AS BuCredits,
-              d.Name AS DepartmentName
+      `SELECT e.Id, e.Status, e.AIConfidence, e.AIRationale,
+              tc.CourseCode, tc.CourseTitle, tc.OriginalCredits, tc.Grade,
+              i.Name AS InstitutionName, i.Calendar
+       FROM Evaluations e
+       JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId
+       JOIN Transcripts t        ON t.Id = tc.TranscriptId
+       JOIN Institutions i       ON i.Id = t.InstitutionId
+       WHERE e.Id = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+    );
+    if (!res.recordset[0]) throw new NotFoundException('Evaluation not found');
+    const e = res.recordset[0];
+
+    const candidatesRes = await this.db.query<any>(
+      `SELECT amc.Rank, amc.Score, amc.Rationale,
+              c.Id AS BuId, c.Code AS BuCode, c.Title AS BuTitle, c.Credits AS BuCredits
        FROM AIMatchCandidates amc
-       JOIN Courses c ON c.Id = amc.BuCourseId
-       LEFT JOIN Departments d ON d.Id = c.DepartmentId
-       WHERE amc.TranscriptCourseId = @id
+       JOIN Courses c ON c.Id = amc.BUCourseId
+       WHERE amc.EvaluationId = @id
        ORDER BY amc.Rank`,
-      [{ name: 'id', type: sql.Int, value: transcriptCourseId }],
+      [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
     );
-    return res.recordset;
+
+    return {
+      id: e.Id,
+      status: e.Status,
+      aiConfidence: e.AIConfidence,
+      aiRationale: e.AIRationale,
+      transcriptCourse: {
+        courseCode: e.CourseCode,
+        courseTitle: e.CourseTitle,
+        originalCredits: e.OriginalCredits,
+        grade: e.Grade,
+        transcript: { institution: { name: e.InstitutionName, calendar: e.Calendar } },
+      },
+      aiCandidates: candidatesRes.recordset.map((c: any) => ({
+        rank: c.Rank,
+        score: c.Score,
+        rationale: c.Rationale,
+        buCourse: { id: c.BuId, code: c.BuCode, title: c.BuTitle, credits: c.BuCredits },
+      })),
+    };
   }
 
-  async createEvaluation(dto: CreateEvaluationDto, facultyUserId: string) {
-    // Check course exists
-    const courseRes = await this.db.query<any>(
-      `SELECT tc.Id, tc.TranscriptId, tc.CreditsConverted FROM TranscriptCourses tc WHERE tc.Id = @id`,
-      [{ name: 'id', type: sql.Int, value: dto.transcriptCourseId }],
-    );
-    if (!courseRes.recordset[0]) throw new NotFoundException('Transcript course not found');
+  async decide(id: string, dto: DecideEvaluationDto, decidedBy: string) {
+    const exists = await this.db.query<any>(`SELECT Id FROM Evaluations WHERE Id = @id`, [
+      { name: 'id', type: sql.UniqueIdentifier, value: id },
+    ]);
+    if (!exists.recordset[0]) throw new NotFoundException('Evaluation not found');
 
-    const course = courseRes.recordset[0];
-    const creditsGranted = dto.creditsGranted ?? course.CreditsConverted;
+    await this.db.execute('sp_RecordDecision', [
+      { name: 'EvaluationId', type: sql.UniqueIdentifier, value: id },
+      { name: 'DecidedBy', type: sql.UniqueIdentifier, value: decidedBy },
+      { name: 'Outcome', type: sql.VarChar(20), value: dto.outcome },
+      { name: 'BUCourseId', type: sql.Int, value: dto.buCourseId ?? null },
+      { name: 'AwardedCredits', type: sql.Decimal(5, 2), value: dto.awardedCredits ?? null },
+      { name: 'EvaluatorNotes', type: sql.NVarChar(sql.MAX), value: dto.notes ?? null },
+    ]);
 
-    // Insert evaluation
-    const res = await this.db.query<any>(
-      `INSERT INTO Evaluations (TranscriptCourseId, BuCourseId, FacultyUserId, Outcome, Rationale, CreditsGranted)
-       OUTPUT inserted.Id
-       VALUES (@tcId, @buId, @faculty, @outcome, @rationale, @credits)`,
-      [
-        { name: 'tcId', type: sql.Int, value: dto.transcriptCourseId },
-        { name: 'buId', type: sql.Int, value: dto.recommendedBuCourseId },
-        { name: 'faculty', type: sql.UniqueIdentifier, value: facultyUserId },
-        { name: 'outcome', type: sql.VarChar(20), value: dto.outcome },
-        { name: 'rationale', type: sql.NVarChar(sql.MAX), value: dto.rationale || null },
-        { name: 'credits', type: sql.Decimal(5, 2), value: creditsGranted },
-      ],
-    );
-
-    // Update transcript course lane
-    const lane = dto.outcome === 'equivalent' ? 'applied' :
-                 dto.outcome === 'elective' ? 'elective_only' :
-                 'not_eligible';
-
-    await this.db.query(
-      `UPDATE TranscriptCourses SET Lane = @lane, MappedBuCourseId = @buId WHERE Id = @id`,
-      [
-        { name: 'lane', type: sql.VarChar(20), value: lane },
-        { name: 'buId', type: sql.Int, value: dto.recommendedBuCourseId },
-        { name: 'id', type: sql.Int, value: dto.transcriptCourseId },
-      ],
-    );
-
-    // If confirmed as equivalent, update Equivalencies for auto-apply on future transcripts
-    if (dto.outcome === 'equivalent' || dto.outcome === 'elective') {
-      // Get external course code & institution from transcript
-      const extRes = await this.db.query<any>(
-        `SELECT tc.ExternalCode, t.InstitutionId
-         FROM TranscriptCourses tc JOIN Transcripts t ON t.Id = tc.TranscriptId
-         WHERE tc.Id = @id`,
-        [{ name: 'id', type: sql.Int, value: dto.transcriptCourseId }],
-      );
-
-      if (extRes.recordset[0]) {
-        const { ExternalCode, InstitutionId } = extRes.recordset[0];
-
-        // Find or create external course record
-        let extCourseRes = await this.db.query<any>(
-          `SELECT Id FROM Courses WHERE Code = @code AND InstitutionId = @instId`,
-          [
-            { name: 'code', type: sql.NVarChar(20), value: ExternalCode },
-            { name: 'instId', type: sql.Int, value: InstitutionId },
-          ],
-        );
-
-        let extCourseId: number;
-        if (extCourseRes.recordset[0]) {
-          extCourseId = extCourseRes.recordset[0].Id;
-        } else {
-          const inserted = await this.db.query<any>(
-            `INSERT INTO Courses (InstitutionId, Code, Title, Credits) OUTPUT inserted.Id VALUES (@instId, @code, @title, 0)`,
-            [
-              { name: 'instId', type: sql.Int, value: InstitutionId },
-              { name: 'code', type: sql.NVarChar(20), value: ExternalCode },
-              { name: 'title', type: sql.NVarChar(300), value: courseRes.recordset[0].ExternalTitle || ExternalCode },
-            ],
-          );
-          extCourseId = inserted.recordset[0].Id;
-        }
-
-        // Upsert equivalency
-        await this.db.query(
-          `MERGE Equivalencies AS target
-           USING (SELECT @extId AS ExtId, @buId AS BuId) AS src
-           ON target.ExternalCourseId = src.ExtId AND target.BuCourseId = src.BuId
-           WHEN MATCHED THEN UPDATE SET Outcome = @outcome, IsAutoApply = 1, ConfirmedByUserId = @faculty, ConfirmedAt = SYSUTCDATETIME()
-           WHEN NOT MATCHED THEN INSERT (ExternalCourseId, BuCourseId, Outcome, IsAutoApply, ConfirmedByUserId) VALUES (@extId, @buId, @outcome, 1, @faculty);`,
-          [
-            { name: 'extId', type: sql.Int, value: extCourseId },
-            { name: 'buId', type: sql.Int, value: dto.recommendedBuCourseId },
-            { name: 'outcome', type: sql.VarChar(20), value: dto.outcome },
-            { name: 'faculty', type: sql.UniqueIdentifier, value: facultyUserId },
-          ],
-        );
-      }
-    }
-
-    return { id: res.recordset[0].Id, lane };
+    return { message: 'Decision recorded' };
   }
 
-  async finalizeEvaluation(evaluationId: number, approved: boolean, adminUserId: string, notes?: string) {
-    const evalRes = await this.db.query<any>(
-      `SELECT Id, TranscriptCourseId, Outcome FROM Evaluations WHERE Id = @id`,
-      [{ name: 'id', type: sql.Int, value: evaluationId }],
-    );
-    if (!evalRes.recordset[0]) throw new NotFoundException('Evaluation not found');
-
+  async assign(id: string, dto: AssignEvaluationDto) {
     await this.db.query(
-      `UPDATE Evaluations SET FinalDecision = @decision, AdminUserId = @admin, AdminNotes = @notes, FinalizedAt = SYSUTCDATETIME() WHERE Id = @id`,
+      `UPDATE Evaluations
+       SET AssignedToUserId = @uid,
+           Status = CASE WHEN Status = 'queued' THEN 'in_progress' ELSE Status END,
+           UpdatedAt = SYSUTCDATETIME()
+       WHERE Id = @id`,
       [
-        { name: 'decision', type: sql.VarChar(20), value: approved ? 'approved' : 'rejected' },
-        { name: 'admin', type: sql.UniqueIdentifier, value: adminUserId },
-        { name: 'notes', type: sql.NVarChar(sql.MAX), value: notes || null },
-        { name: 'id', type: sql.Int, value: evaluationId },
+        { name: 'uid', type: sql.UniqueIdentifier, value: dto.userId },
+        { name: 'id', type: sql.UniqueIdentifier, value: id },
+      ],
+    );
+    return { message: 'Evaluation assigned' };
+  }
+
+  async post(id: string, postedBy: string) {
+    await this.db.query(
+      `UPDATE Evaluations
+       SET Status = 'posted', PostedAt = SYSUTCDATETIME(), PostedBy = @by, UpdatedAt = SYSUTCDATETIME()
+       WHERE Id = @id AND Status = 'decided'`,
+      [
+        { name: 'by', type: sql.UniqueIdentifier, value: postedBy },
+        { name: 'id', type: sql.UniqueIdentifier, value: id },
       ],
     );
 
-    return { message: approved ? 'Evaluation approved' : 'Evaluation rejected' };
+    // Mirror onto the transcript course so the student sees it as final.
+    await this.db.query(
+      `UPDATE tc SET tc.Status = 'posted'
+       FROM TranscriptCourses tc
+       JOIN Evaluations e ON e.TranscriptCourseId = tc.Id
+       WHERE e.Id = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+    );
+
+    return { message: 'Evaluation posted' };
   }
 }

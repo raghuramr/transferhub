@@ -1,95 +1,215 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import * as sql from 'mssql';
-import { CreateTranscriptDto, AddTranscriptCourseDto } from './dto/create-transcript.dto';
+import { SubmitTranscriptDto } from './dto/create-transcript.dto';
+
+function mapCourseRow(r: any) {
+  return {
+    id: r.Id,
+    courseCode: r.CourseCode,
+    courseTitle: r.CourseTitle,
+    originalCredits: r.OriginalCredits,
+    normalisedCredits: r.NormalisedCredits,
+    grade: r.Grade,
+    gradeIsEligible: r.GradeIsEligible === null ? null : !!r.GradeIsEligible,
+    term: r.Term,
+    lane: r.Lane,
+    status: r.Status,
+    evaluation: r.EvalId
+      ? {
+          outcome: r.EvalOutcome,
+          awardedCredits: r.AwardedCredits,
+          decidedBUCourse: r.DecidedBUCode ? { code: r.DecidedBUCode, title: r.DecidedBUTitle } : null,
+        }
+      : null,
+  };
+}
 
 @Injectable()
 export class TranscriptsService {
   constructor(private db: DatabaseService) {}
 
-  async create(dto: CreateTranscriptDto, submittedByUserId: string) {
-    // If studentUserId not provided, submitter is the student
-    const studentUserId = dto.studentUserId || submittedByUserId;
-
-    // Get or create StudentProfile
-    let profileRes = await this.db.query<any>(
-      `SELECT Id FROM StudentProfiles WHERE UserId = @uid`,
-      [{ name: 'uid', type: sql.UniqueIdentifier, value: studentUserId }],
+  /** Finds the BU-side Institution row for a code, or creates a minimal one. */
+  private async findOrCreateInstitution(code: string, name: string, calendar: string) {
+    const existing = await this.db.query<any>(
+      `SELECT Id FROM Institutions WHERE Code = @code`,
+      [{ name: 'code', type: sql.VarChar(20), value: code }],
     );
+    if (existing.recordset[0]) return existing.recordset[0].Id;
 
-    let profileId: number;
-    if (profileRes.recordset[0]) {
-      profileId = profileRes.recordset[0].Id;
-    } else {
-      const newProfile = await this.db.query<any>(
-        `INSERT INTO StudentProfiles (UserId) OUTPUT inserted.Id VALUES (@uid)`,
-        [{ name: 'uid', type: sql.UniqueIdentifier, value: studentUserId }],
-      );
-      profileId = newProfile.recordset[0].Id;
-    }
-
-    const res = await this.db.query<any>(
-      `INSERT INTO Transcripts (StudentProfileId, InstitutionId, ProgramName, TermRange, SubmittedByUserId, Notes, Status)
+    const inserted = await this.db.query<any>(
+      `INSERT INTO Institutions (Code, Name, Calendar, Type, IsBU, IsActive)
        OUTPUT inserted.Id
-       VALUES (@pid, @instId, @prog, @term, @submittedBy, @notes, 'pending')`,
+       VALUES (@code, @name, @calendar, 'university', 0, 1)`,
       [
-        { name: 'pid', type: sql.Int, value: profileId },
-        { name: 'instId', type: sql.Int, value: dto.institutionId },
-        { name: 'prog', type: sql.NVarChar(200), value: dto.programName || null },
-        { name: 'term', type: sql.NVarChar(100), value: dto.termRange || null },
-        { name: 'submittedBy', type: sql.UniqueIdentifier, value: submittedByUserId },
-        { name: 'notes', type: sql.NVarChar(sql.MAX), value: dto.notes || null },
+        { name: 'code', type: sql.VarChar(20), value: code },
+        { name: 'name', type: sql.NVarChar(200), value: name },
+        { name: 'calendar', type: sql.VarChar(10), value: calendar },
       ],
     );
-
-    return this.findById(res.recordset[0].Id);
+    return inserted.recordset[0].Id;
   }
 
-  async findById(id: number) {
+  /** Finds the catalog Course row matching this institution + code, or creates a minimal one. */
+  private async findOrCreateExternalCourse(institutionId: number, code: string, title: string, credits: number) {
+    const existing = await this.db.query<any>(
+      `SELECT Id FROM Courses WHERE InstitutionId = @instId AND Code = @code`,
+      [
+        { name: 'instId', type: sql.Int, value: institutionId },
+        { name: 'code', type: sql.NVarChar(30), value: code },
+      ],
+    );
+    if (existing.recordset[0]) return existing.recordset[0].Id;
+
+    const inserted = await this.db.query<any>(
+      `INSERT INTO Courses (InstitutionId, Code, Title, Credits, IsActive)
+       OUTPUT inserted.Id
+       VALUES (@instId, @code, @title, @credits, 1)`,
+      [
+        { name: 'instId', type: sql.Int, value: institutionId },
+        { name: 'code', type: sql.NVarChar(30), value: code },
+        { name: 'title', type: sql.NVarChar(300), value: title },
+        { name: 'credits', type: sql.Decimal(5, 2), value: credits },
+      ],
+    );
+    return inserted.recordset[0].Id;
+  }
+
+  /**
+   * Combined submit: find-or-create the institution, create the transcript,
+   * insert every course, then run the sp_TriageCourse business-rules engine
+   * on each one (grade eligibility, credit normalisation, equivalency
+   * lookup). Courses that still need a human look get a queued Evaluation.
+   */
+  async submit(dto: SubmitTranscriptDto, submittedByUserId: string) {
+    const institutionId = await this.findOrCreateInstitution(
+      dto.institutionCode.toUpperCase(),
+      dto.institutionName,
+      dto.calendar,
+    );
+
+    const notesParts: string[] = [];
+    if (dto.studentName) notesParts.push(`Student name on file: ${dto.studentName}`);
+    if (dto.studentId) notesParts.push(`Student ID on file: ${dto.studentId}`);
+    if (dto.notes) notesParts.push(dto.notes);
+
+    const transcriptRes = await this.db.query<any>(
+      `INSERT INTO Transcripts (StudentUserId, SubmittedById, InstitutionId, Status, Notes)
+       OUTPUT inserted.Id
+       VALUES (@student, @submitter, @instId, 'received', @notes)`,
+      [
+        { name: 'student', type: sql.UniqueIdentifier, value: submittedByUserId },
+        { name: 'submitter', type: sql.UniqueIdentifier, value: submittedByUserId },
+        { name: 'instId', type: sql.Int, value: institutionId },
+        { name: 'notes', type: sql.NVarChar(sql.MAX), value: notesParts.join(' | ') || null },
+      ],
+    );
+    const transcriptId = transcriptRes.recordset[0].Id;
+
+    for (const course of dto.courses) {
+      const externalCourseId = await this.findOrCreateExternalCourse(
+        institutionId,
+        course.courseCode,
+        course.courseTitle,
+        course.originalCredits,
+      );
+
+      const tcRes = await this.db.query<any>(
+        `INSERT INTO TranscriptCourses
+            (TranscriptId, CourseCode, CourseTitle, ExternalCourseId, OriginalCredits, Grade, Term)
+         OUTPUT inserted.Id
+         VALUES (@tid, @code, @title, @extId, @credits, @grade, @term)`,
+        [
+          { name: 'tid', type: sql.UniqueIdentifier, value: transcriptId },
+          { name: 'code', type: sql.NVarChar(50), value: course.courseCode },
+          { name: 'title', type: sql.NVarChar(300), value: course.courseTitle },
+          { name: 'extId', type: sql.Int, value: externalCourseId },
+          { name: 'credits', type: sql.Decimal(5, 2), value: course.originalCredits },
+          { name: 'grade', type: sql.NVarChar(10), value: course.grade },
+          { name: 'term', type: sql.NVarChar(50), value: course.term || null },
+        ],
+      );
+      const transcriptCourseId = tcRes.recordset[0].Id;
+
+      const triageRes = await this.db.execute<any>('sp_TriageCourse', [
+        { name: 'TranscriptCourseId', type: sql.UniqueIdentifier, value: transcriptCourseId },
+        { name: 'TriagedBy', type: sql.UniqueIdentifier, value: submittedByUserId },
+      ]);
+      const lane = triageRes.recordset[0]?.Lane ?? 'needs_syllabus';
+
+      // Courses the rules engine can't resolve on its own go to the faculty queue.
+      if (lane === 'needs_syllabus') {
+        await this.db.query(
+          `INSERT INTO Evaluations (TranscriptCourseId, Status) VALUES (@tcId, 'queued')`,
+          [{ name: 'tcId', type: sql.UniqueIdentifier, value: transcriptCourseId }],
+        );
+      }
+    }
+
+    await this.db.query(
+      `UPDATE Transcripts SET Status = 'processing' WHERE Id = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: transcriptId }],
+    );
+
+    return this.findById(transcriptId);
+  }
+
+  async findById(id: string) {
     const res = await this.db.query<any>(
-      `SELECT t.Id, t.Status, t.ProgramName, t.TermRange, t.Notes, t.SubmittedAt, t.ReviewedAt,
-              i.Name AS InstitutionName, i.Code AS InstitutionCode,
-              u.FirstName + ' ' + u.LastName AS StudentName, u.Email AS StudentEmail,
-              sp.BuStudentId, sp.ProgramCode, sp.EnrollmentStatus,
-              rev.FirstName + ' ' + rev.LastName AS ReviewedByName
+      `SELECT t.Id, t.Status, t.ReceivedAt, t.ProcessedAt, t.Notes,
+              i.Id AS InstitutionId, i.Code AS InstitutionCode, i.Name AS InstitutionName, i.Calendar,
+              u.FirstName + ' ' + u.LastName AS StudentName, u.Email AS StudentEmail
        FROM Transcripts t
-       JOIN StudentProfiles sp ON sp.Id = t.StudentProfileId
-       JOIN Users u ON u.Id = sp.UserId
        JOIN Institutions i ON i.Id = t.InstitutionId
-       LEFT JOIN Users rev ON rev.Id = t.ReviewedByUserId
+       JOIN Users u        ON u.Id = t.StudentUserId
        WHERE t.Id = @id`,
-      [{ name: 'id', type: sql.Int, value: id }],
+      [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
     );
     if (!res.recordset[0]) throw new NotFoundException('Transcript not found');
+    const t = res.recordset[0];
 
-    const transcript = res.recordset[0];
-
-    // Load courses
     const courses = await this.db.query<any>(
-      `SELECT tc.Id, tc.ExternalCode, tc.ExternalTitle, tc.CreditsEarned, tc.CreditsConverted,
-              tc.Grade, tc.CreditType, tc.TermYear, tc.TermSeason, tc.Lane, tc.ReviewNotes,
-              c.Code AS MappedBuCode, c.Title AS MappedBuTitle, c.Credits AS MappedBuCredits
+      `SELECT tc.Id, tc.CourseCode, tc.CourseTitle, tc.OriginalCredits, tc.NormalisedCredits,
+              tc.Grade, tc.GradeIsEligible, tc.Term, tc.Lane, tc.Status,
+              e.Id AS EvalId, e.Outcome AS EvalOutcome, e.AwardedCredits,
+              bu.Code AS DecidedBUCode, bu.Title AS DecidedBUTitle
        FROM TranscriptCourses tc
-       LEFT JOIN Courses c ON c.Id = tc.MappedBuCourseId
+       LEFT JOIN Evaluations e ON e.TranscriptCourseId = tc.Id
+       LEFT JOIN Courses bu    ON bu.Id = e.DecidedBUCourseId
        WHERE tc.TranscriptId = @id
-       ORDER BY tc.TermYear, tc.TermSeason, tc.ExternalCode`,
-      [{ name: 'id', type: sql.Int, value: id }],
+       ORDER BY tc.SortOrder, tc.CourseCode`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
     );
 
-    return { ...transcript, courses: courses.recordset };
+    return {
+      id: t.Id,
+      status: t.Status,
+      receivedAt: t.ReceivedAt,
+      processedAt: t.ProcessedAt,
+      notes: t.Notes,
+      studentName: t.StudentName,
+      studentEmail: t.StudentEmail,
+      institution: {
+        id: t.InstitutionId,
+        code: t.InstitutionCode,
+        name: t.InstitutionName,
+        calendar: t.Calendar,
+      },
+      courses: courses.recordset.map(mapCourseRow),
+    };
   }
 
-  async findAll(filters: { studentUserId?: string; status?: string; submittedByUserId?: string }) {
+  async findAll(filters: { studentUserId?: string; submittedByUserId?: string; status?: string } = {}) {
     let where = '1=1';
     const inputs: any[] = [];
 
     if (filters.studentUserId) {
-      where += ' AND sp.UserId = @suid';
-      inputs.push({ name: 'suid', type: sql.UniqueIdentifier, value: filters.studentUserId });
+      where += ' AND t.StudentUserId = @sid';
+      inputs.push({ name: 'sid', type: sql.UniqueIdentifier, value: filters.studentUserId });
     }
     if (filters.submittedByUserId) {
-      where += ' AND t.SubmittedByUserId = @subBy';
-      inputs.push({ name: 'subBy', type: sql.UniqueIdentifier, value: filters.submittedByUserId });
+      where += ' AND t.SubmittedById = @subId';
+      inputs.push({ name: 'subId', type: sql.UniqueIdentifier, value: filters.submittedByUserId });
     }
     if (filters.status) {
       where += ' AND t.Status = @status';
@@ -97,95 +217,55 @@ export class TranscriptsService {
     }
 
     const res = await this.db.query<any>(
-      `SELECT t.Id, t.Status, t.SubmittedAt, t.ReviewedAt,
+      `SELECT t.Id, t.Status, t.ReceivedAt,
               i.Name AS InstitutionName,
-              u.FirstName + ' ' + u.LastName AS StudentName, u.Email AS StudentEmail,
+              u.FirstName + ' ' + u.LastName AS StudentName,
               (SELECT COUNT(*) FROM TranscriptCourses WHERE TranscriptId = t.Id) AS CourseCount
        FROM Transcripts t
-       JOIN StudentProfiles sp ON sp.Id = t.StudentProfileId
-       JOIN Users u ON u.Id = sp.UserId
        JOIN Institutions i ON i.Id = t.InstitutionId
+       JOIN Users u        ON u.Id = t.StudentUserId
        WHERE ${where}
-       ORDER BY t.SubmittedAt DESC`,
+       ORDER BY t.ReceivedAt DESC`,
       inputs,
     );
-    return res.recordset;
-  }
 
-  async addCourse(transcriptId: number, dto: AddTranscriptCourseDto) {
-    // Convert quarter credits if needed
-    let converted = dto.creditsEarned;
-    if (dto.creditType === 'quarter') {
-      converted = Math.floor(dto.creditsEarned * 2.0 / 3.0 * 100) / 100;
+    const transcripts = res.recordset;
+    if (transcripts.length === 0) return [];
+
+    // Batch-load lanes for every transcript so the dashboard can show
+    // per-lane counts without an N+1 query per row.
+    const laneRes = await this.db.query<any>(
+      `SELECT tc.TranscriptId, tc.Lane
+       FROM TranscriptCourses tc
+       JOIN Transcripts t ON t.Id = tc.TranscriptId
+       WHERE ${where}`,
+      inputs,
+    );
+    const lanesByTranscript = new Map<string, { lane: string }[]>();
+    for (const row of laneRes.recordset) {
+      const list = lanesByTranscript.get(row.TranscriptId) ?? [];
+      list.push({ lane: row.Lane });
+      lanesByTranscript.set(row.TranscriptId, list);
     }
 
-    // Check for existing equivalency
-    const eqRes = await this.db.query<any>(
-      `SELECT e.Id, e.BuCourseId, e.Outcome, e.IsAutoApply,
-              c.Code AS BuCode, c.Title AS BuTitle
-       FROM Equivalencies e
-       JOIN Courses ext ON ext.Id = e.ExternalCourseId
-       JOIN Courses c ON c.Id = e.BuCourseId
-       JOIN Transcripts t ON t.InstitutionId = ext.InstitutionId
-       WHERE t.Id = @tid AND ext.Code = @code AND e.IsAutoApply = 1`,
-      [
-        { name: 'tid', type: sql.Int, value: transcriptId },
-        { name: 'code', type: sql.NVarChar(20), value: dto.externalCode },
-      ],
-    );
-
-    const eq = eqRes.recordset[0];
-    let lane = 'pending';
-    let mappedBuCourseId: number | null = null;
-
-    if (eq) {
-      mappedBuCourseId = eq.BuCourseId;
-      lane = eq.Outcome === 'equivalent' ? 'likely' : 'elective_only';
-    }
-
-    const res = await this.db.query<any>(
-      `INSERT INTO TranscriptCourses (TranscriptId, ExternalCode, ExternalTitle, CreditsEarned, CreditsConverted, Grade, CreditType, TermYear, TermSeason, MappedBuCourseId, Lane)
-       OUTPUT inserted.Id
-       VALUES (@tid, @code, @title, @earned, @conv, @grade, @ctype, @year, @season, @buId, @lane)`,
-      [
-        { name: 'tid', type: sql.Int, value: transcriptId },
-        { name: 'code', type: sql.NVarChar(20), value: dto.externalCode },
-        { name: 'title', type: sql.NVarChar(300), value: dto.externalTitle },
-        { name: 'earned', type: sql.Decimal(5, 2), value: dto.creditsEarned },
-        { name: 'conv', type: sql.Decimal(5, 2), value: converted },
-        { name: 'grade', type: sql.NVarChar(5), value: dto.grade || null },
-        { name: 'ctype', type: sql.VarChar(10), value: dto.creditType || 'semester' },
-        { name: 'year', type: sql.Int, value: dto.termYear || null },
-        { name: 'season', type: sql.NVarChar(10), value: dto.termSeason || null },
-        { name: 'buId', type: sql.Int, value: mappedBuCourseId },
-        { name: 'lane', type: sql.VarChar(20), value: lane },
-      ],
-    );
-
-    const courseId = res.recordset[0].Id;
-    return { id: courseId, lane, autoMapped: !!eq, mappedBuCourse: eq ? { code: eq.BuCode, title: eq.BuTitle } : null };
+    return transcripts.map((t: any) => ({
+      id: t.Id,
+      status: t.Status,
+      receivedAt: t.ReceivedAt,
+      institution: { name: t.InstitutionName },
+      studentName: t.StudentName,
+      courseCount: t.CourseCount,
+      courses: lanesByTranscript.get(t.Id) ?? [],
+    }));
   }
 
-  async updateCourseStatus(transcriptId: number, courseId: number, status: string, reviewedBy: string, notes?: string) {
+  async updateStatus(id: string, status: string, reviewedBy: string) {
     await this.db.query(
-      `UPDATE TranscriptCourses SET Lane = @lane, ReviewNotes = @notes WHERE Id = @id AND TranscriptId = @tid`,
-      [
-        { name: 'lane', type: sql.VarChar(20), value: status },
-        { name: 'notes', type: sql.NVarChar(sql.MAX), value: notes || null },
-        { name: 'id', type: sql.Int, value: courseId },
-        { name: 'tid', type: sql.Int, value: transcriptId },
-      ],
-    );
-    return { message: 'Course status updated' };
-  }
-
-  async updateStatus(id: number, status: string, reviewedBy: string) {
-    await this.db.query(
-      `UPDATE Transcripts SET Status = @status, ReviewedByUserId = @rev, ReviewedAt = SYSUTCDATETIME() WHERE Id = @id`,
+      `UPDATE Transcripts SET Status = @status, ProcessedBy = @by, ProcessedAt = SYSUTCDATETIME() WHERE Id = @id`,
       [
         { name: 'status', type: sql.VarChar(20), value: status },
-        { name: 'rev', type: sql.UniqueIdentifier, value: reviewedBy },
-        { name: 'id', type: sql.Int, value: id },
+        { name: 'by', type: sql.UniqueIdentifier, value: reviewedBy },
+        { name: 'id', type: sql.UniqueIdentifier, value: id },
       ],
     );
     return this.findById(id);

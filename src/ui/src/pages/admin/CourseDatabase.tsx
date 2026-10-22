@@ -6,14 +6,14 @@ import { useState } from 'react';
 export default function CourseDatabase() {
   const [search, setSearch] = useState('');
   const { data, isLoading } = useQuery({
-    queryKey: ['courses', 'bu', search],
-    queryFn: () => coursesApi.listBU(search || undefined),
+    queryKey: ['courses', 'bu'],
+    queryFn: () => coursesApi.listBU(),
   });
 
   const courses: any[] = (data?.data as any) ?? [];
   const filtered = search ? courses.filter((c: any) =>
-    c.Code?.toLowerCase().includes(search.toLowerCase()) ||
-    c.Title?.toLowerCase().includes(search.toLowerCase())
+    c.code?.toLowerCase().includes(search.toLowerCase()) ||
+    c.title?.toLowerCase().includes(search.toLowerCase())
   ) : courses;
 
   return (
@@ -44,17 +44,17 @@ export default function CourseDatabase() {
             <tr>
               <th className="px-6 py-3 text-left">Code</th>
               <th className="px-6 py-3 text-left">Title</th>
-              <th className="px-6 py-3 text-left">Dept</th>
+              <th className="px-6 py-3 text-left">Program Area</th>
               <th className="px-6 py-3 text-right">Credits</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filtered.map((c: any) => (
-              <tr key={c.Id} className="hover:bg-gray-50">
-                <td className="px-6 py-3 font-mono text-brand-900 font-medium">{c.Code}</td>
-                <td className="px-6 py-3 text-gray-900">{c.Title}</td>
-                <td className="px-6 py-3 text-gray-500">{c.DepartmentCode || '—'}</td>
-                <td className="px-6 py-3 text-right text-gray-700">{c.Credits}</td>
+              <tr key={c.id} className="hover:bg-gray-50">
+                <td className="px-6 py-3 font-mono text-brand-900 font-medium">{c.code}</td>
+                <td className="px-6 py-3 text-gray-900">{c.title}</td>
+                <td className="px-6 py-3 text-gray-500">{c.programArea || '—'}</td>
+                <td className="px-6 py-3 text-right text-gray-700">{c.credits}</td>
               </tr>
             ))}
           </tbody>
