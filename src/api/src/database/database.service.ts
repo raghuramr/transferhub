@@ -1,32 +1,12 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as sql from 'mssql';
+import { buildSqlConfig, loadSqlDriver } from '../common/sql-connection.util';
 
 export interface QueryInput {
   name: string;
   type: sql.ISqlType | (() => sql.ISqlType);
   value: any;
-}
-
-/**
- * Node's default SQL Server driver (tedious) is TCP-only — it cannot resolve
- * "(localdb)\MSSQLLocalDB" the way sqlcmd/SSMS can, because LocalDB speaks
- * named pipes / shared memory, not a network hostname.
- *
- * Setting DB_DRIVER=msnodesqlv8 switches to the native Windows SQL client
- * driver (same mechanism SSMS uses), which understands LocalDB instance
- * names and Windows Integrated Auth directly. Requires:
- *   npm install msnodesqlv8
- * (needs the usual Windows build tools the first time, since it compiles a
- * native addon). Leave DB_DRIVER unset/"tedious" when connecting to a real
- * SQL Server/Azure SQL over TCP.
- */
-function loadSqlDriver(driver: string): typeof sql {
-  if (driver === 'msnodesqlv8') {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require('mssql/msnodesqlv8');
-  }
-  return sql;
 }
 
 @Injectable()
@@ -45,22 +25,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const encrypt = this.config.get<string>('DB_ENCRYPT') === 'true';
     const trustedConnection = this.config.get<string>('DB_TRUSTED_CONNECTION') === 'true';
     const driver = this.config.get<string>('DB_DRIVER', 'tedious');
+    const odbcDriver = this.config.get<string>('DB_ODBC_DRIVER');
 
     const driverSql = loadSqlDriver(driver);
-
-    const config: sql.config = {
+    const config = buildSqlConfig({
+      driver,
       server,
       database,
-      options: {
-        encrypt,
-        trustServerCertificate: !encrypt,
-        trustedConnection,
-      },
-    };
-
-    if (port) config.port = Number(port);
-    if (user) config.user = user;
-    if (password) config.password = password;
+      port: port ? Number(port) : undefined,
+      trustedConnection,
+      user,
+      password,
+      encrypt,
+      odbcDriver,
+    });
 
     try {
       this.pool = new driverSql.ConnectionPool(config);
@@ -72,6 +50,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           `Node's SQL driver cannot resolve "(localdb)\\..." directly (it is TCP-only; ` +
           `LocalDB uses named pipes). Fix: run "npm install msnodesqlv8" in src/api, then ` +
           `set DB_DRIVER=msnodesqlv8 in your .env and restart.`,
+        );
+      } else if (driver === 'msnodesqlv8' && /driver manager|data source name/i.test((err as any).message ?? '')) {
+        this.logger.error(
+          `ODBC driver "${odbcDriver ?? '(default)'}" was not found on this machine. ` +
+          `Run "Get-OdbcDriver | Select-Object Name" in PowerShell to see installed drivers, ` +
+          `then set DB_ODBC_DRIVER in your .env to match exactly (e.g. "ODBC Driver 18 for SQL Server").`,
         );
       }
       throw err;

@@ -14,11 +14,15 @@
  *   the same kind sqlcmd/SSMS use, not a network hostname. If DB_SERVER
  *   starts with "(localdb)" you must also set DB_DRIVER=msnodesqlv8 in
  *   your .env and run "npm install msnodesqlv8" once (native addon —
- *   needs Windows build tools the first time it compiles).
+ *   needs Windows build tools the first time it compiles). You may also
+ *   need DB_ODBC_DRIVER to match an ODBC driver actually installed on
+ *   your machine (check with: Get-OdbcDriver | Select-Object Name).
  */
 import * as argon2 from 'argon2';
+import * as dotenv from 'dotenv';
 import * as fs    from 'fs';
 import * as path  from 'path';
+import { buildSqlConfig, loadSqlDriver } from '../src/common/sql-connection.util';
 
 // ── 1. Resolve which .env file to load ───────────────────────
 const args        = process.argv.slice(2);
@@ -36,16 +40,9 @@ const envPath = path.join(apiRoot, envFile);
 
 if (fs.existsSync(envPath)) {
   console.log(`Loading env: ${envPath}`);
-  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eqIdx = trimmed.indexOf('=');
-    if (eqIdx < 0) continue;
-    const key = trimmed.slice(0, eqIdx).trim();
-    const raw = trimmed.slice(eqIdx + 1).trim();
-    const val = raw.replace(/^["']|["']$/g, '');     // strip optional quotes
-    if (!(key in process.env)) process.env[key] = val;
-  }
+  // dotenv correctly handles inline comments ("KEY=value  # comment"),
+  // quoted values, etc. — a hand-rolled parser previously broke on these.
+  dotenv.config({ path: envPath });
 } else {
   console.warn(`⚠  Env file not found: ${envPath}`);
   console.warn('   Falling back to: (localdb)\\MSSQLLocalDB / Windows Auth');
@@ -54,35 +51,30 @@ if (fs.existsSync(envPath)) {
 
 // ── 2. Build mssql config from env (Windows Auth by default) ─
 const trustedConnection = (process.env.DB_TRUSTED_CONNECTION ?? 'true') === 'true';
-const server    = process.env.DB_SERVER   ?? '(localdb)\\MSSQLLocalDB';
-const database  = process.env.DB_NAME     ?? 'CreditEvalManager';
-const portStr   = process.env.DB_PORT;
-const port      = portStr ? parseInt(portStr, 10) : undefined;
-const encrypt   = (process.env.DB_ENCRYPT ?? 'false') === 'true';
+const server     = process.env.DB_SERVER     ?? '(localdb)\\MSSQLLocalDB';
+const database   = process.env.DB_NAME       ?? 'CreditEvalManager';
+const portStr    = process.env.DB_PORT;
+const port       = portStr ? parseInt(portStr, 10) : undefined;
+const encrypt    = (process.env.DB_ENCRYPT ?? 'false') === 'true';
 const driverName = process.env.DB_DRIVER ?? 'tedious';
+const odbcDriver = process.env.DB_ODBC_DRIVER;
 
 console.log(`\nTarget: ${server} / ${database}`);
 console.log(`Auth  : ${trustedConnection ? 'Windows Integrated' : 'SQL login'}`);
-console.log(`Driver: ${driverName}\n`);
+console.log(`Driver: ${driverName}${driverName === 'msnodesqlv8' ? `  (ODBC: ${odbcDriver ?? '(default) ODBC Driver 17 for SQL Server'})` : ''}\n`);
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const sql = driverName === 'msnodesqlv8' ? require('mssql/msnodesqlv8') : require('mssql');
-
-const dbConfig: any = {
+const sql = loadSqlDriver(driverName);
+const dbConfig = buildSqlConfig({
+  driver: driverName,
   server,
   database,
-  options: {
-    encrypt,
-    trustServerCertificate: true,   // always trust for dev / LocalDB
-    trustedConnection,
-  },
-};
-
-if (port && !isNaN(port)) dbConfig.port = port;
-if (!trustedConnection) {
-  dbConfig.user     = process.env.DB_USER     ?? '';
-  dbConfig.password = process.env.DB_PASSWORD ?? '';
-}
+  port,
+  trustedConnection,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  encrypt,
+  odbcDriver,
+});
 
 // ── 3. Demo accounts — emails must match seed/004_demo_users.sql ─
 const demoPasswords: Record<string, string> = {
@@ -131,8 +123,10 @@ async function main() {
 main().catch(err => {
   console.error('\n❌  Seed failed:', err.message);
 
-  const isLocalDbAddr = /^\(localdb\)/i.test(server);
-  const isAddrNotFound = /ENOTFOUND/i.test(err.message ?? '') || /sequence/i.test(err.message ?? '');
+  const msg = err.message ?? '';
+  const isLocalDbAddr   = /^\(localdb\)/i.test(server);
+  const isAddrNotFound  = /ENOTFOUND/i.test(msg) || /sequence/i.test(msg);
+  const isOdbcDriverErr = /driver manager/i.test(msg) || /data source name/i.test(msg);
 
   if (isLocalDbAddr && isAddrNotFound && driverName !== 'msnodesqlv8') {
     console.error('\n⚠  This is the classic "Node can\'t reach (localdb)\\..." problem.');
@@ -143,8 +137,16 @@ main().catch(err => {
     console.error('     2. npm install msnodesqlv8      (one-time native build)');
     console.error('     3. In your .env, add:  DB_DRIVER=msnodesqlv8');
     console.error('     4. Re-run: npm run seed:users');
-    console.error('\n   Alternative: point DB_SERVER at a real SQL Server/Express instance');
-    console.error('   with TCP/IP enabled instead of LocalDB (DB_SERVER=localhost, DB_PORT=1433).');
+  } else if (driverName === 'msnodesqlv8' && isOdbcDriverErr) {
+    console.error('\n⚠  The ODBC driver name does not match one installed on this machine.');
+    console.error(`   Tried: "${odbcDriver ?? 'ODBC Driver 17 for SQL Server'}"`);
+    console.error('\n   Fix:');
+    console.error('     1. In PowerShell, run:  Get-OdbcDriver | Select-Object Name');
+    console.error('     2. Find the SQL Server driver listed, e.g.:');
+    console.error('          "ODBC Driver 17 for SQL Server"');
+    console.error('          "ODBC Driver 18 for SQL Server"');
+    console.error('     3. Add to your .env:  DB_ODBC_DRIVER=<exact name from step 2>');
+    console.error('     4. Re-run: npm run seed:users');
   } else {
     console.error('\nCheck:');
     console.error('  1. DB_SERVER in your .env matches your SQL Server instance name');
