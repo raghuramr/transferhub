@@ -1,0 +1,45 @@
+{
+  "name": "university-manager-api",
+  "version": "1.0.0",
+  "description": "University Transfer Credit Evaluation API",
+  "scripts": {
+    "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "build": "tsc",
+    "start:prod": "node dist/main",
+    "seed:users": "ts-node scripts/seed-users.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "*",
+    "@nestjs/common": "*",
+    "@nestjs/config": "*",
+    "@nestjs/core": "*",
+    "@nestjs/jwt": "*",
+    "@nestjs/passport": "*",
+    "@nestjs/platform-express": "*",
+    "@nestjs/throttler": "*",
+    "argon2": "*",
+    "class-transformer": "*",
+    "class-validator": "*",
+    "helmet": "*",
+    "mssql": "*",
+    "passport": "*",
+    "passport-jwt": "*",
+    "passport-local": "*",
+    "reflect-metadata": "*",
+    "rxjs": "*",
+    "tedious": "*",
+    "uuid": "*"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "*",
+    "@types/express": "*",
+    "@types/mssql": "*",
+    "@types/node": "*",
+    "@types/passport-jwt": "*",
+    "@types/passport-local": "*",
+    "@types/uuid": "*",
+    "ts-node": "*",
+    "ts-node-dev": "*",
+    "typescript": "*"
+  }
+}
