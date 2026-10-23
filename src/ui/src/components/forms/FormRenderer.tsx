@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import type { FormField } from '../../types';
+import { uploadsApi } from '../../lib/api';
+import { Paperclip, Loader2, CheckCircle2 } from 'lucide-react';
 
 const inputCls =
   'w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500';
@@ -121,6 +124,9 @@ function FieldInput({
         </div>
       );
 
+    case 'file':
+      return <FileFieldInput field={field} value={value} onChange={onChange} />;
+
     case 'number':
       return (
         <input
@@ -156,4 +162,56 @@ function FieldInput({
         />
       );
   }
+}
+
+/**
+ * Uploads the selected file immediately (private, owner-only — see
+ * uploads module / CLAUDE.md "Uploads subsystem") and stores the
+ * resulting { id, url, name } in the field's submission value.
+ */
+function FileFieldInput({
+  field,
+  value,
+  onChange,
+}: {
+  field: FormField;
+  value: { id: string; url: string; name: string } | undefined;
+  onChange: (value: any) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const res = await uploadsApi.upload(file, { entityType: 'form_submission' });
+      const { id, url } = res.data as { id: string; url: string };
+      onChange({ id, url, name: file.name });
+    } catch {
+      setError('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-600 cursor-pointer hover:bg-gray-50 w-fit">
+        {uploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
+        {uploading ? 'Uploading…' : value ? 'Replace file' : 'Choose file'}
+        <input type="file" className="hidden" onChange={handleFile} />
+      </label>
+      {value && !uploading && (
+        <p className="mt-1.5 flex items-center gap-1.5 text-xs text-gray-600">
+          <CheckCircle2 size={13} className="text-green-600" /> {value.name}
+        </p>
+      )}
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {field.helpText && !value && <p className="mt-1 text-xs text-gray-400">{field.helpText}</p>}
+    </div>
+  );
 }

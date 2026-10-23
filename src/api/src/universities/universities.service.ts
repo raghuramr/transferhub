@@ -4,6 +4,7 @@ import * as sql from 'mssql';
 import { CreateUniversityDto } from './dto/create-university.dto';
 import { UpdateUniversityDto } from './dto/update-university.dto';
 import { parseCsvRows, toCsv } from '../common/csv.util';
+import { PagesService } from '../pages/pages.service';
 
 // "Universities" in the UI == the existing `Institutions` SQL table.
 // See CLAUDE.md / migration 008 for why the table itself keeps its name.
@@ -17,6 +18,8 @@ function mapUniversity(row: any) {
     isBU: !!row.IsBU,
     isActive: !!row.IsActive,
     source: row.Source,
+    logoUrl: row.LogoUrl ?? null,
+    heroImageUrl: row.HeroImageUrl ?? null,
     createdAt: row.CreatedAt,
   };
 }
@@ -25,7 +28,10 @@ const EXPORT_COLUMNS = ['id', 'code', 'name', 'calendar', 'type', 'isBU', 'isAct
 
 @Injectable()
 export class UniversitiesService {
-  constructor(private db: DatabaseService) {}
+  constructor(
+    private db: DatabaseService,
+    private pagesService: PagesService,
+  ) {}
 
   async findAll(filters: { search?: string; isActive?: boolean } = {}) {
     let where = '1=1';
@@ -40,7 +46,7 @@ export class UniversitiesService {
     }
 
     const res = await this.db.query<any>(
-      `SELECT Id, Code, Name, Calendar, Type, IsBU, IsActive, Source, CreatedAt
+      `SELECT Id, Code, Name, Calendar, Type, IsBU, IsActive, Source, LogoUrl, HeroImageUrl, CreatedAt
        FROM Institutions WHERE ${where} ORDER BY Name`,
       inputs,
     );
@@ -49,7 +55,7 @@ export class UniversitiesService {
 
   async findById(id: number) {
     const res = await this.db.query<any>(
-      `SELECT Id, Code, Name, Calendar, Type, IsBU, IsActive, Source, CreatedAt
+      `SELECT Id, Code, Name, Calendar, Type, IsBU, IsActive, Source, LogoUrl, HeroImageUrl, CreatedAt
        FROM Institutions WHERE Id = @id`,
       [{ name: 'id', type: sql.Int, value: id }],
     );
@@ -59,7 +65,7 @@ export class UniversitiesService {
 
   async findByCode(code: string) {
     const res = await this.db.query<any>(
-      `SELECT Id, Code, Name, Calendar, Type, IsBU, IsActive, Source, CreatedAt
+      `SELECT Id, Code, Name, Calendar, Type, IsBU, IsActive, Source, LogoUrl, HeroImageUrl, CreatedAt
        FROM Institutions WHERE Code = @code`,
       [{ name: 'code', type: sql.VarChar(20), value: code }],
     );
@@ -71,9 +77,9 @@ export class UniversitiesService {
     if (existing) throw new ConflictException('A university with this code already exists');
 
     const res = await this.db.query<any>(
-      `INSERT INTO Institutions (Code, Name, Calendar, Type, IsBU, IsActive, Source)
+      `INSERT INTO Institutions (Code, Name, Calendar, Type, IsBU, IsActive, Source, LogoUrl, HeroImageUrl)
        OUTPUT inserted.Id
-       VALUES (@code, @name, @calendar, @type, @isBU, @active, @source)`,
+       VALUES (@code, @name, @calendar, @type, @isBU, @active, @source, @logoUrl, @heroImageUrl)`,
       [
         { name: 'code', type: sql.VarChar(20), value: dto.code },
         { name: 'name', type: sql.NVarChar(200), value: dto.name },
@@ -82,6 +88,8 @@ export class UniversitiesService {
         { name: 'isBU', type: sql.Bit, value: dto.isBU ? 1 : 0 },
         { name: 'active', type: sql.Bit, value: dto.isActive !== false ? 1 : 0 },
         { name: 'source', type: sql.NVarChar(500), value: dto.source || null },
+        { name: 'logoUrl', type: sql.NVarChar(500), value: dto.logoUrl || null },
+        { name: 'heroImageUrl', type: sql.NVarChar(500), value: dto.heroImageUrl || null },
       ],
     );
     return this.findById(res.recordset[0].Id);
@@ -119,6 +127,14 @@ export class UniversitiesService {
     if (dto.source !== undefined) {
       sets.push('Source = @source');
       inputs.push({ name: 'source', type: sql.NVarChar(500), value: dto.source || null });
+    }
+    if (dto.logoUrl !== undefined) {
+      sets.push('LogoUrl = @logoUrl');
+      inputs.push({ name: 'logoUrl', type: sql.NVarChar(500), value: dto.logoUrl || null });
+    }
+    if (dto.heroImageUrl !== undefined) {
+      sets.push('HeroImageUrl = @heroImageUrl');
+      inputs.push({ name: 'heroImageUrl', type: sql.NVarChar(500), value: dto.heroImageUrl || null });
     }
 
     if (sets.length > 0) {
@@ -176,5 +192,106 @@ export class UniversitiesService {
       }
     }
     return { created, updated, errors };
+  }
+
+  /**
+   * Builds (or refreshes) a public Custom-Pages page — slug `university-{code}`
+   * — that lists this university's course Topics grouped by Program. Reuses
+   * the existing Custom Pages CMS (PagesService) rather than a bespoke
+   * renderer. Kept deliberately simple: a heading block + one "cards" block
+   * per Program, each card one Topic with its reference links inlined as text.
+   */
+  async generatePublicPage(id: number, userId: string) {
+    const university = await this.findById(id);
+
+    const res = await this.db.query<any>(
+      `SELECT
+         ISNULL(p.Id, 0)              AS ProgramId,
+         ISNULL(p.Name, ISNULL(c.ProgramArea, 'Unassigned')) AS ProgramName,
+         c.Id                         AS CourseId,
+         c.Code                       AS CourseCode,
+         c.Title                      AS CourseTitle,
+         t.Id                         AS TopicId,
+         t.Title                      AS TopicTitle,
+         t.Description                AS TopicDescription,
+         t.ReferenceLinksJson
+       FROM Courses c
+       LEFT JOIN Programs p ON p.Id = c.ProgramId
+       LEFT JOIN CourseTopics t ON t.CourseId = c.Id
+       WHERE c.InstitutionId = @uid AND c.IsActive = 1
+       ORDER BY ProgramName, c.Code, t.SortOrder, t.Id`,
+      [{ name: 'uid', type: sql.Int, value: id }],
+    );
+
+    type CardItem = { id: string; title: string; body: string; visible: boolean };
+    const programGroups = new Map<string, CardItem[]>();
+
+    for (const row of res.recordset) {
+      const programName: string = row.ProgramName;
+      if (!programGroups.has(programName)) programGroups.set(programName, []);
+      if (!row.TopicId) continue; // course has no topics yet — nothing to list under it
+
+      let links: { label: string; url: string }[] = [];
+      if (row.ReferenceLinksJson) {
+        try { links = JSON.parse(row.ReferenceLinksJson); } catch { links = []; }
+      }
+      const linksText = links.length ? ' — ' + links.map((l) => `${l.label}: ${l.url}`).join(', ') : '';
+      const body = `${row.CourseCode} ${row.CourseTitle}${row.TopicDescription ? ' — ' + row.TopicDescription : ''}${linksText}`;
+
+      programGroups.get(programName)!.push({
+        id: `topic-${row.TopicId}`,
+        title: row.TopicTitle,
+        body,
+        visible: true,
+      });
+    }
+
+    const blocks: Record<string, any>[] = [
+      {
+        id: 'heading-main',
+        type: 'heading',
+        visible: true,
+        text: `${university.name} — Programs & Topics`,
+        subtitle: 'Auto-generated from the course catalog’s Topics data.',
+      },
+    ];
+
+    let i = 0;
+    for (const [programName, items] of programGroups) {
+      i += 1;
+      blocks.push({
+        id: `heading-program-${i}`,
+        type: 'heading',
+        visible: true,
+        text: programName,
+        subtitle: '',
+      });
+      blocks.push({
+        id: `cards-program-${i}`,
+        type: 'cards',
+        visible: true,
+        items: items.length ? items : [{ id: `empty-${i}`, title: 'No topics recorded yet', body: '', visible: true }],
+      });
+    }
+
+    const slug = `university-${university.code}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+    const title = `${university.name} — Programs & Topics`;
+
+    const existingPages = await this.pagesService.findAll();
+    const existing = existingPages.find((p: any) => p.slug === slug);
+
+    const pageDto = {
+      slug,
+      title,
+      blocks,
+      published: true,
+      showInNav: false,
+    };
+
+    const page = existing
+      ? await this.pagesService.update(existing.id, pageDto as any, userId)
+      : await this.pagesService.create(pageDto as any, userId);
+
+    return { slug: page.slug, pageId: page.id };
   }
 }

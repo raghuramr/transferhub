@@ -205,7 +205,7 @@ export interface CmsPage {
 // ─── Custom Forms (JSON-schema driven) ─────────────────────────
 export type FormFieldType =
   | 'text' | 'textarea' | 'email' | 'phone' | 'number' | 'date'
-  | 'select' | 'radio' | 'checkboxes' | 'yesno';
+  | 'select' | 'radio' | 'checkboxes' | 'yesno' | 'file';
 
 export interface FormField {
   key: string;

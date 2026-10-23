@@ -97,6 +97,7 @@ export const universitiesApi = {
     form.append('file', file);
     return api.post('/universities/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+  generatePage: (id: number) => api.post(`/universities/${id}/generate-page`),
 };
 
 // ── Institutions endpoints (SQL `AcademicUnits` table) ──────────

@@ -17,6 +17,8 @@ function mapInstitution(row: any) {
     name: row.Name,
     code: row.Code,
     isActive: !!row.IsActive,
+    logoUrl: row.LogoUrl ?? null,
+    heroImageUrl: row.HeroImageUrl ?? null,
     createdAt: row.CreatedAt,
     updatedAt: row.UpdatedAt,
   };
@@ -25,7 +27,7 @@ function mapInstitution(row: any) {
 const EXPORT_COLUMNS = ['id', 'universityCode', 'universityName', 'code', 'name', 'isActive'];
 
 const BASE_SELECT = `
-  SELECT au.Id, au.InstitutionId, au.Name, au.Code, au.IsActive, au.CreatedAt, au.UpdatedAt,
+  SELECT au.Id, au.InstitutionId, au.Name, au.Code, au.IsActive, au.LogoUrl, au.HeroImageUrl, au.CreatedAt, au.UpdatedAt,
          i.Code AS UniversityCode, i.Name AS UniversityName
   FROM AcademicUnits au
   JOIN Institutions i ON i.Id = au.InstitutionId
@@ -83,14 +85,16 @@ export class InstitutionsService {
     if (existing) throw new ConflictException('An institution with this name already exists for that university');
 
     const res = await this.db.query<any>(
-      `INSERT INTO AcademicUnits (InstitutionId, Name, Code, IsActive)
+      `INSERT INTO AcademicUnits (InstitutionId, Name, Code, IsActive, LogoUrl, HeroImageUrl)
        OUTPUT inserted.Id
-       VALUES (@uid, @name, @code, @active)`,
+       VALUES (@uid, @name, @code, @active, @logoUrl, @heroImageUrl)`,
       [
         { name: 'uid', type: sql.Int, value: dto.universityId },
         { name: 'name', type: sql.NVarChar(200), value: dto.name },
         { name: 'code', type: sql.VarChar(30), value: dto.code || null },
         { name: 'active', type: sql.Bit, value: dto.isActive !== false ? 1 : 0 },
+        { name: 'logoUrl', type: sql.NVarChar(500), value: dto.logoUrl || null },
+        { name: 'heroImageUrl', type: sql.NVarChar(500), value: dto.heroImageUrl || null },
       ],
     );
     return this.findById(res.recordset[0].Id);
@@ -116,6 +120,14 @@ export class InstitutionsService {
     if (dto.isActive !== undefined) {
       sets.push('IsActive = @active');
       inputs.push({ name: 'active', type: sql.Bit, value: dto.isActive ? 1 : 0 });
+    }
+    if (dto.logoUrl !== undefined) {
+      sets.push('LogoUrl = @logoUrl');
+      inputs.push({ name: 'logoUrl', type: sql.NVarChar(500), value: dto.logoUrl || null });
+    }
+    if (dto.heroImageUrl !== undefined) {
+      sets.push('HeroImageUrl = @heroImageUrl');
+      inputs.push({ name: 'heroImageUrl', type: sql.NVarChar(500), value: dto.heroImageUrl || null });
     }
 
     await this.db.query(`UPDATE AcademicUnits SET ${sets.join(', ')} WHERE Id = @id`, inputs);

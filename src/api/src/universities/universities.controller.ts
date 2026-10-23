@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete, Param, Body, Query, Res, UseGuards,
+  Controller, Get, Post, Patch, Delete, Param, Body, Query, Req, Res, UseGuards,
   ParseIntPipe, UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -58,5 +58,14 @@ export class UniversitiesController {
   @Delete(':id')
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.universitiesService.deactivate(id);
+  }
+
+  /**
+   * Builds/refreshes a public Custom Pages page listing this university's
+   * course Topics grouped by Program (slug `university-{code}`).
+   */
+  @Post(':id/generate-page')
+  generatePage(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+    return this.universitiesService.generatePublicPage(id, req.user.id);
   }
 }

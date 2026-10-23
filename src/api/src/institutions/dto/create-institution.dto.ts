@@ -8,4 +8,6 @@ export class CreateInstitutionDto {
   @IsString() name: string;
   @IsOptional() @IsString() code?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsString() logoUrl?: string;
+  @IsOptional() @IsString() heroImageUrl?: string;
 }

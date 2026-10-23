@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { universitiesApi } from '../../lib/api';
-import { Building2, Plus, Upload, Power } from 'lucide-react';
+import { Building2, Plus, Upload, Power, Globe2 } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
+import { ImageSourceField } from '../../components/shared/ImageSourceField';
 
 interface University {
   id: number;
@@ -13,6 +14,8 @@ interface University {
   isBU: boolean;
   isActive: boolean;
   source: string | null;
+  logoUrl?: string | null;
+  heroImageUrl?: string | null;
 }
 
 type UniversityForm = {
@@ -22,9 +25,14 @@ type UniversityForm = {
   type: string;
   isBU: boolean;
   source: string;
+  logoUrl: string;
+  heroImageUrl: string;
 };
 
-const emptyForm: UniversityForm = { code: '', name: '', calendar: 'semester', type: 'university', isBU: false, source: '' };
+const emptyForm: UniversityForm = {
+  code: '', name: '', calendar: 'semester', type: 'university', isBU: false, source: '',
+  logoUrl: '', heroImageUrl: '',
+};
 
 function downloadBlob(data: BlobPart, filename: string) {
   const blob = new Blob([data], { type: 'text/csv' });
@@ -104,6 +112,18 @@ function UniversityFields({
         />
         This is the receiving institution (BU)
       </label>
+      <ImageSourceField
+        label="Logo"
+        value={form.logoUrl}
+        onChange={(url) => onChange({ ...form, logoUrl: url })}
+        entityType="university_logo"
+      />
+      <ImageSourceField
+        label="Hero image"
+        value={form.heroImageUrl}
+        onChange={(url) => onChange({ ...form, heroImageUrl: url })}
+        entityType="university_hero"
+      />
     </div>
   );
 }
@@ -116,6 +136,8 @@ function universityToForm(university: University): UniversityForm {
     type: university.type,
     isBU: university.isBU,
     source: university.source ?? '',
+    logoUrl: university.logoUrl ?? '',
+    heroImageUrl: university.heroImageUrl ?? '',
   };
 }
 
@@ -129,6 +151,10 @@ function UniversityEditForm({
   isSaving: boolean;
 }) {
   const [form, setForm] = useState<UniversityForm>(() => universityToForm(university));
+
+  const generatePageMutation = useMutation({
+    mutationFn: () => universitiesApi.generatePage(university.id),
+  });
 
   return (
     <div className="p-5 bg-gray-50 border-t border-gray-200 max-w-md">
@@ -148,6 +174,30 @@ function UniversityEditForm({
           {isSaving ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
+
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <button
+          onClick={() => generatePageMutation.mutate()}
+          disabled={generatePageMutation.isPending}
+          className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 border border-brand-300 text-brand-800 rounded-lg hover:bg-brand-50 disabled:opacity-50"
+        >
+          <Globe2 size={14} />
+          {generatePageMutation.isPending ? 'Generating…' : 'Generate Public Page'}
+        </button>
+        {generatePageMutation.data && (
+          <p className="mt-2 text-xs text-gray-600">
+            Page ready at slug{' '}
+            <code className="bg-gray-100 px-1 py-0.5 rounded">
+              {(generatePageMutation.data.data as any).slug}
+            </code>
+            .
+          </p>
+        )}
+        {generatePageMutation.isError && (
+          <p className="mt-2 text-xs text-red-600">Could not generate the page. Please try again.</p>
+        )}
+      </div>
+
       <p className="mt-2 text-xs text-gray-400">Click the row again to collapse.</p>
     </div>
   );

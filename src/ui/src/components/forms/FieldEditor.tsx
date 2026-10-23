@@ -15,6 +15,7 @@ const FIELD_TYPES: { value: FormFieldType; label: string }[] = [
   { value: 'radio', label: 'Radio buttons' },
   { value: 'checkboxes', label: 'Checkboxes' },
   { value: 'yesno', label: 'Yes / No' },
+  { value: 'file', label: 'File upload' },
 ];
 
 const inputCls =

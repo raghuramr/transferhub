@@ -10,7 +10,7 @@ import { UpsertFormDto, SubmitFormDto, DecideSubmissionDto } from './dto/upsert-
 
 const VALID_FIELD_TYPES = [
   'text', 'textarea', 'email', 'phone', 'number', 'date',
-  'select', 'radio', 'checkboxes', 'yesno',
+  'select', 'radio', 'checkboxes', 'yesno', 'file',
 ];
 
 function mapForm(row: any) {
