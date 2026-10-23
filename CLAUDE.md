@@ -92,6 +92,58 @@ chat history if needed, repeated here for quick reference)
 | Agency | `agency@partner.edu` | `Agency@123!` |
 | Super Admin | `super_admin@bu.edu` | `SuperAdmin@123!` |
 
+## Email (Resend)
+- `src/api/src/common/email.service.ts` wraps the `resend` npm package.
+  Configure via `RESEND_API_KEY` in `src/api/.env` (see `.env.example`) —
+  optionally `RESEND_FROM_EMAIL` to override the default sender.
+- If `RESEND_API_KEY` is unset, `EmailService.send` logs a warning and
+  no-ops instead of throwing, so local dev without the key keeps working.
+- Failures are always non-fatal: `UsersService.create()` sends a "your
+  account was created" email with the temp password after inserting the
+  user, wrapped in try/catch — email delivery problems never fail user
+  creation.
+
+## Future direction: multi-tenant SaaS
+
+**Status: not scheduled, not being built — a direction to keep in mind so
+current schema/scope decisions don't accidentally foreclose it later.**
+Current hackathon-scope work (scope visibility, Resend email,
+universities/institutions/agencies CRUD, workflow dashboards, etc.)
+continues exactly as planned; nothing here changes any code, schema, or
+behavior today.
+
+The longer-term idea: evolve this app from a single-institution,
+BU-centric tool into a multi-tenant SaaS product that other universities
+could subscribe to as independent tenants.
+
+Getting there eventually would mean:
+- Removing the BU-centric assumptions baked into the system today — most
+  visibly the `Institutions.IsBU` flag, but also the more implicit
+  "there is exactly one receiving institution" assumption that shows up in
+  places like the triage/evaluation logic (`sp_TriageCourse`,
+  `sp_RecordDecision`, and the services around them), which currently
+  reason about a single home institution rather than "which tenant does
+  this request belong to."
+- Treating the Agencies/Universities/Institutions scope-visibility work
+  currently being built (migration 008 and its
+  `UserScopeUniversities` / `UserScopeAcademicUnits` / `UserScopeAgencies`
+  tables) as a stepping stone rather than the end state. That work solves
+  *visibility* (who can see what); real multi-tenancy would need it
+  extended into actual tenant isolation — e.g. row-level security or an
+  explicit tenant-id on the relevant tables — not just filtering what a
+  given user is shown.
+- Deciding what stays shared vs. what becomes tenant-private. The
+  `Equivalencies` table (cross-university course-matching data) is
+  valuable precisely because it's cross-institution — the plan would be
+  to keep it as a shared, crowdsourced asset that every tenant university
+  can read from and contribute equivalency mappings to, rather than
+  partitioning it per tenant. By contrast, `Transcripts` and `Evaluations`
+  are student-specific records and would need to stay strictly private to
+  the tenant that owns them.
+
+Again: this is just a direction noted for future reference, not committed
+work. No action item follows from it right now.
+
 ## Workflow reminders for this repo
 - Feature branch: `claude/sleepy-maxwell-mzyijb` — merge into `main` after
   each change set (this has been the pattern all session; keep doing it
