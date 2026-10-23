@@ -1,6 +1,9 @@
 import {
-  Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, Req, UseGuards, ForbiddenException,
+  Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, Req, Res, UseGuards, UseInterceptors,
+  UploadedFile, BadRequestException, ForbiddenException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -20,6 +23,23 @@ export class UsersController {
       role,
       isActive: isActive !== undefined ? isActive === 'true' : undefined,
     });
+  }
+
+  @Get('export')
+  @Roles('admin', 'super_admin')
+  async exportCsv(@Res() res: Response) {
+    const csv = await this.usersService.exportCsv();
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="users.csv"');
+    res.send(csv);
+  }
+
+  @Post('import')
+  @Roles('super_admin')
+  @UseInterceptors(FileInterceptor('file'))
+  async importCsv(@UploadedFile() file: any, @Req() req: any) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    return this.usersService.importCsv(file.buffer.toString('utf-8'), req.user.id);
   }
 
   @Get(':id')

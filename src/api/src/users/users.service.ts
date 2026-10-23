@@ -3,8 +3,12 @@ import { DatabaseService } from '../database/database.service';
 import { EmailService } from '../common/email.service';
 import * as argon2 from 'argon2';
 import * as sql from 'mssql';
+import * as crypto from 'crypto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { parseCsvRows, toCsv } from '../common/csv.util';
+
+const EXPORT_COLUMNS = ['id', 'email', 'firstName', 'lastName', 'role', 'studentId', 'agencyName', 'departmentCode', 'isActive'];
 
 export interface UserScope {
   universityIds: number[];
@@ -149,6 +153,12 @@ export class UsersService {
     const sets: string[] = ['UpdatedAt = SYSUTCDATETIME()'];
     const inputs: any[] = [{ name: 'id', type: sql.UniqueIdentifier, value: id }];
 
+    if (dto.email !== undefined && dto.email !== user.email) {
+      const existing = await this.findByEmail(dto.email);
+      if (existing) throw new ConflictException('Email already in use');
+      sets.push('Email = @email');
+      inputs.push({ name: 'email', type: sql.NVarChar(254), value: dto.email });
+    }
     if (dto.firstName !== undefined) {
       sets.push('FirstName = @first');
       inputs.push({ name: 'first', type: sql.NVarChar(100), value: dto.firstName });
@@ -162,6 +172,28 @@ export class UsersService {
       sets.push('PasswordHash = @hash, MustChangePass = 0');
       inputs.push({ name: 'hash', type: sql.NVarChar(255), value: hash });
     }
+    if (dto.role !== undefined) {
+      const roleRes = await this.db.query<any>(
+        `SELECT Id FROM Roles WHERE Name = @name`,
+        [{ name: 'name', type: sql.VarChar(20), value: dto.role }],
+      );
+      const roleId = roleRes.recordset[0]?.Id;
+      if (!roleId) throw new NotFoundException('Role not found');
+      sets.push('RoleId = @roleId');
+      inputs.push({ name: 'roleId', type: sql.Int, value: roleId });
+    }
+    if (dto.departmentId !== undefined) {
+      sets.push('DepartmentId = @dept');
+      inputs.push({ name: 'dept', type: sql.Int, value: dto.departmentId });
+    }
+    if (dto.studentId !== undefined) {
+      sets.push('StudentId = @sid');
+      inputs.push({ name: 'sid', type: sql.NVarChar(50), value: dto.studentId });
+    }
+    if (dto.agencyName !== undefined) {
+      sets.push('AgencyName = @agency');
+      inputs.push({ name: 'agency', type: sql.NVarChar(200), value: dto.agencyName });
+    }
     if (dto.isActive !== undefined) {
       sets.push('IsActive = @active');
       inputs.push({ name: 'active', type: sql.Bit, value: dto.isActive ? 1 : 0 });
@@ -174,6 +206,69 @@ export class UsersService {
 
     await this.audit(updatedBy, 'USER_UPDATED', 'User', id, JSON.stringify(user), JSON.stringify(dto));
     return this.findById(id);
+  }
+
+  async exportCsv(): Promise<string> {
+    const rows = await this.findAll();
+    return toCsv(rows, EXPORT_COLUMNS);
+  }
+
+  /** Upserts by Email. New rows get a random temp password + "account created" email; existing rows are updated in place. */
+  async importCsv(text: string, importedBy: string) {
+    const rows = parseCsvRows(text);
+    let created = 0;
+    let updated = 0;
+    const errors: string[] = [];
+
+    for (const row of rows) {
+      const email = row.email || row.Email;
+      const firstName = row.firstName || row.FirstName;
+      const lastName = row.lastName || row.LastName;
+      const role = (row.role || row.Role || '').toLowerCase();
+      if (!email || !firstName || !lastName || !role) {
+        errors.push(`Skipped row (missing email/firstName/lastName/role): ${JSON.stringify(row)}`);
+        continue;
+      }
+      try {
+        const existing = await this.findByEmail(email);
+        const isActiveRaw = row.isActive ?? row.IsActive;
+        const isActive = isActiveRaw === undefined || isActiveRaw === '' ? undefined : /^(true|1)$/i.test(isActiveRaw);
+
+        if (existing) {
+          await this.update(
+            existing.Id,
+            {
+              firstName,
+              lastName,
+              role,
+              studentId: row.studentId || row.StudentId || undefined,
+              agencyName: row.agencyName || row.AgencyName || undefined,
+              isActive,
+            },
+            importedBy,
+          );
+          updated++;
+        } else {
+          const tempPassword = crypto.randomBytes(9).toString('base64');
+          await this.create(
+            {
+              email,
+              password: tempPassword,
+              firstName,
+              lastName,
+              role,
+              studentId: row.studentId || row.StudentId || undefined,
+              agencyName: row.agencyName || row.AgencyName || undefined,
+            },
+            importedBy,
+          );
+          created++;
+        }
+      } catch (err: any) {
+        errors.push(`Row for ${email}: ${err.message ?? 'unknown error'}`);
+      }
+    }
+    return { created, updated, errors };
   }
 
   async deactivate(id: string, by: string) {

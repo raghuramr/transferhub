@@ -1,4 +1,9 @@
-import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, Res, UseGuards, UseInterceptors,
+  UploadedFile, BadRequestException, ParseIntPipe,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { CoursesService } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -56,6 +61,25 @@ export class CoursesController {
     );
   }
 
+  @Get('export')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
+  async exportCsv(@Res() res: Response) {
+    const csv = await this.coursesService.exportCsv();
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="courses.csv"');
+    res.send(csv);
+  }
+
+  @Post('import')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
+  @UseInterceptors(FileInterceptor('file'))
+  async importCsv(@UploadedFile() file: any) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    return this.coursesService.importCsv(file.buffer.toString('utf-8'));
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.coursesService.findById(id);
@@ -66,5 +90,19 @@ export class CoursesController {
   @Roles('admin', 'super_admin')
   create(@Body() dto: CreateCourseDto) {
     return this.coursesService.create(dto);
+  }
+
+  @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: Partial<CreateCourseDto>) {
+    return this.coursesService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
+  deactivate(@Param('id', ParseIntPipe) id: number) {
+    return this.coursesService.deactivate(id);
   }
 }

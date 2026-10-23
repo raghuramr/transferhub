@@ -76,6 +76,12 @@ export const usersApi = {
   unlock: (id: string) => api.post(`/users/${id}/unlock`),
   getScope: (id: string) => api.get(`/users/${id}/scope`),
   setScope: (id: string, data: unknown) => api.put(`/users/${id}/scope`, data),
+  export: () => api.get('/users/export', { responseType: 'blob' }),
+  import: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/users/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // ── Universities endpoints (SQL `Institutions` table) ──────────
@@ -133,6 +139,14 @@ export const coursesApi = {
     api.get('/courses/equivalency', { params: { code, institution } }),
   search: (q: string, institution?: string) =>
     api.get('/courses/search', { params: { q, institution } }),
+  update: (id: number, data: unknown) => api.patch(`/courses/${id}`, data),
+  deactivate: (id: number) => api.delete(`/courses/${id}`),
+  export: () => api.get('/courses/export', { responseType: 'blob' }),
+  import: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/courses/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // ── Course Topics endpoints (reference-link detail per course) ────

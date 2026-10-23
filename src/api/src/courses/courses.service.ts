@@ -2,6 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import * as sql from 'mssql';
 import { CreateCourseDto } from './dto/create-course.dto';
+import { parseCsvRows, toCsv } from '../common/csv.util';
+
+const EXPORT_COLUMNS = ['id', 'institutionCode', 'code', 'title', 'programArea', 'requirementType', 'credits', 'level', 'verified', 'notes'];
 
 function mapCourse(row: any) {
   return {
@@ -204,5 +207,108 @@ export class CoursesService {
       ],
     );
     return this.findById(res.recordset[0].Id);
+  }
+
+  async findByInstitutionAndCode(institutionId: number, code: string) {
+    const res = await this.db.query<any>(
+      `SELECT Id FROM Courses WHERE InstitutionId = @instId AND Code = @code`,
+      [
+        { name: 'instId', type: sql.Int, value: institutionId },
+        { name: 'code', type: sql.NVarChar(30), value: code },
+      ],
+    );
+    return res.recordset[0]?.Id as number | undefined;
+  }
+
+  async update(id: number, dto: Partial<CreateCourseDto>) {
+    const sets: string[] = ['UpdatedAt = SYSUTCDATETIME()'];
+    const inputs: any[] = [{ name: 'id', type: sql.Int, value: id }];
+
+    if (dto.title !== undefined) {
+      sets.push('Title = @title');
+      inputs.push({ name: 'title', type: sql.NVarChar(300), value: dto.title });
+    }
+    if (dto.description !== undefined) {
+      sets.push('Description = @desc');
+      inputs.push({ name: 'desc', type: sql.NVarChar(sql.MAX), value: dto.description });
+    }
+    if (dto.credits !== undefined) {
+      sets.push('Credits = @credits');
+      inputs.push({ name: 'credits', type: sql.Decimal(5, 2), value: dto.credits });
+    }
+    if (dto.programArea !== undefined) {
+      sets.push('ProgramArea = @area');
+      inputs.push({ name: 'area', type: sql.NVarChar(100), value: dto.programArea });
+    }
+    if (dto.requirementType !== undefined) {
+      sets.push('RequirementType = @reqType');
+      inputs.push({ name: 'reqType', type: sql.NVarChar(100), value: dto.requirementType });
+    }
+    if (dto.isActive !== undefined) {
+      sets.push('IsActive = @active');
+      inputs.push({ name: 'active', type: sql.Bit, value: dto.isActive ? 1 : 0 });
+    }
+
+    await this.db.query(`UPDATE Courses SET ${sets.join(', ')} WHERE Id = @id`, inputs);
+    return this.findById(id);
+  }
+
+  async deactivate(id: number) {
+    await this.findById(id);
+    await this.db.query(`UPDATE Courses SET IsActive = 0 WHERE Id = @id`, [
+      { name: 'id', type: sql.Int, value: id },
+    ]);
+    return { message: 'Course deactivated' };
+  }
+
+  async exportCsv(): Promise<string> {
+    const [bu, external] = await Promise.all([this.findBuCourses(), this.findExternalCourses()]);
+    return toCsv([...bu, ...external], EXPORT_COLUMNS);
+  }
+
+  /** Upserts by (institutionCode, code). Institution must already exist (create it first under Universities). */
+  async importCsv(text: string) {
+    const rows = parseCsvRows(text);
+    let created = 0;
+    let updated = 0;
+    const errors: string[] = [];
+
+    for (const row of rows) {
+      const institutionCode = row.institutionCode || row.InstitutionCode;
+      const code = row.code || row.Code;
+      const title = row.title || row.Title;
+      const creditsRaw = row.credits || row.Credits;
+      if (!institutionCode || !code || !title || !creditsRaw) {
+        errors.push(`Skipped row (missing institutionCode/code/title/credits): ${JSON.stringify(row)}`);
+        continue;
+      }
+      const instRes = await this.db.query<any>(`SELECT Id FROM Institutions WHERE Code = @code`, [
+        { name: 'code', type: sql.VarChar(20), value: institutionCode },
+      ]);
+      const institutionId = instRes.recordset[0]?.Id;
+      if (!institutionId) {
+        errors.push(`Skipped row (unknown institutionCode "${institutionCode}"): ${JSON.stringify(row)}`);
+        continue;
+      }
+
+      const dto: CreateCourseDto = {
+        institutionId,
+        code,
+        title,
+        credits: parseFloat(creditsRaw),
+        programArea: row.programArea || row.ProgramArea || undefined,
+        requirementType: row.requirementType || row.RequirementType || undefined,
+      };
+
+      const existingId = await this.findByInstitutionAndCode(institutionId, code);
+      if (existingId) {
+        await this.update(existingId, dto);
+        updated++;
+      } else {
+        await this.create(dto);
+        created++;
+      }
+    }
+    return { created, updated, errors };
   }
 }
