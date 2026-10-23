@@ -35,7 +35,7 @@ export default function HomePage() {
             <GraduationCap className="text-white" size={20} />
           </div>
           <div>
-            <p className="font-bold text-gray-900 text-sm leading-tight">BU Transfer</p>
+            <p className="font-bold text-gray-900 text-sm leading-tight">TransferHub</p>
             <p className="text-xs text-gray-500">Credit Evaluation</p>
           </div>
         </div>
@@ -86,8 +86,8 @@ function DefaultHero() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="mt-4 text-brand-200 text-base md:text-lg"
           >
-            Boston University's AI-assisted platform for evaluating transfer credit — for students, faculty,
-            agencies, and administrators.
+            TransferHub's AI-assisted platform for evaluating transfer credit across universities — for students,
+            faculty, agencies, and administrators.
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 12 }}

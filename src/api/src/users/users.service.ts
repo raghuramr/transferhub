@@ -136,7 +136,7 @@ export class UsersService {
         dto.email,
         'Your account was created',
         `<p>Hi ${dto.firstName},</p>
-         <p>An account was created for you on the BU Transfer Credit Evaluation portal.</p>
+         <p>An account was created for you on the TransferHub Credit Evaluation portal.</p>
          <p><strong>Email:</strong> ${dto.email}<br/>
          <strong>Temporary password:</strong> ${dto.password}</p>
          <p>Please sign in and change your password as soon as possible.</p>`,

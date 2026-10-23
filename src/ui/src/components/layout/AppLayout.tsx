@@ -121,7 +121,7 @@ export default function AppLayout() {
             <GraduationCap className="text-white" size={20} />
           </div>
           <div>
-            <p className="font-bold text-gray-900 text-sm leading-tight">BU Transfer</p>
+            <p className="font-bold text-gray-900 text-sm leading-tight">TransferHub</p>
             <p className="text-xs text-gray-500">Credit Evaluation</p>
           </div>
         </div>
