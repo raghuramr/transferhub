@@ -81,7 +81,7 @@ const demoPasswords: Record<string, string> = {
   'student@test.edu':    'Student@123!',
   'faculty.cs@bu.edu':   'Faculty@123!',
   'admin@bu.edu':        'Admin@123!',
-  'agency@partner.org':  'Agency@123!',
+  'agency@partner.edu':  'Agency@123!',
   'super_admin@bu.edu':  'SuperAdmin@123!',
 };
 
