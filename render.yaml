@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: um-api
+    runtime: node
+    plan: free
+    rootDir: src/api
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Azure SQL Database — set the real values in the Render dashboard,
+      # never commit them. See DEPLOYMENT.md.
+      - key: DB_SERVER
+        sync: false
+      - key: DB_PORT
+        value: "1433"
+      - key: DB_NAME
+        value: CreditEvalManager
+      - key: DB_TRUSTED_CONNECTION
+        value: "false"
+      - key: DB_ENCRYPT
+        value: "true"
+      - key: DB_DRIVER
+        value: tedious
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_ACCESS_EXPIRES
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES
+        value: 7d
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-4-5
+      - key: CORS_ORIGIN
+        sync: false
+      - key: MAX_LOGIN_ATTEMPTS
+        value: "5"
+      - key: LOCK_DURATION_MINUTES
+        value: "15"
