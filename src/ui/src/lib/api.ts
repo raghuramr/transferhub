@@ -141,6 +141,8 @@ export const coursesApi = {
     api.get('/courses/search', { params: { q, institution } }),
   update: (id: number, data: unknown) => api.patch(`/courses/${id}`, data),
   deactivate: (id: number) => api.delete(`/courses/${id}`),
+  institutions: () => api.get('/courses/institutions'),
+  programs: (institutionId?: number) => api.get('/courses/programs', { params: { institutionId } }),
   export: () => api.get('/courses/export', { responseType: 'blob' }),
   import: (file: File) => {
     const form = new FormData();

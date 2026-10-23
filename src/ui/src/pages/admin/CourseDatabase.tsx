@@ -11,6 +11,10 @@ const COURSE_EDITOR_ROLES = ['super_admin', 'admin'];
 
 interface CourseRow {
   id: string | number;
+  institutionId?: number;
+  institutionName?: string;
+  programId?: number | null;
+  programName?: string;
   code: string;
   title: string;
   programArea?: string;
@@ -23,6 +27,8 @@ interface CourseRow {
 function CourseEditForm({ course, canEdit }: { course: CourseRow; canEdit: boolean }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
+    institutionId: course.institutionId,
+    programId: course.programId ?? null,
     code: course.code,
     title: course.title,
     programArea: course.programArea ?? '',
@@ -30,6 +36,20 @@ function CourseEditForm({ course, canEdit }: { course: CourseRow; canEdit: boole
     credits: course.credits,
     isActive: course.isActive !== false,
   });
+
+  const { data: institutionsData } = useQuery({
+    queryKey: ['courses', 'institutions'],
+    queryFn: () => coursesApi.institutions(),
+    enabled: canEdit,
+  });
+  const institutions: { id: number; name: string; code: string }[] = (institutionsData?.data as any) ?? [];
+
+  const { data: programsData } = useQuery({
+    queryKey: ['courses', 'programs', form.institutionId],
+    queryFn: () => coursesApi.programs(form.institutionId),
+    enabled: canEdit && form.institutionId !== undefined,
+  });
+  const programs: { id: number; name: string; area: string }[] = (programsData?.data as any) ?? [];
 
   const saveMutation = useMutation({
     mutationFn: () => coursesApi.update(Number(course.id), form),
@@ -41,6 +61,8 @@ function CourseEditForm({ course, canEdit }: { course: CourseRow; canEdit: boole
       <div className="mb-5">
         <h3 className="text-sm font-semibold text-gray-900 mb-2">Course Details</h3>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+          <dt className="text-gray-500">University</dt><dd className="text-gray-900">{course.institutionName || '—'}</dd>
+          <dt className="text-gray-500">Program</dt><dd className="text-gray-900">{course.programName || '—'}</dd>
           <dt className="text-gray-500">Code</dt><dd className="font-mono text-gray-900">{course.code}</dd>
           <dt className="text-gray-500">Title</dt><dd className="text-gray-900">{course.title}</dd>
           <dt className="text-gray-500">Program Area</dt><dd className="text-gray-900">{course.programArea || '—'}</dd>
@@ -54,6 +76,35 @@ function CourseEditForm({ course, canEdit }: { course: CourseRow; canEdit: boole
     <div className="mb-5 pb-5 border-b border-gray-200">
       <h3 className="text-sm font-semibold text-gray-900 mb-3">Course Details</h3>
       <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">University</label>
+          <select
+            value={form.institutionId ?? ''}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, institutionId: e.target.value ? Number(e.target.value) : undefined, programId: null }))
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="">Select university…</option>
+            {institutions.map((i) => (
+              <option key={i.id} value={i.id}>{i.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Program</label>
+          <select
+            value={form.programId ?? ''}
+            onChange={(e) => setForm((f) => ({ ...f, programId: e.target.value ? Number(e.target.value) : null }))}
+            disabled={!form.institutionId}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50"
+          >
+            <option value="">Unassigned</option>
+            {programs.map((p) => (
+              <option key={p.id} value={p.id}>{p.area} — {p.name}</option>
+            ))}
+          </select>
+        </div>
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">Code</label>
           <input

@@ -50,6 +50,11 @@ export class CoursesController {
     return this.coursesService.getDepartments();
   }
 
+  @Get('programs')
+  findPrograms(@Query('institutionId') institutionId?: string) {
+    return this.coursesService.findPrograms(institutionId ? parseInt(institutionId, 10) : undefined);
+  }
+
   @Get('equivalencies')
   findEquivalencies(
     @Query('buCourseId') buCourseId?: string,

@@ -4,7 +4,7 @@ import * as sql from 'mssql';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { parseCsvRows, toCsv } from '../common/csv.util';
 
-const EXPORT_COLUMNS = ['id', 'institutionCode', 'code', 'title', 'programArea', 'requirementType', 'credits', 'level', 'verified', 'notes'];
+const EXPORT_COLUMNS = ['id', 'institutionCode', 'programName', 'code', 'title', 'programArea', 'requirementType', 'credits', 'level', 'verified', 'notes'];
 
 function mapCourse(row: any) {
   return {
@@ -12,6 +12,8 @@ function mapCourse(row: any) {
     institutionId: row.InstitutionId,
     institutionCode: row.InstitutionCode,
     institutionName: row.InstitutionName,
+    programId: row.ProgramId,
+    programName: row.ProgramName,
     code: row.Code,
     title: row.Title,
     programArea: row.ProgramArea,
@@ -21,8 +23,19 @@ function mapCourse(row: any) {
     level: row.Level,
     verified: row.Verified,
     notes: row.Notes,
+    isActive: row.IsActive === undefined ? undefined : !!row.IsActive,
   };
 }
+
+const COURSE_SELECT = `
+  c.Id, c.InstitutionId, c.ProgramId, c.Code, c.Title, c.ProgramArea, c.RequirementType,
+  c.Credits, c.Description, c.Level, c.Verified, c.Notes, c.IsActive,
+  i.Code AS InstitutionCode, i.Name AS InstitutionName,
+  pr.Name AS ProgramName
+  FROM Courses c
+  JOIN Institutions i ON i.Id = c.InstitutionId
+  LEFT JOIN Programs pr ON pr.Id = c.ProgramId
+`;
 
 @Injectable()
 export class CoursesService {
@@ -54,11 +67,7 @@ export class CoursesService {
     }
 
     const res = await this.db.query<any>(
-      `SELECT c.Id, c.InstitutionId, c.Code, c.Title, c.ProgramArea, c.RequirementType,
-              c.Credits, c.Description, c.Level, c.Verified, c.Notes,
-              i.Code AS InstitutionCode, i.Name AS InstitutionName
-       FROM Courses c
-       JOIN Institutions i ON i.Id = c.InstitutionId
+      `SELECT ${COURSE_SELECT}
        WHERE ${where} AND c.IsActive = 1
        ORDER BY c.Code`,
       inputs,
@@ -103,11 +112,7 @@ export class CoursesService {
     }
 
     const res = await this.db.query<any>(
-      `SELECT c.Id, c.InstitutionId, c.Code, c.Title, c.ProgramArea, c.RequirementType,
-              c.Credits, c.Description, c.Level, c.Verified, c.Notes,
-              i.Code AS InstitutionCode, i.Name AS InstitutionName
-       FROM Courses c
-       JOIN Institutions i ON i.Id = c.InstitutionId
+      `SELECT ${COURSE_SELECT}
        WHERE ${where} AND c.IsActive = 1
        ORDER BY i.Code, c.Code`,
       inputs,
@@ -117,16 +122,34 @@ export class CoursesService {
 
   async findById(id: number) {
     const res = await this.db.query<any>(
-      `SELECT c.Id, c.InstitutionId, c.Code, c.Title, c.ProgramArea, c.RequirementType,
-              c.Credits, c.Description, c.Level, c.Verified, c.Notes,
-              i.Code AS InstitutionCode, i.Name AS InstitutionName
-       FROM Courses c
-       JOIN Institutions i ON i.Id = c.InstitutionId
+      `SELECT ${COURSE_SELECT}
        WHERE c.Id = @id`,
       [{ name: 'id', type: sql.Int, value: id }],
     );
     if (!res.recordset[0]) throw new NotFoundException('Course not found');
     return mapCourse(res.recordset[0]);
+  }
+
+  async findPrograms(institutionId?: number) {
+    let where = '1=1';
+    const inputs: any[] = [];
+    if (institutionId !== undefined) {
+      where += ' AND InstitutionId = @instId';
+      inputs.push({ name: 'instId', type: sql.Int, value: institutionId });
+    }
+    const res = await this.db.query<any>(
+      `SELECT Id, InstitutionId, Area, Name, Degree, School
+       FROM Programs WHERE ${where} ORDER BY Area, Name`,
+      inputs,
+    );
+    return res.recordset.map((r: any) => ({
+      id: r.Id,
+      institutionId: r.InstitutionId,
+      area: r.Area,
+      name: r.Name,
+      degree: r.Degree,
+      school: r.School,
+    }));
   }
 
   async findInstitutions() {
@@ -192,11 +215,12 @@ export class CoursesService {
 
   async create(dto: CreateCourseDto) {
     const res = await this.db.query<any>(
-      `INSERT INTO Courses (InstitutionId, Code, Title, Description, Credits, ProgramArea, RequirementType, IsActive)
+      `INSERT INTO Courses (InstitutionId, ProgramId, Code, Title, Description, Credits, ProgramArea, RequirementType, IsActive)
        OUTPUT inserted.Id
-       VALUES (@instId, @code, @title, @desc, @credits, @area, @reqType, @active)`,
+       VALUES (@instId, @programId, @code, @title, @desc, @credits, @area, @reqType, @active)`,
       [
         { name: 'instId', type: sql.Int, value: dto.institutionId },
+        { name: 'programId', type: sql.Int, value: dto.programId ?? null },
         { name: 'code', type: sql.NVarChar(30), value: dto.code },
         { name: 'title', type: sql.NVarChar(300), value: dto.title },
         { name: 'desc', type: sql.NVarChar(sql.MAX), value: dto.description || null },
@@ -224,6 +248,18 @@ export class CoursesService {
     const sets: string[] = ['UpdatedAt = SYSUTCDATETIME()'];
     const inputs: any[] = [{ name: 'id', type: sql.Int, value: id }];
 
+    if (dto.institutionId !== undefined) {
+      sets.push('InstitutionId = @instId');
+      inputs.push({ name: 'instId', type: sql.Int, value: dto.institutionId });
+    }
+    if (dto.programId !== undefined) {
+      sets.push('ProgramId = @programId');
+      inputs.push({ name: 'programId', type: sql.Int, value: dto.programId });
+    }
+    if (dto.code !== undefined) {
+      sets.push('Code = @code');
+      inputs.push({ name: 'code', type: sql.NVarChar(30), value: dto.code });
+    }
     if (dto.title !== undefined) {
       sets.push('Title = @title');
       inputs.push({ name: 'title', type: sql.NVarChar(300), value: dto.title });
