@@ -84,8 +84,13 @@ export class UsersController {
   }
 
   @Get(':id/scope')
-  @Roles('admin', 'super_admin')
-  getScope(@Param('id') id: string) {
+  getScope(@Param('id') id: string, @Req() req: any) {
+    // Self, or admin/super_admin viewing anyone — scope is read by every
+    // role's own forms now (cascading master-data pre-population), not
+    // just the admin scope-editor screen, so it can't stay admin-only.
+    if (req.user.id !== id && !['admin', 'super_admin'].includes(req.user.role)) {
+      throw new ForbiddenException();
+    }
     return this.usersService.getScopeFor(id);
   }
 
