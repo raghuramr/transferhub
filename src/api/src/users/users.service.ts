@@ -5,6 +5,26 @@ import * as sql from 'mssql';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
+function mapUser(row: any) {
+  return {
+    id: row.Id,
+    email: row.Email,
+    firstName: row.FirstName,
+    lastName: row.LastName,
+    studentId: row.StudentId,
+    agencyName: row.AgencyName,
+    isActive: !!row.IsActive,
+    isLocked: !!row.IsLocked,
+    lastLoginAt: row.LastLoginAt,
+    mustChangePass: row.MustChangePass === undefined ? undefined : !!row.MustChangePass,
+    departmentId: row.DepartmentId,
+    role: row.Role,
+    roleDisplay: row.RoleDisplay,
+    departmentName: row.DepartmentName,
+    departmentCode: row.DepartmentCode,
+  };
+}
+
 @Injectable()
 export class UsersService {
   constructor(private db: DatabaseService) {}
@@ -22,7 +42,7 @@ export class UsersService {
       [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
     );
     if (!res.recordset[0]) throw new NotFoundException('User not found');
-    return res.recordset[0];
+    return mapUser(res.recordset[0]);
   }
 
   async findByEmail(email: string) {
@@ -34,6 +54,8 @@ export class UsersService {
        WHERE u.Email = @email`,
       [{ name: 'email', type: sql.NVarChar(254), value: email }],
     );
+    // Raw row (PascalCase) — used internally by AuthService, which already
+    // expects these exact column names. Do NOT camelCase this one.
     return res.recordset[0] || null;
   }
 
@@ -61,7 +83,7 @@ export class UsersService {
        ORDER BY u.LastLoginAt DESC`,
       inputs,
     );
-    return res.recordset;
+    return res.recordset.map(mapUser);
   }
 
   async create(dto: CreateUserDto, createdBy: string) {

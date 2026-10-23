@@ -12,7 +12,7 @@ export default function SuperAdminDashboard() {
   const allTranscripts: any[] = (transcripts?.data as any) ?? [];
 
   const byRole = allUsers.reduce((acc: any, u: any) => {
-    const role = u.Role || 'unknown';
+    const role = u.role || 'unknown';
     acc[role] = (acc[role] || 0) + 1;
     return acc;
   }, {});
@@ -49,7 +49,7 @@ export default function SuperAdminDashboard() {
             <p className="text-sm font-medium text-gray-500">Locked Accounts</p>
             <Activity className="text-red-500" size={20} />
           </div>
-          <p className="text-3xl font-bold text-gray-900">{allUsers.filter((u: any) => u.IsLocked).length}</p>
+          <p className="text-3xl font-bold text-gray-900">{allUsers.filter((u: any) => u.isLocked).length}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-3">
