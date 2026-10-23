@@ -9,6 +9,13 @@
 USE CreditEvalManager;
 GO
 
+-- Safe to re-run: drop in dependency order if an earlier attempt partially
+-- applied (e.g. this migration previously failed partway through before
+-- the Schema -> SchemaJson rename below).
+IF OBJECT_ID('dbo.FormSubmissions', 'U') IS NOT NULL DROP TABLE dbo.FormSubmissions;
+IF OBJECT_ID('dbo.Forms', 'U') IS NOT NULL DROP TABLE dbo.Forms;
+GO
+
 CREATE TABLE Forms (
     Id              INT              NOT NULL IDENTITY(1,1),
     Slug            VARCHAR(150)     NOT NULL,
