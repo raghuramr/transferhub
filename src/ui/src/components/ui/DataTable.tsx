@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Search, ArrowUp, ArrowDown, Download } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Search, ArrowUp, ArrowDown, Download, ChevronDown, ChevronRight } from 'lucide-react';
 
 export interface DataTableColumn<T> {
   key: string;
@@ -25,6 +25,15 @@ interface DataTableProps<T extends { id: string | number }> {
   onExport?: (rows: T[]) => void;
   isLoading?: boolean;
   emptyMessage?: string;
+  /**
+   * Renders inline, directly under a row, when that row is expanded via the
+   * chevron toggle — used in place of popup/modal edit forms (e.g. an
+   * edit form, a topics editor). When provided, a chevron column is added
+   * and clicking a row (or its chevron) toggles that row's expansion.
+   */
+  renderExpanded?: (row: T) => React.ReactNode;
+  /** Expand a specific row by id as soon as the table renders it (e.g. right after creating it). */
+  autoExpandId?: string | number | null;
 }
 
 function getFilterValue(row: any, key: string) {
@@ -46,12 +55,30 @@ export function DataTable<T extends { id: string | number }>({
   onExport,
   isLoading,
   emptyMessage = 'No records found.',
+  renderExpanded,
+  autoExpandId,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [selected, setSelected] = useState<Set<string | number>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string | number>>(
+    () => new Set(autoExpandId != null ? [autoExpandId] : []),
+  );
+
+  const toggleExpanded = (id: string | number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (autoExpandId != null) setExpanded((prev) => new Set(prev).add(autoExpandId));
+  }, [autoExpandId]);
 
   const filtered = useMemo(() => {
     let result = rows;
@@ -176,6 +203,7 @@ export function DataTable<T extends { id: string | number }>({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
             <tr>
+              {renderExpanded && <th className="px-2 py-3 w-8" />}
               {bulkActions.length > 0 && (
                 <th className="px-4 py-3 w-10">
                   <input
@@ -201,18 +229,35 @@ export function DataTable<T extends { id: string | number }>({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filtered.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-50">
-                {bulkActions.length > 0 && (
-                  <td className="px-4 py-3">
-                    <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleRow(row.id)} />
-                  </td>
+              <Fragment key={row.id}>
+                <tr
+                  className={`hover:bg-gray-50 ${renderExpanded ? 'cursor-pointer' : ''}`}
+                  onClick={renderExpanded ? () => toggleExpanded(row.id) : undefined}
+                >
+                  {renderExpanded && (
+                    <td className="px-2 py-3 text-gray-400">
+                      {expanded.has(row.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </td>
+                  )}
+                  {bulkActions.length > 0 && (
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleRow(row.id)} />
+                    </td>
+                  )}
+                  {columns.map((c) => (
+                    <td key={c.key} className={`px-6 py-3 ${c.align === 'right' ? 'text-right' : ''}`}>
+                      {c.render ? c.render(row) : String((row as any)[c.key] ?? '—')}
+                    </td>
+                  ))}
+                </tr>
+                {renderExpanded && expanded.has(row.id) && (
+                  <tr className="bg-gray-50/70">
+                    <td colSpan={columns.length + (bulkActions.length > 0 ? 1 : 0) + 1} className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      {renderExpanded(row)}
+                    </td>
+                  </tr>
                 )}
-                {columns.map((c) => (
-                  <td key={c.key} className={`px-6 py-3 ${c.align === 'right' ? 'text-right' : ''}`}>
-                    {c.render ? c.render(row) : String((row as any)[c.key] ?? '—')}
-                  </td>
-                ))}
-              </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>
