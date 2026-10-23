@@ -10,6 +10,9 @@ import { EvaluationsModule } from './evaluations/evaluations.module';
 import { AiModule } from './ai/ai.module';
 import { PagesModule } from './pages/pages.module';
 import { FormsModule } from './forms/forms.module';
+import { UniversitiesModule } from './universities/universities.module';
+import { InstitutionsModule } from './institutions/institutions.module';
+import { AgenciesModule } from './agencies/agencies.module';
 import { AuditController } from './common/audit.controller';
 import { HealthController } from './common/health.controller';
 
@@ -32,6 +35,9 @@ const envFilePath =
     AiModule,
     PagesModule,
     FormsModule,
+    UniversitiesModule,
+    InstitutionsModule,
+    AgenciesModule,
   ],
   controllers: [AuditController, HealthController],
 })
