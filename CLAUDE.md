@@ -79,6 +79,45 @@ UI: a "Topics" action per row in `CourseDatabase.tsx` opens
 `CourseTopicsEditor.tsx`. Purpose: give the future AI matcher
 syllabus-level detail to compare, not just the course title/description.
 
+## Uploads subsystem (confirmed, built)
+Migration 013 adds an `Uploads` table + `src/api/src/uploads/` module.
+Two separate storage/serving paths, by design — never mixed:
+- **Private (student/agency documents, e.g. Custom Forms file-upload
+  fields)**: written to `storage/uploads/{role}/{userId}/{entityType}/
+  {entityId}/{originalFilename}`, *outside* any web-servable public root.
+  Served only via authenticated `GET /uploads/:id` — 403s unless the
+  requester is the uploading user or has an `admin`/`super_admin`/
+  `faculty` role. The `Uploads` row (owner, role, entity, mime, size) is
+  the source of truth for that access check, not the filesystem path
+  alone.
+- **Public (University/Institution Logo + Hero Image)**: these are meant
+  to be visible on a public page, so they're written to
+  `storage/public-uploads/{uuid}-{filename}` and served unauthenticated
+  via `GET /uploads/public/:id`. `Institutions.LogoUrl`/`HeroImageUrl` and
+  `AcademicUnits.LogoUrl`/`HeroImageUrl` (migration 013) each store a
+  single string that's either one of these `/uploads/public/:id` URLs or
+  an external `https://...` URL — the admin UI
+  (`components/shared/ImageSourceField.tsx`) lets the admin pick either.
+- Custom Forms gained a `'file'` field type (`FieldEditor.tsx`,
+  `FormRenderer.tsx`); the frontend uploads the file first (private,
+  `entityType: 'form_submission'`) and stores `{id, url, name}` in the
+  submission's JSON payload. No `forms.service.ts` change was needed
+  beyond the field-type allowlist — the submission `Data` column was
+  already a flexible JSON blob.
+- **University public page generation**: `POST /universities/:id/
+  generate-page` aggregates `CourseTopics` across all of a university's
+  `Courses`, grouped by `Program` (migration 011's Program>Course link),
+  and creates/refreshes a Custom Pages CMS page (slug `university-{code}`)
+  via the existing `PagesService` — a heading block plus one "cards"
+  block per Program listing its Topics. Reuses the CMS rather than a
+  bespoke renderer.
+- **Known limitation, deferred on purpose** (same pattern as the other
+  Azure-infra items below): storage is local disk under `src/api/
+  storage/` (gitignored). For the real Azure deployment this should move
+  to Azure Blob Storage (private container for documents, public container
+  or CDN for logos/hero images) — not built now, noted here so it isn't
+  re-discovered as a surprise later.
+
 ## Roles & Permissions master data (confirmed, built)
 Added a master-data / configuration layer so the SuperAdmin can see and
 adjust which Role may perform which Operation on which Module from a

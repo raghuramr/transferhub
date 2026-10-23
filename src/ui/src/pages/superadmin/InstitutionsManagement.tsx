@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { institutionsApi, universitiesApi } from '../../lib/api';
 import { School, Plus, Upload, Power } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
+import { ImageSourceField } from '../../components/shared/ImageSourceField';
 
 interface Institution {
   id: number;
@@ -12,6 +13,8 @@ interface Institution {
   name: string;
   code: string | null;
   isActive: boolean;
+  logoUrl?: string | null;
+  heroImageUrl?: string | null;
 }
 
 interface University {
@@ -24,9 +27,11 @@ type InstitutionForm = {
   universityId: string;
   name: string;
   code: string;
+  logoUrl: string;
+  heroImageUrl: string;
 };
 
-const emptyForm: InstitutionForm = { universityId: '', name: '', code: '' };
+const emptyForm: InstitutionForm = { universityId: '', name: '', code: '', logoUrl: '', heroImageUrl: '' };
 
 function downloadBlob(data: BlobPart, filename: string) {
   const blob = new Blob([data], { type: 'text/csv' });
@@ -81,6 +86,18 @@ function InstitutionFields({
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
       </div>
+      <ImageSourceField
+        label="Logo"
+        value={form.logoUrl}
+        onChange={(url) => onChange({ ...form, logoUrl: url })}
+        entityType="institution_logo"
+      />
+      <ImageSourceField
+        label="Hero image"
+        value={form.heroImageUrl}
+        onChange={(url) => onChange({ ...form, heroImageUrl: url })}
+        entityType="institution_hero"
+      />
     </div>
   );
 }
@@ -90,6 +107,8 @@ function institutionToForm(institution: Institution): InstitutionForm {
     universityId: String(institution.universityId),
     name: institution.name,
     code: institution.code ?? '',
+    logoUrl: institution.logoUrl ?? '',
+    heroImageUrl: institution.heroImageUrl ?? '',
   };
 }
 
