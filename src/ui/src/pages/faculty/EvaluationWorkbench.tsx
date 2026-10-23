@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { evaluationsApi, aiApi } from '../../lib/api';
 import { Sparkles, CheckCircle, XCircle, BookOpen, ChevronDown } from 'lucide-react';
+import { TransferWorkflowStepper, EVALUATION_STEPS } from '../../components/ui/TransferWorkflowStepper';
 
 type DecidePayload = {
   outcome: string;
@@ -65,9 +66,13 @@ export default function EvaluationWorkbench() {
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Evaluation Workbench</h1>
-      <p className="text-gray-500 mb-8">
+      <p className="text-gray-500 mb-6">
         {tc?.courseCode} — {tc?.courseTitle} from {tc?.transcript?.institution?.name}
       </p>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <TransferWorkflowStepper currentStatus={ev.status} steps={EVALUATION_STEPS} />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: course details */}

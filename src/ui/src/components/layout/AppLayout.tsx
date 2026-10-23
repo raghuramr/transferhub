@@ -16,8 +16,8 @@ const navItems: Record<Role, { to: string; label: string; icon: React.ReactNode 
     { to: '/student/upload', label: 'Upload Transcript', icon: <Upload size={18} /> },
   ],
   agency: [
-    { to: '/student', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-    { to: '/student/upload', label: 'Submit Transcript', icon: <Upload size={18} /> },
+    { to: '/agency', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { to: '/agency/upload', label: 'Submit Transcript', icon: <Upload size={18} /> },
   ],
   faculty: [
     { to: '/faculty', label: 'Review Queue', icon: <ClipboardList size={18} /> },

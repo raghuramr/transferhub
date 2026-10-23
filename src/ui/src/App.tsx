@@ -19,6 +19,9 @@ import UploadTranscript from './pages/student/UploadTranscript';
 import FacultyQueue from './pages/faculty/FacultyQueue';
 import EvaluationWorkbench from './pages/faculty/EvaluationWorkbench';
 
+// Agency pages
+import AgencyDashboard from './pages/agency/AgencyDashboard';
+
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import TranscriptList from './pages/admin/TranscriptList';
@@ -34,6 +37,9 @@ import FormSubmissions from './pages/admin/FormSubmissions';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import AuditLog from './pages/superadmin/AuditLog';
 import SystemSettings from './pages/superadmin/SystemSettings';
+import UniversitiesManagement from './pages/superadmin/UniversitiesManagement';
+import InstitutionsManagement from './pages/superadmin/InstitutionsManagement';
+import AgenciesManagement from './pages/superadmin/AgenciesManagement';
 
 // Custom Pages (CMS) — public-facing view, any authenticated role
 import CmsPageView from './pages/cms/CmsPageView';
@@ -60,7 +66,7 @@ function RoleRedirect() {
     student: '/student',
     faculty: '/faculty',
     admin: '/admin',
-    agency: '/student', // agency sees the same submit flow as student
+    agency: '/agency',
     super_admin: '/superadmin',
   };
   return <Navigate to={map[user.role] ?? '/login'} replace />;
@@ -87,9 +93,16 @@ export default function App() {
         {/* Root → public landing page, or role-based redirect if already signed in */}
         <Route path="/" element={<RootRoute />} />
 
-        {/* Student & Agency */}
-        <Route path="/student" element={<RequireAuth roles={['student','agency']}><AppLayout /></RequireAuth>}>
+        {/* Student */}
+        <Route path="/student" element={<RequireAuth roles={['student']}><AppLayout /></RequireAuth>}>
           <Route index element={<StudentDashboard />} />
+          <Route path="upload" element={<UploadTranscript />} />
+          <Route path="transcript/:id" element={<TranscriptStatus />} />
+        </Route>
+
+        {/* Agency — submits on behalf of students, has its own dashboard */}
+        <Route path="/agency" element={<RequireAuth roles={['agency']}><AppLayout /></RequireAuth>}>
+          <Route index element={<AgencyDashboard />} />
           <Route path="upload" element={<UploadTranscript />} />
           <Route path="transcript/:id" element={<TranscriptStatus />} />
         </Route>
@@ -104,6 +117,7 @@ export default function App() {
         <Route path="/admin" element={<RequireAuth roles={['admin','super_admin']}><AppLayout /></RequireAuth>}>
           <Route index element={<AdminDashboard />} />
           <Route path="transcripts" element={<TranscriptList />} />
+          <Route path="evaluation/:id" element={<EvaluationWorkbench />} />
           <Route path="courses" element={<CourseDatabase />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="pages" element={<PagesList />} />
@@ -121,6 +135,9 @@ export default function App() {
           <Route path="audit" element={<AuditLog />} />
           <Route path="settings" element={<SystemSettings />} />
           <Route path="users" element={<UserManagement />} />
+          <Route path="universities" element={<UniversitiesManagement />} />
+          <Route path="institutions" element={<InstitutionsManagement />} />
+          <Route path="agencies" element={<AgenciesManagement />} />
         </Route>
 
         {/* Shared CMS page view (any authenticated role) */}

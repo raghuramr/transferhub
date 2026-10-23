@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { transcriptsApi } from '../../lib/api';
 import { Upload, Info } from 'lucide-react';
+import { useAuthStore } from '../../store/auth';
 
 const schema = z.object({
   institutionName: z.string().min(2, 'Enter the institution name'),
@@ -28,6 +29,10 @@ const EMPTY_COURSE: CourseRow = { code: '', title: '', credits: '', grade: '', t
 
 export default function UploadTranscript() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  // Shared by both the student and agency "submit transcript" routes, so
+  // navigation needs to stay under whichever base path brought us here.
+  const basePath = user?.role === 'agency' ? '/agency' : '/student';
   const [courses, setCourses] = useState<CourseRow[]>([{ ...EMPTY_COURSE }]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -63,7 +68,7 @@ export default function UploadTranscript() {
           term: c.term,
         })),
       });
-      navigate(`/student/transcript/${(res.data as any).id}`);
+      navigate(`${basePath}/transcript/${(res.data as any).id}`);
     } catch {
       setError('Submission failed. Please try again.');
       setSubmitting(false);
@@ -202,7 +207,7 @@ export default function UploadTranscript() {
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => navigate('/student')}
+            onClick={() => navigate(basePath)}
             className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
           >
             Cancel

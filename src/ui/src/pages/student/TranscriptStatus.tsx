@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { transcriptsApi } from '../../lib/api';
 import { CheckCircle, Clock, AlertCircle, BookOpen, Sparkles } from 'lucide-react';
+import { TransferWorkflowStepper, TRANSCRIPT_STEPS } from '../../components/ui/TransferWorkflowStepper';
 
 const laneConfig: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   applied:       { label: 'Auto-Applied',    color: 'text-green-700',  bg: 'bg-green-50',  icon: <CheckCircle size={16} /> },
@@ -42,6 +43,11 @@ export default function TranscriptStatus() {
           Submitted {new Date(transcript.receivedAt).toLocaleDateString()} ·{' '}
           <span className="capitalize font-medium">{transcript.status}</span>
         </p>
+      </div>
+
+      {/* Workflow progress */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+        <TransferWorkflowStepper currentStatus={transcript.status} steps={TRANSCRIPT_STEPS} />
       </div>
 
       {/* Stats */}
