@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { universitiesApi } from '../../lib/api';
-import { Building2, Plus, X, Upload, Power } from 'lucide-react';
+import { Building2, Plus, Upload, Power } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 
 interface University {
@@ -15,7 +15,16 @@ interface University {
   source: string | null;
 }
 
-const emptyForm = { code: '', name: '', calendar: 'semester', type: 'university', isBU: false, source: '' };
+type UniversityForm = {
+  code: string;
+  name: string;
+  calendar: string;
+  type: string;
+  isBU: boolean;
+  source: string;
+};
+
+const emptyForm: UniversityForm = { code: '', name: '', calendar: 'semester', type: 'university', isBU: false, source: '' };
 
 function downloadBlob(data: BlobPart, filename: string) {
   const blob = new Blob([data], { type: 'text/csv' });
@@ -27,12 +36,128 @@ function downloadBlob(data: BlobPart, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function UniversityFields({
+  form,
+  onChange,
+}: {
+  form: UniversityForm;
+  onChange: (next: UniversityForm) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
+        <input
+          value={form.code}
+          onChange={(e) => onChange({ ...form, code: e.target.value })}
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          placeholder="e.g. BU"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+        <input
+          value={form.name}
+          onChange={(e) => onChange({ ...form, name: e.target.value })}
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          placeholder="e.g. Boston University"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Calendar</label>
+          <select
+            value={form.calendar}
+            onChange={(e) => onChange({ ...form, calendar: e.target.value })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="semester">Semester</option>
+            <option value="quarter">Quarter</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+          <select
+            value={form.type}
+            onChange={(e) => onChange({ ...form, type: e.target.value })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="university">University</option>
+            <option value="community_college">Community College</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Catalog Source URL</label>
+        <input
+          value={form.source}
+          onChange={(e) => onChange({ ...form, source: e.target.value })}
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          placeholder="https://…"
+        />
+      </div>
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={form.isBU}
+          onChange={(e) => onChange({ ...form, isBU: e.target.checked })}
+        />
+        This is the receiving institution (BU)
+      </label>
+    </div>
+  );
+}
+
+function universityToForm(university: University): UniversityForm {
+  return {
+    code: university.code,
+    name: university.name,
+    calendar: university.calendar,
+    type: university.type,
+    isBU: university.isBU,
+    source: university.source ?? '',
+  };
+}
+
+function UniversityEditForm({
+  university,
+  onSave,
+  isSaving,
+}: {
+  university: University;
+  onSave: (form: UniversityForm) => void;
+  isSaving: boolean;
+}) {
+  const [form, setForm] = useState<UniversityForm>(() => universityToForm(university));
+
+  return (
+    <div className="p-5 bg-gray-50 border-t border-gray-200 max-w-md">
+      <UniversityFields form={form} onChange={setForm} />
+      <div className="flex gap-3 mt-5">
+        <button
+          onClick={() => setForm(universityToForm(university))}
+          className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 bg-white"
+        >
+          Reset
+        </button>
+        <button
+          onClick={() => onSave(form)}
+          disabled={isSaving || !form.code || !form.name}
+          className="flex-1 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
+        >
+          {isSaving ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
+      <p className="mt-2 text-xs text-gray-400">Click the row again to collapse.</p>
+    </div>
+  );
+}
+
 export default function UniversitiesManagement() {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState<University | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const [createForm, setCreateForm] = useState<UniversityForm>(emptyForm);
 
   const { data, isLoading } = useQuery({
     queryKey: ['universities'],
@@ -40,12 +165,19 @@ export default function UniversitiesManagement() {
   });
   const universities: University[] = (data?.data as any) ?? [];
 
-  const saveMutation = useMutation({
-    mutationFn: () =>
-      editing ? universitiesApi.update(editing.id, form) : universitiesApi.create(form),
+  const createMutation = useMutation({
+    mutationFn: (form: UniversityForm) => universitiesApi.create(form),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['universities'] });
-      closeModal();
+      setShowCreatePanel(false);
+      setCreateForm(emptyForm);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, form }: { id: number; form: UniversityForm }) => universitiesApi.update(id, form),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['universities'] });
     },
   });
 
@@ -54,28 +186,20 @@ export default function UniversitiesManagement() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['universities'] }),
   });
 
+  const bulkActivateMutation = useMutation({
+    mutationFn: (ids: number[]) => Promise.all(ids.map((id) => universitiesApi.update(id, { isActive: true }))),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['universities'] }),
+  });
+
+  const bulkDeactivateMutation = useMutation({
+    mutationFn: (ids: number[]) => Promise.all(ids.map((id) => universitiesApi.deactivate(id))),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['universities'] }),
+  });
+
   const importMutation = useMutation({
     mutationFn: (file: File) => universitiesApi.import(file),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['universities'] }),
   });
-
-  const openCreate = () => {
-    setEditing(null);
-    setForm(emptyForm);
-    setShowModal(true);
-  };
-
-  const openEdit = (u: University) => {
-    setEditing(u);
-    setForm({ code: u.code, name: u.name, calendar: u.calendar, type: u.type, isBU: u.isBU, source: u.source ?? '' });
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setEditing(null);
-    setForm(emptyForm);
-  };
 
   const handleExport = async () => {
     const res = await universitiesApi.export();
@@ -114,9 +238,7 @@ export default function UniversitiesManagement() {
       header: 'Actions',
       render: (u) => (
         <div className="flex items-center gap-3">
-          <button onClick={() => openEdit(u)} className="text-xs text-blue-600 hover:underline">
-            Edit
-          </button>
+          <span className="text-xs text-gray-400">Click row to edit</span>
           {u.isActive && (
             <button
               onClick={() => deactivateMutation.mutate(u.id)}
@@ -146,7 +268,7 @@ export default function UniversitiesManagement() {
             <Upload size={14} /> Import CSV
           </button>
           <button
-            onClick={openCreate}
+            onClick={() => setShowCreatePanel((s) => !s)}
             className="flex items-center gap-2 px-4 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
           >
             <Plus size={16} /> Add University
@@ -163,88 +285,27 @@ export default function UniversitiesManagement() {
         </div>
       )}
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-semibold text-gray-900">{editing ? 'Edit University' : 'Add University'}</h2>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
-                <input
-                  value={form.code}
-                  onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  placeholder="e.g. BU"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  placeholder="e.g. Boston University"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Calendar</label>
-                  <select
-                    value={form.calendar}
-                    onChange={(e) => setForm((f) => ({ ...f, calendar: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  >
-                    <option value="semester">Semester</option>
-                    <option value="quarter">Quarter</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                  <select
-                    value={form.type}
-                    onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  >
-                    <option value="university">University</option>
-                    <option value="community_college">Community College</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Catalog Source URL</label>
-                <input
-                  value={form.source}
-                  onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  placeholder="https://…"
-                />
-              </div>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={form.isBU}
-                  onChange={(e) => setForm((f) => ({ ...f, isBU: e.target.checked }))}
-                />
-                This is the receiving institution (BU)
-              </label>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={closeModal} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                Cancel
-              </button>
-              <button
-                onClick={() => saveMutation.mutate()}
-                disabled={saveMutation.isPending || !form.code || !form.name}
-                className="flex-1 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
-              >
-                {saveMutation.isPending ? 'Saving…' : editing ? 'Save Changes' : 'Create University'}
-              </button>
-            </div>
+      {showCreatePanel && (
+        <div className="mb-6 bg-white border border-gray-200 rounded-xl p-5 max-w-md">
+          <h2 className="font-semibold text-gray-900 mb-4">Add University</h2>
+          <UniversityFields form={createForm} onChange={setCreateForm} />
+          <div className="flex gap-3 mt-5">
+            <button
+              onClick={() => {
+                setShowCreatePanel(false);
+                setCreateForm(emptyForm);
+              }}
+              className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => createMutation.mutate(createForm)}
+              disabled={createMutation.isPending || !createForm.code || !createForm.name}
+              className="flex-1 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
+            >
+              {createMutation.isPending ? 'Saving…' : 'Create University'}
+            </button>
           </div>
         </div>
       )}
@@ -265,8 +326,26 @@ export default function UniversitiesManagement() {
             ],
           },
         ]}
+        bulkActions={[
+          {
+            label: 'Activate',
+            onClick: (selected) => bulkActivateMutation.mutate(selected.map((u) => u.id)),
+          },
+          {
+            label: 'Deactivate',
+            onClick: (selected) => bulkDeactivateMutation.mutate(selected.map((u) => u.id)),
+            danger: true,
+          },
+        ]}
         onExport={() => handleExport()}
         emptyMessage="No universities found."
+        renderExpanded={(u) => (
+          <UniversityEditForm
+            university={u}
+            isSaving={updateMutation.isPending && updateMutation.variables?.id === u.id}
+            onSave={(form) => updateMutation.mutate({ id: u.id, form })}
+          />
+        )}
       />
     </div>
   );
