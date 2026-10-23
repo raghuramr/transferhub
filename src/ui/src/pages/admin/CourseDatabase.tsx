@@ -1,20 +1,54 @@
 import { useQuery } from '@tanstack/react-query';
-import { BookOpen, Search } from 'lucide-react';
+import { BookOpen, Check } from 'lucide-react';
 import { coursesApi } from '../../lib/api';
-import { useState } from 'react';
+import { useMemo } from 'react';
+import { DataTable, type DataTableColumn, type DataTableFilter } from '../../components/ui/DataTable';
+
+interface CourseRow {
+  id: string | number;
+  code: string;
+  title: string;
+  programArea?: string;
+  credits: number;
+  verified?: boolean;
+}
 
 export default function CourseDatabase() {
-  const [search, setSearch] = useState('');
   const { data, isLoading } = useQuery({
     queryKey: ['courses', 'bu'],
     queryFn: () => coursesApi.listBU(),
   });
 
-  const courses: any[] = (data?.data as any) ?? [];
-  const filtered = search ? courses.filter((c: any) =>
-    c.code?.toLowerCase().includes(search.toLowerCase()) ||
-    c.title?.toLowerCase().includes(search.toLowerCase())
-  ) : courses;
+  const courses: CourseRow[] = ((data?.data as any[]) ?? []).map((c: any) => ({
+    ...c,
+    id: c.id,
+  }));
+
+  const programAreaOptions = useMemo(() => {
+    const values = Array.from(new Set(courses.map((c) => c.programArea).filter(Boolean))) as string[];
+    return values.sort().map((v) => ({ value: v, label: v }));
+  }, [courses]);
+
+  const columns: DataTableColumn<CourseRow>[] = [
+    { key: 'code', header: 'Code', render: (row) => <span className="font-mono text-brand-900 font-medium">{row.code}</span> },
+    { key: 'title', header: 'Title', render: (row) => <span className="text-gray-900">{row.title}</span> },
+    { key: 'programArea', header: 'Program Area', render: (row) => <span className="text-gray-500">{row.programArea || '—'}</span> },
+    { key: 'credits', header: 'Credits', align: 'right', sortValue: (row) => row.credits, render: (row) => <span className="text-gray-700">{row.credits}</span> },
+    {
+      key: 'verified',
+      header: 'Verified',
+      render: (row) =>
+        row.verified ? (
+          <span className="inline-flex items-center gap-1 text-green-700"><Check size={14} /> Yes</span>
+        ) : (
+          <span className="text-gray-400">No</span>
+        ),
+    },
+  ];
+
+  const filters: DataTableFilter[] = [
+    { key: 'programArea', label: 'Program Area', options: programAreaOptions },
+  ];
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -26,43 +60,15 @@ export default function CourseDatabase() {
         </div>
       </div>
 
-      <div className="relative mb-4">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by code or title…"
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-        />
-      </div>
-
-      {isLoading && <div className="text-center text-gray-400 py-16">Loading…</div>}
-
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
-            <tr>
-              <th className="px-6 py-3 text-left">Code</th>
-              <th className="px-6 py-3 text-left">Title</th>
-              <th className="px-6 py-3 text-left">Program Area</th>
-              <th className="px-6 py-3 text-right">Credits</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filtered.map((c: any) => (
-              <tr key={c.id} className="hover:bg-gray-50">
-                <td className="px-6 py-3 font-mono text-brand-900 font-medium">{c.code}</td>
-                <td className="px-6 py-3 text-gray-900">{c.title}</td>
-                <td className="px-6 py-3 text-gray-500">{c.programArea || '—'}</td>
-                <td className="px-6 py-3 text-right text-gray-700">{c.credits}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && !isLoading && (
-          <div className="text-center py-12 text-gray-400">No courses found.</div>
-        )}
-      </div>
+      <DataTable
+        columns={columns}
+        rows={courses}
+        searchPlaceholder="Search by code or title…"
+        searchKeys={['code', 'title']}
+        filters={filters}
+        isLoading={isLoading}
+        emptyMessage="No courses found."
+      />
     </div>
   );
 }
