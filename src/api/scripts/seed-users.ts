@@ -112,6 +112,21 @@ async function main() {
       : `  ✗  ${email}  →  user not found (check seed/004_demo_users.sql)`);
   }
 
+  // Bulk synthetic students (seed/008_bulk_students.sql) all share one password.
+  const bulkStudentPassword = 'Student@123!';
+  const bulkHash = await argon2.hash(bulkStudentPassword, {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 4,
+  });
+  const bulkRes = await pool
+    .request()
+    .input('hash', sql.NVarChar(500), bulkHash)
+    .query(`UPDATE Users SET PasswordHash = @hash WHERE Email LIKE 'student%@transferdemo.edu';
+            SELECT @@ROWCOUNT AS Updated;`);
+  console.log(`  ✓  ${bulkRes.recordset[0]?.Updated ?? 0} synthetic students  →  password = ${bulkStudentPassword}`);
+
   await pool.close();
   console.log('\n✅  Done — demo passwords set with argon2id.\n');
   console.log('Demo credentials:');
