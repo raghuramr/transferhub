@@ -40,6 +40,7 @@ import SystemSettings from './pages/superadmin/SystemSettings';
 import UniversitiesManagement from './pages/superadmin/UniversitiesManagement';
 import InstitutionsManagement from './pages/superadmin/InstitutionsManagement';
 import AgenciesManagement from './pages/superadmin/AgenciesManagement';
+import RolesPermissions from './pages/superadmin/RolesPermissions';
 
 // Custom Pages (CMS) — public-facing view, any authenticated role
 import CmsPageView from './pages/cms/CmsPageView';
@@ -138,6 +139,7 @@ export default function App() {
           <Route path="universities" element={<UniversitiesManagement />} />
           <Route path="institutions" element={<InstitutionsManagement />} />
           <Route path="agencies" element={<AgenciesManagement />} />
+          <Route path="settings/roles-permissions" element={<RolesPermissions />} />
         </Route>
 
         {/* Shared CMS page view (any authenticated role) */}

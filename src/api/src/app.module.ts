@@ -13,6 +13,8 @@ import { FormsModule } from './forms/forms.module';
 import { UniversitiesModule } from './universities/universities.module';
 import { InstitutionsModule } from './institutions/institutions.module';
 import { AgenciesModule } from './agencies/agencies.module';
+import { UploadsModule } from './uploads/uploads.module';
+import { PermissionsModule } from './permissions/permissions.module';
 import { AuditController } from './common/audit.controller';
 import { HealthController } from './common/health.controller';
 
@@ -38,6 +40,8 @@ const envFilePath =
     UniversitiesModule,
     InstitutionsModule,
     AgenciesModule,
+    UploadsModule,
+    PermissionsModule,
   ],
   controllers: [AuditController, HealthController],
 })

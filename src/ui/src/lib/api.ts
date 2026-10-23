@@ -139,6 +139,7 @@ export const coursesApi = {
     api.get('/courses/equivalency', { params: { code, institution } }),
   search: (q: string, institution?: string) =>
     api.get('/courses/search', { params: { q, institution } }),
+  create: (data: unknown) => api.post('/courses', data),
   update: (id: number, data: unknown) => api.patch(`/courses/${id}`, data),
   deactivate: (id: number) => api.delete(`/courses/${id}`),
   institutions: () => api.get('/courses/institutions'),
@@ -148,6 +149,18 @@ export const coursesApi = {
     const form = new FormData();
     form.append('file', file);
     return api.post('/courses/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
+// ── Uploads (private docs + public logo/hero images) ──────────
+export const uploadsApi = {
+  upload: (file: File, opts?: { isPublic?: boolean; entityType?: string; entityId?: string }) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (opts?.isPublic) form.append('isPublic', 'true');
+    if (opts?.entityType) form.append('entityType', opts.entityType);
+    if (opts?.entityId) form.append('entityId', opts.entityId);
+    return api.post('/uploads', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
 };
 
@@ -213,4 +226,13 @@ export const formsApi = {
   submissions: (id: number) => api.get(`/forms/${id}/submissions`),
   decideSubmission: (submissionId: string, data: unknown) =>
     api.post(`/forms/submissions/${submissionId}/decide`, data),
+};
+
+// ── Roles & Permissions master-data endpoints (super_admin only) ─
+export const permissionsApi = {
+  getModules: () => api.get('/permissions/modules'),
+  getOperations: () => api.get('/permissions/operations'),
+  getMatrix: () => api.get('/permissions/matrix'),
+  saveMatrix: (entries: { roleId: number; moduleId: number; operationId: number; isAllowed: boolean }[]) =>
+    api.put('/permissions/matrix', { entries }),
 };

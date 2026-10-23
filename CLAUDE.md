@@ -79,6 +79,39 @@ UI: a "Topics" action per row in `CourseDatabase.tsx` opens
 `CourseTopicsEditor.tsx`. Purpose: give the future AI matcher
 syllabus-level detail to compare, not just the course title/description.
 
+## Roles & Permissions master data (confirmed, built)
+Added a master-data / configuration layer so the SuperAdmin can see and
+adjust which Role may perform which Operation on which Module from a
+single matrix screen, per their request to "create and assign the modules
+and operations based on requirement":
+- Migration 014 (`PermissionModules`, `PermissionOperations`,
+  `RolePermissions`) — modules like `courses`, `course_topics`, `users`,
+  `universities`, `institutions`, `agencies`, `programs`, `pages`, `forms`,
+  `audit_log`, `transcripts`, `evaluations`; operations `view`/`create`/
+  `edit`/`delete`/`import`/`export`/`bulk_action`. `RolePermissions` is
+  keyed on (RoleId, ModuleId, OperationId); absence of a row means "not
+  allowed".
+- Seed 011 seeds the modules/operations and a starting `RolePermissions`
+  grant set that mirrors the actual hardcoded `@Roles()`/`RolesGuard`
+  checks in the controllers as of this writing — a starting point for the
+  SuperAdmin to adjust, not a guarantee of exhaustiveness.
+- New `permissions` module (`src/api/src/permissions/`), super_admin-only:
+  `GET /permissions/modules`, `GET /permissions/operations`,
+  `GET /permissions/matrix`, `PUT /permissions/matrix` (bulk upsert).
+- UI: `src/ui/src/pages/superadmin/RolesPermissions.tsx`, at
+  `/superadmin/settings/roles-permissions`, linked from the "Roles &
+  Permissions" entry in the super_admin nav (under Settings).
+
+**Important — NOT yet wired into live enforcement.** This is a
+master-data/configuration layer only for this pass. The existing
+`@Roles()`/`RolesGuard` decorators scattered across the controllers are
+unchanged and remain the actual source of truth for access control today.
+Making the guards actually read from `RolePermissions` at runtime (e.g. a
+`RolesGuard` that falls back to or is replaced by a DB-driven check) is
+deferred future work — similar in scope/risk to the AI Agents trio and
+dynamic tenant isolation already noted below, and should be done
+deliberately since it touches dozens of files across the whole API.
+
 ## Scope-visibility decision (confirmed — updated)
 BU course listings (`findBuCourses`) are now scoped by
 `UserScopeUniversities` exactly like external course listings

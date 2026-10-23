@@ -8,7 +8,7 @@ import { PageTransition } from '../ui/PageTransition';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
-  Building2, School, Handshake, X,
+  Building2, School, Handshake, X, ShieldCheck,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -44,6 +44,7 @@ const navItems: Record<Role, { to: string; label: string; icon: React.ReactNode 
     { to: '/superadmin/agencies', label: 'Agencies', icon: <Handshake size={18} /> },
     { to: '/superadmin/audit', label: 'Audit Log', icon: <ScrollText size={18} /> },
     { to: '/superadmin/settings', label: 'Settings', icon: <Settings size={18} /> },
+    { to: '/superadmin/settings/roles-permissions', label: 'Roles & Permissions', icon: <ShieldCheck size={18} /> },
   ],
 };
 
