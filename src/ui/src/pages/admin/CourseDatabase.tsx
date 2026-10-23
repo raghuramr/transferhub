@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { BookOpen, Check, Upload } from 'lucide-react';
 import { coursesApi } from '../../lib/api';
 import { useMemo, useRef, useState } from 'react';
@@ -7,15 +7,113 @@ import { CourseTopicsEditor } from '../../components/ui/CourseTopicsEditor';
 import { useAuthStore } from '../../store/auth';
 
 const TOPIC_EDITOR_ROLES = ['super_admin', 'admin', 'faculty'];
+const COURSE_EDITOR_ROLES = ['super_admin', 'admin'];
 
 interface CourseRow {
   id: string | number;
   code: string;
   title: string;
   programArea?: string;
+  requirementType?: string;
   credits: number;
   verified?: boolean;
   isActive?: boolean;
+}
+
+function CourseEditForm({ course, canEdit }: { course: CourseRow; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    code: course.code,
+    title: course.title,
+    programArea: course.programArea ?? '',
+    requirementType: course.requirementType ?? '',
+    credits: course.credits,
+    isActive: course.isActive !== false,
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: () => coursesApi.update(Number(course.id), form),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['courses', 'bu'] }),
+  });
+
+  if (!canEdit) {
+    return (
+      <div className="mb-5">
+        <h3 className="text-sm font-semibold text-gray-900 mb-2">Course Details</h3>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+          <dt className="text-gray-500">Code</dt><dd className="font-mono text-gray-900">{course.code}</dd>
+          <dt className="text-gray-500">Title</dt><dd className="text-gray-900">{course.title}</dd>
+          <dt className="text-gray-500">Program Area</dt><dd className="text-gray-900">{course.programArea || '—'}</dd>
+          <dt className="text-gray-500">Credits</dt><dd className="text-gray-900">{course.credits}</dd>
+        </dl>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-5 pb-5 border-b border-gray-200">
+      <h3 className="text-sm font-semibold text-gray-900 mb-3">Course Details</h3>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Code</label>
+          <input
+            value={form.code}
+            onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
+          <input
+            value={form.title}
+            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Program Area</label>
+          <input
+            value={form.programArea}
+            onChange={(e) => setForm((f) => ({ ...f, programArea: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Requirement Type</label>
+          <input
+            value={form.requirementType}
+            onChange={(e) => setForm((f) => ({ ...f, requirementType: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Credits</label>
+          <input
+            type="number"
+            step="0.5"
+            value={form.credits}
+            onChange={(e) => setForm((f) => ({ ...f, credits: parseFloat(e.target.value) || 0 }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm text-gray-700 self-end pb-2">
+          <input
+            type="checkbox"
+            checked={form.isActive}
+            onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
+          />
+          Active
+        </label>
+      </div>
+      <button
+        onClick={() => saveMutation.mutate()}
+        disabled={saveMutation.isPending || !form.code.trim() || !form.title.trim()}
+        className="mt-3 px-4 py-2 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
+      >
+        {saveMutation.isPending ? 'Saving…' : 'Save Course Details'}
+      </button>
+    </div>
+  );
 }
 
 function downloadBlob(data: BlobPart, filename: string) {
@@ -31,6 +129,7 @@ function downloadBlob(data: BlobPart, filename: string) {
 export default function CourseDatabase() {
   const role = useAuthStore((s) => s.user?.role);
   const canEditTopics = !!role && TOPIC_EDITOR_ROLES.includes(role);
+  const canEditCourse = !!role && COURSE_EDITOR_ROLES.includes(role);
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importResult, setImportResult] = useState<{ created: number; updated: number; errors?: unknown[] } | null>(null);
@@ -153,11 +252,14 @@ export default function CourseDatabase() {
           },
         ]}
         renderExpanded={(row) => (
-          <CourseTopicsEditor
-            courseId={Number(row.id)}
-            courseLabel={`${row.code} — ${row.title}`}
-            canEdit={canEditTopics}
-          />
+          <div>
+            <CourseEditForm course={row} canEdit={canEditCourse} />
+            <CourseTopicsEditor
+              courseId={Number(row.id)}
+              courseLabel={`${row.code} — ${row.title}`}
+              canEdit={canEditTopics}
+            />
+          </div>
         )}
       />
     </div>
