@@ -1,6 +1,7 @@
 import {
   Injectable,
   UnauthorizedException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -157,6 +158,34 @@ export class AuthService {
       [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
     );
     return result.recordset[0];
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const result = await this.db.query<any>(
+      `SELECT PasswordHash FROM Users WHERE Id = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
+    );
+    const row = result.recordset[0];
+    if (!row) throw new UnauthorizedException();
+
+    let valid = false;
+    if (row.PasswordHash && !row.PasswordHash.includes('PLACEHOLDER')) {
+      try {
+        valid = await argon2.verify(row.PasswordHash, currentPassword);
+      } catch {
+        valid = false;
+      }
+    }
+    if (!valid) throw new BadRequestException('Current password is incorrect');
+
+    const hash = await argon2.hash(newPassword);
+    await this.db.query(
+      `UPDATE Users SET PasswordHash = @hash, MustChangePass = 0, UpdatedAt = SYSUTCDATETIME() WHERE Id = @id`,
+      [
+        { name: 'hash', type: sql.NVarChar(255), value: hash },
+        { name: 'id', type: sql.UniqueIdentifier, value: userId },
+      ],
+    );
   }
 
   private generateAccessToken(user: any) {

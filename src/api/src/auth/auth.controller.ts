@@ -18,6 +18,11 @@ class LogoutDto {
   @IsString() refreshToken: string;
 }
 
+class ChangePasswordDto {
+  @IsString() currentPassword: string;
+  @IsString() @MinLength(8) newPassword: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -49,5 +54,13 @@ export class AuthController {
   @Get('me')
   async me(@Req() req: any) {
     return this.authService.me(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(@Body() dto: ChangePasswordDto, @Req() req: any) {
+    await this.authService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
+    return { message: 'Password changed successfully' };
   }
 }
