@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { agenciesApi } from '../../lib/api';
-import { Handshake, Plus, X, Upload, Power } from 'lucide-react';
+import { Handshake, Plus, Upload, Power } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 
 interface Agency {
@@ -13,7 +13,21 @@ interface Agency {
   isActive: boolean;
 }
 
-const emptyForm = { name: '', contactEmail: '', contactPhone: '', country: '' };
+type AgencyForm = {
+  name: string;
+  contactEmail: string;
+  contactPhone: string;
+  country: string;
+};
+
+const emptyForm: AgencyForm = { name: '', contactEmail: '', contactPhone: '', country: '' };
+
+const FIELDS: { name: keyof AgencyForm; label: string; type: string }[] = [
+  { name: 'name', label: 'Name', type: 'text' },
+  { name: 'contactEmail', label: 'Contact Email', type: 'email' },
+  { name: 'contactPhone', label: 'Contact Phone', type: 'text' },
+  { name: 'country', label: 'Country', type: 'text' },
+];
 
 function downloadBlob(data: BlobPart, filename: string) {
   const blob = new Blob([data], { type: 'text/csv' });
@@ -25,12 +39,56 @@ function downloadBlob(data: BlobPart, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function AgencyEditForm({
+  initial,
+  onSave,
+  onCancel,
+  saving,
+}: {
+  initial: AgencyForm;
+  onSave: (form: AgencyForm) => void;
+  onCancel: () => void;
+  saving: boolean;
+}) {
+  const [form, setForm] = useState<AgencyForm>(initial);
+
+  return (
+    <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {FIELDS.map(({ name, label, type }) => (
+          <div key={name}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+            <input
+              type={type}
+              value={form[name]}
+              onChange={(e) => setForm((f) => ({ ...f, [name]: e.target.value }))}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-3 mt-4">
+        <button
+          onClick={() => onSave(form)}
+          disabled={saving || !form.name}
+          className="px-4 py-2 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
+        >
+          {saving ? 'Saving…' : 'Save Changes'}
+        </button>
+        <button onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AgenciesManagement() {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState<Agency | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const [showAddPanel, setShowAddPanel] = useState(false);
+  const [addForm, setAddForm] = useState<AgencyForm>(emptyForm);
+  const [autoExpandId, setAutoExpandId] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['agencies'],
@@ -39,10 +97,14 @@ export default function AgenciesManagement() {
   const agencies: Agency[] = (data?.data as any) ?? [];
 
   const saveMutation = useMutation({
-    mutationFn: () => (editing ? agenciesApi.update(editing.id, form) : agenciesApi.create(form)),
-    onSuccess: () => {
+    mutationFn: ({ id, form }: { id: number | null; form: AgencyForm }) =>
+      id ? agenciesApi.update(id, form) : agenciesApi.create(form),
+    onSuccess: (res: any) => {
       qc.invalidateQueries({ queryKey: ['agencies'] });
-      closeModal();
+      const createdId = res?.data?.id;
+      if (createdId != null) setAutoExpandId(createdId);
+      setShowAddPanel(false);
+      setAddForm(emptyForm);
     },
   });
 
@@ -51,33 +113,20 @@ export default function AgenciesManagement() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['agencies'] }),
   });
 
+  const bulkActivateMutation = useMutation({
+    mutationFn: (ids: number[]) => Promise.all(ids.map((id) => agenciesApi.update(id, { isActive: true }))),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['agencies'] }),
+  });
+
+  const bulkDeactivateMutation = useMutation({
+    mutationFn: (ids: number[]) => Promise.all(ids.map((id) => agenciesApi.deactivate(id))),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['agencies'] }),
+  });
+
   const importMutation = useMutation({
     mutationFn: (file: File) => agenciesApi.import(file),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['agencies'] }),
   });
-
-  const openCreate = () => {
-    setEditing(null);
-    setForm(emptyForm);
-    setShowModal(true);
-  };
-
-  const openEdit = (a: Agency) => {
-    setEditing(a);
-    setForm({
-      name: a.name,
-      contactEmail: a.contactEmail ?? '',
-      contactPhone: a.contactPhone ?? '',
-      country: a.country ?? '',
-    });
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setEditing(null);
-    setForm(emptyForm);
-  };
 
   const handleExport = async () => {
     const res = await agenciesApi.export();
@@ -110,10 +159,7 @@ export default function AgenciesManagement() {
       key: 'actions',
       header: 'Actions',
       render: (a) => (
-        <div className="flex items-center gap-3">
-          <button onClick={() => openEdit(a)} className="text-xs text-blue-600 hover:underline">
-            Edit
-          </button>
+        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
           {a.isActive && (
             <button
               onClick={() => deactivateMutation.mutate(a.id)}
@@ -143,7 +189,10 @@ export default function AgenciesManagement() {
             <Upload size={14} /> Import CSV
           </button>
           <button
-            onClick={openCreate}
+            onClick={() => {
+              setAddForm(emptyForm);
+              setShowAddPanel((v) => !v);
+            }}
             className="flex items-center gap-2 px-4 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
           >
             <Plus size={16} /> Add Agency
@@ -160,46 +209,15 @@ export default function AgenciesManagement() {
         </div>
       )}
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-semibold text-gray-900">{editing ? 'Edit Agency' : 'Add Agency'}</h2>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              {[
-                { name: 'name', label: 'Name', type: 'text' },
-                { name: 'contactEmail', label: 'Contact Email', type: 'email' },
-                { name: 'contactPhone', label: 'Contact Phone', type: 'text' },
-                { name: 'country', label: 'Country', type: 'text' },
-              ].map(({ name, label, type }) => (
-                <div key={name}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-                  <input
-                    type={type}
-                    value={(form as any)[name]}
-                    onChange={(e) => setForm((f) => ({ ...f, [name]: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={closeModal} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                Cancel
-              </button>
-              <button
-                onClick={() => saveMutation.mutate()}
-                disabled={saveMutation.isPending || !form.name}
-                className="flex-1 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
-              >
-                {saveMutation.isPending ? 'Saving…' : editing ? 'Save Changes' : 'Create Agency'}
-              </button>
-            </div>
-          </div>
+      {showAddPanel && (
+        <div className="mb-6 bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="font-semibold text-gray-900 mb-4">Add Agency</h2>
+          <AgencyEditForm
+            initial={addForm}
+            saving={saveMutation.isPending}
+            onSave={(form) => saveMutation.mutate({ id: null, form })}
+            onCancel={() => setShowAddPanel(false)}
+          />
         </div>
       )}
 
@@ -219,8 +237,33 @@ export default function AgenciesManagement() {
             ],
           },
         ]}
+        bulkActions={[
+          {
+            label: 'Activate',
+            onClick: (selected) => bulkActivateMutation.mutate(selected.map((a) => a.id)),
+          },
+          {
+            label: 'Deactivate',
+            onClick: (selected) => bulkDeactivateMutation.mutate(selected.map((a) => a.id)),
+            danger: true,
+          },
+        ]}
         onExport={() => handleExport()}
         emptyMessage="No agencies found."
+        renderExpanded={(a) => (
+          <AgencyEditForm
+            initial={{
+              name: a.name,
+              contactEmail: a.contactEmail ?? '',
+              contactPhone: a.contactPhone ?? '',
+              country: a.country ?? '',
+            }}
+            saving={saveMutation.isPending}
+            onSave={(form) => saveMutation.mutate({ id: a.id, form })}
+            onCancel={() => {}}
+          />
+        )}
+        autoExpandId={autoExpandId}
       />
     </div>
   );
