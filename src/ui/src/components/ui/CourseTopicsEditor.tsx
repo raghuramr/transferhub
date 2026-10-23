@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Plus, Trash2, Link as LinkIcon } from 'lucide-react';
+import { Plus, Trash2, Link as LinkIcon } from 'lucide-react';
 import { courseTopicsApi } from '../../lib/api';
 
 interface ReferenceLink {
@@ -20,13 +20,17 @@ interface Props {
   courseId: number;
   courseLabel: string;
   canEdit: boolean;
-  onClose: () => void;
+  /** Optional "Collapse" affordance — inline panels are usually closed by re-collapsing the row itself. */
+  onClose?: () => void;
 }
 
 /**
  * Per-course topic breakdown with reference links — editable only by
  * SuperAdmin/Admin/Faculty (enforced server-side too; `canEdit` here just
  * hides the controls for other roles who can still view topics read-only).
+ *
+ * Rendered inline (via DataTable's `renderExpanded`) directly under the
+ * course's row — not as a popup modal.
  */
 export function CourseTopicsEditor({ courseId, courseLabel, canEdit, onClose }: Props) {
   const qc = useQueryClient();
@@ -93,19 +97,20 @@ export function CourseTopicsEditor({ courseId, courseLabel, canEdit, onClose }: 
   const saving = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h2 className="font-semibold text-gray-900">Topics — {courseLabel}</h2>
-            <p className="text-xs text-gray-500">Topic-level detail with reference links, used for finer-grained transfer matching.</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X size={20} />
-          </button>
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="font-semibold text-gray-900">Topics — {courseLabel}</h2>
+          <p className="text-xs text-gray-500">Topic-level detail with reference links, used for finer-grained transfer matching.</p>
         </div>
+        {onClose && (
+          <button onClick={onClose} className="text-xs font-medium text-gray-400 hover:text-gray-600">
+            Collapse
+          </button>
+        )}
+      </div>
 
-        {isLoading && <div className="text-center text-gray-400 py-8">Loading…</div>}
+      {isLoading && <div className="text-center text-gray-400 py-8">Loading…</div>}
 
         <div className="space-y-3 mb-4">
           {topics.map((t) => (
@@ -170,15 +175,14 @@ export function CourseTopicsEditor({ courseId, courseLabel, canEdit, onClose }: 
           )}
         </div>
 
-        {canEdit && editingId === null && (
-          <button
-            onClick={startNew}
-            className="flex items-center gap-2 text-sm font-medium text-brand-700 hover:text-brand-900"
-          >
-            <Plus size={16} /> Add Topic
-          </button>
-        )}
-      </div>
+      {canEdit && editingId === null && (
+        <button
+          onClick={startNew}
+          className="flex items-center gap-2 text-sm font-medium text-brand-700 hover:text-brand-900"
+        >
+          <Plus size={16} /> Add Topic
+        </button>
+      )}
     </div>
   );
 }

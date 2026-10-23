@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { BookOpen, Check, ListTree } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BookOpen, Check, Upload } from 'lucide-react';
 import { coursesApi } from '../../lib/api';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { DataTable, type DataTableColumn, type DataTableFilter } from '../../components/ui/DataTable';
 import { CourseTopicsEditor } from '../../components/ui/CourseTopicsEditor';
 import { useAuthStore } from '../../store/auth';
@@ -15,12 +15,26 @@ interface CourseRow {
   programArea?: string;
   credits: number;
   verified?: boolean;
+  isActive?: boolean;
+}
+
+function downloadBlob(data: BlobPart, filename: string) {
+  const blob = new Blob([data], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function CourseDatabase() {
   const role = useAuthStore((s) => s.user?.role);
   const canEditTopics = !!role && TOPIC_EDITOR_ROLES.includes(role);
-  const [topicsFor, setTopicsFor] = useState<CourseRow | null>(null);
+  const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importResult, setImportResult] = useState<{ created: number; updated: number; errors?: unknown[] } | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['courses', 'bu'],
@@ -36,6 +50,21 @@ export default function CourseDatabase() {
     const values = Array.from(new Set(courses.map((c) => c.programArea).filter(Boolean))) as string[];
     return values.sort().map((v) => ({ value: v, label: v }));
   }, [courses]);
+
+  const handleImportClick = () => fileInputRef.current?.click();
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImporting(true);
+    try {
+      const res = await coursesApi.import(file);
+      setImportResult(res.data as any);
+      qc.invalidateQueries({ queryKey: ['courses', 'bu'] });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const columns: DataTableColumn<CourseRow>[] = [
     { key: 'code', header: 'Code', render: (row) => <span className="font-mono text-brand-900 font-medium">{row.code}</span> },
@@ -53,16 +82,14 @@ export default function CourseDatabase() {
         ),
     },
     {
-      key: 'topics',
-      header: 'Topics',
-      render: (row) => (
-        <button
-          onClick={() => setTopicsFor(row)}
-          className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:text-brand-900"
-        >
-          <ListTree size={14} /> {canEditTopics ? 'Edit topics' : 'View topics'}
-        </button>
-      ),
+      key: 'isActive',
+      header: 'Status',
+      render: (row) =>
+        row.isActive === false ? (
+          <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700">Inactive</span>
+        ) : (
+          <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">Active</span>
+        ),
     },
   ];
 
@@ -72,13 +99,32 @@ export default function CourseDatabase() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex items-center gap-3 mb-8">
-        <BookOpen className="text-brand-800" size={24} />
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">BU Course Database</h1>
-          <p className="text-gray-500">Boston University course catalog</p>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <BookOpen className="text-brand-800" size={24} />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">BU Course Database</h1>
+            <p className="text-gray-500">Boston University course catalog</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
+          <button
+            onClick={handleImportClick}
+            disabled={importing}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-60"
+          >
+            <Upload size={14} /> {importing ? 'Importing…' : 'Import CSV'}
+          </button>
         </div>
       </div>
+
+      {importResult && (
+        <div className="mb-4 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
+          Import complete — created {importResult.created}, updated {importResult.updated}
+          {(importResult.errors?.length ?? 0) > 0 && ` (${importResult.errors!.length} skipped)`}
+        </div>
+      )}
 
       <DataTable
         columns={columns}
@@ -88,16 +134,32 @@ export default function CourseDatabase() {
         filters={filters}
         isLoading={isLoading}
         emptyMessage="No courses found."
+        onExport={() => coursesApi.export().then((res) => downloadBlob(res.data, 'courses.csv'))}
+        bulkActions={[
+          {
+            label: 'Activate',
+            onClick: async (selected) => {
+              await Promise.all(selected.map((row) => coursesApi.update(Number(row.id), { isActive: true })));
+              qc.invalidateQueries({ queryKey: ['courses', 'bu'] });
+            },
+          },
+          {
+            label: 'Deactivate',
+            danger: true,
+            onClick: async (selected) => {
+              await Promise.all(selected.map((row) => coursesApi.deactivate(Number(row.id))));
+              qc.invalidateQueries({ queryKey: ['courses', 'bu'] });
+            },
+          },
+        ]}
+        renderExpanded={(row) => (
+          <CourseTopicsEditor
+            courseId={Number(row.id)}
+            courseLabel={`${row.code} — ${row.title}`}
+            canEdit={canEditTopics}
+          />
+        )}
       />
-
-      {topicsFor && (
-        <CourseTopicsEditor
-          courseId={Number(topicsFor.id)}
-          courseLabel={`${topicsFor.code} — ${topicsFor.title}`}
-          canEdit={canEditTopics}
-          onClose={() => setTopicsFor(null)}
-        />
-      )}
     </div>
   );
 }
