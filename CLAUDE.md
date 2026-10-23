@@ -60,6 +60,16 @@ building capability #1/#2 above: the matcher's prompt construction should
 pull in `CourseTopics` (title, description, reference links) for both the
 BU and external course being compared.
 
+## Course credit-hours check (researched, no change needed)
+User flagged that every BU course shows 4 credits and asked to verify. Checked
+against BU's own CAS bulletin: BU's stated institutional default is "all
+required courses are 4 unit hours unless otherwise noted" — the uniform 4 is
+correct, not a seeding bug. Northeastern/NYU courses already vary (4 vs 5 for
+lab-attached courses, e.g. NU `CS 2000`=5, `CS 1800`=4) in seed/003. A few new
+courses added in seed/010 have unverified credit values (marked `Verified =
+'Check'`) pending a direct primary-bulletin confirmation — see that file's
+comments for which ones.
+
 ## Course Topics (confirmed, built)
 Courses can now be broken down into **Topics** (migration 009:
 `CourseTopics`, JSON `ReferenceLinksJson` column for `{label, url}` pairs),
