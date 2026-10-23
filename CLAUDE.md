@@ -47,6 +47,37 @@ Status as of last session: **none of the three implemented yet** — only
 discussed/scoped. Next step when resumed: start with #1 (pure code,
 no infra needed).
 
+**Sequencing decision (confirmed):** finish the rest of the UI/data work
+first (Universities/Institutions/Agencies CRUD — done; Course Topics +
+reference links — done; remaining dashboards/workflow polish) before
+starting on any of the three AI Agents above. Once the UI is fully set up,
+the AI integration should specifically make use of the Course Topics +
+reference links data (migration 009) to read through syllabus-level
+documentation per topic, not just the course-level Description field —
+this is expected to produce much more precise equivalency matches than
+course-title/description matching alone. Keep this in mind when actually
+building capability #1/#2 above: the matcher's prompt construction should
+pull in `CourseTopics` (title, description, reference links) for both the
+BU and external course being compared.
+
+## Course Topics (confirmed, built)
+Courses can now be broken down into **Topics** (migration 009:
+`CourseTopics`, JSON `ReferenceLinksJson` column for `{label, url}` pairs),
+editable only by `super_admin`/`admin`/`faculty` (enforced via `@Roles` on
+`CourseTopicsController`); any authenticated role can view them read-only.
+UI: a "Topics" action per row in `CourseDatabase.tsx` opens
+`CourseTopicsEditor.tsx`. Purpose: give the future AI matcher
+syllabus-level detail to compare, not just the course title/description.
+
+## Scope-visibility decision (confirmed — updated)
+BU course listings (`findBuCourses`) are now scoped by
+`UserScopeUniversities` exactly like external course listings
+(`findExternalCourses`) — the earlier "BU is the fixed home institution,
+leave it unscoped" choice was explicitly reversed now that the product is
+heading toward the multi-tenant SaaS model noted below (BU stops being a
+structurally special case, it's just another "University" row). No scope
+rows for a user still means unrestricted, unchanged.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group

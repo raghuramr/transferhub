@@ -14,8 +14,9 @@ export class CoursesController {
   findBuCourses(
     @Query('program') programArea?: string,
     @Query('search') search?: string,
+    @Req() req?: any,
   ) {
-    return this.coursesService.findBuCourses({ programArea, search });
+    return this.coursesService.findBuCourses({ programArea, search }, req?.user?.id);
   }
 
   @Get('external')
@@ -31,7 +32,7 @@ export class CoursesController {
   search(@Query('q') q: string, @Query('institution') institutionCode?: string, @Req() req?: any) {
     return institutionCode
       ? this.coursesService.findExternalCourses(institutionCode, q, req?.user?.id)
-      : this.coursesService.findBuCourses({ search: q });
+      : this.coursesService.findBuCourses({ search: q }, req?.user?.id);
   }
 
   @Get('institutions')

@@ -1,8 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { BookOpen, Check } from 'lucide-react';
+import { BookOpen, Check, ListTree } from 'lucide-react';
 import { coursesApi } from '../../lib/api';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { DataTable, type DataTableColumn, type DataTableFilter } from '../../components/ui/DataTable';
+import { CourseTopicsEditor } from '../../components/ui/CourseTopicsEditor';
+import { useAuthStore } from '../../store/auth';
+
+const TOPIC_EDITOR_ROLES = ['super_admin', 'admin', 'faculty'];
 
 interface CourseRow {
   id: string | number;
@@ -14,6 +18,10 @@ interface CourseRow {
 }
 
 export default function CourseDatabase() {
+  const role = useAuthStore((s) => s.user?.role);
+  const canEditTopics = !!role && TOPIC_EDITOR_ROLES.includes(role);
+  const [topicsFor, setTopicsFor] = useState<CourseRow | null>(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ['courses', 'bu'],
     queryFn: () => coursesApi.listBU(),
@@ -44,6 +52,18 @@ export default function CourseDatabase() {
           <span className="text-gray-400">No</span>
         ),
     },
+    {
+      key: 'topics',
+      header: 'Topics',
+      render: (row) => (
+        <button
+          onClick={() => setTopicsFor(row)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:text-brand-900"
+        >
+          <ListTree size={14} /> {canEditTopics ? 'Edit topics' : 'View topics'}
+        </button>
+      ),
+    },
   ];
 
   const filters: DataTableFilter[] = [
@@ -69,6 +89,15 @@ export default function CourseDatabase() {
         isLoading={isLoading}
         emptyMessage="No courses found."
       />
+
+      {topicsFor && (
+        <CourseTopicsEditor
+          courseId={Number(topicsFor.id)}
+          courseLabel={`${topicsFor.code} — ${topicsFor.title}`}
+          canEdit={canEditTopics}
+          onClose={() => setTopicsFor(null)}
+        />
+      )}
     </div>
   );
 }

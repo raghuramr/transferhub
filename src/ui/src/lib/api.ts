@@ -135,6 +135,14 @@ export const coursesApi = {
     api.get('/courses/search', { params: { q, institution } }),
 };
 
+// ── Course Topics endpoints (reference-link detail per course) ────
+export const courseTopicsApi = {
+  list: (courseId: number) => api.get(`/courses/${courseId}/topics`),
+  create: (courseId: number, data: unknown) => api.post(`/courses/${courseId}/topics`, data),
+  update: (id: number, data: unknown) => api.patch(`/course-topics/${id}`, data),
+  remove: (id: number) => api.delete(`/course-topics/${id}`),
+};
+
 // ── Transcripts endpoints ─────────────────────────────────────
 export const transcriptsApi = {
   list: (params?: Record<string, unknown>) =>
