@@ -4,6 +4,8 @@
 USE CreditEvalManager;
 GO
 
+-- Idempotent: safe to re-run without a UNIQUE-constraint violation on Slug.
+IF NOT EXISTS (SELECT 1 FROM Forms WHERE Slug = 'agency-student-referral')
 INSERT INTO Forms (Slug, Title, Description, Status, SchemaJson, SuccessMessage)
 VALUES (
     'agency-student-referral',
