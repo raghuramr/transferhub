@@ -11,6 +11,7 @@ import { AiModule } from './ai/ai.module';
 import { PagesModule } from './pages/pages.module';
 import { FormsModule } from './forms/forms.module';
 import { AuditController } from './common/audit.controller';
+import { HealthController } from './common/health.controller';
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const envFilePath =
@@ -32,6 +33,6 @@ const envFilePath =
     PagesModule,
     FormsModule,
   ],
-  controllers: [AuditController],
+  controllers: [AuditController, HealthController],
 })
 export class AppModule {}
