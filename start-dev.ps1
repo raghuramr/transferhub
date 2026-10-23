@@ -7,7 +7,9 @@
 
 .DESCRIPTION
     - Verifies Node/npm are available
-    - Installs npm dependencies for src/api and src/ui if node_modules is missing
+    - Runs "npm install" for src/api and src/ui every time, before starting
+      the servers (so newly added dependencies are always picked up) —
+      unless -SkipInstall is passed
     - Optionally seeds demo user passwords first (-Seed)
     - Launches:
         API  -> http://localhost:3001/api   (new window)
@@ -81,25 +83,24 @@ if (-not (Test-Path $apiEnv)) {
     Write-Warn 'Review src/api/.env (DB_SERVER, DB_ODBC_DRIVER, JWT_SECRET, ANTHROPIC_API_KEY) before continuing.'
 }
 
-# --- 3. Install dependencies if missing --------------------------
+# --- 3. Install dependencies -------------------------------------
+# Always runs (unless -SkipInstall) so new/updated packages (e.g. a
+# dependency added in a later change set, like "resend") are picked up
+# even when node_modules already exists.
 if (-not $SkipInstall) {
-    if (-not (Test-Path (Join-Path $apiDir 'node_modules'))) {
-        Write-Step 'Installing API dependencies (npm install)'
-        Push-Location $apiDir
-        npm install
-        Pop-Location
-    } else {
-        Write-Ok 'API dependencies already installed'
-    }
+    Write-Step 'Installing API dependencies (npm install)'
+    Push-Location $apiDir
+    npm install
+    Pop-Location
+    Write-Ok 'API dependencies up to date'
 
-    if (-not (Test-Path (Join-Path $uiDir 'node_modules'))) {
-        Write-Step 'Installing UI dependencies (npm install)'
-        Push-Location $uiDir
-        npm install
-        Pop-Location
-    } else {
-        Write-Ok 'UI dependencies already installed'
-    }
+    Write-Step 'Installing UI dependencies (npm install)'
+    Push-Location $uiDir
+    npm install
+    Pop-Location
+    Write-Ok 'UI dependencies up to date'
+} else {
+    Write-Warn '-SkipInstall passed: not running npm install'
 }
 
 # --- 4. Optional: seed demo user passwords -----------------------
