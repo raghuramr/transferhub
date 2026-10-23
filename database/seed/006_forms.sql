@@ -4,7 +4,7 @@
 USE CreditEvalManager;
 GO
 
-INSERT INTO Forms (Slug, Title, Description, Status, Schema, SuccessMessage)
+INSERT INTO Forms (Slug, Title, Description, Status, SchemaJson, SuccessMessage)
 VALUES (
     'agency-student-referral',
     'Agency Student Referral',

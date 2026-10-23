@@ -15,7 +15,9 @@ CREATE TABLE Forms (
     Title           NVARCHAR(200)    NOT NULL,
     Description     NVARCHAR(MAX)    NULL,
     Status          VARCHAR(20)      NOT NULL DEFAULT 'draft',  -- draft|open|closed
-    Schema          NVARCHAR(MAX)    NOT NULL DEFAULT '{"fields":[]}', -- JSON: { fields: FormField[] }
+    SchemaJson      NVARCHAR(MAX)    NOT NULL DEFAULT '{"fields":[]}', -- JSON: { fields: FormField[] }
+                                                -- (named SchemaJson, not "Schema" -- SCHEMA is a
+                                                -- reserved T-SQL keyword and breaks CREATE TABLE)
     SuccessMessage  NVARCHAR(MAX)    NULL,
     CreatedBy       UNIQUEIDENTIFIER NULL,
     CreatedAt       DATETIME2        NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -24,7 +26,7 @@ CREATE TABLE Forms (
     CONSTRAINT UQ_Forms_Slug UNIQUE (Slug),
     CONSTRAINT FK_Forms_CreatedBy FOREIGN KEY (CreatedBy) REFERENCES Users(Id),
     CONSTRAINT CK_Forms_Status CHECK (Status IN ('draft','open','closed')),
-    CONSTRAINT CK_Forms_Schema_IsJson CHECK (ISJSON(Schema) = 1)
+    CONSTRAINT CK_Forms_SchemaJson_IsJson CHECK (ISJSON(SchemaJson) = 1)
 );
 GO
 

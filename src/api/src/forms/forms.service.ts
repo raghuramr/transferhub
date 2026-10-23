@@ -20,7 +20,7 @@ function mapForm(row: any) {
     title: row.Title,
     description: row.Description,
     status: row.Status,
-    schema: JSON.parse(row.Schema),
+    schema: JSON.parse(row.SchemaJson),
     successMessage: row.SuccessMessage,
     createdAt: row.CreatedAt,
     updatedAt: row.UpdatedAt,
@@ -73,7 +73,7 @@ export class FormsService {
   async findAll(includeNonOpen: boolean) {
     const where = includeNonOpen ? '1=1' : `Status = 'open'`;
     const res = await this.db.query<any>(
-      `SELECT Id, Slug, Title, Description, Status, Schema, SuccessMessage, CreatedAt, UpdatedAt
+      `SELECT Id, Slug, Title, Description, Status, SchemaJson, SuccessMessage, CreatedAt, UpdatedAt
        FROM Forms WHERE ${where} ORDER BY Title`,
     );
     return res.recordset.map(mapForm);
@@ -81,7 +81,7 @@ export class FormsService {
 
   async findById(id: number) {
     const res = await this.db.query<any>(
-      `SELECT Id, Slug, Title, Description, Status, Schema, SuccessMessage, CreatedAt, UpdatedAt
+      `SELECT Id, Slug, Title, Description, Status, SchemaJson, SuccessMessage, CreatedAt, UpdatedAt
        FROM Forms WHERE Id = @id`,
       [{ name: 'id', type: sql.Int, value: id }],
     );
@@ -92,7 +92,7 @@ export class FormsService {
   /** Public-facing lookup — only returns the form if it's currently open for submissions. */
   async findOpenBySlug(slug: string) {
     const res = await this.db.query<any>(
-      `SELECT Id, Slug, Title, Description, Status, Schema, SuccessMessage, CreatedAt, UpdatedAt
+      `SELECT Id, Slug, Title, Description, Status, SchemaJson, SuccessMessage, CreatedAt, UpdatedAt
        FROM Forms WHERE Slug = @slug AND Status = 'open'`,
       [{ name: 'slug', type: sql.VarChar(150), value: slug }],
     );
@@ -109,7 +109,7 @@ export class FormsService {
     if (existing.recordset[0]) throw new ConflictException('A form with this slug already exists');
 
     const res = await this.db.query<any>(
-      `INSERT INTO Forms (Slug, Title, Description, Status, Schema, SuccessMessage, CreatedBy)
+      `INSERT INTO Forms (Slug, Title, Description, Status, SchemaJson, SuccessMessage, CreatedBy)
        OUTPUT inserted.Id
        VALUES (@slug, @title, @desc, @status, @schema, @success, @userId)`,
       [
@@ -138,7 +138,7 @@ export class FormsService {
     await this.db.query(
       `UPDATE Forms SET
           Slug = @slug, Title = @title, Description = @desc, Status = @status,
-          Schema = @schema, SuccessMessage = @success, UpdatedAt = SYSUTCDATETIME()
+          SchemaJson = @schema, SuccessMessage = @success, UpdatedAt = SYSUTCDATETIME()
        WHERE Id = @id`,
       [
         { name: 'slug', type: sql.VarChar(150), value: dto.slug },
