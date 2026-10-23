@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { usersApi } from '../../lib/api';
-import { Users, UserPlus, Lock, Unlock, X } from 'lucide-react';
+import { usersApi, api } from '../../lib/api';
+import { Users, UserPlus, Lock, Unlock, X, MapPin } from 'lucide-react';
 
 const roleColors: Record<string, string> = {
   student:     'bg-blue-100 text-blue-700',
@@ -11,10 +11,56 @@ const roleColors: Record<string, string> = {
   super_admin: 'bg-red-100 text-red-700',
 };
 
+function MultiSelect({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: { id: number; name: string }[];
+  selected: number[];
+  onChange: (ids: number[]) => void;
+}) {
+  const toggle = (id: number) => {
+    onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+  };
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <div className="border border-gray-300 rounded-lg max-h-40 overflow-y-auto divide-y divide-gray-50">
+        {options.length === 0 && (
+          <div className="px-3 py-2 text-xs text-gray-400">None available</div>
+        )}
+        {options.map((o) => (
+          <label key={o.id} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={selected.includes(o.id)}
+              onChange={() => toggle(o.id)}
+              className="rounded border-gray-300 text-brand-800 focus:ring-brand-500"
+            />
+            {o.name}
+          </label>
+        ))}
+      </div>
+      <p className="mt-1 text-xs text-gray-400">
+        {selected.length === 0 ? 'Unrestricted (sees everything)' : `${selected.length} selected`}
+      </p>
+    </div>
+  );
+}
+
 export default function UserManagement() {
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ email: '', firstName: '', lastName: '', role: 'student', password: '' });
+  const [scopeUserId, setScopeUserId] = useState<string | null>(null);
+  const [scopeDraft, setScopeDraft] = useState<{ universityIds: number[]; academicUnitIds: number[]; agencyIds: number[] }>({
+    universityIds: [],
+    academicUnitIds: [],
+    agencyIds: [],
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['users'],
@@ -40,6 +86,52 @@ export default function UserManagement() {
     mutationFn: (id: string) => usersApi.deactivate(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   });
+
+  // Scope modal data. Endpoints below (/universities, /institutions, /agencies)
+  // are owned by another in-flight change — called directly by URL here
+  // rather than via lib/api.ts exports so this file doesn't need to coordinate
+  // with that work. They may 404 until that lands; the lists just render empty.
+  const universitiesQuery = useQuery({
+    queryKey: ['scope-universities'],
+    queryFn: () => api.get('/universities').catch(() => ({ data: [] })),
+    enabled: scopeUserId !== null,
+  });
+  const institutionsQuery = useQuery({
+    queryKey: ['scope-institutions'],
+    queryFn: () => api.get('/institutions').catch(() => ({ data: [] })),
+    enabled: scopeUserId !== null,
+  });
+  const agenciesQuery = useQuery({
+    queryKey: ['scope-agencies'],
+    queryFn: () => api.get('/agencies').catch(() => ({ data: [] })),
+    enabled: scopeUserId !== null,
+  });
+
+  const openScopeModal = async (id: string) => {
+    setScopeUserId(id);
+    try {
+      const { data: scopeData } = await usersApi.getScope(id);
+      setScopeDraft({
+        universityIds: scopeData?.universityIds ?? [],
+        academicUnitIds: scopeData?.academicUnitIds ?? [],
+        agencyIds: scopeData?.agencyIds ?? [],
+      });
+    } catch {
+      setScopeDraft({ universityIds: [], academicUnitIds: [], agencyIds: [] });
+    }
+  };
+
+  const scopeMutation = useMutation({
+    mutationFn: () => usersApi.setScope(scopeUserId as string, scopeDraft),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['scope', scopeUserId] });
+      setScopeUserId(null);
+    },
+  });
+
+  const universities: { id: number; name: string }[] = (universitiesQuery.data?.data as any) ?? [];
+  const institutions: { id: number; name: string }[] = (institutionsQuery.data?.data as any) ?? [];
+  const agencies: { id: number; name: string }[] = (agenciesQuery.data?.data as any) ?? [];
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -113,6 +205,58 @@ export default function UserManagement() {
         </div>
       )}
 
+      {/* Scope modal */}
+      {scopeUserId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                <MapPin size={16} className="text-brand-800" /> Visibility Scope
+              </h2>
+              <button onClick={() => setScopeUserId(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Restrict what this user can see. Leave a list empty for unrestricted access
+              (the default — sees everything).
+            </p>
+            <div className="space-y-4">
+              <MultiSelect
+                label="Universities"
+                options={universities}
+                selected={scopeDraft.universityIds}
+                onChange={(ids) => setScopeDraft((s) => ({ ...s, universityIds: ids }))}
+              />
+              <MultiSelect
+                label="Institutions"
+                options={institutions}
+                selected={scopeDraft.academicUnitIds}
+                onChange={(ids) => setScopeDraft((s) => ({ ...s, academicUnitIds: ids }))}
+              />
+              <MultiSelect
+                label="Agencies"
+                options={agencies}
+                selected={scopeDraft.agencyIds}
+                onChange={(ids) => setScopeDraft((s) => ({ ...s, agencyIds: ids }))}
+              />
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setScopeUserId(null)} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button
+                onClick={() => scopeMutation.mutate()}
+                disabled={scopeMutation.isPending}
+                className="flex-1 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
+              >
+                {scopeMutation.isPending ? 'Saving…' : 'Save Scope'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
@@ -151,6 +295,12 @@ export default function UserManagement() {
                 </td>
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openScopeModal(u.id)}
+                      className="flex items-center gap-1 text-xs text-gray-600 hover:underline"
+                    >
+                      <MapPin size={12} /> Scope
+                    </button>
                     {u.isLocked && (
                       <button
                         onClick={() => unlockMutation.mutate(u.id)}

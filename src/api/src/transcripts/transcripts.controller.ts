@@ -15,7 +15,7 @@ export class TranscriptsController {
   @Get()
   findAll(@Req() req: any, @Query('status') status?: string) {
     const { id: userId, role } = req.user;
-    const filters: any = { status };
+    const filters: any = { status, requestingUserId: userId };
     // Students & agencies only ever see their own submissions; staff see everything.
     if (role === 'student') {
       filters.studentUserId = userId;

@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete, Param, Body, Query, Req, UseGuards, ForbiddenException,
+  Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, Req, UseGuards, ForbiddenException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -61,5 +61,24 @@ export class UsersController {
   @Roles('admin', 'super_admin')
   unlock(@Param('id') id: string, @Req() req: any) {
     return this.usersService.unlock(id, req.user.id);
+  }
+
+  @Get(':id/scope')
+  @Roles('admin', 'super_admin')
+  getScope(@Param('id') id: string) {
+    return this.usersService.getScopeFor(id);
+  }
+
+  @Put(':id/scope')
+  @Roles('admin', 'super_admin')
+  setScope(
+    @Param('id') id: string,
+    @Body() body: { universityIds?: number[]; academicUnitIds?: number[]; agencyIds?: number[] },
+  ) {
+    return this.usersService.setScopeFor(id, {
+      universityIds: body.universityIds ?? [],
+      academicUnitIds: body.academicUnitIds ?? [],
+      agencyIds: body.agencyIds ?? [],
+    });
   }
 }
