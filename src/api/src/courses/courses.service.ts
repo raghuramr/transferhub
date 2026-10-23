@@ -25,7 +25,7 @@ function mapCourse(row: any) {
 export class CoursesService {
   constructor(private db: DatabaseService) {}
 
-  async findBuCourses(filters: { programArea?: string; search?: string } = {}) {
+  async findBuCourses(filters: { programArea?: string; search?: string } = {}, requestingUserId?: string) {
     let where = `i.Code = 'BU'`;
     const inputs: any[] = [];
     if (filters.programArea) {
@@ -35,6 +35,19 @@ export class CoursesService {
     if (filters.search) {
       where += ' AND (c.Code LIKE @q OR c.Title LIKE @q)';
       inputs.push({ name: 'q', type: sql.NVarChar(100), value: `%${filters.search}%` });
+    }
+
+    // Scoped the same as findExternalCourses — BU is no longer treated as an
+    // always-visible fixed home institution now that the product is heading
+    // toward a multi-tenant model (see CLAUDE.md "Future direction").
+    const scope = await this.getUniversityScope(requestingUserId);
+    if (scope) {
+      const scopeParams = scope.map((instId, i) => {
+        const name = `scopeInst${i}`;
+        inputs.push({ name, type: sql.Int, value: instId });
+        return `@${name}`;
+      });
+      where += ` AND c.InstitutionId IN (${scopeParams.join(', ')})`;
     }
 
     const res = await this.db.query<any>(
@@ -50,7 +63,21 @@ export class CoursesService {
     return res.recordset.map(mapCourse);
   }
 
-  async findExternalCourses(institutionCode?: string, search?: string) {
+  /**
+   * No rows in UserScopeUniversities for this user = unrestricted (sees
+   * everything) — must remain the default. Returns null when unrestricted,
+   * or the list of InstitutionIds the user is scoped to otherwise.
+   */
+  private async getUniversityScope(userId?: string): Promise<number[] | null> {
+    if (!userId) return null;
+    const res = await this.db.query<any>(
+      `SELECT InstitutionId FROM UserScopeUniversities WHERE UserId = @uid`,
+      [{ name: 'uid', type: sql.UniqueIdentifier, value: userId }],
+    );
+    return res.recordset.length ? res.recordset.map((r: any) => r.InstitutionId) : null;
+  }
+
+  async findExternalCourses(institutionCode?: string, search?: string, requestingUserId?: string) {
     let where = `i.Code <> 'BU'`;
     const inputs: any[] = [];
     if (institutionCode) {
@@ -60,6 +87,16 @@ export class CoursesService {
     if (search) {
       where += ' AND (c.Code LIKE @q OR c.Title LIKE @q)';
       inputs.push({ name: 'q', type: sql.NVarChar(100), value: `%${search}%` });
+    }
+
+    const scope = await this.getUniversityScope(requestingUserId);
+    if (scope) {
+      const scopeParams = scope.map((instId, i) => {
+        const name = `scopeInst${i}`;
+        inputs.push({ name, type: sql.Int, value: instId });
+        return `@${name}`;
+      });
+      where += ` AND c.InstitutionId IN (${scopeParams.join(', ')})`;
     }
 
     const res = await this.db.query<any>(

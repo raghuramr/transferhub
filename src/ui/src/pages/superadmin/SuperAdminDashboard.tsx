@@ -78,6 +78,9 @@ export default function SuperAdminDashboard() {
           <div className="space-y-2">
             {[
               { to: '/superadmin/users', label: 'User Management' },
+              { to: '/superadmin/universities', label: 'Universities' },
+              { to: '/superadmin/institutions', label: 'Institutions' },
+              { to: '/superadmin/agencies', label: 'Agencies' },
               { to: '/superadmin/audit', label: 'Audit Log' },
               { to: '/admin/transcripts', label: 'All Transcripts' },
               { to: '/admin/courses', label: 'Course Database' },

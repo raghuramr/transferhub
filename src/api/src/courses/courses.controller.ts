@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { CoursesService } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -14,23 +14,25 @@ export class CoursesController {
   findBuCourses(
     @Query('program') programArea?: string,
     @Query('search') search?: string,
+    @Req() req?: any,
   ) {
-    return this.coursesService.findBuCourses({ programArea, search });
+    return this.coursesService.findBuCourses({ programArea, search }, req?.user?.id);
   }
 
   @Get('external')
   findExternalCourses(
     @Query('institution') institutionCode?: string,
     @Query('search') search?: string,
+    @Req() req?: any,
   ) {
-    return this.coursesService.findExternalCourses(institutionCode, search);
+    return this.coursesService.findExternalCourses(institutionCode, search, req?.user?.id);
   }
 
   @Get('search')
-  search(@Query('q') q: string, @Query('institution') institutionCode?: string) {
+  search(@Query('q') q: string, @Query('institution') institutionCode?: string, @Req() req?: any) {
     return institutionCode
-      ? this.coursesService.findExternalCourses(institutionCode, q)
-      : this.coursesService.findBuCourses({ search: q });
+      ? this.coursesService.findExternalCourses(institutionCode, q, req?.user?.id)
+      : this.coursesService.findBuCourses({ search: q }, req?.user?.id);
   }
 
   @Get('institutions')

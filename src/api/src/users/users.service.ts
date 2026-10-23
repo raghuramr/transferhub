@@ -1,9 +1,16 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { EmailService } from '../common/email.service';
 import * as argon2 from 'argon2';
 import * as sql from 'mssql';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+
+export interface UserScope {
+  universityIds: number[];
+  academicUnitIds: number[];
+  agencyIds: number[];
+}
 
 function mapUser(row: any) {
   return {
@@ -27,7 +34,7 @@ function mapUser(row: any) {
 
 @Injectable()
 export class UsersService {
-  constructor(private db: DatabaseService) {}
+  constructor(private db: DatabaseService, private emailService: EmailService) {}
 
   async findById(id: string) {
     const res = await this.db.query<any>(
@@ -119,6 +126,21 @@ export class UsersService {
 
     const newId = res.recordset[0].Id;
     await this.audit(createdBy, 'USER_CREATED', 'User', newId, null, JSON.stringify({ email: dto.email, role: dto.role }));
+
+    try {
+      await this.emailService.send(
+        dto.email,
+        'Your account was created',
+        `<p>Hi ${dto.firstName},</p>
+         <p>An account was created for you on the BU Transfer Credit Evaluation portal.</p>
+         <p><strong>Email:</strong> ${dto.email}<br/>
+         <strong>Temporary password:</strong> ${dto.password}</p>
+         <p>Please sign in and change your password as soon as possible.</p>`,
+      );
+    } catch {
+      // Best-effort only — never fail user creation because email delivery failed.
+    }
+
     return this.findById(newId);
   }
 
@@ -172,6 +194,70 @@ export class UsersService {
     );
     await this.audit(by, 'USER_UNLOCKED', 'User', id, null, null);
     return { message: 'User unlocked' };
+  }
+
+  /**
+   * No rows in any of the three scope tables for a user = unrestricted
+   * (sees everything). This must remain the default behaviour.
+   */
+  async getScopeFor(userId: string): Promise<UserScope> {
+    await this.findById(userId);
+
+    const [uniRes, auRes, agRes] = await Promise.all([
+      this.db.query<any>(
+        `SELECT InstitutionId FROM UserScopeUniversities WHERE UserId = @id`,
+        [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
+      ),
+      this.db.query<any>(
+        `SELECT AcademicUnitId FROM UserScopeAcademicUnits WHERE UserId = @id`,
+        [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
+      ),
+      this.db.query<any>(
+        `SELECT AgencyId FROM UserScopeAgencies WHERE UserId = @id`,
+        [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
+      ),
+    ]);
+
+    return {
+      universityIds: uniRes.recordset.map((r: any) => r.InstitutionId),
+      academicUnitIds: auRes.recordset.map((r: any) => r.AcademicUnitId),
+      agencyIds: agRes.recordset.map((r: any) => r.AgencyId),
+    };
+  }
+
+  /** Replaces the rows in the three scope join tables for a user. */
+  async setScopeFor(userId: string, scope: UserScope): Promise<UserScope> {
+    await this.findById(userId);
+
+    const idInput = { name: 'id', type: sql.UniqueIdentifier, value: userId };
+
+    // No transaction helper is exposed on DatabaseService — run the
+    // delete-then-insert sequence sequentially against the single pool.
+    await this.db.query(`DELETE FROM UserScopeUniversities WHERE UserId = @id`, [idInput]);
+    await this.db.query(`DELETE FROM UserScopeAcademicUnits WHERE UserId = @id`, [idInput]);
+    await this.db.query(`DELETE FROM UserScopeAgencies WHERE UserId = @id`, [idInput]);
+
+    for (const instId of scope.universityIds ?? []) {
+      await this.db.query(
+        `INSERT INTO UserScopeUniversities (UserId, InstitutionId) VALUES (@id, @val)`,
+        [idInput, { name: 'val', type: sql.Int, value: instId }],
+      );
+    }
+    for (const auId of scope.academicUnitIds ?? []) {
+      await this.db.query(
+        `INSERT INTO UserScopeAcademicUnits (UserId, AcademicUnitId) VALUES (@id, @val)`,
+        [idInput, { name: 'val', type: sql.Int, value: auId }],
+      );
+    }
+    for (const agId of scope.agencyIds ?? []) {
+      await this.db.query(
+        `INSERT INTO UserScopeAgencies (UserId, AgencyId) VALUES (@id, @val)`,
+        [idInput, { name: 'val', type: sql.Int, value: agId }],
+      );
+    }
+
+    await this.audit(userId, 'USER_SCOPE_UPDATED', 'User', userId, null, JSON.stringify(scope));
+    return this.getScopeFor(userId);
   }
 
   private async audit(userId: string, action: string, entityType: string, entityId: string, oldVal: string | null, newVal: string | null) {

@@ -199,7 +199,21 @@ export class TranscriptsService {
     };
   }
 
-  async findAll(filters: { studentUserId?: string; submittedByUserId?: string; status?: string } = {}) {
+  /**
+   * No rows in UserScopeUniversities for this user = unrestricted (sees
+   * everything) — must remain the default. Returns null when unrestricted,
+   * or the list of InstitutionIds the user is scoped to otherwise.
+   */
+  private async getUniversityScope(userId?: string): Promise<number[] | null> {
+    if (!userId) return null;
+    const res = await this.db.query<any>(
+      `SELECT InstitutionId FROM UserScopeUniversities WHERE UserId = @uid`,
+      [{ name: 'uid', type: sql.UniqueIdentifier, value: userId }],
+    );
+    return res.recordset.length ? res.recordset.map((r: any) => r.InstitutionId) : null;
+  }
+
+  async findAll(filters: { studentUserId?: string; submittedByUserId?: string; status?: string; requestingUserId?: string } = {}) {
     let where = '1=1';
     const inputs: any[] = [];
 
@@ -214,6 +228,16 @@ export class TranscriptsService {
     if (filters.status) {
       where += ' AND t.Status = @status';
       inputs.push({ name: 'status', type: sql.VarChar(20), value: filters.status });
+    }
+
+    const scope = await this.getUniversityScope(filters.requestingUserId);
+    if (scope) {
+      const scopeParams = scope.map((instId, i) => {
+        const name = `scopeInst${i}`;
+        inputs.push({ name, type: sql.Int, value: instId });
+        return `@${name}`;
+      });
+      where += ` AND t.InstitutionId IN (${scopeParams.join(', ')})`;
     }
 
     const res = await this.db.query<any>(

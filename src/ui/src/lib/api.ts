@@ -74,6 +74,53 @@ export const usersApi = {
   update: (id: string, data: unknown) => api.patch(`/users/${id}`, data),
   deactivate: (id: string) => api.delete(`/users/${id}`),
   unlock: (id: string) => api.post(`/users/${id}/unlock`),
+  getScope: (id: string) => api.get(`/users/${id}/scope`),
+  setScope: (id: string, data: unknown) => api.put(`/users/${id}/scope`, data),
+};
+
+// ── Universities endpoints (SQL `Institutions` table) ──────────
+export const universitiesApi = {
+  list: (params?: Record<string, unknown>) => api.get('/universities', { params }),
+  get: (id: number) => api.get(`/universities/${id}`),
+  create: (data: unknown) => api.post('/universities', data),
+  update: (id: number, data: unknown) => api.patch(`/universities/${id}`, data),
+  deactivate: (id: number) => api.delete(`/universities/${id}`),
+  export: () => api.get('/universities/export', { responseType: 'blob' }),
+  import: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/universities/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
+// ── Institutions endpoints (SQL `AcademicUnits` table) ──────────
+export const institutionsApi = {
+  list: (params?: Record<string, unknown>) => api.get('/institutions', { params }),
+  get: (id: number) => api.get(`/institutions/${id}`),
+  create: (data: unknown) => api.post('/institutions', data),
+  update: (id: number, data: unknown) => api.patch(`/institutions/${id}`, data),
+  deactivate: (id: number) => api.delete(`/institutions/${id}`),
+  export: (params?: Record<string, unknown>) => api.get('/institutions/export', { params, responseType: 'blob' }),
+  import: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/institutions/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
+// ── Agencies endpoints ───────────────────────────────────────────
+export const agenciesApi = {
+  list: (params?: Record<string, unknown>) => api.get('/agencies', { params }),
+  get: (id: number) => api.get(`/agencies/${id}`),
+  create: (data: unknown) => api.post('/agencies', data),
+  update: (id: number, data: unknown) => api.patch(`/agencies/${id}`, data),
+  deactivate: (id: number) => api.delete(`/agencies/${id}`),
+  export: () => api.get('/agencies/export', { responseType: 'blob' }),
+  import: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/agencies/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // ── Courses endpoints ─────────────────────────────────────────
@@ -86,6 +133,14 @@ export const coursesApi = {
     api.get('/courses/equivalency', { params: { code, institution } }),
   search: (q: string, institution?: string) =>
     api.get('/courses/search', { params: { q, institution } }),
+};
+
+// ── Course Topics endpoints (reference-link detail per course) ────
+export const courseTopicsApi = {
+  list: (courseId: number) => api.get(`/courses/${courseId}/topics`),
+  create: (courseId: number, data: unknown) => api.post(`/courses/${courseId}/topics`, data),
+  update: (id: number, data: unknown) => api.patch(`/course-topics/${id}`, data),
+  remove: (id: number) => api.delete(`/course-topics/${id}`),
 };
 
 // ── Transcripts endpoints ─────────────────────────────────────

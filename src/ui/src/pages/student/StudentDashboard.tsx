@@ -8,6 +8,7 @@ import { Reveal } from '../../components/ui/PageTransition';
 import {
   Upload, Clock, CheckCircle, AlertCircle, ChevronRight, GraduationCap
 } from 'lucide-react';
+import { TRANSCRIPT_STEPS, stepProgressLabel } from '../../components/ui/TransferWorkflowStepper';
 
 const statusColor: Record<string, string> = {
   received: 'bg-blue-100 text-blue-700',
@@ -123,7 +124,9 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {transcripts.map((t: any) => (
+        {transcripts.map((t: any) => {
+          const stepLabel = stepProgressLabel(t.status, TRANSCRIPT_STEPS);
+          return (
           <Link
             key={t.id}
             to={`/student/transcript/${t.id}`}
@@ -137,6 +140,9 @@ export default function StudentDashboard() {
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[t.status] ?? ''}`}>
                   {t.status}
                 </span>
+                {stepLabel && (
+                  <span className="text-xs font-medium text-brand-700">{stepLabel}</span>
+                )}
               </div>
               <p className="text-sm text-gray-500">
                 Submitted {new Date(t.receivedAt).toLocaleDateString()}
@@ -158,7 +164,8 @@ export default function StudentDashboard() {
             </div>
             <ChevronRight className="text-gray-400 shrink-0" size={20} />
           </Link>
-        ))}
+          );
+        })}
       </div>
       </Reveal>
     </div>

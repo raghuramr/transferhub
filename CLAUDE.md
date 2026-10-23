@@ -47,6 +47,37 @@ Status as of last session: **none of the three implemented yet** — only
 discussed/scoped. Next step when resumed: start with #1 (pure code,
 no infra needed).
 
+**Sequencing decision (confirmed):** finish the rest of the UI/data work
+first (Universities/Institutions/Agencies CRUD — done; Course Topics +
+reference links — done; remaining dashboards/workflow polish) before
+starting on any of the three AI Agents above. Once the UI is fully set up,
+the AI integration should specifically make use of the Course Topics +
+reference links data (migration 009) to read through syllabus-level
+documentation per topic, not just the course-level Description field —
+this is expected to produce much more precise equivalency matches than
+course-title/description matching alone. Keep this in mind when actually
+building capability #1/#2 above: the matcher's prompt construction should
+pull in `CourseTopics` (title, description, reference links) for both the
+BU and external course being compared.
+
+## Course Topics (confirmed, built)
+Courses can now be broken down into **Topics** (migration 009:
+`CourseTopics`, JSON `ReferenceLinksJson` column for `{label, url}` pairs),
+editable only by `super_admin`/`admin`/`faculty` (enforced via `@Roles` on
+`CourseTopicsController`); any authenticated role can view them read-only.
+UI: a "Topics" action per row in `CourseDatabase.tsx` opens
+`CourseTopicsEditor.tsx`. Purpose: give the future AI matcher
+syllabus-level detail to compare, not just the course title/description.
+
+## Scope-visibility decision (confirmed — updated)
+BU course listings (`findBuCourses`) are now scoped by
+`UserScopeUniversities` exactly like external course listings
+(`findExternalCourses`) — the earlier "BU is the fixed home institution,
+leave it unscoped" choice was explicitly reversed now that the product is
+heading toward the multi-tenant SaaS model noted below (BU stops being a
+structurally special case, it's just another "University" row). No scope
+rows for a user still means unrestricted, unchanged.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group
@@ -91,6 +122,58 @@ chat history if needed, repeated here for quick reference)
 | Admin | `admin@bu.edu` | `Admin@123!` |
 | Agency | `agency@partner.edu` | `Agency@123!` |
 | Super Admin | `super_admin@bu.edu` | `SuperAdmin@123!` |
+
+## Email (Resend)
+- `src/api/src/common/email.service.ts` wraps the `resend` npm package.
+  Configure via `RESEND_API_KEY` in `src/api/.env` (see `.env.example`) —
+  optionally `RESEND_FROM_EMAIL` to override the default sender.
+- If `RESEND_API_KEY` is unset, `EmailService.send` logs a warning and
+  no-ops instead of throwing, so local dev without the key keeps working.
+- Failures are always non-fatal: `UsersService.create()` sends a "your
+  account was created" email with the temp password after inserting the
+  user, wrapped in try/catch — email delivery problems never fail user
+  creation.
+
+## Future direction: multi-tenant SaaS
+
+**Status: not scheduled, not being built — a direction to keep in mind so
+current schema/scope decisions don't accidentally foreclose it later.**
+Current hackathon-scope work (scope visibility, Resend email,
+universities/institutions/agencies CRUD, workflow dashboards, etc.)
+continues exactly as planned; nothing here changes any code, schema, or
+behavior today.
+
+The longer-term idea: evolve this app from a single-institution,
+BU-centric tool into a multi-tenant SaaS product that other universities
+could subscribe to as independent tenants.
+
+Getting there eventually would mean:
+- Removing the BU-centric assumptions baked into the system today — most
+  visibly the `Institutions.IsBU` flag, but also the more implicit
+  "there is exactly one receiving institution" assumption that shows up in
+  places like the triage/evaluation logic (`sp_TriageCourse`,
+  `sp_RecordDecision`, and the services around them), which currently
+  reason about a single home institution rather than "which tenant does
+  this request belong to."
+- Treating the Agencies/Universities/Institutions scope-visibility work
+  currently being built (migration 008 and its
+  `UserScopeUniversities` / `UserScopeAcademicUnits` / `UserScopeAgencies`
+  tables) as a stepping stone rather than the end state. That work solves
+  *visibility* (who can see what); real multi-tenancy would need it
+  extended into actual tenant isolation — e.g. row-level security or an
+  explicit tenant-id on the relevant tables — not just filtering what a
+  given user is shown.
+- Deciding what stays shared vs. what becomes tenant-private. The
+  `Equivalencies` table (cross-university course-matching data) is
+  valuable precisely because it's cross-institution — the plan would be
+  to keep it as a shared, crowdsourced asset that every tenant university
+  can read from and contribute equivalency mappings to, rather than
+  partitioning it per tenant. By contrast, `Transcripts` and `Evaluations`
+  are student-specific records and would need to stay strictly private to
+  the tenant that owns them.
+
+Again: this is just a direction noted for future reference, not committed
+work. No action item follows from it right now.
 
 ## Workflow reminders for this repo
 - Feature branch: `claude/sleepy-maxwell-mzyijb` — merge into `main` after
