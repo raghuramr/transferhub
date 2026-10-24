@@ -1,16 +1,11 @@
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { UserCircle, Lock, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { UserCircle, Lock, X, GraduationCap, BookOpen } from 'lucide-react';
 import { usersApi, api, getErrorMessage } from '../lib/api';
 import { useAuthStore } from '../store/auth';
 
 const emptyPasswordForm = { currentPassword: '', newPassword: '', confirm: '' };
 
-/**
- * Own-profile editor — lives in the page content area (not a modal), per
- * the user's request. Password changes stay a popup, since that's a
- * narrow, occasional action that doesn't need page real estate.
- */
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore();
   const [form, setForm] = useState({
@@ -22,15 +17,47 @@ export default function ProfilePage() {
     addressLine2: user?.addressLine2 ?? '',
     city: user?.city ?? '',
     state: user?.state ?? '',
-    postalCode: user?.postalCode ?? '',
+    zipCode: user?.zipCode ?? '',
     country: user?.country ?? '',
     countryOfOrigin: user?.countryOfOrigin ?? '',
   });
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [profileError, setProfileError] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  // Fetch full profile (includes StudentProfile fields for students)
+  const profileQuery = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: () => usersApi.get(user!.id),
+    enabled: !!user?.id,
+  });
+
+  useEffect(() => {
+    if (profileQuery.data?.data && !profileLoaded) {
+      const p = profileQuery.data.data as Record<string, unknown>;
+      setForm({
+        firstName: (p.firstName as string) ?? '',
+        lastName: (p.lastName as string) ?? '',
+        email: (p.email as string) ?? '',
+        mobile: (p.mobile as string) ?? '',
+        addressLine1: (p.addressLine1 as string) ?? '',
+        addressLine2: (p.addressLine2 as string) ?? '',
+        city: (p.city as string) ?? '',
+        state: (p.state as string) ?? '',
+        zipCode: (p.zipCode as string) ?? '',
+        country: (p.country as string) ?? '',
+        countryOfOrigin: (p.countryOfOrigin as string) ?? '',
+      });
+      setProfileLoaded(true);
+    }
+  }, [profileQuery.data, profileLoaded]);
+
+  // Student profile fields (read-only display from fresh fetch)
+  const profileData = profileQuery.data?.data as Record<string, unknown> | undefined;
+  const isStudent = user?.role === 'student';
 
   const profileMutation = useMutation({
     mutationFn: () => usersApi.update(user!.id, form),
@@ -67,11 +94,7 @@ export default function ProfilePage() {
       setPasswordError(getErrorMessage(err, 'Could not change password')),
   });
 
-  const field = (
-    name: keyof typeof form,
-    label: string,
-    type: string = 'text',
-  ) => (
+  const field = (name: keyof typeof form, label: string, type: string = 'text') => (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
       <input
@@ -80,6 +103,15 @@ export default function ProfilePage() {
         onChange={(e) => setForm((f) => ({ ...f, [name]: e.target.value }))}
         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
       />
+    </div>
+  );
+
+  const readonlyField = (label: string, value: string | number | undefined | null) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-500 mb-1">{label}</label>
+      <div className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700">
+        {value ?? <span className="text-gray-400 italic">Not provided</span>}
+      </div>
     </div>
   );
 
@@ -101,6 +133,10 @@ export default function ProfilePage() {
         </button>
       </div>
 
+      {profileQuery.isLoading && (
+        <div className="text-center py-8 text-gray-400 text-sm">Loading profile…</div>
+      )}
+
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
         {profileError && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{profileError}</div>
@@ -118,7 +154,7 @@ export default function ProfilePage() {
         {field('email', 'Email', 'email')}
 
         <div className="pt-4 border-t border-gray-100">
-          <p className="text-sm font-semibold text-gray-900 mb-3">Contact & Address</p>
+          <p className="text-sm font-semibold text-gray-900 mb-3">Contact &amp; Address</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {field('mobile', 'Mobile')}
             {field('countryOfOrigin', 'Country of Origin')}
@@ -130,7 +166,7 @@ export default function ProfilePage() {
             {field('state', 'State/Province')}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            {field('postalCode', 'Postal Code')}
+            {field('zipCode', 'Zip Code')}
             {field('country', 'Country')}
           </div>
         </div>
@@ -144,6 +180,46 @@ export default function ProfilePage() {
         </button>
       </div>
 
+      {/* Student-only education & emergency contact section */}
+      {isStudent && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5 mt-6">
+          <div className="flex items-center gap-2 mb-2">
+            <GraduationCap className="text-brand-800" size={20} />
+            <h2 className="text-lg font-semibold text-gray-900">Education &amp; Background</h2>
+          </div>
+          <p className="text-xs text-gray-400 -mt-3">These fields were set during registration. Contact support to update them.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {readonlyField('Prior / Current Institution', profileData?.priorInstitutionName as string)}
+            {readonlyField('Highest Education Level', profileData?.highestEducationLevel as string)}
+            {readonlyField('Field of Study', profileData?.fieldOfStudy as string)}
+            {readonlyField('GPA', profileData?.gpa as number)}
+            {readonlyField('Graduation Year', profileData?.graduationYear as number)}
+          </div>
+
+          <div className="pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-2 mb-3">
+              <BookOpen className="text-brand-600" size={16} />
+              <p className="text-sm font-semibold text-gray-900">Emergency Contact</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {readonlyField('Emergency Contact Name', profileData?.emergencyContactName as string)}
+              {readonlyField('Emergency Contact Phone', profileData?.emergencyContactPhone as string)}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100">
+            <div className="flex items-center gap-2 mb-3">
+              <BookOpen className="text-brand-600" size={16} />
+              <p className="text-sm font-semibold text-gray-900">Transfer Target</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {readonlyField('Target University', profileData?.targetInstitutionName as string)}
+              {readonlyField('Target Program', profileData?.targetProgramName as string)}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showPasswordModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
@@ -153,12 +229,9 @@ export default function ProfilePage() {
                 <X size={20} />
               </button>
             </div>
-
             <div className="space-y-4">
               {passwordError && (
-                <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs">
-                  {passwordError}
-                </div>
+                <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs">{passwordError}</div>
               )}
               {passwordSuccess && (
                 <div className="p-2.5 bg-green-50 border border-green-200 rounded-lg text-green-700 text-xs">
@@ -181,7 +254,6 @@ export default function ProfilePage() {
                 </div>
               ))}
             </div>
-
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowPasswordModal(false)}

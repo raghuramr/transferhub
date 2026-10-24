@@ -218,7 +218,7 @@ export class AuthService {
         { name: 'addr2', type: sql.NVarChar(200), value: dto.addressLine2 || null },
         { name: 'city', type: sql.NVarChar(100), value: dto.city || null },
         { name: 'state', type: sql.NVarChar(100), value: dto.state || null },
-        { name: 'postal', type: sql.NVarChar(20), value: dto.postalCode || null },
+        { name: 'postal', type: sql.NVarChar(20), value: dto.zipCode || null },
         { name: 'country', type: sql.NVarChar(100), value: dto.country || null },
         { name: 'countryOfOrigin', type: sql.NVarChar(100), value: dto.countryOfOrigin || null },
       ],
@@ -253,13 +253,7 @@ export class AuthService {
     await this.audit(userId, dto.email, 'student', 'STUDENT_REGISTERED', 'User', userId, ip, userAgent);
 
     try {
-      await this.emailService.send(
-        dto.email,
-        'Welcome to TransferHub',
-        `<p>Hi ${dto.firstName},</p>
-         <p>Your TransferHub account has been created. You can sign in any time with the
-         email and password you registered with.</p>`,
-      );
+      await this.emailService.sendWelcome(dto.email, dto.firstName);
     } catch {
       // Best-effort only — never fail registration because email delivery failed.
     }
@@ -362,7 +356,31 @@ export class AuthService {
        WHERE u.Id = @id`,
       [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
     );
-    return result.recordset[0];
+    const row = result.recordset[0];
+    if (!row) return row;
+    return {
+      id: row.Id,
+      email: row.Email,
+      firstName: row.FirstName,
+      lastName: row.LastName,
+      studentId: row.StudentId,
+      agencyName: row.AgencyName,
+      mobile: row.Mobile,
+      addressLine1: row.AddressLine1,
+      addressLine2: row.AddressLine2,
+      city: row.City,
+      state: row.State,
+      zipCode: row.PostalCode,
+      country: row.Country,
+      countryOfOrigin: row.CountryOfOrigin,
+      isActive: !!row.IsActive,
+      mustChangePass: !!row.MustChangePass,
+      lastLoginAt: row.LastLoginAt,
+      departmentId: row.DepartmentId,
+      role: row.Role,
+      roleDisplay: row.RoleDisplay,
+      departmentName: row.DepartmentName,
+    };
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {

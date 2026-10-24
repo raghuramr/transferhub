@@ -18,7 +18,7 @@ export class RegisterStudentDto {
   @IsOptional() @IsString() addressLine2?: string;
   @IsOptional() @IsString() city?: string;
   @IsOptional() @IsString() state?: string;
-  @IsOptional() @IsString() postalCode?: string;
+  @IsOptional() @IsString() zipCode?: string;
   @IsOptional() @IsString() country?: string;
   @IsOptional() @IsString() countryOfOrigin?: string;
 

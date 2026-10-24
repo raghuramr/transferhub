@@ -42,7 +42,7 @@ interface UserRow {
   addressLine2?: string;
   city?: string;
   state?: string;
-  postalCode?: string;
+  zipCode?: string;
   country?: string;
   countryOfOrigin?: string;
 }
@@ -111,7 +111,7 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
     addressLine2: user.addressLine2 ?? '',
     city: user.city ?? '',
     state: user.state ?? '',
-    postalCode: user.postalCode ?? '',
+    zipCode: user.zipCode ?? '',
     country: user.country ?? '',
     countryOfOrigin: user.countryOfOrigin ?? '',
   });
@@ -173,7 +173,7 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
         addressLine2: editForm.addressLine2,
         city: editForm.city,
         state: editForm.state,
-        postalCode: editForm.postalCode,
+        zipCode: editForm.zipCode,
         country: editForm.country,
         countryOfOrigin: editForm.countryOfOrigin,
       };
@@ -309,10 +309,10 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Postal Code</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Zip Code</label>
                 <input
-                  value={editForm.postalCode}
-                  onChange={(e) => setEditForm((f) => ({ ...f, postalCode: e.target.value }))}
+                  value={editForm.zipCode}
+                  onChange={(e) => setEditForm((f) => ({ ...f, zipCode: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>

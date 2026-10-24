@@ -43,6 +43,8 @@ import InstitutionsManagement from './pages/superadmin/InstitutionsManagement';
 import ProgramsManagement from './pages/superadmin/ProgramsManagement';
 import AgenciesManagement from './pages/superadmin/AgenciesManagement';
 import RolesPermissions from './pages/superadmin/RolesPermissions';
+import DataImport from './pages/superadmin/DataImport';
+import UsersManagement from './pages/superadmin/UsersManagement';
 
 // Custom Pages (CMS) — public-facing view, any authenticated role
 import CmsPageView from './pages/cms/CmsPageView';
@@ -141,12 +143,13 @@ export default function App() {
           <Route index element={<SuperAdminDashboard />} />
           <Route path="audit" element={<AuditLog />} />
           <Route path="settings" element={<SystemSettings />} />
-          <Route path="users" element={<UserManagement />} />
+          <Route path="users" element={<UsersManagement />} />
           <Route path="universities" element={<UniversitiesManagement />} />
           <Route path="institutions" element={<InstitutionsManagement />} />
           <Route path="programs" element={<ProgramsManagement />} />
           <Route path="agencies" element={<AgenciesManagement />} />
           <Route path="settings/roles-permissions" element={<RolesPermissions />} />
+          <Route path="settings/import" element={<DataImport />} />
         </Route>
 
         {/* Shared CMS page view (any authenticated role) */}

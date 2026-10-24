@@ -16,7 +16,7 @@ export interface User {
   addressLine2?: string;
   city?: string;
   state?: string;
-  postalCode?: string;
+  zipCode?: string;
   country?: string;
   countryOfOrigin?: string;
   isActive: boolean;
