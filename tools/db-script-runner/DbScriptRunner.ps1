@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    DB Script Runner — a generic Windows Forms GUI for applying .sql
+    DB Script Runner -- a generic Windows Forms GUI for applying .sql
     migration/seed scripts to a SQL Server (or Azure SQL Database)
     database, in order, with a tracked history so you never re-run
     (or forget to run) a script by accident.
@@ -32,14 +32,23 @@
 .NOTES
     Run via Run.bat (double-click) or:
       powershell -ExecutionPolicy Bypass -File DbScriptRunner.ps1
+
+    Keep this file plain ASCII. Windows PowerShell 5.1 (the "powershell.exe"
+    that ships with Windows, as opposed to "pwsh.exe"/PowerShell 7+) reads a
+    .ps1 with no UTF-8 BOM using the system ANSI codepage, not UTF-8 -- any
+    non-ASCII character (smart quotes, em dashes, box-drawing characters,
+    etc.) gets silently mangled on read, which can shift brace/paren
+    matching and produce confusing "Missing closing '}'" errors far from
+    the actual offending character. This bit a real user on first run; if
+    you're editing this file, don't reintroduce non-ASCII characters.
 #>
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# ─────────────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------
 # Helpers
-# ─────────────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------
 
 function Get-NaturalSortKey {
     <#
@@ -201,9 +210,9 @@ BEGIN
 END
 "@
 
-# ─────────────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------
 # Form state
-# ─────────────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------
 
 $script:ConnSettings = [ordered]@{
     Server      = ''
@@ -220,9 +229,9 @@ $script:ScriptsFolder = $null
 $script:SeedFolder    = $null
 $script:HistoryCache  = @{}   # ScriptName(lower) -> @{ AppliedAt; Success; Checksum }
 
-# ─────────────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------
 # Form layout
-# ─────────────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'DB Script Runner'
@@ -279,7 +288,7 @@ $connLayout.Controls.Add($cmbEnvFile, 1, 1)
 $connLayout.Controls.Add($btnLoadEnv, 2, 1)
 
 # Separator-ish label
-$lblManual = New-Label 'Connection settings (auto-filled from env file — edit freely):'
+$lblManual = New-Label 'Connection settings (auto-filled from env file -- edit freely):'
 $lblManual.Font = New-Object System.Drawing.Font($lblManual.Font, [System.Drawing.FontStyle]::Bold)
 $connLayout.Controls.Add($lblManual, 0, 2)
 $connLayout.SetColumnSpan($lblManual, 3)
@@ -493,9 +502,9 @@ function Write-Log {
     [System.Windows.Forms.Application]::DoEvents()
 }
 
-# ─────────────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------
 # Env file wiring
-# ─────────────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------
 
 function Refresh-EnvFileList {
     $cmbEnvFile.Items.Clear()
@@ -553,9 +562,9 @@ $script:SqlcmdCmd = Test-SqlcmdAvailable
 if ($script:SqlcmdCmd) {
     $valSqlcmdStatus.Text = "sqlcmd.exe found ($($script:SqlcmdCmd.Source))"
 } elseif (Test-InvokeSqlcmdAvailable) {
-    $valSqlcmdStatus.Text = 'sqlcmd.exe NOT found — falling back to Invoke-Sqlcmd (SqlServer module)'
+    $valSqlcmdStatus.Text = 'sqlcmd.exe NOT found -- falling back to Invoke-Sqlcmd (SqlServer module)'
 } else {
-    $valSqlcmdStatus.Text = 'NEITHER sqlcmd.exe NOR the SqlServer module (Invoke-Sqlcmd) found — install one to run scripts'
+    $valSqlcmdStatus.Text = 'NEITHER sqlcmd.exe NOR the SqlServer module (Invoke-Sqlcmd) found -- install one to run scripts'
     $valSqlcmdStatus.ForeColor = [System.Drawing.Color]::Red
 }
 
@@ -659,7 +668,7 @@ function Ensure-HistoryTable {
     Write-Log 'Ensuring dbo.__ScriptRunnerHistory exists...'
     $ok = Invoke-SqlScriptFile -FilePath $HistoryTableDdl -IsInlineCommand
     if (-not $ok) {
-        Write-Log 'WARNING: could not verify/create history table — status tracking may not work.'
+        Write-Log 'WARNING: could not verify/create history table -- status tracking may not work.'
     }
     return $ok
 }
@@ -818,7 +827,7 @@ function Run-SelectedScripts {
             Write-Log "--- SUCCESS: $name ---"
             Record-HistoryEntry -ScriptName $name -Checksum $checksum -Success $true
         } else {
-            Write-Log "--- FAILED: $name — stopping batch. No further scripts in this run will execute. ---"
+            Write-Log "--- FAILED: $name -- stopping batch. No further scripts in this run will execute. ---"
             Record-HistoryEntry -ScriptName $name -Checksum $checksum -Success $false
             $stopped = $true
             break
@@ -833,9 +842,9 @@ function Run-SelectedScripts {
     Refresh-ScriptList -Ui $Ui
 }
 
-# ─────────────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------
 # Wire up per-tab events
-# ─────────────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------
 
 foreach ($pair in @(@{ Ui = $migrationsUi }, @{ Ui = $seedUi })) {
     $ui = $pair.Ui
@@ -879,7 +888,7 @@ $btnTestConn.Add_Click({
         Write-Log 'Connection OK.'
         [System.Windows.Forms.MessageBox]::Show('Connection succeeded.', 'Success', 'OK', 'Information') | Out-Null
     } else {
-        Write-Log 'Connection FAILED — see log above for details.'
+        Write-Log 'Connection FAILED -- see log above for details.'
         [System.Windows.Forms.MessageBox]::Show('Connection failed. See the log panel for details.', 'Failed', 'OK', 'Error') | Out-Null
     }
 })
