@@ -17,14 +17,20 @@
 -- silently lose data. ProgramId is nullable for the same reason: a course
 -- without a confirmed Program match stays usable, just unlinked until an
 -- admin assigns one via the UI.
+-- Guarded so this migration is safe to re-run (e.g. a migration-runner
+-- tool re-applying scripts that already succeeded) — each step checks
+-- whether it already exists before creating it, rather than erroring.
 USE CreditEvalManager;
 GO
 
-ALTER TABLE Courses ADD ProgramId INT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Courses') AND name = 'ProgramId')
+    ALTER TABLE Courses ADD ProgramId INT NULL;
 GO
-ALTER TABLE Courses ADD CONSTRAINT FK_Courses_Program FOREIGN KEY (ProgramId) REFERENCES Programs(Id);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Courses_Program')
+    ALTER TABLE Courses ADD CONSTRAINT FK_Courses_Program FOREIGN KEY (ProgramId) REFERENCES Programs(Id);
 GO
-CREATE INDEX IX_Courses_ProgramId ON Courses (ProgramId);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Courses_ProgramId' AND object_id = OBJECT_ID('Courses'))
+    CREATE INDEX IX_Courses_ProgramId ON Courses (ProgramId);
 GO
 
 -- Backfill: match each course to the Program row for the same

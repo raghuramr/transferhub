@@ -11,6 +11,14 @@ export interface User {
   departmentName?: string;
   studentId?: string;
   agencyName?: string;
+  mobile?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  countryOfOrigin?: string;
   isActive: boolean;
   isLocked: boolean;
   mustChangePass: boolean;

@@ -48,6 +48,9 @@ import CmsPageView from './pages/cms/CmsPageView';
 // Custom Forms — fill-out view, any authenticated role
 import FormFillView from './pages/forms/FormFillView';
 
+// Own-profile editor — any authenticated role
+import ProfilePage from './pages/ProfilePage';
+
 // Public landing / hero page
 import HomePage from './pages/public/HomePage';
 
@@ -150,6 +153,10 @@ export default function App() {
         {/* Shared form fill-out view (any authenticated role) */}
         <Route path="/forms/:slug" element={<RequireAuth><AppLayout /></RequireAuth>}>
           <Route index element={<FormFillView />} />
+        </Route>
+
+        <Route path="/profile" element={<RequireAuth><AppLayout /></RequireAuth>}>
+          <Route index element={<ProfilePage />} />
         </Route>
 
         {/* Fallback */}

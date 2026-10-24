@@ -8,7 +8,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { parseCsvRows, toCsv } from '../common/csv.util';
 
-const EXPORT_COLUMNS = ['id', 'email', 'firstName', 'lastName', 'role', 'studentId', 'agencyName', 'departmentCode', 'isActive'];
+const EXPORT_COLUMNS = ['id', 'email', 'firstName', 'lastName', 'role', 'studentId', 'agencyName', 'departmentCode', 'mobile', 'addressLine1', 'addressLine2', 'city', 'state', 'postalCode', 'country', 'countryOfOrigin', 'isActive'];
 
 export interface UserScope {
   universityIds: number[];
@@ -24,6 +24,14 @@ function mapUser(row: any) {
     lastName: row.LastName,
     studentId: row.StudentId,
     agencyName: row.AgencyName,
+    mobile: row.Mobile,
+    addressLine1: row.AddressLine1,
+    addressLine2: row.AddressLine2,
+    city: row.City,
+    state: row.State,
+    postalCode: row.PostalCode,
+    country: row.Country,
+    countryOfOrigin: row.CountryOfOrigin,
     isActive: !!row.IsActive,
     isLocked: !!row.IsLocked,
     lastLoginAt: row.LastLoginAt,
@@ -43,6 +51,8 @@ export class UsersService {
   async findById(id: string) {
     const res = await this.db.query<any>(
       `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.StudentId, u.AgencyName,
+              u.Mobile, u.AddressLine1, u.AddressLine2, u.City, u.State, u.PostalCode,
+              u.Country, u.CountryOfOrigin,
               u.IsActive, u.IsLocked, u.LastLoginAt, u.MustChangePass, u.DepartmentId,
               r.Name AS Role, r.DisplayName AS RoleDisplay,
               d.Name AS DepartmentName, d.Code AS DepartmentCode
@@ -84,6 +94,8 @@ export class UsersService {
 
     const res = await this.db.query<any>(
       `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.StudentId, u.AgencyName,
+              u.Mobile, u.AddressLine1, u.AddressLine2, u.City, u.State, u.PostalCode,
+              u.Country, u.CountryOfOrigin,
               u.IsActive, u.IsLocked, u.LastLoginAt, u.DepartmentId,
               r.Name AS Role, r.DisplayName AS RoleDisplay,
               d.Name AS DepartmentName
@@ -193,6 +205,38 @@ export class UsersService {
     if (dto.agencyName !== undefined) {
       sets.push('AgencyName = @agency');
       inputs.push({ name: 'agency', type: sql.NVarChar(200), value: dto.agencyName });
+    }
+    if (dto.mobile !== undefined) {
+      sets.push('Mobile = @mobile');
+      inputs.push({ name: 'mobile', type: sql.NVarChar(30), value: dto.mobile });
+    }
+    if (dto.addressLine1 !== undefined) {
+      sets.push('AddressLine1 = @addr1');
+      inputs.push({ name: 'addr1', type: sql.NVarChar(200), value: dto.addressLine1 });
+    }
+    if (dto.addressLine2 !== undefined) {
+      sets.push('AddressLine2 = @addr2');
+      inputs.push({ name: 'addr2', type: sql.NVarChar(200), value: dto.addressLine2 });
+    }
+    if (dto.city !== undefined) {
+      sets.push('City = @city');
+      inputs.push({ name: 'city', type: sql.NVarChar(100), value: dto.city });
+    }
+    if (dto.state !== undefined) {
+      sets.push('State = @state');
+      inputs.push({ name: 'state', type: sql.NVarChar(100), value: dto.state });
+    }
+    if (dto.postalCode !== undefined) {
+      sets.push('PostalCode = @postal');
+      inputs.push({ name: 'postal', type: sql.NVarChar(20), value: dto.postalCode });
+    }
+    if (dto.country !== undefined) {
+      sets.push('Country = @country');
+      inputs.push({ name: 'country', type: sql.NVarChar(100), value: dto.country });
+    }
+    if (dto.countryOfOrigin !== undefined) {
+      sets.push('CountryOfOrigin = @countryOrigin');
+      inputs.push({ name: 'countryOrigin', type: sql.NVarChar(100), value: dto.countryOfOrigin });
     }
     if (dto.isActive !== undefined) {
       sets.push('IsActive = @active');

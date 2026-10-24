@@ -23,6 +23,14 @@ interface UserRow {
   isActive: boolean;
   isLocked?: boolean;
   status?: string;
+  mobile?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  countryOfOrigin?: string;
 }
 
 function downloadBlob(data: BlobPart, filename: string) {
@@ -84,6 +92,14 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
     role: user.role,
     isActive: user.isActive,
     password: '',
+    mobile: user.mobile ?? '',
+    addressLine1: user.addressLine1 ?? '',
+    addressLine2: user.addressLine2 ?? '',
+    city: user.city ?? '',
+    state: user.state ?? '',
+    postalCode: user.postalCode ?? '',
+    country: user.country ?? '',
+    countryOfOrigin: user.countryOfOrigin ?? '',
   });
   const [scopeDraft, setScopeDraft] = useState<{ universityIds: number[]; academicUnitIds: number[]; agencyIds: number[] }>({
     universityIds: [],
@@ -136,6 +152,14 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
         email: editForm.email,
         role: editForm.role,
         isActive: editForm.isActive,
+        mobile: editForm.mobile,
+        addressLine1: editForm.addressLine1,
+        addressLine2: editForm.addressLine2,
+        city: editForm.city,
+        state: editForm.state,
+        postalCode: editForm.postalCode,
+        country: editForm.country,
+        countryOfOrigin: editForm.countryOfOrigin,
       };
       if (editForm.password) payload.password = editForm.password;
       return usersApi.update(user.id, payload);
@@ -211,6 +235,79 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
                 placeholder="Leave blank to keep"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
+            </div>
+          </div>
+          <div className="pt-2 border-t border-gray-100">
+            <p className="text-xs font-medium text-gray-500 mb-2">Contact & Address</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Mobile</label>
+                <input
+                  value={editForm.mobile}
+                  onChange={(e) => setEditForm((f) => ({ ...f, mobile: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Country of Origin</label>
+                <input
+                  value={editForm.countryOfOrigin}
+                  onChange={(e) => setEditForm((f) => ({ ...f, countryOfOrigin: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Address Line 1</label>
+              <input
+                value={editForm.addressLine1}
+                onChange={(e) => setEditForm((f) => ({ ...f, addressLine1: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Address Line 2</label>
+              <input
+                value={editForm.addressLine2}
+                onChange={(e) => setEditForm((f) => ({ ...f, addressLine2: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">City</label>
+                <input
+                  value={editForm.city}
+                  onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">State/Province</label>
+                <input
+                  value={editForm.state}
+                  onChange={(e) => setEditForm((f) => ({ ...f, state: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Postal Code</label>
+                <input
+                  value={editForm.postalCode}
+                  onChange={(e) => setEditForm((f) => ({ ...f, postalCode: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Country</label>
+                <input
+                  value={editForm.country}
+                  onChange={(e) => setEditForm((f) => ({ ...f, country: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm text-gray-700">

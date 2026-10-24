@@ -148,6 +148,8 @@ export class AuthService {
   async me(userId: string) {
     const result = await this.db.query<any>(
       `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.StudentId, u.AgencyName,
+              u.Mobile, u.AddressLine1, u.AddressLine2, u.City, u.State, u.PostalCode,
+              u.Country, u.CountryOfOrigin,
               u.IsActive, u.MustChangePass, u.LastLoginAt, u.DepartmentId,
               r.Name AS Role, r.DisplayName AS RoleDisplay,
               d.Name AS DepartmentName
