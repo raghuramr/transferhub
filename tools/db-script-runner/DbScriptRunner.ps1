@@ -650,18 +650,36 @@ function Invoke-SqlScriptFile {
         $proc = New-Object System.Diagnostics.Process
         $proc.StartInfo = $psi
 
-        $outAction = {
-            if ($EventArgs.Data) { Write-Log $EventArgs.Data }
-        }
-        Register-ObjectEvent -InputObject $proc -EventName OutputDataReceived -Action $outAction | Out-Null
-        Register-ObjectEvent -InputObject $proc -EventName ErrorDataReceived -Action $outAction | Out-Null
-
+        # NOTE: earlier versions of this tool captured output via
+        # Register-ObjectEvent (OutputDataReceived/ErrorDataReceived) with
+        # an -Action scriptblock calling Write-Log. That scriptblock runs
+        # in a separate PowerShell event-subscriber scope that does NOT see
+        # functions defined in this script's scope -- Write-Log was
+        # effectively undefined there, the event action failed silently
+        # (PowerShell swallows errors inside event subscriber actions by
+        # default), and every line of sqlcmd's real output/error text was
+        # lost. This surfaced as "Connection FAILED -- see log above for
+        # details" with nothing actually in the log above it. Fixed by
+        # reading stdout/stderr synchronously after the process exits
+        # instead -- simpler, and immune to that scoping pitfall.
         [void]$proc.Start()
-        $proc.BeginOutputReadLine()
-        $proc.BeginErrorReadLine()
+        $stdout = $proc.StandardOutput.ReadToEnd()
+        $stderr = $proc.StandardError.ReadToEnd()
         $proc.WaitForExit()
 
-        Get-EventSubscriber | Where-Object { $_.SourceObject -eq $proc } | Unregister-Event
+        if ($stdout) {
+            foreach ($line in ($stdout -split "`r?`n")) {
+                if ($line) { Write-Log $line }
+            }
+        }
+        if ($stderr) {
+            foreach ($line in ($stderr -split "`r?`n")) {
+                if ($line) { Write-Log "STDERR: $line" }
+            }
+        }
+        if ($proc.ExitCode -ne 0) {
+            Write-Log "sqlcmd exited with code $($proc.ExitCode)."
+        }
 
         return ($proc.ExitCode -eq 0)
     }

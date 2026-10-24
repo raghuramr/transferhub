@@ -157,6 +157,13 @@ interface Institution {
 function UniversityInstitutionsList({ universityId }: { universityId: number }) {
   const qc = useQueryClient();
   const [newName, setNewName] = useState('');
+  const [assignId, setAssignId] = useState('');
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ['institutions', { universityId }] });
+    qc.invalidateQueries({ queryKey: ['institutions', { unmapped: true }] });
+    qc.invalidateQueries({ queryKey: ['institutions'] });
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['institutions', { universityId }],
@@ -164,17 +171,32 @@ function UniversityInstitutionsList({ universityId }: { universityId: number }) 
   });
   const institutions: Institution[] = (data?.data as any) ?? [];
 
+  // Existing institutions with no university yet, so an admin can assign
+  // one here instead of only ever creating brand-new ones.
+  const { data: unmappedData } = useQuery({
+    queryKey: ['institutions', { unmapped: true }],
+    queryFn: () => institutionsApi.list({ unmapped: true }),
+  });
+  const unmapped: Institution[] = (unmappedData?.data as any) ?? [];
+
   const addMutation = useMutation({
     mutationFn: (name: string) => institutionsApi.create({ universityId, name }),
     onSuccess: () => {
       setNewName('');
-      qc.invalidateQueries({ queryKey: ['institutions', { universityId }] });
-      qc.invalidateQueries({ queryKey: ['institutions'] });
+      invalidateAll();
+    },
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: (id: number) => institutionsApi.update(id, { universityId }),
+    onSuccess: () => {
+      setAssignId('');
+      invalidateAll();
     },
   });
 
   return (
-    <div className="mt-5 pl-4 border-l-2 border-brand-200">
+    <div className="pl-4 border-l-2 border-brand-200">
       <div className="flex items-center gap-1.5 mb-2">
         <School size={14} className="text-brand-700" />
         <h3 className="text-sm font-semibold text-gray-700">Institutions</h3>
@@ -185,7 +207,7 @@ function UniversityInstitutionsList({ universityId }: { universityId: number }) 
       ) : institutions.length === 0 ? (
         <p className="text-xs text-gray-400 mb-2">No institutions under this university yet.</p>
       ) : (
-        <ul className="space-y-1 mb-2">
+        <ul className="space-y-1 mb-3">
           {institutions.map((i) => (
             <li
               key={i.id}
@@ -205,6 +227,28 @@ function UniversityInstitutionsList({ universityId }: { universityId: number }) 
         </ul>
       )}
 
+      {unmapped.length > 0 && (
+        <div className="flex gap-2 mb-2">
+          <select
+            value={assignId}
+            onChange={(e) => setAssignId(e.target.value)}
+            className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="">Assign an existing unmapped institution…</option>
+            {unmapped.map((i) => (
+              <option key={i.id} value={i.id}>{i.name}{i.code ? ` (${i.code})` : ''}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => assignId && assignMutation.mutate(Number(assignId))}
+            disabled={assignMutation.isPending || !assignId}
+            className="px-3 py-1.5 border border-brand-300 text-brand-800 rounded-lg text-xs font-medium hover:bg-brand-50 disabled:opacity-50"
+          >
+            {assignMutation.isPending ? 'Assigning…' : 'Assign'}
+          </button>
+        </div>
+      )}
+
       <div className="flex gap-2">
         <input
           value={newName}
@@ -220,8 +264,8 @@ function UniversityInstitutionsList({ universityId }: { universityId: number }) 
           <Plus size={12} /> Add Institution
         </button>
       </div>
-      {addMutation.isError && (
-        <p className="mt-1 text-xs text-red-600">Could not add institution. Please try again.</p>
+      {(addMutation.isError || assignMutation.isError) && (
+        <p className="mt-1 text-xs text-red-600">Could not save. Please try again.</p>
       )}
     </div>
   );
@@ -243,48 +287,52 @@ function UniversityEditForm({
   });
 
   return (
-    <div className="p-5 bg-gray-50 border-t border-gray-200 max-w-md">
-      <UniversityFields form={form} onChange={setForm} />
-      <div className="flex gap-3 mt-5">
-        <button
-          onClick={() => setForm(universityToForm(university))}
-          className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 bg-white"
-        >
-          Reset
-        </button>
-        <button
-          onClick={() => onSave(form)}
-          disabled={isSaving || !form.code || !form.name}
-          className="flex-1 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
-        >
-          {isSaving ? 'Saving…' : 'Save Changes'}
-        </button>
-      </div>
+    <div className="p-5 bg-gray-50 border-t border-gray-200">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div>
+          <UniversityFields form={form} onChange={setForm} />
+          <div className="flex gap-3 mt-5">
+            <button
+              onClick={() => setForm(universityToForm(university))}
+              className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 bg-white"
+            >
+              Reset
+            </button>
+            <button
+              onClick={() => onSave(form)}
+              disabled={isSaving || !form.code || !form.name}
+              className="flex-1 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
+            >
+              {isSaving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
 
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <button
-          onClick={() => generatePageMutation.mutate()}
-          disabled={generatePageMutation.isPending}
-          className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 border border-brand-300 text-brand-800 rounded-lg hover:bg-brand-50 disabled:opacity-50"
-        >
-          <Globe2 size={14} />
-          {generatePageMutation.isPending ? 'Generating…' : 'Generate Public Page'}
-        </button>
-        {generatePageMutation.data && (
-          <p className="mt-2 text-xs text-gray-600">
-            Page ready at slug{' '}
-            <code className="bg-gray-100 px-1 py-0.5 rounded">
-              {(generatePageMutation.data.data as any).slug}
-            </code>
-            .
-          </p>
-        )}
-        {generatePageMutation.isError && (
-          <p className="mt-2 text-xs text-red-600">Could not generate the page. Please try again.</p>
-        )}
-      </div>
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <button
+              onClick={() => generatePageMutation.mutate()}
+              disabled={generatePageMutation.isPending}
+              className="flex items-center gap-1.5 text-sm font-medium px-3 py-2 border border-brand-300 text-brand-800 rounded-lg hover:bg-brand-50 disabled:opacity-50"
+            >
+              <Globe2 size={14} />
+              {generatePageMutation.isPending ? 'Generating…' : 'Generate Public Page'}
+            </button>
+            {generatePageMutation.data && (
+              <p className="mt-2 text-xs text-gray-600">
+                Page ready at slug{' '}
+                <code className="bg-gray-100 px-1 py-0.5 rounded">
+                  {(generatePageMutation.data.data as any).slug}
+                </code>
+                .
+              </p>
+            )}
+            {generatePageMutation.isError && (
+              <p className="mt-2 text-xs text-red-600">Could not generate the page. Please try again.</p>
+            )}
+          </div>
+        </div>
 
-      <UniversityInstitutionsList universityId={university.id} />
+        <UniversityInstitutionsList universityId={university.id} />
+      </div>
 
       <p className="mt-4 text-xs text-gray-400">Click the row again to collapse.</p>
     </div>
