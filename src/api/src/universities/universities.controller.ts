@@ -11,9 +11,12 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
+// Read endpoints (list/get) are open to any authenticated role — every
+// role's forms need to read the University catalog (e.g. the student/
+// agency transcript cascade), not just SuperAdmin. Only mutations are
+// admin/super_admin-gated, same split as CoursesController.
 @Controller('universities')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin', 'super_admin')
+@UseGuards(JwtAuthGuard)
 export class UniversitiesController {
   constructor(private universitiesService: UniversitiesService) {}
 
@@ -26,6 +29,8 @@ export class UniversitiesController {
   }
 
   @Get('export')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
   async exportCsv(@Res() res: Response) {
     const csv = await this.universitiesService.exportCsv();
     res.setHeader('Content-Type', 'text/csv');
@@ -39,11 +44,15 @@ export class UniversitiesController {
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
   create(@Body() dto: CreateUniversityDto) {
     return this.universitiesService.create(dto);
   }
 
   @Post('import')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
   @UseInterceptors(FileInterceptor('file'))
   async importCsv(@UploadedFile() file: any) {
     if (!file) throw new BadRequestException('No file uploaded');
@@ -51,11 +60,15 @@ export class UniversitiesController {
   }
 
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUniversityDto) {
     return this.universitiesService.update(id, dto);
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.universitiesService.deactivate(id);
   }
@@ -65,6 +78,8 @@ export class UniversitiesController {
    * course Topics grouped by Program (slug `university-{code}`).
    */
   @Post(':id/generate-page')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
   generatePage(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return this.universitiesService.generatePublicPage(id, req.user.id);
   }
