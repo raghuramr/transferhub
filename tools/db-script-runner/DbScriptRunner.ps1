@@ -50,6 +50,32 @@ Add-Type -AssemblyName System.Drawing
 # Helpers
 # -------------------------------------------------------------------------
 
+# Walks upward from $StartPath looking for a subfolder matching
+# $RelativeTarget (e.g. 'database\migrations'). Used so the tool finds the
+# right defaults regardless of how it's launched -- double-clicking Run.bat,
+# right-click > Run with PowerShell, or invoking from an arbitrary terminal
+# directory can all leave the process's current directory somewhere other
+# than the project root (notably: double-clicking a .bat sets the current
+# directory to the .bat's own folder, i.e. this tool's folder itself, which
+# has no database\migrations subfolder of its own).
+function Find-UpwardFolder {
+    param(
+        [string]$StartPath,
+        [string]$RelativeTarget
+    )
+    $dir = $StartPath
+    for ($i = 0; $i -lt 10 -and $dir; $i++) {
+        $candidate = Join-Path $dir $RelativeTarget
+        if (Test-Path -LiteralPath $candidate -PathType Container) {
+            return $candidate
+        }
+        $parent = Split-Path -Parent $dir
+        if (-not $parent -or $parent -eq $dir) { break }
+        $dir = $parent
+    }
+    return $null
+}
+
 function Get-NaturalSortKey {
     <#
         Splits a filename into alternating text/number chunks so that
@@ -267,7 +293,12 @@ function New-Label($text) {
 $lblEnvFolder = New-Label 'Env file folder:'
 $txtEnvFolder = New-Object System.Windows.Forms.TextBox
 $txtEnvFolder.Dock = 'Fill'
-$txtEnvFolder.Text = (Get-Location).Path
+$script:DefaultEnvFolder = Find-UpwardFolder -StartPath $PSScriptRoot -RelativeTarget 'src\api'
+if (-not $script:DefaultEnvFolder) {
+    $script:DefaultEnvFolder = Find-UpwardFolder -StartPath (Get-Location).Path -RelativeTarget 'src\api'
+}
+if (-not $script:DefaultEnvFolder) { $script:DefaultEnvFolder = (Get-Location).Path }
+$txtEnvFolder.Text = $script:DefaultEnvFolder
 $btnBrowseEnvFolder = New-Object System.Windows.Forms.Button
 $btnBrowseEnvFolder.Text = 'Browse...'
 $btnBrowseEnvFolder.Dock = 'Fill'
@@ -449,8 +480,11 @@ function New-ScriptTabUi {
     }
 }
 
-$defaultMigrationsFolder = Join-Path (Get-Location).Path 'database\migrations'
-if (-not (Test-Path -LiteralPath $defaultMigrationsFolder)) {
+$defaultMigrationsFolder = Find-UpwardFolder -StartPath $PSScriptRoot -RelativeTarget 'database\migrations'
+if (-not $defaultMigrationsFolder) {
+    $defaultMigrationsFolder = Find-UpwardFolder -StartPath (Get-Location).Path -RelativeTarget 'database\migrations'
+}
+if (-not $defaultMigrationsFolder) {
     $defaultMigrationsFolder = (Get-Location).Path
 }
 $migrationsUi = New-ScriptTabUi -Page $tabMigrations -DefaultFolder $defaultMigrationsFolder
@@ -587,13 +621,15 @@ function Get-CurrentConnSettings {
 function Invoke-SqlScriptFile {
     param(
         [string]$FilePath,
-        [switch]$IsInlineCommand   # when set, $FilePath is actually a -Q command string, not a file
+        [switch]$IsInlineCommand,  # when set, $FilePath is actually a -Q command string, not a file
+        [string]$DatabaseOverride  # connect to this database instead of the configured one (e.g. 'master')
     )
 
     $c = Get-CurrentConnSettings
+    $effectiveDatabase = if ($DatabaseOverride) { $DatabaseOverride } else { $c.Database }
 
     if ($script:SqlcmdCmd) {
-        $argArray = Build-SqlcmdArgs -Server $c.Server -Port $c.Port -Database $c.Database `
+        $argArray = Build-SqlcmdArgs -Server $c.Server -Port $c.Port -Database $effectiveDatabase `
             -Trusted $c.Trusted -User $c.User -Password $c.Password -Encrypt $c.Encrypt
 
         if ($IsInlineCommand) {
@@ -634,7 +670,7 @@ function Invoke-SqlScriptFile {
         try {
             $invokeParams = @{
                 ServerInstance = if ($c.Port) { "$($c.Server),$($c.Port)" } else { $c.Server }
-                Database       = $c.Database
+                Database       = $effectiveDatabase
                 ErrorAction    = 'Stop'
             }
             if ($IsInlineCommand) {
@@ -878,18 +914,43 @@ foreach ($pair in @(@{ Ui = $migrationsUi }, @{ Ui = $seedUi })) {
 
 $btnTestConn.Add_Click({
     $c = Get-CurrentConnSettings
-    if (-not $c.Server -or -not $c.Database) {
-        [System.Windows.Forms.MessageBox]::Show('Please fill in Server and Database first.', 'Missing info', 'OK', 'Warning') | Out-Null
+    if (-not $c.Server) {
+        [System.Windows.Forms.MessageBox]::Show('Please fill in Server first.', 'Missing info', 'OK', 'Warning') | Out-Null
         return
     }
-    Write-Log "Testing connection to $($c.Server) / $($c.Database) ..."
-    $ok = Invoke-SqlScriptFile -FilePath 'SELECT @@VERSION AS Version;' -IsInlineCommand
-    if ($ok) {
-        Write-Log 'Connection OK.'
-        [System.Windows.Forms.MessageBox]::Show('Connection succeeded.', 'Success', 'OK', 'Information') | Out-Null
+
+    # Stage 1: can we reach the server at all? Probe against 'master', not
+    # the configured target database -- the target database often doesn't
+    # exist yet (e.g. a fresh LocalDB instance before migration 001, which
+    # itself runs "USE master; ... CREATE DATABASE ...", has no -d flag at
+    # all per its own header comment). Testing against a not-yet-created
+    # database would always fail here with a confusing "login failed"
+    # error that has nothing to do with the server/credentials being wrong.
+    Write-Log "Testing server connectivity: $($c.Server) (database: master) ..."
+    $serverOk = Invoke-SqlScriptFile -FilePath 'SELECT @@VERSION AS Version;' -IsInlineCommand -DatabaseOverride 'master'
+
+    if (-not $serverOk) {
+        Write-Log 'Server connection FAILED -- see log above for details (check Server/Port/credentials/trusted-auth, and that the SQL Server/LocalDB instance is actually running).'
+        [System.Windows.Forms.MessageBox]::Show('Could not reach the server. See the log panel for details.', 'Failed', 'OK', 'Error') | Out-Null
+        return
+    }
+    Write-Log 'Server connection OK.'
+
+    # Stage 2: does the configured target database exist? This is
+    # informational, not a failure -- a database that doesn't exist yet is
+    # the expected, normal state before you've run your creation script.
+    if ($c.Database) {
+        $checkQuery = "SET NOCOUNT ON; SELECT CASE WHEN DB_ID('$($c.Database.Replace("'", "''"))') IS NOT NULL THEN 1 ELSE 0 END;"
+        Write-Log "Checking whether database '$($c.Database)' exists ..."
+        $dbCheckOk = Invoke-SqlScriptFile -FilePath $checkQuery -IsInlineCommand -DatabaseOverride 'master'
+        if ($dbCheckOk) {
+            Write-Log "Database '$($c.Database)' check complete (see output above -- '1' = exists, '0' = not created yet)."
+        }
+        [System.Windows.Forms.MessageBox]::Show(
+            "Server connection succeeded.`n`nCheck the log panel to see whether database '$($c.Database)' already exists. If not, that's expected before you've run your database-creation script -- run it first (it connects to master itself and doesn't need the target database to exist yet).",
+            'Server reachable', 'OK', 'Information') | Out-Null
     } else {
-        Write-Log 'Connection FAILED -- see log above for details.'
-        [System.Windows.Forms.MessageBox]::Show('Connection failed. See the log panel for details.', 'Failed', 'OK', 'Error') | Out-Null
+        [System.Windows.Forms.MessageBox]::Show('Server connection succeeded. No target database configured -- fine if you plan to run a creation script first.', 'Server reachable', 'OK', 'Information') | Out-Null
     }
 })
 

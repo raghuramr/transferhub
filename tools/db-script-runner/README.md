@@ -10,18 +10,23 @@ SQL-Server-based project that keeps its DB changes as plain `.sql` files.
 
 ## What it does
 
-1. **Pick an env file** -- browse to a folder (defaults to the current
-   directory), pick any `.env`-style file found there (`.env`, `.env.test`,
-   `.env.production`, `*.env`, ...), and load it. It parses plain
-   `KEY=value` lines (skips comments/blank lines, strips quotes, strips
-   trailing inline `# comments`) and pre-fills the connection fields
-   (server, port, database, trusted/SQL auth, user, password, encrypt).
-   Every field stays editable by hand afterwards -- useful if another
-   project uses different variable names than `DB_SERVER`/`DB_NAME`/etc.
+1. **Pick an env file** -- browse to a folder (defaults to this project's
+   `src/api` folder, found by walking up from wherever the tool itself
+   lives, regardless of how you launched it -- double-clicking `Run.bat`
+   normally leaves the process's "current directory" set to the tool's own
+   folder, not the project root, so this walk-upward lookup is what makes
+   the default actually useful instead of finding nothing), pick any
+   `.env`-style file found there (`.env`, `.env.test`, `.env.production`,
+   `*.env`, ...), and load it. It parses plain `KEY=value` lines (skips
+   comments/blank lines, strips quotes, strips trailing inline
+   `# comments`) and pre-fills the connection fields (server, port,
+   database, trusted/SQL auth, user, password, encrypt). Every field stays
+   editable by hand afterwards -- useful if another project uses different
+   variable names than `DB_SERVER`/`DB_NAME`/etc.
 2. **Pick a scripts folder** -- browse to any folder of `.sql` files
-   (defaults to `database/migrations` under the current directory when run
-   from this repo). If a sibling `database/seed` folder exists next to it,
-   it's auto-detected and shown on its own "Seed" tab.
+   (defaults to `database/migrations`, found the same walk-upward way as
+   the env folder above). If a sibling `database/seed` folder exists next
+   to it, it's auto-detected and shown on its own "Seed" tab.
 3. **List + status** -- every `.sql` file in the folder is listed, sorted
    *naturally* by filename (so `002_x.sql` sorts before `011_x.sql`, not
    alphabetically-as-a-string). Each one shows:
@@ -76,6 +81,28 @@ the "Trusted/Windows Auth" checkbox.
 connection Azure SQL requires, with the server certificate trusted so it
 works out of the box without installing a separate CA cert.
 
+## Creating the database for the first time
+
+Every script this tool runs targets the **Database** field on the
+Connection tab via `-d`. That's fine once the database exists -- but a
+creation script that does its own `CREATE DATABASE` (this project's
+`database/migrations/001_create_database.sql` is exactly this, see its own
+header comment) can't be connected to with `-d <that database>`, because
+the database doesn't exist yet and `sqlcmd`/`Invoke-Sqlcmd` fail before the
+script even runs ("Cannot open database ... requested by the login").
+
+To run a creation script like that: **temporarily set Database to `master`**
+on the Connection tab, run just that one script, then switch Database back
+to the real name (e.g. `CreditEvalManager`) for every script after it. The
+script itself issues its own `USE master; ... CREATE DATABASE ...`, so
+connecting with an initial context of `master` is exactly right.
+
+**Test Connection** reflects this: it always probes reachability against
+`master` (never the configured target database), then separately reports
+whether the target database exists yet as an informational note, not a
+failure -- so testing before you've created the database doesn't produce a
+confusing, unexplained "connection failed".
+
 ## Running it
 
 - **Double-click `Run.bat`** -- the easiest way. It launches
@@ -123,3 +150,19 @@ throw off brace matching at a location far from the real problem. Fix:
 keep the file plain ASCII (see the `.NOTES` block at the top of
 `DbScriptRunner.ps1`), or save it with a UTF-8 BOM if you must use
 non-ASCII characters.
+
+**"No .env-style files found" / "Listed 0 script(s)" even though the
+project clearly has them** -- older versions of this tool defaulted the
+env/scripts folders to the process's current directory, which when you
+double-click `Run.bat` is the tool's own folder (`tools/db-script-runner`),
+not the project root -- so it found nothing. Fixed: the defaults now walk
+upward from wherever the tool itself lives to find `src/api` and
+`database/migrations`. If you're on an older copy, either update it or
+just use the "Browse..." buttons to point at the right folders by hand.
+
+**Test Connection (or running the very first script) fails with something
+like "Cannot open database ... requested by the login" against a fresh
+LocalDB/SQL Server instance** -- the target database doesn't exist yet.
+See "Creating the database for the first time" above: set Database to
+`master` temporarily for the one script that creates the database, then
+switch it to the real name for everything after.
