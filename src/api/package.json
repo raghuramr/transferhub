@@ -2,6 +2,7 @@
   "name": "university-manager-api",
   "version": "1.0.0",
   "description": "University Transfer Credit Evaluation API",
+  "main": "dist/main.js",
   "scripts": {
     "setup:env": "tsx scripts/setup-env.ts",
     "seed:users": "tsx scripts/seed-users.ts",
