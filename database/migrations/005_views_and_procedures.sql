@@ -8,7 +8,7 @@
 -- gymnastics needed. Content unchanged from the original
 -- 005_views_and_procedures.sql.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 -- ─── View: student-facing transcript summary ─────────────────

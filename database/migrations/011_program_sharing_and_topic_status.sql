@@ -33,7 +33,7 @@
 -- Idempotent: safe to re-run (IF NOT EXISTS guards throughout, matching
 -- every other consolidated migration file).
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 -- ─── ProgramUniversities ────────────────────────────────────

@@ -6,7 +6,7 @@
 -- made idempotent (existence-guarded) so it is a no-op when these tables
 -- already exist.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 -- ─── Students (extended profile for Users with role=student) ─

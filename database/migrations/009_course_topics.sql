@@ -8,7 +8,7 @@
 -- Content unchanged from the original 009_course_topics.sql, made
 -- idempotent.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CourseTopics')

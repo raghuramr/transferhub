@@ -4,7 +4,7 @@
 -- Unchanged from the original seed/001_reference_data.sql (already
 -- idempotent via MERGE ... WHEN NOT MATCHED).
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 -- ─── Roles ───────────────────────────────────────────────────

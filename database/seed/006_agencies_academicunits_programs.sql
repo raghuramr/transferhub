@@ -7,7 +7,7 @@
 -- Unchanged from the original seed/007_agencies_academicunits_programs.sql
 -- (already idempotent via MERGE / WHERE NOT EXISTS).
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 -- ─── Agencies ────────────────────────────────────────────────

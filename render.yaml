@@ -17,7 +17,7 @@ services:
       - key: DB_PORT
         value: "1433"
       - key: DB_NAME
-        value: CreditEvalManager
+        value: TransferHubDB
       - key: DB_TRUSTED_CONNECTION
         value: "false"
       - key: DB_ENCRYPT

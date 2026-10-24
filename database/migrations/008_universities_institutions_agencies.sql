@@ -24,7 +24,7 @@
 -- columns were introduced together as part of this entity's own
 -- branding/public-page feature, not as part of the Uploads table itself.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 -- ─── Agencies ────────────────────────────────────────────────

@@ -93,7 +93,7 @@ script even runs ("Cannot open database ... requested by the login").
 
 To run a creation script like that: **temporarily set Database to `master`**
 on the Connection tab, run just that one script, then switch Database back
-to the real name (e.g. `CreditEvalManager`) for every script after it. The
+to the real name (e.g. `TransferHubDB`) for every script after it. The
 script itself issues its own `USE master; ... CREATE DATABASE ...`, so
 connecting with an initial context of `master` is exactly right.
 

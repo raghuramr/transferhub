@@ -15,7 +15,7 @@
 -- and runs after that one since it has no other dependency ordering
 -- requirement of its own beyond Users.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Uploads')

@@ -15,7 +15,7 @@
 --
 -- Content unchanged from the original 006_pages.sql, made idempotent.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Pages')

@@ -14,7 +14,7 @@
 -- AcademicUnits also gets them, since both columns were introduced
 -- together as part of that same branding/public-page feature.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 -- ─── Institutions ("Universities" in the UI) ────────────────

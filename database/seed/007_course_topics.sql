@@ -9,7 +9,7 @@
 -- own already-seeded `Source` catalog URL rather than introducing new
 -- URLs. Unchanged in substance, just combined into one file per entity.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 IF OBJECT_ID('tempdb..#Topics') IS NOT NULL DROP TABLE #Topics;

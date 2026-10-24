@@ -3,7 +3,7 @@
 -- ============================================================
 -- Unchanged from the original seed/006_forms.sql (already idempotent).
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM Forms WHERE Slug = 'agency-student-referral')

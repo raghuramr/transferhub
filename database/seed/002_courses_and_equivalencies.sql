@@ -8,7 +8,7 @@
 -- here were already written idempotently (WHERE NOT EXISTS); unchanged in
 -- substance, just combined into one file per entity.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 -- ─── BU Courses (from BU_Transfer_Program_Course_Match.xlsx) ──

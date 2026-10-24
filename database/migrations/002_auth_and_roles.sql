@@ -17,7 +17,7 @@
 -- database that already has this shape (from the old 002/014/015
 -- migrations), and also builds the full final shape on a fresh database.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 -- ─── Roles ───────────────────────────────────────────────────

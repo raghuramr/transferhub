@@ -8,7 +8,7 @@
 -- original seed/011_roles_permissions.sql (already idempotent via
 -- MERGE ... WHEN NOT MATCHED).
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 -- ─── Permission Modules ──────────────────────────────────────

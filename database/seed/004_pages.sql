@@ -3,7 +3,7 @@
 -- ============================================================
 -- Unchanged from the original seed/005_pages.sql.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 -- "home" is the public landing page shown at "/" to anonymous visitors,

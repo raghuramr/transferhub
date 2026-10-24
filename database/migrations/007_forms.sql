@@ -15,7 +15,7 @@
 -- existence-guarded CREATE pattern as every other entity file instead,
 -- so it is a true no-op against an already-correct database.
 -- ============================================================
-USE CreditEvalManager;
+USE TransferHubDB;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Forms')

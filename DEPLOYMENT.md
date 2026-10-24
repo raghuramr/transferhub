@@ -17,35 +17,35 @@ Do them in this order: **database → API → UI**, since the API needs the DB c
 ### Create the server + database
 1. [portal.azure.com](https://portal.azure.com) → **Create a resource** → **SQL Database**.
 2. Create a new **SQL server** (the logical server) if you don't have one — pick a region, set an **admin login** and **password** (you'll need these for `DB_USER`/`DB_PASSWORD`).
-3. Database name: `CreditEvalManager`.
+3. Database name: `TransferHubDB`.
 4. Compute + storage: pick the **free offer** tier if available in your subscription (Azure periodically offers a free Azure SQL DB — 100,000 vCore-seconds/month, 32GB storage), otherwise the cheapest **Serverless** tier (General Purpose, auto-pause enabled) is fine for a demo.
 5. Under **Networking**, set **"Allow Azure services and resources to access this server"** — and also add a firewall rule allowing your current IP so you can run the migrations from your machine. (Render's outbound IPs aren't static on the free plan — for a hackathon demo it's common to temporarily allow `0.0.0.0`–`255.255.255.255` under Networking → Firewall rules; it's protected by the SQL login regardless. Tighten this later with Render's static-IP add-on if this goes beyond a demo.)
 6. Create. Note the server hostname: `<yourserver>.database.windows.net`.
 
 ### Run the migrations
-**Important:** Azure SQL Database doesn't allow `USE <otherdb>` mid-connection, so skip `migrations/001_database.sql` (the database already exists as its own Azure resource) and connect **directly to `CreditEvalManager`** for everything else. The migrations and seed files are consolidated one-file-per-entity (see `CLAUDE.md` and `database/README.md`) — run them in filename order:
+**Important:** Azure SQL Database doesn't allow `USE <otherdb>` mid-connection, so skip `migrations/001_database.sql` (the database already exists as its own Azure resource) and connect **directly to `TransferHubDB`** for everything else. The migrations and seed files are consolidated one-file-per-entity (see `CLAUDE.md` and `database/README.md`) — run them in filename order:
 
 ```bash
 # From the database/ folder, using sqlcmd (or Azure Data Studio / SSMS if you prefer a GUI)
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i migrations/002_auth_and_roles.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i migrations/003_institutions_courses_programs.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i migrations/004_transcripts_and_evaluations.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i migrations/005_views_and_procedures.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i migrations/006_pages.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i migrations/007_forms.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i migrations/008_universities_institutions_agencies.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i migrations/009_course_topics.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i migrations/010_uploads.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i migrations/002_auth_and_roles.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i migrations/003_institutions_courses_programs.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i migrations/004_transcripts_and_evaluations.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i migrations/005_views_and_procedures.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i migrations/006_pages.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i migrations/007_forms.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i migrations/008_universities_institutions_agencies.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i migrations/009_course_topics.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i migrations/010_uploads.sql
 
 # Seed data
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i seed/001_reference_data.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i seed/002_courses_and_equivalencies.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i seed/003_demo_users.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i seed/004_pages.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i seed/005_forms.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i seed/006_agencies_academicunits_programs.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i seed/007_course_topics.sql
-sqlcmd -S "<yourserver>.database.windows.net" -d CreditEvalManager -U <admin-login> -P "<password>" -N -i seed/008_roles_permissions.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i seed/001_reference_data.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i seed/002_courses_and_equivalencies.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i seed/003_demo_users.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i seed/004_pages.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i seed/005_forms.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i seed/006_agencies_academicunits_programs.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i seed/007_course_topics.sql
+sqlcmd -S "<yourserver>.database.windows.net" -d TransferHubDB -U <admin-login> -P "<password>" -N -i seed/008_roles_permissions.sql
 ```
 
 Prefer running these through `tools/db-script-runner/` (the GUI script runner) instead of calling `sqlcmd` one file at a time by hand — it lists every script with Applied/Not Applied status and runs a batch in filename order. Note: an already-deployed database that ran the old (pre-consolidation) migration/seed files will show these new files as "Not Applied" the first time the runner points at it — that's expected, not an error; every new file is idempotent, so running it is a safe no-op wherever the schema/data already matches.

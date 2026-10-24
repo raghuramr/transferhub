@@ -52,7 +52,7 @@ if (fs.existsSync(envPath)) {
 // ── 2. Build mssql config from env (Windows Auth by default) ─
 const trustedConnection = (process.env.DB_TRUSTED_CONNECTION ?? 'true') === 'true';
 const server     = process.env.DB_SERVER     ?? '(localdb)\\MSSQLLocalDB';
-const database   = process.env.DB_NAME       ?? 'CreditEvalManager';
+const database   = process.env.DB_NAME       ?? 'TransferHubDB';
 const portStr    = process.env.DB_PORT;
 const port       = portStr ? parseInt(portStr, 10) : undefined;
 const encrypt    = (process.env.DB_ENCRYPT ?? 'false') === 'true';
