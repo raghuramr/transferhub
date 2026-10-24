@@ -7,9 +7,9 @@ import { ImageSourceField } from '../../components/shared/ImageSourceField';
 
 interface Institution {
   id: number;
-  universityId: number;
-  universityCode: string;
-  universityName: string;
+  universityId: number | null;
+  universityCode: string | null;
+  universityName: string | null;
   name: string;
   code: string | null;
   isActive: boolean;
@@ -67,7 +67,7 @@ function InstitutionFields({
           onChange={(e) => onChange({ ...form, universityId: e.target.value })}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
         >
-          <option value="">Select a university…</option>
+          <option value="">— Unmapped —</option>
           {universities.map((u) => (
             <option key={u.id} value={u.id}>
               {u.name} ({u.code})
@@ -110,7 +110,7 @@ function InstitutionFields({
 
 function institutionToForm(institution: Institution): InstitutionForm {
   return {
-    universityId: String(institution.universityId),
+    universityId: institution.universityId != null ? String(institution.universityId) : '',
     name: institution.name,
     code: institution.code ?? '',
     logoUrl: institution.logoUrl ?? '',
@@ -143,7 +143,7 @@ function InstitutionEditForm({
         </button>
         <button
           onClick={() => onSave(form)}
-          disabled={isSaving || !form.universityId || !form.name}
+          disabled={isSaving || !form.name}
           className="flex-1 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
         >
           {isSaving ? 'Saving…' : 'Save Changes'}
@@ -159,10 +159,11 @@ export default function InstitutionsManagement() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [createForm, setCreateForm] = useState<InstitutionForm>(emptyForm);
+  const [unmappedOnly, setUnmappedOnly] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['institutions'],
-    queryFn: () => institutionsApi.list(),
+    queryKey: ['institutions', { unmapped: unmappedOnly }],
+    queryFn: () => institutionsApi.list(unmappedOnly ? { unmapped: true } : undefined),
   });
   const institutions: Institution[] = (data?.data as Institution[]) ?? [];
 
@@ -174,7 +175,7 @@ export default function InstitutionsManagement() {
 
   const createMutation = useMutation({
     mutationFn: (form: InstitutionForm) =>
-      institutionsApi.create({ ...form, universityId: Number(form.universityId) }),
+      institutionsApi.create({ ...form, universityId: form.universityId ? Number(form.universityId) : null }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['institutions'] });
       setShowCreatePanel(false);
@@ -184,7 +185,7 @@ export default function InstitutionsManagement() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, form }: { id: number; form: InstitutionForm }) =>
-      institutionsApi.update(id, { ...form, universityId: Number(form.universityId) }),
+      institutionsApi.update(id, { ...form, universityId: form.universityId ? Number(form.universityId) : null }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['institutions'] });
     },
@@ -223,7 +224,16 @@ export default function InstitutionsManagement() {
   };
 
   const columns: DataTableColumn<Institution>[] = [
-    { key: 'universityCode', header: 'University' },
+    {
+      key: 'universityCode',
+      header: 'University',
+      render: (i) =>
+        i.universityCode ? (
+          <span>{i.universityCode}</span>
+        ) : (
+          <span className="text-gray-400 italic">— Unmapped —</span>
+        ),
+    },
     { key: 'code', header: 'Code' },
     { key: 'name', header: 'Name' },
     {
@@ -266,6 +276,14 @@ export default function InstitutionsManagement() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-sm text-gray-600 px-2">
+            <input
+              type="checkbox"
+              checked={unmappedOnly}
+              onChange={(e) => setUnmappedOnly(e.target.checked)}
+            />
+            Unmapped only
+          </label>
           <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
           <button
             onClick={handleImportClick}
@@ -310,7 +328,7 @@ export default function InstitutionsManagement() {
             </button>
             <button
               onClick={() => createMutation.mutate(createForm)}
-              disabled={createMutation.isPending || !createForm.universityId || !createForm.name}
+              disabled={createMutation.isPending || !createForm.name}
               className="flex-1 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
             >
               {createMutation.isPending ? 'Saving…' : 'Create Institution'}

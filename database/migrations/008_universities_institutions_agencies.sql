@@ -55,9 +55,14 @@ CREATE INDEX IX_AcademicUnits_Institution ON AcademicUnits (InstitutionId);
 GO
 
 -- ─── Users.AgencyId FK (keep AgencyName text for back-compat) ─
-ALTER TABLE Users ADD AgencyId INT NULL;
+-- Guarded so this migration is safe to re-run (e.g. a migration-runner tool
+-- re-applying scripts that already succeeded) -- matches the pattern used
+-- in migration 011.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'AgencyId')
+    ALTER TABLE Users ADD AgencyId INT NULL;
 GO
-ALTER TABLE Users ADD CONSTRAINT FK_Users_Agency FOREIGN KEY (AgencyId) REFERENCES Agencies(Id);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Users_Agency')
+    ALTER TABLE Users ADD CONSTRAINT FK_Users_Agency FOREIGN KEY (AgencyId) REFERENCES Agencies(Id);
 GO
 
 -- ─── Scope visibility ────────────────────────────────────────

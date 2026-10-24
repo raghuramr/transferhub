@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { universitiesApi } from '../../lib/api';
-import { Building2, Plus, Upload, Power, Globe2 } from 'lucide-react';
+import { universitiesApi, institutionsApi } from '../../lib/api';
+import { Building2, Plus, Upload, Power, Globe2, School } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ImageSourceField } from '../../components/shared/ImageSourceField';
 
@@ -141,6 +141,92 @@ function universityToForm(university: University): UniversityForm {
   };
 }
 
+interface Institution {
+  id: number;
+  name: string;
+  code: string | null;
+  isActive: boolean;
+}
+
+/**
+ * Nested "Institutions" (AcademicUnits) list shown inside a University's
+ * expanded row, so the Universities > Institutions hierarchy is visible
+ * in one place instead of requiring a trip to the separate Institutions
+ * screen. See CLAUDE.md naming note: UI "Institutions" == AcademicUnits.
+ */
+function UniversityInstitutionsList({ universityId }: { universityId: number }) {
+  const qc = useQueryClient();
+  const [newName, setNewName] = useState('');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['institutions', { universityId }],
+    queryFn: () => institutionsApi.list({ universityId }),
+  });
+  const institutions: Institution[] = (data?.data as any) ?? [];
+
+  const addMutation = useMutation({
+    mutationFn: (name: string) => institutionsApi.create({ universityId, name }),
+    onSuccess: () => {
+      setNewName('');
+      qc.invalidateQueries({ queryKey: ['institutions', { universityId }] });
+      qc.invalidateQueries({ queryKey: ['institutions'] });
+    },
+  });
+
+  return (
+    <div className="mt-5 pl-4 border-l-2 border-brand-200">
+      <div className="flex items-center gap-1.5 mb-2">
+        <School size={14} className="text-brand-700" />
+        <h3 className="text-sm font-semibold text-gray-700">Institutions</h3>
+      </div>
+
+      {isLoading ? (
+        <p className="text-xs text-gray-400">Loading…</p>
+      ) : institutions.length === 0 ? (
+        <p className="text-xs text-gray-400 mb-2">No institutions under this university yet.</p>
+      ) : (
+        <ul className="space-y-1 mb-2">
+          {institutions.map((i) => (
+            <li
+              key={i.id}
+              className="flex items-center justify-between text-sm bg-white border border-gray-200 rounded-lg px-3 py-1.5"
+            >
+              <span className="text-gray-800">
+                {i.name}
+                {i.code && <span className="text-gray-400"> ({i.code})</span>}
+              </span>
+              {i.isActive ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-green-100 text-green-700">Active</span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-700">Inactive</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex gap-2">
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="New institution name…"
+          className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+        />
+        <button
+          onClick={() => newName.trim() && addMutation.mutate(newName.trim())}
+          disabled={addMutation.isPending || !newName.trim()}
+          className="flex items-center gap-1 px-3 py-1.5 bg-brand-800 text-white rounded-lg text-xs font-medium hover:bg-brand-900 disabled:bg-brand-400"
+        >
+          <Plus size={12} /> Add Institution
+        </button>
+      </div>
+      {addMutation.isError && (
+        <p className="mt-1 text-xs text-red-600">Could not add institution. Please try again.</p>
+      )}
+    </div>
+  );
+}
+
 function UniversityEditForm({
   university,
   onSave,
@@ -198,7 +284,9 @@ function UniversityEditForm({
         )}
       </div>
 
-      <p className="mt-2 text-xs text-gray-400">Click the row again to collapse.</p>
+      <UniversityInstitutionsList universityId={university.id} />
+
+      <p className="mt-4 text-xs text-gray-400">Click the row again to collapse.</p>
     </div>
   );
 }

@@ -21,11 +21,13 @@ export class InstitutionsController {
   @Get()
   findAll(
     @Query('universityId') universityId?: string,
+    @Query('unmapped') unmapped?: string,
     @Query('search') search?: string,
     @Query('isActive') isActive?: string,
   ) {
     return this.institutionsService.findAll({
       universityId: universityId !== undefined ? parseInt(universityId, 10) : undefined,
+      unmapped: unmapped === 'true',
       search,
       isActive: isActive !== undefined ? isActive === 'true' : undefined,
     });

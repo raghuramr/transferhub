@@ -37,10 +37,19 @@ CREATE INDEX IX_Uploads_OwnerUserId ON Uploads (OwnerUserId);
 CREATE INDEX IX_Uploads_Entity ON Uploads (EntityType, EntityId);
 GO
 
-ALTER TABLE Institutions ADD LogoUrl NVARCHAR(500) NULL;
-ALTER TABLE Institutions ADD HeroImageUrl NVARCHAR(500) NULL;
+-- Guarded so this migration is safe to re-run (e.g. a migration-runner tool
+-- re-applying scripts that already succeeded) -- matches the pattern used
+-- in migration 011.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Institutions') AND name = 'LogoUrl')
+    ALTER TABLE Institutions ADD LogoUrl NVARCHAR(500) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Institutions') AND name = 'HeroImageUrl')
+    ALTER TABLE Institutions ADD HeroImageUrl NVARCHAR(500) NULL;
 GO
 
-ALTER TABLE AcademicUnits ADD LogoUrl NVARCHAR(500) NULL;
-ALTER TABLE AcademicUnits ADD HeroImageUrl NVARCHAR(500) NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AcademicUnits') AND name = 'LogoUrl')
+    ALTER TABLE AcademicUnits ADD LogoUrl NVARCHAR(500) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('AcademicUnits') AND name = 'HeroImageUrl')
+    ALTER TABLE AcademicUnits ADD HeroImageUrl NVARCHAR(500) NULL;
 GO
