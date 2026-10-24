@@ -2,11 +2,38 @@ import { Injectable } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
 
-function mapModule(row: any) {
+interface ModuleRow {
+  Id: number;
+  Key: string;
+  Label: string;
+  SortOrder: number;
+}
+
+interface OperationRow {
+  Id: number;
+  Key: string;
+  Label: string;
+  SortOrder: number;
+}
+
+interface RoleRow {
+  Id: number;
+  Name: string;
+  DisplayName: string;
+}
+
+interface GrantRow {
+  RoleId: number;
+  ModuleId: number;
+  OperationId: number;
+  IsAllowed: boolean;
+}
+
+function mapModule(row: ModuleRow) {
   return { id: row.Id, key: row.Key, label: row.Label, sortOrder: row.SortOrder };
 }
 
-function mapOperation(row: any) {
+function mapOperation(row: OperationRow) {
   return { id: row.Id, key: row.Key, label: row.Label, sortOrder: row.SortOrder };
 }
 
@@ -32,14 +59,14 @@ export class PermissionsService {
   constructor(private db: DatabaseService) {}
 
   async findModules() {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<ModuleRow>(
       `SELECT Id, [Key], Label, SortOrder FROM PermissionModules ORDER BY SortOrder, Label`,
     );
     return res.recordset.map(mapModule);
   }
 
   async findOperations() {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<OperationRow>(
       `SELECT Id, [Key], Label, SortOrder FROM PermissionOperations ORDER BY SortOrder, Label`,
     );
     return res.recordset.map(mapOperation);
@@ -50,19 +77,24 @@ export class PermissionsService {
    * operation) combination, with isAllowed true where a RolePermissions
    * row exists and is allowed, false otherwise (absence = not allowed).
    */
-  async findMatrix(): Promise<{ roles: any[]; modules: any[]; operations: any[]; entries: MatrixEntry[] }> {
+  async findMatrix(): Promise<{
+    roles: { id: number; name: string; displayName: string }[];
+    modules: { id: number; key: string; label: string; sortOrder: number }[];
+    operations: { id: number; key: string; label: string; sortOrder: number }[];
+    entries: MatrixEntry[];
+  }> {
     const [rolesRes, modules, operations, grantsRes] = await Promise.all([
-      this.db.query<any>(`SELECT Id, Name, DisplayName FROM Roles ORDER BY Id`),
+      this.db.query<RoleRow>(`SELECT Id, Name, DisplayName FROM Roles ORDER BY Id`),
       this.findModules(),
       this.findOperations(),
-      this.db.query<any>(
+      this.db.query<GrantRow>(
         `SELECT RoleId, ModuleId, OperationId, IsAllowed FROM RolePermissions WHERE IsAllowed = 1`,
       ),
     ]);
 
-    const roles = rolesRes.recordset.map((r: any) => ({ id: r.Id, name: r.Name, displayName: r.DisplayName }));
+    const roles = rolesRes.recordset.map((r) => ({ id: r.Id, name: r.Name, displayName: r.DisplayName }));
     const granted = new Set(
-      grantsRes.recordset.map((g: any) => `${g.RoleId}:${g.ModuleId}:${g.OperationId}`),
+      grantsRes.recordset.map((g) => `${g.RoleId}:${g.ModuleId}:${g.OperationId}`),
     );
 
     const entries: MatrixEntry[] = [];

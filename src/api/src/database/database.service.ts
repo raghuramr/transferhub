@@ -6,6 +6,8 @@ import { buildSqlConfig, loadSqlDriver } from '../common/sql-connection.util';
 export interface QueryInput {
   name: string;
   type: sql.ISqlType | (() => sql.ISqlType);
+  // Genuinely dynamic: a bound SQL parameter value can be a string, number,
+  // boolean, Buffer, Date or null depending on `type` — intentionally untyped.
   value: any;
 }
 
@@ -51,7 +53,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           `LocalDB uses named pipes). Fix: run "npm install msnodesqlv8" in src/api, then ` +
           `set DB_DRIVER=msnodesqlv8 in your .env and restart.`,
         );
-      } else if (driver === 'msnodesqlv8' && /driver manager|data source name/i.test((err as any).message ?? '')) {
+      } else if (driver === 'msnodesqlv8' && /driver manager|data source name/i.test((err as Error).message ?? '')) {
         this.logger.error(
           `ODBC driver "${odbcDriver ?? '(default)'}" was not found on this machine. ` +
           `Run "Get-OdbcDriver | Select-Object Name" in PowerShell to see installed drivers, ` +

@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
+import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import { AgenciesService } from './agencies.service';
 import { CreateAgencyDto } from './dto/create-agency.dto';
 import { UpdateAgencyDto } from './dto/update-agency.dto';
@@ -45,7 +46,7 @@ export class AgenciesController {
 
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
-  async importCsv(@UploadedFile() file: any) {
+  async importCsv(@UploadedFile() file: UploadedFileLike) {
     if (!file) throw new BadRequestException('No file uploaded');
     return this.agenciesService.importCsv(file.buffer.toString('utf-8'));
   }

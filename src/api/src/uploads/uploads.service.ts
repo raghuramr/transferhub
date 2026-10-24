@@ -4,6 +4,7 @@ import * as sql from 'mssql';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import type { UploadedFileLike } from '../common/uploaded-file.interface';
 
 // Keep private student/agency documents OUT of any web-servable public
 // root — they're served only through the authenticated GET /uploads/:id
@@ -16,7 +17,21 @@ const PUBLIC_ROOT = path.join(STORAGE_ROOT, 'public-uploads');
 
 const STAFF_ROLES = ['admin', 'super_admin', 'faculty'];
 
-function mapUpload(row: any) {
+interface UploadRow {
+  Id: string;
+  OwnerUserId: string;
+  Role: string;
+  EntityType: string;
+  EntityId: string | null;
+  OriginalFileName: string;
+  StoredPath: string;
+  MimeType: string | null;
+  SizeBytes: number;
+  IsPublic: boolean;
+  CreatedAt: Date;
+}
+
+function mapUpload(row: UploadRow) {
   return {
     id: row.Id,
     ownerUserId: row.OwnerUserId,
@@ -42,7 +57,7 @@ export class UploadsService {
   constructor(private db: DatabaseService) {}
 
   async save(
-    file: { originalname: string; buffer: Buffer; mimetype: string; size: number },
+    file: UploadedFileLike,
     opts: { ownerUserId: string; role: string; entityType: string; entityId?: string; isPublic: boolean },
   ) {
     const id = uuidv4();
@@ -91,7 +106,7 @@ export class UploadsService {
   }
 
   private async findById(id: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<UploadRow>(
       `SELECT Id, OwnerUserId, Role, EntityType, EntityId, OriginalFileName, StoredPath, MimeType, SizeBytes, IsPublic, CreatedAt
        FROM Uploads WHERE Id = @id`,
       [{ name: 'id', type: sql.UniqueIdentifier, value: id }],

@@ -10,6 +10,8 @@ import { UpdateUniversityDto } from './dto/update-university.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
+import type { UploadedFileLike } from '../common/uploaded-file.interface';
 
 // Read endpoints (list/get) are open to any authenticated role — every
 // role's forms need to read the University catalog (e.g. the student/
@@ -54,7 +56,7 @@ export class UniversitiesController {
   @UseGuards(RolesGuard)
   @Roles('admin', 'super_admin')
   @UseInterceptors(FileInterceptor('file'))
-  async importCsv(@UploadedFile() file: any) {
+  async importCsv(@UploadedFile() file: UploadedFileLike) {
     if (!file) throw new BadRequestException('No file uploaded');
     return this.universitiesService.importCsv(file.buffer.toString('utf-8'));
   }
@@ -80,7 +82,7 @@ export class UniversitiesController {
   @Post(':id/generate-page')
   @UseGuards(RolesGuard)
   @Roles('admin', 'super_admin')
-  generatePage(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+  generatePage(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
     return this.universitiesService.generatePublicPage(id, req.user.id);
   }
 }

@@ -4,6 +4,7 @@ import { DecideEvaluationDto, AssignEvaluationDto } from './dto/create-evaluatio
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 @Controller('evaluations')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -13,7 +14,7 @@ export class EvaluationsController {
 
   @Get()
   list(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Query('assigned') assigned?: string,
     @Query('status') status?: string,
   ) {
@@ -30,7 +31,7 @@ export class EvaluationsController {
   }
 
   @Post(':id/decide')
-  decide(@Param('id') id: string, @Body() dto: DecideEvaluationDto, @Req() req: any) {
+  decide(@Param('id') id: string, @Body() dto: DecideEvaluationDto, @Req() req: AuthenticatedRequest) {
     return this.evaluationsService.decide(id, dto, req.user.id);
   }
 
@@ -42,7 +43,7 @@ export class EvaluationsController {
 
   @Post(':id/post')
   @Roles('admin', 'super_admin')
-  post(@Param('id') id: string, @Req() req: any) {
+  post(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.evaluationsService.post(id, req.user.id);
   }
 }

@@ -11,6 +11,61 @@ import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import * as sql from 'mssql';
+import type { AuthenticatedUser } from './authenticated-request.interface';
+
+interface UserAuthRow {
+  Id: string;
+  Email: string;
+  PasswordHash: string | null;
+  FirstName: string;
+  LastName: string;
+  IsActive: boolean;
+  IsLocked: boolean;
+  LockedUntil: Date | null;
+  FailedLogins: number | null;
+  DepartmentId: number | null;
+  Role: string;
+}
+
+interface RefreshTokenRow {
+  UserId: string;
+  ExpiresAt: Date;
+  IsRevoked: boolean;
+  Email: string;
+  FirstName: string;
+  LastName: string;
+  IsActive: boolean;
+  DepartmentId: number | null;
+  Role: string;
+}
+
+export interface MeRow {
+  Id: string;
+  Email: string;
+  FirstName: string;
+  LastName: string;
+  StudentId: string | null;
+  AgencyName: string | null;
+  Mobile: string | null;
+  AddressLine1: string | null;
+  AddressLine2: string | null;
+  City: string | null;
+  State: string | null;
+  PostalCode: string | null;
+  Country: string | null;
+  CountryOfOrigin: string | null;
+  IsActive: boolean;
+  MustChangePass: boolean;
+  LastLoginAt: Date | null;
+  DepartmentId: number | null;
+  Role: string;
+  RoleDisplay: string;
+  DepartmentName: string | null;
+}
+
+interface PasswordHashRow {
+  PasswordHash: string | null;
+}
 
 @Injectable()
 export class AuthService {
@@ -22,8 +77,8 @@ export class AuthService {
     private config: ConfigService,
   ) {}
 
-  async validateUser(email: string, password: string, ip: string, userAgent: string) {
-    const result = await this.db.query<any>(
+  async validateUser(email: string, password: string, ip: string, userAgent: string): Promise<AuthenticatedUser> {
+    const result = await this.db.query<UserAuthRow>(
       `SELECT u.Id, u.Email, u.PasswordHash, u.FirstName, u.LastName,
               u.IsActive, u.IsLocked, u.LockedUntil, u.FailedLogins,
               u.DepartmentId, r.Name AS Role
@@ -98,7 +153,7 @@ export class AuthService {
     };
   }
 
-  async login(user: any, ip: string, userAgent: string) {
+  async login(user: AuthenticatedUser, ip: string, userAgent: string) {
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ip, userAgent);
     return { accessToken, refreshToken, user };
@@ -106,7 +161,7 @@ export class AuthService {
 
   async refresh(token: string) {
     const hash = crypto.createHash('sha256').update(token).digest('hex');
-    const result = await this.db.query<any>(
+    const result = await this.db.query<RefreshTokenRow>(
       `SELECT rt.UserId, rt.ExpiresAt, rt.IsRevoked,
               u.Email, u.FirstName, u.LastName, u.IsActive, u.DepartmentId, r.Name AS Role
        FROM RefreshTokens rt
@@ -122,7 +177,7 @@ export class AuthService {
     }
     if (!row.IsActive) throw new UnauthorizedException('User inactive');
 
-    const user = {
+    const user: AuthenticatedUser = {
       id: row.UserId,
       email: row.Email,
       firstName: row.FirstName,
@@ -146,7 +201,7 @@ export class AuthService {
   }
 
   async me(userId: string) {
-    const result = await this.db.query<any>(
+    const result = await this.db.query<MeRow>(
       `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.StudentId, u.AgencyName,
               u.Mobile, u.AddressLine1, u.AddressLine2, u.City, u.State, u.PostalCode,
               u.Country, u.CountryOfOrigin,
@@ -163,7 +218,7 @@ export class AuthService {
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
-    const result = await this.db.query<any>(
+    const result = await this.db.query<PasswordHashRow>(
       `SELECT PasswordHash FROM Users WHERE Id = @id`,
       [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
     );
@@ -190,7 +245,7 @@ export class AuthService {
     );
   }
 
-  private generateAccessToken(user: any) {
+  private generateAccessToken(user: AuthenticatedUser) {
     return this.jwtService.sign({
       sub: user.id,
       email: user.email,
@@ -245,7 +300,7 @@ export class AuthService {
         ],
       );
     } catch (e) {
-      this.logger.warn('Audit log failed: ' + (e as any).message);
+      this.logger.warn('Audit log failed: ' + (e as Error).message);
     }
   }
 }

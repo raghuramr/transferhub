@@ -4,6 +4,7 @@ import { CreateCourseTopicDto, UpdateCourseTopicDto } from './dto/course-topic.d
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 // Editing course topics/reference links is restricted to the roles who own
 // the course catalog's academic content: SuperAdmin, Admin, and Faculty.
@@ -27,7 +28,7 @@ export class CourseTopicsController {
   create(
     @Param('courseId', ParseIntPipe) courseId: number,
     @Body() dto: CreateCourseTopicDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.topicsService.create(courseId, dto, req.user?.id);
   }
@@ -35,7 +36,7 @@ export class CourseTopicsController {
   @Patch('course-topics/:id')
   @UseGuards(RolesGuard)
   @Roles(...EDITOR_ROLES)
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCourseTopicDto, @Req() req: any) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCourseTopicDto, @Req() req: AuthenticatedRequest) {
     return this.topicsService.update(id, dto, req.user?.id);
   }
 

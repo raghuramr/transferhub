@@ -19,7 +19,21 @@ const VALID_BLOCK_TYPES = [
   'image',
 ];
 
-function mapRow(row: any) {
+interface PageRow {
+  Id: number;
+  Slug: string;
+  Title: string;
+  // Deliberately dynamic: a flexible CMS block-tree stored as JSON text.
+  Blocks: string;
+  Published: boolean;
+  ShowInNav: boolean;
+  NavLabel: string | null;
+  NavOrder: number;
+  CreatedAt: Date;
+  UpdatedAt: Date;
+}
+
+function mapRow(row: PageRow) {
   return {
     id: row.Id,
     slug: row.Slug,
@@ -39,6 +53,7 @@ export class PagesService {
   constructor(private db: DatabaseService) {}
 
   /** Structural validation of the blocks JSON — kept intentionally light. */
+  // CMS block JSON — deliberately dynamic shape; only `id`/`type` are validated here.
   private validateBlocks(blocks: Record<string, any>[]) {
     if (!Array.isArray(blocks)) {
       throw new BadRequestException('blocks must be an array');
@@ -56,7 +71,7 @@ export class PagesService {
   }
 
   async findAll() {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<PageRow>(
       `SELECT Id, Slug, Title, Blocks, Published, ShowInNav, NavLabel, NavOrder, CreatedAt, UpdatedAt
        FROM Pages ORDER BY NavOrder, Title`,
     );
@@ -65,7 +80,7 @@ export class PagesService {
 
   /** Pages shown in the authenticated nav (published + showInNav). */
   async findNavPages() {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<PageRow>(
       `SELECT Id, Slug, Title, Blocks, Published, ShowInNav, NavLabel, NavOrder, CreatedAt, UpdatedAt
        FROM Pages WHERE Published = 1 AND ShowInNav = 1 ORDER BY NavOrder, Title`,
     );
@@ -73,7 +88,7 @@ export class PagesService {
   }
 
   async findById(id: number) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<PageRow>(
       `SELECT Id, Slug, Title, Blocks, Published, ShowInNav, NavLabel, NavOrder, CreatedAt, UpdatedAt
        FROM Pages WHERE Id = @id`,
       [{ name: 'id', type: sql.Int, value: id }],
@@ -84,7 +99,7 @@ export class PagesService {
 
   /** Public-facing lookup — only returns the page if it is published. */
   async findPublishedBySlug(slug: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<PageRow>(
       `SELECT Id, Slug, Title, Blocks, Published, ShowInNav, NavLabel, NavOrder, CreatedAt, UpdatedAt
        FROM Pages WHERE Slug = @slug AND Published = 1`,
       [{ name: 'slug', type: sql.VarChar(150), value: slug }],
@@ -96,13 +111,13 @@ export class PagesService {
   async create(dto: UpsertPageDto, userId: string) {
     this.validateBlocks(dto.blocks);
 
-    const existing = await this.db.query<any>(
+    const existing = await this.db.query<{ Id: number }>(
       `SELECT Id FROM Pages WHERE Slug = @slug`,
       [{ name: 'slug', type: sql.VarChar(150), value: dto.slug }],
     );
     if (existing.recordset[0]) throw new ConflictException('A page with this slug already exists');
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ Id: number }>(
       `INSERT INTO Pages (Slug, Title, Blocks, Published, ShowInNav, NavLabel, NavOrder, CreatedBy, UpdatedBy)
        OUTPUT inserted.Id
        VALUES (@slug, @title, @blocks, @published, @showInNav, @navLabel, @navOrder, @userId, @userId)`,
@@ -124,7 +139,7 @@ export class PagesService {
     await this.findById(id); // 404s if missing
     this.validateBlocks(dto.blocks);
 
-    const dupe = await this.db.query<any>(
+    const dupe = await this.db.query<{ Id: number }>(
       `SELECT Id FROM Pages WHERE Slug = @slug AND Id <> @id`,
       [
         { name: 'slug', type: sql.VarChar(150), value: dto.slug },

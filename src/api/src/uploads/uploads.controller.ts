@@ -17,6 +17,8 @@ import type { Response } from 'express';
 import * as fs from 'fs';
 import { UploadsService } from './uploads.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { UploadedFileLike } from '../common/uploaded-file.interface';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 @Controller('uploads')
 export class UploadsController {
@@ -26,9 +28,9 @@ export class UploadsController {
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file'))
   async upload(
-    @UploadedFile() file: any,
+    @UploadedFile() file: UploadedFileLike,
     @Body() body: { entityType?: string; entityId?: string; isPublic?: string },
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
     return this.uploadsService.save(file, {
@@ -43,7 +45,7 @@ export class UploadsController {
   /** Private document (e.g. a form-submission attachment) — owner or staff only. */
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  async download(@Param('id') id: string, @Req() req: any, @Res() res: Response) {
+  async download(@Param('id') id: string, @Req() req: AuthenticatedRequest, @Res() res: Response) {
     const { path: filePath, mimeType, fileName } = await this.uploadsService.getForAuthenticatedUser(id, req.user);
     if (!fs.existsSync(filePath)) throw new NotFoundException('File missing on disk');
     res.setHeader('Content-Type', mimeType || 'application/octet-stream');

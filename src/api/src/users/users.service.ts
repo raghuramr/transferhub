@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
 import { EmailService } from '../common/email.service';
 import * as argon2 from 'argon2';
 import * as sql from 'mssql';
@@ -16,7 +16,54 @@ export interface UserScope {
   agencyIds: number[];
 }
 
-function mapUser(row: any) {
+interface UserRow {
+  Id: string;
+  Email: string;
+  FirstName: string;
+  LastName: string;
+  StudentId: string | null;
+  AgencyName: string | null;
+  Mobile: string | null;
+  AddressLine1: string | null;
+  AddressLine2: string | null;
+  City: string | null;
+  State: string | null;
+  PostalCode: string | null;
+  Country: string | null;
+  CountryOfOrigin: string | null;
+  IsActive: boolean;
+  IsLocked: boolean;
+  LastLoginAt: Date | null;
+  // Only selected by findById, not findAll — absent (undefined) on list rows.
+  MustChangePass?: boolean;
+  DepartmentId: number | null;
+  Role: string;
+  RoleDisplay: string;
+  DepartmentName: string | null;
+  // Only selected by findById.
+  DepartmentCode?: string | null;
+}
+
+/** Raw auth-lookup row (PascalCase) consumed directly by AuthService — do not camelCase. */
+interface UserAuthLookupRow {
+  Id: string;
+  Email: string;
+  PasswordHash: string | null;
+  FirstName: string;
+  LastName: string;
+  IsActive: boolean;
+  IsLocked: boolean;
+  LockedUntil: Date | null;
+  FailedLogins: number | null;
+  DepartmentId: number | null;
+  Role: string;
+}
+
+interface RoleIdRow {
+  Id: number;
+}
+
+function mapUser(row: UserRow) {
   return {
     id: row.Id,
     email: row.Email,
@@ -49,7 +96,7 @@ export class UsersService {
   constructor(private db: DatabaseService, private emailService: EmailService) {}
 
   async findById(id: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<UserRow>(
       `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.StudentId, u.AgencyName,
               u.Mobile, u.AddressLine1, u.AddressLine2, u.City, u.State, u.PostalCode,
               u.Country, u.CountryOfOrigin,
@@ -67,7 +114,7 @@ export class UsersService {
   }
 
   async findByEmail(email: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<UserAuthLookupRow>(
       `SELECT u.Id, u.Email, u.PasswordHash, u.FirstName, u.LastName,
               u.IsActive, u.IsLocked, u.LockedUntil, u.FailedLogins, u.DepartmentId,
               r.Name AS Role
@@ -82,7 +129,7 @@ export class UsersService {
 
   async findAll(filters: { role?: string; isActive?: boolean } = {}) {
     let where = '1=1';
-    const inputs: any[] = [];
+    const inputs: QueryInput[] = [];
     if (filters.role) {
       where += ' AND r.Name = @role';
       inputs.push({ name: 'role', type: sql.VarChar(20), value: filters.role });
@@ -92,7 +139,7 @@ export class UsersService {
       inputs.push({ name: 'active', type: sql.Bit, value: filters.isActive ? 1 : 0 });
     }
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<UserRow>(
       `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.StudentId, u.AgencyName,
               u.Mobile, u.AddressLine1, u.AddressLine2, u.City, u.State, u.PostalCode,
               u.Country, u.CountryOfOrigin,
@@ -116,14 +163,14 @@ export class UsersService {
 
     const hash = await argon2.hash(dto.password);
 
-    const roleRes = await this.db.query<any>(
+    const roleRes = await this.db.query<RoleIdRow>(
       `SELECT Id FROM Roles WHERE Name = @name`,
       [{ name: 'name', type: sql.VarChar(20), value: dto.role }],
     );
     const roleId = roleRes.recordset[0]?.Id;
     if (!roleId) throw new NotFoundException('Role not found');
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ Id: string }>(
       `INSERT INTO Users (Email, PasswordHash, FirstName, LastName, RoleId, DepartmentId, StudentId, AgencyName, CreatedBy, MustChangePass)
        OUTPUT inserted.Id
        VALUES (@email, @hash, @first, @last, @roleId, @dept, @sid, @agency, @createdBy, 1)`,
@@ -163,7 +210,7 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto, updatedBy: string) {
     const user = await this.findById(id);
     const sets: string[] = ['UpdatedAt = SYSUTCDATETIME()'];
-    const inputs: any[] = [{ name: 'id', type: sql.UniqueIdentifier, value: id }];
+    const inputs: QueryInput[] = [{ name: 'id', type: sql.UniqueIdentifier, value: id }];
 
     if (dto.email !== undefined && dto.email !== user.email) {
       const existing = await this.findByEmail(dto.email);
@@ -185,7 +232,7 @@ export class UsersService {
       inputs.push({ name: 'hash', type: sql.NVarChar(255), value: hash });
     }
     if (dto.role !== undefined) {
-      const roleRes = await this.db.query<any>(
+      const roleRes = await this.db.query<RoleIdRow>(
         `SELECT Id FROM Roles WHERE Name = @name`,
         [{ name: 'name', type: sql.VarChar(20), value: dto.role }],
       );
@@ -308,8 +355,8 @@ export class UsersService {
           );
           created++;
         }
-      } catch (err: any) {
-        errors.push(`Row for ${email}: ${err.message ?? 'unknown error'}`);
+      } catch (err) {
+        errors.push(`Row for ${email}: ${(err as Error).message ?? 'unknown error'}`);
       }
     }
     return { created, updated, errors };
@@ -343,24 +390,24 @@ export class UsersService {
     await this.findById(userId);
 
     const [uniRes, auRes, agRes] = await Promise.all([
-      this.db.query<any>(
+      this.db.query<{ InstitutionId: number }>(
         `SELECT InstitutionId FROM UserScopeUniversities WHERE UserId = @id`,
         [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
       ),
-      this.db.query<any>(
+      this.db.query<{ AcademicUnitId: number }>(
         `SELECT AcademicUnitId FROM UserScopeAcademicUnits WHERE UserId = @id`,
         [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
       ),
-      this.db.query<any>(
+      this.db.query<{ AgencyId: number }>(
         `SELECT AgencyId FROM UserScopeAgencies WHERE UserId = @id`,
         [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
       ),
     ]);
 
     return {
-      universityIds: uniRes.recordset.map((r: any) => r.InstitutionId),
-      academicUnitIds: auRes.recordset.map((r: any) => r.AcademicUnitId),
-      agencyIds: agRes.recordset.map((r: any) => r.AgencyId),
+      universityIds: uniRes.recordset.map((r) => r.InstitutionId),
+      academicUnitIds: auRes.recordset.map((r) => r.AcademicUnitId),
+      agencyIds: agRes.recordset.map((r) => r.AgencyId),
     };
   }
 

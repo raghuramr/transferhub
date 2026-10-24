@@ -16,6 +16,7 @@ import { UpsertFormDto, SubmitFormDto, DecideSubmissionDto } from './dto/upsert-
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 @Controller('forms')
 @UseGuards(JwtAuthGuard)
@@ -24,7 +25,7 @@ export class FormsController {
 
   /** Admins see every form (any status); everyone else only sees open ones. */
   @Get()
-  findAll(@Req() req: any) {
+  findAll(@Req() req: AuthenticatedRequest) {
     const isStaff = ['admin', 'super_admin'].includes(req.user.role);
     return this.formsService.findAll(isStaff);
   }
@@ -44,7 +45,7 @@ export class FormsController {
   @Post()
   @UseGuards(RolesGuard)
   @Roles('admin', 'super_admin')
-  create(@Body() dto: UpsertFormDto, @Req() req: any) {
+  create(@Body() dto: UpsertFormDto, @Req() req: AuthenticatedRequest) {
     return this.formsService.create(dto, req.user.id);
   }
 
@@ -63,7 +64,7 @@ export class FormsController {
   }
 
   @Post(':id/submit')
-  submit(@Param('id', ParseIntPipe) id: number, @Body() dto: SubmitFormDto, @Req() req: any) {
+  submit(@Param('id', ParseIntPipe) id: number, @Body() dto: SubmitFormDto, @Req() req: AuthenticatedRequest) {
     return this.formsService.submit(id, dto, req.user.id);
   }
 
@@ -80,7 +81,7 @@ export class FormsController {
   decideSubmission(
     @Param('submissionId') submissionId: string,
     @Body() dto: DecideSubmissionDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.formsService.decideSubmission(submissionId, dto, req.user.id);
   }

@@ -1,9 +1,59 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { SubmitTranscriptDto } from './dto/create-transcript.dto';
 
-function mapCourseRow(r: any) {
+interface TranscriptCourseJoinRow {
+  Id: string;
+  CourseCode: string;
+  CourseTitle: string;
+  OriginalCredits: number;
+  NormalisedCredits: number | null;
+  Grade: string;
+  GradeIsEligible: boolean | null;
+  Term: string | null;
+  Lane: string;
+  Status: string;
+  EvalId: string | null;
+  EvalOutcome: string | null;
+  AwardedCredits: number | null;
+  DecidedBUCode: string | null;
+  DecidedBUTitle: string | null;
+}
+
+interface TranscriptHeaderRow {
+  Id: string;
+  Status: string;
+  ReceivedAt: Date;
+  ProcessedAt: Date | null;
+  Notes: string | null;
+  InstitutionId: number;
+  InstitutionCode: string;
+  InstitutionName: string;
+  Calendar: string | null;
+  StudentName: string;
+  StudentEmail: string;
+}
+
+interface TranscriptListRow {
+  Id: string;
+  Status: string;
+  ReceivedAt: Date;
+  InstitutionName: string;
+  StudentName: string;
+  CourseCount: number;
+}
+
+interface LaneRow {
+  TranscriptId: string;
+  Lane: string;
+}
+
+interface TriageResultRow {
+  Lane?: string;
+}
+
+function mapCourseRow(r: TranscriptCourseJoinRow) {
   return {
     id: r.Id,
     courseCode: r.CourseCode,
@@ -31,13 +81,13 @@ export class TranscriptsService {
 
   /** Finds the BU-side Institution row for a code, or creates a minimal one. */
   private async findOrCreateInstitution(code: string, name: string, calendar: string) {
-    const existing = await this.db.query<any>(
+    const existing = await this.db.query<{ Id: number }>(
       `SELECT Id FROM Institutions WHERE Code = @code`,
       [{ name: 'code', type: sql.VarChar(20), value: code }],
     );
     if (existing.recordset[0]) return existing.recordset[0].Id;
 
-    const inserted = await this.db.query<any>(
+    const inserted = await this.db.query<{ Id: number }>(
       `INSERT INTO Institutions (Code, Name, Calendar, Type, IsBU, IsActive)
        OUTPUT inserted.Id
        VALUES (@code, @name, @calendar, 'university', 0, 1)`,
@@ -52,7 +102,7 @@ export class TranscriptsService {
 
   /** Finds the catalog Course row matching this institution + code, or creates a minimal one. */
   private async findOrCreateExternalCourse(institutionId: number, code: string, title: string, credits: number) {
-    const existing = await this.db.query<any>(
+    const existing = await this.db.query<{ Id: number }>(
       `SELECT Id FROM Courses WHERE InstitutionId = @instId AND Code = @code`,
       [
         { name: 'instId', type: sql.Int, value: institutionId },
@@ -61,7 +111,7 @@ export class TranscriptsService {
     );
     if (existing.recordset[0]) return existing.recordset[0].Id;
 
-    const inserted = await this.db.query<any>(
+    const inserted = await this.db.query<{ Id: number }>(
       `INSERT INTO Courses (InstitutionId, Code, Title, Credits, IsActive)
        OUTPUT inserted.Id
        VALUES (@instId, @code, @title, @credits, 1)`,
@@ -93,7 +143,7 @@ export class TranscriptsService {
     if (dto.studentId) notesParts.push(`Student ID on file: ${dto.studentId}`);
     if (dto.notes) notesParts.push(dto.notes);
 
-    const transcriptRes = await this.db.query<any>(
+    const transcriptRes = await this.db.query<{ Id: string }>(
       `INSERT INTO Transcripts (StudentUserId, SubmittedById, InstitutionId, Status, Notes)
        OUTPUT inserted.Id
        VALUES (@student, @submitter, @instId, 'received', @notes)`,
@@ -114,7 +164,7 @@ export class TranscriptsService {
         course.originalCredits,
       );
 
-      const tcRes = await this.db.query<any>(
+      const tcRes = await this.db.query<{ Id: string }>(
         `INSERT INTO TranscriptCourses
             (TranscriptId, CourseCode, CourseTitle, ExternalCourseId, OriginalCredits, Grade, Term)
          OUTPUT inserted.Id
@@ -131,7 +181,7 @@ export class TranscriptsService {
       );
       const transcriptCourseId = tcRes.recordset[0].Id;
 
-      const triageRes = await this.db.execute<any>('sp_TriageCourse', [
+      const triageRes = await this.db.execute<TriageResultRow>('sp_TriageCourse', [
         { name: 'TranscriptCourseId', type: sql.UniqueIdentifier, value: transcriptCourseId },
         { name: 'TriagedBy', type: sql.UniqueIdentifier, value: submittedByUserId },
       ]);
@@ -155,7 +205,7 @@ export class TranscriptsService {
   }
 
   async findById(id: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<TranscriptHeaderRow>(
       `SELECT t.Id, t.Status, t.ReceivedAt, t.ProcessedAt, t.Notes,
               i.Id AS InstitutionId, i.Code AS InstitutionCode, i.Name AS InstitutionName, i.Calendar,
               u.FirstName + ' ' + u.LastName AS StudentName, u.Email AS StudentEmail
@@ -168,7 +218,7 @@ export class TranscriptsService {
     if (!res.recordset[0]) throw new NotFoundException('Transcript not found');
     const t = res.recordset[0];
 
-    const courses = await this.db.query<any>(
+    const courses = await this.db.query<TranscriptCourseJoinRow>(
       `SELECT tc.Id, tc.CourseCode, tc.CourseTitle, tc.OriginalCredits, tc.NormalisedCredits,
               tc.Grade, tc.GradeIsEligible, tc.Term, tc.Lane, tc.Status,
               e.Id AS EvalId, e.Outcome AS EvalOutcome, e.AwardedCredits,
@@ -206,16 +256,16 @@ export class TranscriptsService {
    */
   private async getUniversityScope(userId?: string): Promise<number[] | null> {
     if (!userId) return null;
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ InstitutionId: number }>(
       `SELECT InstitutionId FROM UserScopeUniversities WHERE UserId = @uid`,
       [{ name: 'uid', type: sql.UniqueIdentifier, value: userId }],
     );
-    return res.recordset.length ? res.recordset.map((r: any) => r.InstitutionId) : null;
+    return res.recordset.length ? res.recordset.map((r) => r.InstitutionId) : null;
   }
 
   async findAll(filters: { studentUserId?: string; submittedByUserId?: string; status?: string; requestingUserId?: string } = {}) {
     let where = '1=1';
-    const inputs: any[] = [];
+    const inputs: QueryInput[] = [];
 
     if (filters.studentUserId) {
       where += ' AND t.StudentUserId = @sid';
@@ -240,7 +290,7 @@ export class TranscriptsService {
       where += ` AND t.InstitutionId IN (${scopeParams.join(', ')})`;
     }
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<TranscriptListRow>(
       `SELECT t.Id, t.Status, t.ReceivedAt,
               i.Name AS InstitutionName,
               u.FirstName + ' ' + u.LastName AS StudentName,
@@ -258,7 +308,7 @@ export class TranscriptsService {
 
     // Batch-load lanes for every transcript so the dashboard can show
     // per-lane counts without an N+1 query per row.
-    const laneRes = await this.db.query<any>(
+    const laneRes = await this.db.query<LaneRow>(
       `SELECT tc.TranscriptId, tc.Lane
        FROM TranscriptCourses tc
        JOIN Transcripts t ON t.Id = tc.TranscriptId
@@ -272,7 +322,7 @@ export class TranscriptsService {
       lanesByTranscript.set(row.TranscriptId, list);
     }
 
-    return transcripts.map((t: any) => ({
+    return transcripts.map((t) => ({
       id: t.Id,
       status: t.Status,
       receivedAt: t.ReceivedAt,

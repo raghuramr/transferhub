@@ -1,12 +1,73 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { parseCsvRows, toCsv } from '../common/csv.util';
 
 const EXPORT_COLUMNS = ['id', 'institutionCode', 'programName', 'code', 'title', 'programArea', 'requirementType', 'credits', 'level', 'verified', 'notes'];
 
-function mapCourse(row: any) {
+interface CourseRow {
+  Id: number;
+  InstitutionId: number;
+  ProgramId: number | null;
+  Code: string;
+  Title: string;
+  ProgramArea: string | null;
+  RequirementType: string | null;
+  Credits: number;
+  Description: string | null;
+  Level: string | null;
+  Verified: string | null;
+  Notes: string | null;
+  IsActive?: boolean;
+  InstitutionCode: string;
+  InstitutionName: string;
+  ProgramName: string | null;
+}
+
+interface ProgramRow {
+  Id: number;
+  InstitutionId: number;
+  Area: string | null;
+  Name: string;
+  Degree: string | null;
+  School: string | null;
+}
+
+interface InstitutionRow {
+  Id: number;
+  Name: string;
+  Code: string;
+  Calendar: string | null;
+  Type: string | null;
+  IsBU: boolean;
+}
+
+interface EquivalencyRow {
+  Id: number;
+  Outcome: string;
+  BUCredits: number | null;
+  MatchLevel: string | null;
+  Rationale: string | null;
+  Source: string | null;
+  DecidedAt: Date | null;
+  BuCode: string;
+  BuTitle: string;
+  BuCourseCredits: number;
+  ExtCode: string;
+  ExtTitle: string;
+  ExtCredits: number;
+  InstitutionName: string;
+  InstitutionCode: string;
+}
+
+interface DepartmentRow {
+  Id: number;
+  Name: string;
+  Code: string;
+}
+
+function mapCourse(row: CourseRow) {
   return {
     id: row.Id,
     institutionId: row.InstitutionId,
@@ -43,7 +104,7 @@ export class CoursesService {
 
   async findBuCourses(filters: { programArea?: string; search?: string } = {}, requestingUserId?: string) {
     let where = `i.Code = 'BU'`;
-    const inputs: any[] = [];
+    const inputs: QueryInput[] = [];
     if (filters.programArea) {
       where += ' AND c.ProgramArea = @area';
       inputs.push({ name: 'area', type: sql.NVarChar(100), value: filters.programArea });
@@ -66,7 +127,7 @@ export class CoursesService {
       where += ` AND c.InstitutionId IN (${scopeParams.join(', ')})`;
     }
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<CourseRow>(
       `SELECT ${COURSE_SELECT}
        WHERE ${where} AND c.IsActive = 1
        ORDER BY c.Code`,
@@ -82,16 +143,16 @@ export class CoursesService {
    */
   private async getUniversityScope(userId?: string): Promise<number[] | null> {
     if (!userId) return null;
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ InstitutionId: number }>(
       `SELECT InstitutionId FROM UserScopeUniversities WHERE UserId = @uid`,
       [{ name: 'uid', type: sql.UniqueIdentifier, value: userId }],
     );
-    return res.recordset.length ? res.recordset.map((r: any) => r.InstitutionId) : null;
+    return res.recordset.length ? res.recordset.map((r) => r.InstitutionId) : null;
   }
 
   async findExternalCourses(institutionCode?: string, search?: string, requestingUserId?: string) {
     let where = `i.Code <> 'BU'`;
-    const inputs: any[] = [];
+    const inputs: QueryInput[] = [];
     if (institutionCode) {
       where += ' AND i.Code = @code';
       inputs.push({ name: 'code', type: sql.VarChar(20), value: institutionCode });
@@ -111,7 +172,7 @@ export class CoursesService {
       where += ` AND c.InstitutionId IN (${scopeParams.join(', ')})`;
     }
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<CourseRow>(
       `SELECT ${COURSE_SELECT}
        WHERE ${where} AND c.IsActive = 1
        ORDER BY i.Code, c.Code`,
@@ -121,7 +182,7 @@ export class CoursesService {
   }
 
   async findById(id: number) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<CourseRow>(
       `SELECT ${COURSE_SELECT}
        WHERE c.Id = @id`,
       [{ name: 'id', type: sql.Int, value: id }],
@@ -132,17 +193,17 @@ export class CoursesService {
 
   async findPrograms(institutionId?: number) {
     let where = '1=1';
-    const inputs: any[] = [];
+    const inputs: QueryInput[] = [];
     if (institutionId !== undefined) {
       where += ' AND InstitutionId = @instId';
       inputs.push({ name: 'instId', type: sql.Int, value: institutionId });
     }
-    const res = await this.db.query<any>(
+    const res = await this.db.query<ProgramRow>(
       `SELECT Id, InstitutionId, Area, Name, Degree, School
        FROM Programs WHERE ${where} ORDER BY Area, Name`,
       inputs,
     );
-    return res.recordset.map((r: any) => ({
+    return res.recordset.map((r) => ({
       id: r.Id,
       institutionId: r.InstitutionId,
       area: r.Area,
@@ -153,11 +214,11 @@ export class CoursesService {
   }
 
   async findInstitutions() {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<InstitutionRow>(
       `SELECT Id, Name, Code, Calendar, Type, IsBU
        FROM Institutions WHERE IsActive = 1 ORDER BY Name`,
     );
-    return res.recordset.map((r: any) => ({
+    return res.recordset.map((r) => ({
       id: r.Id,
       name: r.Name,
       code: r.Code,
@@ -169,7 +230,7 @@ export class CoursesService {
 
   async findEquivalencies(buCourseId?: number, externalCourseId?: number) {
     let where = '1=1';
-    const inputs: any[] = [];
+    const inputs: QueryInput[] = [];
     if (buCourseId) {
       where += ' AND e.BUCourseId = @buId';
       inputs.push({ name: 'buId', type: sql.Int, value: buCourseId });
@@ -179,7 +240,7 @@ export class CoursesService {
       inputs.push({ name: 'extId', type: sql.Int, value: externalCourseId });
     }
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<EquivalencyRow>(
       `SELECT e.Id, e.Outcome, e.BUCredits, e.MatchLevel, e.Rationale, e.Source, e.DecidedAt,
               bu.Code AS BuCode, bu.Title AS BuTitle, bu.Credits AS BuCourseCredits,
               ext.Code AS ExtCode, ext.Title AS ExtTitle, ext.Credits AS ExtCredits,
@@ -192,7 +253,7 @@ export class CoursesService {
        ORDER BY inst.Code, ext.Code`,
       inputs,
     );
-    return res.recordset.map((r: any) => ({
+    return res.recordset.map((r) => ({
       id: r.Id,
       outcome: r.Outcome,
       buCredits: r.BUCredits,
@@ -207,14 +268,14 @@ export class CoursesService {
   }
 
   async getDepartments() {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<DepartmentRow>(
       `SELECT Id, Name, Code FROM Departments WHERE IsActive = 1 ORDER BY Name`,
     );
-    return res.recordset.map((r: any) => ({ id: r.Id, name: r.Name, code: r.Code }));
+    return res.recordset.map((r) => ({ id: r.Id, name: r.Name, code: r.Code }));
   }
 
   async create(dto: CreateCourseDto) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ Id: number }>(
       `INSERT INTO Courses (InstitutionId, ProgramId, Code, Title, Description, Credits, ProgramArea, RequirementType, IsActive)
        OUTPUT inserted.Id
        VALUES (@instId, @programId, @code, @title, @desc, @credits, @area, @reqType, @active)`,
@@ -234,7 +295,7 @@ export class CoursesService {
   }
 
   async findByInstitutionAndCode(institutionId: number, code: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ Id: number }>(
       `SELECT Id FROM Courses WHERE InstitutionId = @instId AND Code = @code`,
       [
         { name: 'instId', type: sql.Int, value: institutionId },
@@ -246,7 +307,7 @@ export class CoursesService {
 
   async update(id: number, dto: Partial<CreateCourseDto>) {
     const sets: string[] = ['UpdatedAt = SYSUTCDATETIME()'];
-    const inputs: any[] = [{ name: 'id', type: sql.Int, value: id }];
+    const inputs: QueryInput[] = [{ name: 'id', type: sql.Int, value: id }];
 
     if (dto.institutionId !== undefined) {
       sets.push('InstitutionId = @instId');
@@ -318,7 +379,7 @@ export class CoursesService {
         errors.push(`Skipped row (missing institutionCode/code/title/credits): ${JSON.stringify(row)}`);
         continue;
       }
-      const instRes = await this.db.query<any>(`SELECT Id FROM Institutions WHERE Code = @code`, [
+      const instRes = await this.db.query<{ Id: number }>(`SELECT Id FROM Institutions WHERE Code = @code`, [
         { name: 'code', type: sql.VarChar(20), value: institutionCode },
       ]);
       const institutionId = instRes.recordset[0]?.Id;

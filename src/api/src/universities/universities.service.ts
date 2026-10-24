@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { CreateUniversityDto } from './dto/create-university.dto';
 import { UpdateUniversityDto } from './dto/update-university.dto';
@@ -8,7 +8,34 @@ import { PagesService } from '../pages/pages.service';
 
 // "Universities" in the UI == the existing `Institutions` SQL table.
 // See CLAUDE.md / migration 008 for why the table itself keeps its name.
-function mapUniversity(row: any) {
+interface UniversityRow {
+  Id: number;
+  Code: string;
+  Name: string;
+  Calendar: string | null;
+  Type: string | null;
+  IsBU: boolean;
+  IsActive: boolean;
+  Source: string | null;
+  LogoUrl: string | null;
+  HeroImageUrl: string | null;
+  CreatedAt: Date;
+}
+
+interface ProgramTopicJoinRow {
+  ProgramId: number;
+  ProgramName: string;
+  CourseId: number;
+  CourseCode: string;
+  CourseTitle: string;
+  TopicId: number | null;
+  TopicTitle: string | null;
+  TopicDescription: string | null;
+  // Deliberately dynamic: a flexible {label, url}[] blob stored as JSON text.
+  ReferenceLinksJson: string | null;
+}
+
+function mapUniversity(row: UniversityRow) {
   return {
     id: row.Id,
     code: row.Code,
@@ -35,7 +62,7 @@ export class UniversitiesService {
 
   async findAll(filters: { search?: string; isActive?: boolean } = {}) {
     let where = '1=1';
-    const inputs: any[] = [];
+    const inputs: QueryInput[] = [];
     if (filters.search) {
       where += ' AND (Code LIKE @q OR Name LIKE @q)';
       inputs.push({ name: 'q', type: sql.NVarChar(200), value: `%${filters.search}%` });
@@ -45,7 +72,7 @@ export class UniversitiesService {
       inputs.push({ name: 'active', type: sql.Bit, value: filters.isActive ? 1 : 0 });
     }
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<UniversityRow>(
       `SELECT Id, Code, Name, Calendar, Type, IsBU, IsActive, Source, LogoUrl, HeroImageUrl, CreatedAt
        FROM Institutions WHERE ${where} ORDER BY Name`,
       inputs,
@@ -54,7 +81,7 @@ export class UniversitiesService {
   }
 
   async findById(id: number) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<UniversityRow>(
       `SELECT Id, Code, Name, Calendar, Type, IsBU, IsActive, Source, LogoUrl, HeroImageUrl, CreatedAt
        FROM Institutions WHERE Id = @id`,
       [{ name: 'id', type: sql.Int, value: id }],
@@ -64,7 +91,7 @@ export class UniversitiesService {
   }
 
   async findByCode(code: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<UniversityRow>(
       `SELECT Id, Code, Name, Calendar, Type, IsBU, IsActive, Source, LogoUrl, HeroImageUrl, CreatedAt
        FROM Institutions WHERE Code = @code`,
       [{ name: 'code', type: sql.VarChar(20), value: code }],
@@ -76,7 +103,7 @@ export class UniversitiesService {
     const existing = await this.findByCode(dto.code);
     if (existing) throw new ConflictException('A university with this code already exists');
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ Id: number }>(
       `INSERT INTO Institutions (Code, Name, Calendar, Type, IsBU, IsActive, Source, LogoUrl, HeroImageUrl)
        OUTPUT inserted.Id
        VALUES (@code, @name, @calendar, @type, @isBU, @active, @source, @logoUrl, @heroImageUrl)`,
@@ -98,7 +125,7 @@ export class UniversitiesService {
   async update(id: number, dto: UpdateUniversityDto) {
     await this.findById(id);
     const sets: string[] = [];
-    const inputs: any[] = [{ name: 'id', type: sql.Int, value: id }];
+    const inputs: QueryInput[] = [{ name: 'id', type: sql.Int, value: id }];
 
     if (dto.code !== undefined) {
       sets.push('Code = @code');
@@ -204,7 +231,7 @@ export class UniversitiesService {
   async generatePublicPage(id: number, userId: string) {
     const university = await this.findById(id);
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<ProgramTopicJoinRow>(
       `SELECT
          ISNULL(p.Id, 0)              AS ProgramId,
          ISNULL(p.Name, ISNULL(c.ProgramArea, 'Unassigned')) AS ProgramName,
@@ -278,7 +305,7 @@ export class UniversitiesService {
     const title = `${university.name} — Programs & Topics`;
 
     const existingPages = await this.pagesService.findAll();
-    const existing = existingPages.find((p: any) => p.slug === slug);
+    const existing = existingPages.find((p) => p.slug === slug);
 
     const pageDto = {
       slug,
@@ -289,8 +316,8 @@ export class UniversitiesService {
     };
 
     const page = existing
-      ? await this.pagesService.update(existing.id, pageDto as any, userId)
-      : await this.pagesService.create(pageDto as any, userId);
+      ? await this.pagesService.update(existing.id, pageDto, userId)
+      : await this.pagesService.create(pageDto, userId);
 
     return { slug: page.slug, pageId: page.id };
   }

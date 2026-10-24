@@ -9,6 +9,8 @@ import { CreateCourseDto } from './dto/create-course.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
+import type { UploadedFileLike } from '../common/uploaded-file.interface';
 
 @Controller('courses')
 @UseGuards(JwtAuthGuard)
@@ -19,7 +21,7 @@ export class CoursesController {
   findBuCourses(
     @Query('program') programArea?: string,
     @Query('search') search?: string,
-    @Req() req?: any,
+    @Req() req?: AuthenticatedRequest,
   ) {
     return this.coursesService.findBuCourses({ programArea, search }, req?.user?.id);
   }
@@ -28,13 +30,13 @@ export class CoursesController {
   findExternalCourses(
     @Query('institution') institutionCode?: string,
     @Query('search') search?: string,
-    @Req() req?: any,
+    @Req() req?: AuthenticatedRequest,
   ) {
     return this.coursesService.findExternalCourses(institutionCode, search, req?.user?.id);
   }
 
   @Get('search')
-  search(@Query('q') q: string, @Query('institution') institutionCode?: string, @Req() req?: any) {
+  search(@Query('q') q: string, @Query('institution') institutionCode?: string, @Req() req?: AuthenticatedRequest) {
     return institutionCode
       ? this.coursesService.findExternalCourses(institutionCode, q, req?.user?.id)
       : this.coursesService.findBuCourses({ search: q }, req?.user?.id);
@@ -80,7 +82,7 @@ export class CoursesController {
   @UseGuards(RolesGuard)
   @Roles('admin', 'super_admin')
   @UseInterceptors(FileInterceptor('file'))
-  async importCsv(@UploadedFile() file: any) {
+  async importCsv(@UploadedFile() file: UploadedFileLike) {
     if (!file) throw new BadRequestException('No file uploaded');
     return this.coursesService.importCsv(file.buffer.toString('utf-8'));
   }

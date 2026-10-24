@@ -1,9 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { CreateCourseTopicDto, UpdateCourseTopicDto } from './dto/course-topic.dto';
 
-function mapTopic(row: any) {
+interface CourseTopicRow {
+  Id: number;
+  CourseId: number;
+  Title: string;
+  Description: string | null;
+  SortOrder: number;
+  // Deliberately dynamic: a flexible {label, url}[] blob stored as JSON text.
+  ReferenceLinksJson: string | null;
+  CreatedAt: Date;
+  UpdatedAt: Date;
+}
+
+function mapTopic(row: CourseTopicRow) {
   let referenceLinks: { label: string; url: string }[] = [];
   if (row.ReferenceLinksJson) {
     try {
@@ -29,7 +41,7 @@ export class CourseTopicsService {
   constructor(private db: DatabaseService) {}
 
   async findByCourse(courseId: number) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<CourseTopicRow>(
       `SELECT Id, CourseId, Title, Description, SortOrder, ReferenceLinksJson, CreatedAt, UpdatedAt
        FROM CourseTopics WHERE CourseId = @courseId ORDER BY SortOrder, Id`,
       [{ name: 'courseId', type: sql.Int, value: courseId }],
@@ -38,7 +50,7 @@ export class CourseTopicsService {
   }
 
   async findById(id: number) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<CourseTopicRow>(
       `SELECT Id, CourseId, Title, Description, SortOrder, ReferenceLinksJson, CreatedAt, UpdatedAt
        FROM CourseTopics WHERE Id = @id`,
       [{ name: 'id', type: sql.Int, value: id }],
@@ -48,7 +60,7 @@ export class CourseTopicsService {
   }
 
   async create(courseId: number, dto: CreateCourseTopicDto, userId?: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ Id: number }>(
       `INSERT INTO CourseTopics (CourseId, Title, Description, SortOrder, ReferenceLinksJson, CreatedBy, UpdatedBy)
        OUTPUT inserted.Id
        VALUES (@courseId, @title, @desc, @sortOrder, @links, @createdBy, @createdBy)`,
@@ -67,7 +79,7 @@ export class CourseTopicsService {
   async update(id: number, dto: UpdateCourseTopicDto, userId?: string) {
     await this.findById(id);
     const sets: string[] = ['UpdatedAt = SYSUTCDATETIME()', 'UpdatedBy = @updatedBy'];
-    const inputs: any[] = [
+    const inputs: QueryInput[] = [
       { name: 'id', type: sql.Int, value: id },
       { name: 'updatedBy', type: sql.UniqueIdentifier, value: userId ?? null },
     ];
