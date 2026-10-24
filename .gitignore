@@ -6,7 +6,7 @@ dist/
 
 # Local dev secrets — never commit
 .env.local
-#src/api/.env
+src/api/.env
 src/api/.env.local
 tools/db-mcp-server/.env
 
