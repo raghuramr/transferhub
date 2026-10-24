@@ -8,21 +8,26 @@ import { PageTransition } from '../ui/PageTransition';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
-  Building2, School, Handshake, ShieldCheck, Menu, X,
+  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
-const navItems: Record<Role, { to: string; label: string; icon: React.ReactNode }[]> = {
+type NavEntry = { to: string; label: string; icon: React.ReactNode; group?: string };
+
+const navItems: Record<Role, NavEntry[]> = {
   student: [
     { to: '/student', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { to: '/student/upload', label: 'Upload Transcript', icon: <Upload size={18} /> },
+    { to: '/profile', label: 'My Profile', icon: <UserCircle size={18} /> },
   ],
   agency: [
     { to: '/agency', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { to: '/agency/upload', label: 'Submit Transcript', icon: <Upload size={18} /> },
+    { to: '/profile', label: 'My Profile', icon: <UserCircle size={18} /> },
   ],
   faculty: [
     { to: '/faculty', label: 'Review Queue', icon: <ClipboardList size={18} /> },
+    { to: '/profile', label: 'My Profile', icon: <UserCircle size={18} /> },
   ],
   admin: [
     { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
@@ -31,21 +36,28 @@ const navItems: Record<Role, { to: string; label: string; icon: React.ReactNode 
     { to: '/admin/users', label: 'Users', icon: <Users size={18} /> },
     { to: '/admin/pages', label: 'Custom Pages', icon: <FileEdit size={18} /> },
     { to: '/admin/forms', label: 'Custom Forms', icon: <ListChecks size={18} /> },
+    { to: '/profile', label: 'My Profile', icon: <UserCircle size={18} /> },
   ],
   super_admin: [
     { to: '/superadmin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-    { to: '/admin/transcripts', label: 'Transcripts', icon: <FileText size={18} /> },
-    { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
-    { to: '/admin/pages', label: 'Custom Pages', icon: <FileEdit size={18} /> },
-    { to: '/admin/forms', label: 'Custom Forms', icon: <ListChecks size={18} /> },
-    { to: '/superadmin/users', label: 'Users', icon: <Users size={18} /> },
-    { to: '/superadmin/universities', label: 'Universities', icon: <Building2 size={18} /> },
+    // Master Data
+    { to: '/superadmin/universities', label: 'Universities', icon: <Building2 size={18} />, group: 'Master Data' },
     { to: '/superadmin/institutions', label: 'Institutions', icon: <School size={18} /> },
     { to: '/superadmin/programs', label: 'Programs', icon: <GraduationCap size={18} /> },
     { to: '/superadmin/agencies', label: 'Agencies', icon: <Handshake size={18} /> },
-    { to: '/superadmin/audit', label: 'Audit Log', icon: <ScrollText size={18} /> },
-    { to: '/superadmin/settings', label: 'Settings', icon: <Settings size={18} /> },
+    // Operations
+    { to: '/admin/transcripts', label: 'Transcripts', icon: <FileText size={18} />, group: 'Operations' },
+    { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
+    { to: '/admin/pages', label: 'Custom Pages', icon: <FileEdit size={18} /> },
+    { to: '/admin/forms', label: 'Custom Forms', icon: <ListChecks size={18} /> },
+    // Users
+    { to: '/superadmin/users', label: 'Users', icon: <Users size={18} />, group: 'Users' },
+    // Reports
+    { to: '/superadmin/audit', label: 'Audit Log', icon: <ScrollText size={18} />, group: 'Reports' },
+    // Settings
+    { to: '/superadmin/settings', label: 'Settings', icon: <Settings size={18} />, group: 'Settings' },
     { to: '/superadmin/settings/roles-permissions', label: 'Roles & Permissions', icon: <ShieldCheck size={18} /> },
+    { to: '/superadmin/settings/import', label: 'Data Import', icon: <Upload size={18} /> },
   ],
 };
 
@@ -70,10 +82,29 @@ export default function AppLayout() {
 
   const items = user ? navItems[user.role] ?? [] : [];
 
-  // Close the mobile drawer on every navigation.
   useEffect(() => {
     setMobileNavOpen(false);
   }, [location.pathname]);
+
+  const renderNavItems = (entries: NavEntry[]) => {
+    const rendered: React.ReactNode[] = [];
+    let currentGroup: string | undefined = undefined;
+    entries.forEach((item, i) => {
+      if (item.group && item.group !== currentGroup) {
+        currentGroup = item.group;
+        rendered.push(
+          <p
+            key={`group-${i}`}
+            className="px-3 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider"
+          >
+            {item.group}
+          </p>
+        );
+      }
+      rendered.push(<NavItem key={item.to} to={item.to} label={item.label} icon={item.icon} />);
+    });
+    return rendered;
+  };
 
   const sidebarContent = (
     <>
@@ -96,14 +127,12 @@ export default function AppLayout() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {items.map(({ to, label, icon }) => (
-          <NavItem key={to} to={to} label={label} icon={icon} />
-        ))}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+        {renderNavItems(items)}
 
         {navPages.length > 0 && (
           <div className="pt-4 mt-2 border-t border-brand-100/60">
-            <p className="px-3 pb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+            <p className="px-3 pb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
               Resources
             </p>
             {navPages.map((p) => (
@@ -149,14 +178,10 @@ export default function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-[#faf7f8]">
-      {/* Desktop sidebar — sticky to the viewport so the nav/footer never
-          scroll away with long page content (only the nav list itself
-          scrolls). Hidden below md; replaced by the slide-over drawer. */}
       <aside className="hidden md:flex w-64 h-screen sticky top-0 bg-white border-r border-brand-100/60 flex-col shrink-0">
         {sidebarContent}
       </aside>
 
-      {/* Mobile slide-over drawer + backdrop */}
       {mobileNavOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileNavOpen(false)} />
@@ -167,7 +192,6 @@ export default function AppLayout() {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile top bar with hamburger — only shown below md */}
         <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-brand-100/60 sticky top-0 z-30">
           <button
             onClick={() => setMobileNavOpen(true)}
@@ -182,7 +206,6 @@ export default function AppLayout() {
           <p className="font-bold text-gray-900 text-sm">TransferHub</p>
         </div>
 
-        {/* Main — fluid page transitions on route change */}
         <main className="flex-1 overflow-auto">
           <AnimatePresence mode="wait" initial={false}>
             <PageTransition key={location.pathname}>

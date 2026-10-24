@@ -8,7 +8,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { parseCsvRows, toCsv } from '../common/csv.util';
 
-const EXPORT_COLUMNS = ['id', 'email', 'firstName', 'lastName', 'role', 'studentId', 'agencyName', 'departmentCode', 'mobile', 'addressLine1', 'addressLine2', 'city', 'state', 'postalCode', 'country', 'countryOfOrigin', 'isActive'];
+const EXPORT_COLUMNS = ['id', 'email', 'firstName', 'lastName', 'role', 'studentId', 'agencyName', 'departmentCode', 'mobile', 'addressLine1', 'addressLine2', 'city', 'state', 'zipCode', 'country', 'countryOfOrigin', 'isActive'];
 
 export interface UserScope {
   universityIds: number[];
@@ -42,6 +42,18 @@ interface UserRow {
   DepartmentName: string | null;
   // Only selected by findById.
   DepartmentCode?: string | null;
+  // Only selected by findById — StudentProfiles join.
+  PriorInstitutionName?: string | null;
+  HighestEducationLevel?: string | null;
+  FieldOfStudy?: string | null;
+  GPA?: number | null;
+  GraduationYear?: number | null;
+  EmergencyContactName?: string | null;
+  EmergencyContactPhone?: string | null;
+  TargetInstitutionId?: number | null;
+  TargetProgramId?: number | null;
+  TargetInstitutionName?: string | null;
+  TargetProgramName?: string | null;
 }
 
 /** Raw auth-lookup row (PascalCase) consumed directly by AuthService — do not camelCase. */
@@ -76,7 +88,7 @@ function mapUser(row: UserRow) {
     addressLine2: row.AddressLine2,
     city: row.City,
     state: row.State,
-    postalCode: row.PostalCode,
+    zipCode: row.PostalCode,
     country: row.Country,
     countryOfOrigin: row.CountryOfOrigin,
     isActive: !!row.IsActive,
@@ -88,6 +100,17 @@ function mapUser(row: UserRow) {
     roleDisplay: row.RoleDisplay,
     departmentName: row.DepartmentName,
     departmentCode: row.DepartmentCode,
+    priorInstitutionName: row.PriorInstitutionName ?? undefined,
+    highestEducationLevel: row.HighestEducationLevel ?? undefined,
+    fieldOfStudy: row.FieldOfStudy ?? undefined,
+    gpa: row.GPA ?? undefined,
+    graduationYear: row.GraduationYear ?? undefined,
+    emergencyContactName: row.EmergencyContactName ?? undefined,
+    emergencyContactPhone: row.EmergencyContactPhone ?? undefined,
+    targetInstitutionId: row.TargetInstitutionId ?? undefined,
+    targetProgramId: row.TargetProgramId ?? undefined,
+    targetInstitutionName: row.TargetInstitutionName ?? undefined,
+    targetProgramName: row.TargetProgramName ?? undefined,
   };
 }
 
@@ -102,10 +125,18 @@ export class UsersService {
               u.Country, u.CountryOfOrigin,
               u.IsActive, u.IsLocked, u.LastLoginAt, u.MustChangePass, u.DepartmentId,
               r.Name AS Role, r.DisplayName AS RoleDisplay,
-              d.Name AS DepartmentName, d.Code AS DepartmentCode
+              d.Name AS DepartmentName, d.Code AS DepartmentCode,
+              sp.PriorInstitutionName, sp.HighestEducationLevel, sp.FieldOfStudy,
+              sp.GPA, sp.GraduationYear, sp.EmergencyContactName, sp.EmergencyContactPhone,
+              sp.TargetInstitutionId, sp.TargetProgramId,
+              ti.Name AS TargetInstitutionName,
+              tp.Name AS TargetProgramName
        FROM Users u
        JOIN Roles r ON r.Id = u.RoleId
        LEFT JOIN Departments d ON d.Id = u.DepartmentId
+       LEFT JOIN StudentProfiles sp ON sp.UserId = u.Id
+       LEFT JOIN Institutions ti ON ti.Id = sp.TargetInstitutionId
+       LEFT JOIN Programs tp ON tp.Id = sp.TargetProgramId
        WHERE u.Id = @id`,
       [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
     );
@@ -273,9 +304,9 @@ export class UsersService {
       sets.push('State = @state');
       inputs.push({ name: 'state', type: sql.NVarChar(100), value: dto.state });
     }
-    if (dto.postalCode !== undefined) {
+    if (dto.zipCode !== undefined) {
       sets.push('PostalCode = @postal');
-      inputs.push({ name: 'postal', type: sql.NVarChar(20), value: dto.postalCode });
+      inputs.push({ name: 'postal', type: sql.NVarChar(20), value: dto.zipCode });
     }
     if (dto.country !== undefined) {
       sets.push('Country = @country');

@@ -29,7 +29,7 @@ const schema = z.object({
   addressLine2: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
-  postalCode: z.string().optional(),
+  zipCode: z.string().optional(),
   country: z.string().optional(),
   countryOfOrigin: z.string().optional(),
 
@@ -80,11 +80,13 @@ export default function RegisterPage() {
   const { setAuth } = useAuthStore();
   const [showPass, setShowPass] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [selectedPriorCollege, setSelectedPriorCollege] = useState('');
 
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
@@ -232,8 +234,8 @@ export default function RegisterPage() {
               <Field label="State / Province">
                 <input {...register('state')} className={inputClass} />
               </Field>
-              <Field label="Postal code">
-                <input {...register('postalCode')} className={inputClass} />
+              <Field label="Zip code">
+                <input {...register('zipCode')} className={inputClass} />
               </Field>
               <Field label="Country">
                 <input {...register('country')} className={inputClass} />
@@ -246,7 +248,33 @@ export default function RegisterPage() {
             <SectionHeading>Education</SectionHeading>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Prior / current institution">
-                <input {...register('priorInstitutionName')} className={inputClass} placeholder="e.g. Bunker Hill Community College" />
+                <select
+                  className={inputClass}
+                  value={selectedPriorCollege}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedPriorCollege(val);
+                    if (val !== 'other') {
+                      setValue('priorInstitutionName', val);
+                    } else {
+                      setValue('priorInstitutionName', '');
+                    }
+                  }}
+                  disabled={loadingUniversities}
+                >
+                  <option value="">{loadingUniversities ? 'Loading…' : 'Select a college…'}</option>
+                  {universities.map((u) => (
+                    <option key={u.id} value={u.name}>{u.name}</option>
+                  ))}
+                  <option value="other">Other (type below)</option>
+                </select>
+                {selectedPriorCollege === 'other' && (
+                  <input
+                    {...register('priorInstitutionName')}
+                    className={`${inputClass} mt-2`}
+                    placeholder="Enter college name"
+                  />
+                )}
               </Field>
               <Field label="Highest education level">
                 <select {...register('highestEducationLevel')} className={inputClass}>

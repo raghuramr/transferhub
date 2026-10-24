@@ -282,3 +282,11 @@ export const permissionsApi = {
   /** The logged-in user's own effective grants: { [moduleKey]: { [operationKey]: boolean } }. */
   my: () => api.get<Record<string, Record<string, boolean>>>('/permissions/my'),
 };
+
+
+// ── Data Import endpoints (super_admin only) ──────────────────
+export const importApi = {
+  getFormat: () => api.get('/import/format'),
+  preview: (type: string, data: unknown[]) => api.post('/import/preview', { type, data }),
+  execute: (type: string, data: unknown[]) => api.post('/import', { type, data }),
+};

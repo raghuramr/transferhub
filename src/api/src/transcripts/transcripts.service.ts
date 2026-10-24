@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { SubmitTranscriptDto } from './dto/create-transcript.dto';
+import { EmailService } from '../common/email.service';
 
 interface TranscriptCourseJoinRow {
   Id: string;
@@ -77,7 +78,7 @@ function mapCourseRow(r: TranscriptCourseJoinRow) {
 
 @Injectable()
 export class TranscriptsService {
-  constructor(private db: DatabaseService) {}
+  constructor(private db: DatabaseService, private emailService: EmailService) {}
 
   /** Finds the BU-side Institution row for a code, or creates a minimal one. */
   private async findOrCreateInstitution(code: string, name: string, calendar: string) {
@@ -342,6 +343,17 @@ export class TranscriptsService {
         { name: 'id', type: sql.UniqueIdentifier, value: id },
       ],
     );
-    return this.findById(id);
+    const transcript = await this.findById(id);
+    // Send status update email — best-effort, non-fatal
+    try {
+      const firstName = transcript.studentName.split(' ')[0];
+      await this.emailService.sendTranscriptStatus(
+        transcript.studentEmail,
+        firstName,
+        id,
+        status,
+      );
+    } catch { /* non-fatal */ }
+    return transcript;
   }
 }
