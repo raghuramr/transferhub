@@ -65,10 +65,13 @@ User flagged that every BU course shows 4 credits and asked to verify. Checked
 against BU's own CAS bulletin: BU's stated institutional default is "all
 required courses are 4 unit hours unless otherwise noted" — the uniform 4 is
 correct, not a seeding bug. Northeastern/NYU courses already vary (4 vs 5 for
-lab-attached courses, e.g. NU `CS 2000`=5, `CS 1800`=4) in seed/003. A few new
-courses added in seed/010 have unverified credit values (marked `Verified =
-'Check'`) pending a direct primary-bulletin confirmation — see that file's
-comments for which ones.
+lab-attached courses, e.g. NU `CS 2000`=5, `CS 1800`=4). A few of the newer
+AI/ML courses have unverified credit values (marked `Verified = 'Check'`)
+pending a direct primary-bulletin confirmation — see the comments in
+`database/seed/002_courses_and_equivalencies.sql` (the consolidated course
+catalog seed — see "DB Script Runner tool" below) for which ones. (This
+note used to point at "seed/003"/"seed/010"; those files no longer exist
+after the migrations/seed consolidation.)
 
 ## Course Topics (confirmed, built)
 Courses can now be broken down into **Topics** (migration 009:
@@ -242,13 +245,19 @@ chat history if needed, repeated here for quick reference)
   under one Plan (simpler, independent deploys, needs CORS_ORIGIN set)
 
 ## Confirmed facts (verified by actually testing, not just claimed)
-- **Fresh DB + scripts**: running `migrations/001` through `007` then
-  `seed/001` through `006` in order against a completely empty SQL Server
-  produces the full schema correctly — proven by running the whole set
-  against a clean Docker SQL Server instance mid-session. One exception:
-  **Azure SQL Database specifically** can't run `001_create_database.sql`
-  as-is (no cross-database `USE` mid-connection) — create the DB as its
-  own Azure resource first, then run `002` onward connected directly to it.
+- **Fresh DB + scripts**: running the full consolidated `migrations/`
+  set (`001_database.sql` through `010_uploads.sql`) then the full
+  consolidated `seed/` set (`001_reference_data.sql` through
+  `008_roles_permissions.sql`), each in filename order, against a
+  completely empty SQL Server produces the full schema + demo data
+  correctly (this was proven against the pre-consolidation migration/seed
+  files on a clean Docker SQL Server instance in an earlier session; the
+  consolidation preserved every column/constraint/index/proc/view — see
+  the "DB Script Runner tool" section below for the rationale and the
+  column/constraint cross-check that was done). One exception: **Azure SQL
+  Database specifically** can't run `001_database.sql` as-is (no
+  cross-database `USE` mid-connection) — create the DB as its own Azure
+  resource first, then run `002` onward connected directly to it.
 - **DB credentials are 100% env-driven** — `database.service.ts` /
   `sql-connection.util.ts` have zero hardcoded server/host values. Pointing
   at a new SQL Server is purely an `.env` change (`DB_SERVER`, `DB_PORT`,
@@ -396,6 +405,75 @@ against Azure SQL Database.
   copied as-is into any other SQL-Server-based project; see
   `tools/db-script-runner/README.md` for the full explanation and how to
   point it at a different project's env vars/folder layout.
+
+**Migrations/seed consolidation (confirmed, deliberate and destructive —
+done at the user's explicit request after being warned).** The old
+per-feature migration/seed file history (`migrations/001` through `017`,
+`seed/001` through `011`, with some numbers never used) was replaced
+outright with one idempotent file per entity, in both `database/migrations/`
+and `database/seed/`. The old files are gone from the repo, not kept
+alongside the new ones.
+
+New `database/migrations/` layout (run in this filename order):
+- `001_database.sql` — `CREATE DATABASE` against `master` (unchanged
+  special case; still can't be run against Azure SQL, see its header).
+- `002_auth_and_roles.sql` — Roles, Departments, Users (incl. profile/
+  contact fields and the `AgencyId` column), RefreshTokens,
+  PasswordResetTokens, AuditLog, and the Roles & Permissions master-data
+  tables (PermissionModules/PermissionOperations/RolePermissions) — folded
+  in here since they FK back to Roles.
+- `003_institutions_courses_programs.sql` — Institutions ("Universities" in
+  the UI), Programs (+ `IsActive`/`UpdatedAt`), Courses (+ `ProgramId`
+  link + backfill), Equivalencies.
+- `004_transcripts_and_evaluations.sql` — StudentProfiles, Transcripts,
+  TranscriptCourses, Syllabi, Evaluations, AIMatchCandidates.
+- `005_views_and_procedures.sql` — the 3 views + `sp_TriageCourse` /
+  `sp_RecordDecision` (`CREATE OR ALTER`, naturally idempotent).
+- `006_pages.sql` — Pages (CMS).
+- `007_forms.sql` — Forms, FormSubmissions.
+- `008_universities_institutions_agencies.sql` — Agencies, AcademicUnits
+  ("Institutions" in the UI, nullable `InstitutionId`), the
+  `Users.AgencyId` FK (the column itself lives in file 002, since Agencies
+  doesn't exist yet at that point), the three UserScope* visibility
+  tables, and `LogoUrl`/`HeroImageUrl` on both Institutions and
+  AcademicUnits (grouped here with their owning entity, not with Uploads).
+- `009_course_topics.sql` — CourseTopics.
+- `010_uploads.sql` — Uploads (file storage metadata) only.
+
+New `database/seed/` layout (run in this filename order):
+- `001_reference_data.sql` — Roles, Departments, Institutions.
+- `002_courses_and_equivalencies.sql` — BU/Northeastern/NYU + AI/ML course
+  catalog, and the workbook equivalency mappings.
+- `003_demo_users.sql` — the 5 named demo accounts + the 120 synthetic
+  students.
+- `004_pages.sql` — the 3 demo CMS pages.
+- `005_forms.sql` — the demo Custom Form.
+- `006_agencies_academicunits_programs.sql` — Agencies, AcademicUnits,
+  Programs.
+- `007_course_topics.sql` — all seeded CourseTopics rows.
+- `008_roles_permissions.sql` — PermissionModules/Operations seed rows +
+  the starting RolePermissions grant set.
+
+Every new file was checked column-by-column/constraint-by-constraint
+against the old migration set it replaces (see the session that did this
+for the full inventory) — nothing was dropped. Two small correctness fixes
+were made along the way, not just a mechanical merge: the old
+`007_forms.sql` unconditionally `DROP TABLE`'d Forms/FormSubmissions on
+every run (a one-time recovery step that would have silently destroyed
+real data on a second run) — replaced with the same existence-guarded
+`CREATE TABLE` pattern used everywhere else; and the old `seed/005_pages.sql`
+inserted the 3 demo Pages with bare `INSERT` (would throw a unique-
+constraint error on a second run, not silently no-op) — now guarded with
+`IF NOT EXISTS`.
+
+**If you point `tools/db-script-runner/` at an already-deployed database**
+that ran the *old* file set: the new consolidated files will show as "Not
+Applied" (the history table is keyed by filename, and these are new
+filenames) — this is expected, not a problem. Running them is safe: every
+new file is idempotent and a true no-op wherever the database's schema/data
+already matches, so it just gains new history rows for the new filenames
+alongside the old (harmless, vestigial) ones. No manual
+`__ScriptRunnerHistory` surgery is needed.
 
 ## Workflow reminders for this repo
 - Feature branch: `claude/sleepy-maxwell-mzyijb` — merge into `main` after

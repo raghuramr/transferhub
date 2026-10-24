@@ -1,12 +1,13 @@
 -- ============================================================
--- Seed 011 – Roles & Permissions master data
+-- Seed 008 – Roles & Permissions master data
 -- ============================================================
 -- Seeds PermissionModules, PermissionOperations, and a starting
--- RolePermissions grant set that MIRRORS today's actual hardcoded
--- @Roles()/RolesGuard behaviour (read from the controllers as of this
--- writing). This is a starting point the SuperAdmin can adjust from the
--- Roles & Permissions matrix screen — it is NOT consulted by the live
--- guards yet (see CLAUDE.md).
+-- RolePermissions grant set that MIRRORS the actual hardcoded
+-- @Roles()/RolesGuard behaviour as a starting point the SuperAdmin can
+-- adjust from the Roles & Permissions matrix screen. Unchanged from the
+-- original seed/011_roles_permissions.sql (already idempotent via
+-- MERGE ... WHEN NOT MATCHED).
+-- ============================================================
 USE CreditEvalManager;
 GO
 

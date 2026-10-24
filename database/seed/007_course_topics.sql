@@ -1,42 +1,17 @@
 -- ============================================================
--- Seed 010 – Latest AI/ML courses + topic coverage for all remaining
--- program areas (Economics, Psychology, Biology, Mathematics)
+-- Seed 007 – Course Topics (syllabus-level detail)
 -- ============================================================
--- Researched against official catalogs (BU CAS bulletin, Northeastern
--- Khoury "All Courses" listing, NYU bulletins.nyu.edu) as of the current
--- session. New courses below are real, currently-offered catalog entries;
--- where a credit value could not be verified on a primary bulletin page,
--- it defaults to that institution's own stated norm (BU: "all required
--- courses are 4 unit hours unless otherwise noted"; NU/NYU: 4, matching
--- their other non-lab courses already seeded).
---
--- Credit-hour note (checked, not changed): the uniform "4" on BU courses
--- in seed/002 is correct per BU's own stated institutional default, not a
--- bug — Northeastern/NYU courses already vary (4 vs 5 for lab-attached
--- courses) in seed/003.
+-- Consolidated: the original CS/technical-focused topic set (old
+-- seed/009) plus the AI/ML course topics and the Economics/Psychology/
+-- Biology/Mathematics topic coverage added later (old seed/010's topic
+-- rows — that file's course INSERT is consolidated into the Courses &
+-- Equivalencies seed file instead). Reference links reuse each course's
+-- own already-seeded `Source` catalog URL rather than introducing new
+-- URLs. Unchanged in substance, just combined into one file per entity.
+-- ============================================================
 USE CreditEvalManager;
 GO
 
--- ─── New current/trending AI & ML courses ───────────────────
-DECLARE @BUID  INT = (SELECT Id FROM Institutions WHERE Code = 'BU');
-DECLARE @NUID  INT = (SELECT Id FROM Institutions WHERE Code = 'NU');
-DECLARE @NYUID INT = (SELECT Id FROM Institutions WHERE Code = 'NYU');
-
-INSERT INTO Courses (InstitutionId, Code, Title, ProgramArea, RequirementType, Credits, Verified, Notes, Source)
-SELECT v.InstitutionId, v.Code, v.Title, v.ProgramArea, v.RequirementType, v.Credits, v.Verified, v.Notes, v.Source
-FROM (VALUES
-  (@BUID, 'CAS CS 440', 'Artificial Intelligence',                          'Computer Science', 'Elective', 4, 'Check', 'Credits per BU 4-unit-hour default; verify in current Bulletin', 'https://www.cs.bu.edu/faculty/betke/cs440'),
-  (@NUID, 'CS 1700',    'AI for Everyone',                                  'Computer Science', 'Elective', 4, 'Check', 'Credits inferred (no lab); verify in Khoury catalog',           'https://www.khoury.northeastern.edu/all-courses/'),
-  (@NUID, 'CY 4100',    'AI Security and Privacy',                          'Computer Science', 'Elective', 4, 'Check', 'Credits inferred (no lab); verify in Khoury catalog',           'https://www.khoury.northeastern.edu/all-courses/'),
-  (@NYUID,'CSCI-UA 472','Artificial Intelligence',                          'Computer Science', 'Elective', 4, 'Check', 'Credits match other CSCI-UA courses; verify on primary bulletin','https://bulletins.nyu.edu/undergraduate/arts-science/courses/csci-ua/'),
-  (@NYUID,'CSCI-UA 473','Fundamentals of Machine Learning',                 'Computer Science', 'Elective', 4, 'Check', 'Credits match other CSCI-UA courses; verify on primary bulletin','https://bulletins.nyu.edu/undergraduate/arts-science/courses/csci-ua/')
-) AS v(InstitutionId, Code, Title, ProgramArea, RequirementType, Credits, Verified, Notes, Source)
-WHERE NOT EXISTS (
-    SELECT 1 FROM Courses c WHERE c.InstitutionId = v.InstitutionId AND c.Code = v.Code
-);
-GO
-
--- ─── Topics ──────────────────────────────────────────────────
 IF OBJECT_ID('tempdb..#Topics') IS NOT NULL DROP TABLE #Topics;
 
 CREATE TABLE #Topics (
@@ -48,6 +23,58 @@ CREATE TABLE #Topics (
 );
 
 INSERT INTO #Topics (InstitutionCode, Code, Title, Description, SortOrder) VALUES
+-- BU CAS CS 111 — Introduction to Computer Science 1
+('BU','CAS CS 111','Variables, control flow & functions','Basic Python/Java syntax: variables, conditionals, loops, function definitions.',1),
+('BU','CAS CS 111','Recursion','Recursive problem solving and base-case/recursive-case design.',2),
+('BU','CAS CS 111','Basic data structures','Lists, strings, and simple object-oriented concepts.',3),
+-- BU CAS CS 112 — Introduction to Computer Science 2
+('BU','CAS CS 112','Object-oriented design','Classes, inheritance, interfaces, encapsulation.',1),
+('BU','CAS CS 112','Core data structures','Stacks, queues, linked lists, trees, hash tables.',2),
+('BU','CAS CS 112','Sorting & searching','Comparison-based sorting algorithms and basic search techniques.',3),
+-- BU CAS CS 131 — Combinatoric Structures
+('BU','CAS CS 131','Logic & proof techniques','Propositional/predicate logic, direct proof, induction.',1),
+('BU','CAS CS 131','Combinatorics','Counting principles, permutations, combinations.',2),
+('BU','CAS CS 131','Graph theory basics','Graphs, trees, basic graph algorithms.',3),
+-- BU CAS CS 210 — Computer Systems
+('BU','CAS CS 210','Machine representation','Binary/number representation, assembly basics.',1),
+('BU','CAS CS 210','Memory & the stack','Memory layout, the call stack, pointers.',2),
+('BU','CAS CS 210','C programming & systems calls','Low-level C programming and OS-level system calls.',3),
+-- BU CAS CS 330 — Introduction to the Analysis of Algorithms
+('BU','CAS CS 330','Asymptotic analysis','Big-O/Big-Theta/Big-Omega, recurrence relations.',1),
+('BU','CAS CS 330','Divide and conquer & dynamic programming','Algorithm design paradigms with worked examples.',2),
+('BU','CAS CS 330','Graph algorithms','Shortest paths, minimum spanning trees, network flow basics.',3),
+-- BU CAS MA 293 — Discrete Mathematics (technical, supports CS)
+('BU','CAS MA 293','Set theory & logic','Sets, relations, functions, formal logic.',1),
+('BU','CAS MA 293','Combinatorics & induction','Counting arguments and proof by induction.',2),
+-- Northeastern CS 2000 — Introduction to Program Design and Implementation
+('NU','CS 2000','Program design fundamentals','Variables, control flow, functions, basic testing.',1),
+('NU','CS 2000','Data abstraction','Introductory data structures and abstraction barriers.',2),
+-- Northeastern CS 1800 — Discrete Structures
+('NU','CS 1800','Logic & proofs','Propositional/predicate logic, induction.',1),
+('NU','CS 1800','Combinatorics & graphs','Counting, combinatorics, intro graph theory.',2),
+-- Northeastern CS 3650 — Computer Systems
+('NU','CS 3650','C & memory model','C programming, memory layout, pointers.',1),
+('NU','CS 3650','OS fundamentals','Processes, system calls, concurrency basics.',2),
+-- Northeastern CS 3000 — Algorithms and Data
+('NU','CS 3000','Algorithm analysis','Asymptotic complexity and recurrence relations.',1),
+('NU','CS 3000','Core algorithm techniques','Divide and conquer, dynamic programming, greedy algorithms.',2),
+-- NYU CSCI-UA 101 — Intro to Computer Science
+('NYU','CSCI-UA 101','Programming fundamentals','Variables, control flow, functions.',1),
+('NYU','CSCI-UA 101','Intro data structures','Lists, basic recursion, simple OOP.',2),
+-- NYU CSCI-UA 102 — Data Structures
+('NYU','CSCI-UA 102','Core data structures','Stacks, queues, trees, hash tables, linked lists.',1),
+('NYU','CSCI-UA 102','Sorting & complexity','Sorting algorithms and asymptotic analysis.',2),
+-- NYU CSCI-UA 201 — Computer Systems Organization
+('NYU','CSCI-UA 201','Machine & assembly basics','Binary representation, assembly-level programming.',1),
+('NYU','CSCI-UA 201','Memory & the stack','Memory layout, pointers, the call stack.',2),
+-- NYU CSCI-UA 310 — Basic Algorithms
+('NYU','CSCI-UA 310','Algorithm design paradigms','Divide and conquer, dynamic programming, greedy algorithms.',1),
+('NYU','CSCI-UA 310','Graph algorithms','Shortest paths and minimum spanning trees.',2),
+-- Lighter coverage outside technical courses (one topic each, per "concentrate more on technical")
+('BU','CAS EC 101','Supply & demand fundamentals','Core microeconomic models of markets.',1),
+('BU','CAS PS 101','Research methods overview','Intro to psychological research methodology.',1),
+('BU','CAS BI 107','Cell & molecular basics','Foundational cell biology concepts.',1),
+
 -- New AI/ML courses
 ('BU','CAS CS 440','Search & problem solving','Uninformed and heuristic search algorithms for AI problem solving.',1),
 ('BU','CAS CS 440','Knowledge representation & reasoning','Logic-based representation and automated reasoning.',2),
@@ -269,5 +296,5 @@ GO
 DROP TABLE #Topics;
 GO
 
-PRINT 'Latest AI/ML courses added; topic coverage extended to Economics/Psychology/Biology/Mathematics.';
+PRINT 'Course topics seeded (CS/technical concentration + AI/ML + all remaining program areas).';
 GO

@@ -1,5 +1,7 @@
 -- ============================================================
--- Seed 005 – Custom Pages (demo content for the CMS feature)
+-- Seed 004 – Custom Pages (demo content for the CMS feature)
+-- ============================================================
+-- Unchanged from the original seed/005_pages.sql.
 -- ============================================================
 USE CreditEvalManager;
 GO
@@ -7,6 +9,7 @@ GO
 -- "home" is the public landing page shown at "/" to anonymous visitors,
 -- before they sign in. Fully editable from Admin -> Custom Pages, same
 -- as every other page in this system.
+IF NOT EXISTS (SELECT 1 FROM Pages WHERE Slug = 'home')
 INSERT INTO Pages (Slug, Title, Blocks, Published, ShowInNav, NavLabel, NavOrder)
 VALUES (
     'home',
@@ -39,6 +42,7 @@ GO
 -- "dashboard-announcements" is rendered as a banner at the top of every
 -- role's dashboard. Edit it from Admin -> Pages in the UI and it updates
 -- live for every signed-in user — no deploy, no publish step.
+IF NOT EXISTS (SELECT 1 FROM Pages WHERE Slug = 'dashboard-announcements')
 INSERT INTO Pages (Slug, Title, Blocks, Published, ShowInNav, NavLabel, NavOrder)
 VALUES (
     'dashboard-announcements',
@@ -58,6 +62,7 @@ GO
 
 -- A sample public-ish FAQ page reachable from the sidebar (ShowInNav=1),
 -- demonstrating the richer block types: heading, richtext, cards, cta.
+IF NOT EXISTS (SELECT 1 FROM Pages WHERE Slug = 'transfer-credit-faq')
 INSERT INTO Pages (Slug, Title, Blocks, Published, ShowInNav, NavLabel, NavOrder)
 VALUES (
     'transfer-credit-faq',

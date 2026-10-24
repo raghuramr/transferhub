@@ -1,10 +1,11 @@
 -- ============================================================
--- Seed 006 – Custom Forms (demo content for the JSON-schema forms feature)
+-- Seed 005 – Custom Forms (demo content for the JSON-schema forms feature)
+-- ============================================================
+-- Unchanged from the original seed/006_forms.sql (already idempotent).
 -- ============================================================
 USE CreditEvalManager;
 GO
 
--- Idempotent: safe to re-run without a UNIQUE-constraint violation on Slug.
 IF NOT EXISTS (SELECT 1 FROM Forms WHERE Slug = 'agency-student-referral')
 INSERT INTO Forms (Slug, Title, Description, Status, SchemaJson, SuccessMessage)
 VALUES (

@@ -1,6 +1,9 @@
 -- ============================================================
 -- Seed 001 – Reference data: roles, departments, institutions
 -- ============================================================
+-- Unchanged from the original seed/001_reference_data.sql (already
+-- idempotent via MERGE ... WHEN NOT MATCHED).
+-- ============================================================
 USE CreditEvalManager;
 GO
 

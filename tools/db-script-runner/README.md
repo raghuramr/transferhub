@@ -86,7 +86,7 @@ works out of the box without installing a separate CA cert.
 Every script this tool runs targets the **Database** field on the
 Connection tab via `-d`. That's fine once the database exists -- but a
 creation script that does its own `CREATE DATABASE` (this project's
-`database/migrations/001_create_database.sql` is exactly this, see its own
+`database/migrations/001_database.sql` is exactly this, see its own
 header comment) can't be connected to with `-d <that database>`, because
 the database doesn't exist yet and `sqlcmd`/`Invoke-Sqlcmd` fail before the
 script even runs ("Cannot open database ... requested by the login").
