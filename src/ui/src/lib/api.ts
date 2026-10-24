@@ -75,6 +75,14 @@ export const authApi = {
     api.post<AuthTokens>('/auth/refresh', { refreshToken }),
   logout: () => api.post('/auth/logout'),
   me: () => api.get<AuthTokens['user']>('/auth/me'),
+  /** Public (no auth) — student self-registration; response auto-logs in like login(). */
+  register: (data: unknown) => api.post<AuthTokens>('/auth/register', data),
+  /** Public (no auth) — registration-page dropdown data. */
+  publicUniversities: () => api.get<{ id: number; code: string; name: string }[]>('/auth/universities'),
+  publicPrograms: (institutionId: number) =>
+    api.get<{ id: number; name: string; degree: string | null; area: string | null }[]>('/auth/programs', {
+      params: { institutionId },
+    }),
 };
 
 // ── Users endpoints ───────────────────────────────────────────

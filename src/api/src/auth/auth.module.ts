@@ -8,6 +8,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { LocalStrategy } from './local.strategy';
 import { RolesGuard } from './roles.guard';
 import { RolePermissionsCacheService } from './role-permissions-cache.service';
+import { EmailService } from '../common/email.service';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { RolePermissionsCacheService } from './role-permissions-cache.service';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, LocalStrategy, RolesGuard, RolePermissionsCacheService],
+  providers: [AuthService, JwtStrategy, LocalStrategy, RolesGuard, RolePermissionsCacheService, EmailService],
   controllers: [AuthController],
   exports: [AuthService, JwtModule, RolesGuard, RolePermissionsCacheService],
 })

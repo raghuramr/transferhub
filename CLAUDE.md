@@ -3,6 +3,87 @@
 Read this first in any new session on this repo. It captures decisions made
 in prior sessions so they don't need to be re-derived or re-asked.
 
+## Repo identity (confirmed) — this IS raghuramr/universitymanager's work
+`raghuramr/transferhub` and `raghuramr/universitymanager` are the same
+underlying GitHub repository the user has referred to by both names/clone
+URLs across sessions. `transferhub`'s `main` branch had fallen behind (it
+was missing everything from Roles & Permissions enforcement onward — 34
+completed tasks' worth) while its `claude/sleepy-maxwell-mzyijb` branch was
+fully current (confirmed identical commit hash to universitymanager's tip
+at the time). Merged `claude/sleepy-maxwell-mzyijb` into `main` (one small
+conflict-free merge — `main` had one extra commit, an Azure App Service
+GitHub Actions workflow file added directly via the Azure Portal) and
+pushed. **All work going forward happens directly on `main`** in this repo
+— there is no reason to maintain a separate long-lived feature branch now
+that `main` is current; the `claude/sleepy-maxwell-mzyijb` branch name is
+a historical artifact from how multi-session work accumulated before this
+reconciliation, not an ongoing convention.
+
+## Azure SQL Database (confirmed, live)
+The database is **TransferHubDB** on
+`codecrafterstransferhub.database.windows.net,1433` (SQL login
+`codecrafters`). Every migration/seed file's `USE` statement, `.env.example`
+/`.env.production`/`.env.test`'s `DB_NAME`, `render.yaml` (stale — kept
+consistent anyway), and `seed-users.ts`/`setup-env.ts`'s fallback defaults
+were all renamed from the old `CreditEvalManager` to `TransferHubDB`.
+- The real credentials live **only** in the gitignored `src/api/.env`
+  (created this session, never committed) — that's what local dev
+  (`NODE_ENV` unset/`development`) connects to, so local dev and the
+  deployed app share the same live data.
+- `.env.test` deliberately stays pointed at LocalDB (just `DB_NAME` was
+  renamed there) — automated test runs shouldn't mutate/depend on live
+  Azure data. Say so explicitly if that's ever actually wanted instead.
+- **This sandbox's outbound network cannot reach Azure SQL** (port 1433
+  connection attempt timed out) — almost certainly Azure SQL's firewall
+  not allow-listing this sandbox's egress IP (the project's own infra
+  ask-list already flags "Azure SQL firewall allow rule" as a needed
+  item). Migrations/seeds have NOT been applied to the live database from
+  a Claude session yet — run them from a machine Azure SQL's firewall
+  allows (the user's own machine, presumably, since they created the DB),
+  via `tools/db-script-runner/` or the new `tools/db-mcp-server/` (see
+  below) once that machine's `src/api/.env` has the real credentials.
+
+## Student self-registration (confirmed, built)
+Public registration page at `/register` (`RegisterPage.tsx`, linked from
+`/login`) — captures account, communications (mobile + emergency contact),
+location (reuses `Users`' existing address fields), education (prior
+institution, highest education level, field of study, GPA, graduation
+year — new, migration 012), and a target University/Program via cascading
+dropdowns.
+- `POST /auth/register` (public, no guard) creates the `Users` +
+  `StudentProfiles` rows and logs the student straight in (same response
+  shape as `POST /auth/login`). `GET /auth/universities` and
+  `GET /auth/programs?institutionId=` (also public) back the cascading
+  dropdowns — regular `GET /universities`/`GET /courses/programs` require
+  a JWT, which an unauthenticated registrant doesn't have yet, so these
+  are deliberately separate, minimal-field, read-only endpoints living on
+  `AuthController` rather than reused.
+- `StudentProfiles.TargetInstitutionId`/`TargetProgramId` (migration 012)
+  are **purely informational** — registering does **not** add a
+  `UserScopeUniversities` row, so it never narrows the student's own
+  visibility (consistent with the existing "students default to seeing
+  every University unless an admin explicitly restricts them" decision).
+- `publicPrograms()` queries via `ProgramUniversities` (migration 011),
+  not `Programs.InstitutionId` directly, so a Program shared across
+  multiple Universities correctly shows up under every University that
+  offers it, not just its owner.
+
+## DB MCP server (confirmed, built)
+`tools/db-mcp-server/` — an MCP server (Node/TypeScript,
+`@modelcontextprotocol/sdk`) exposing `test_connection`, `list_scripts`,
+`run_migrations`, `run_seeds` as callable tools, so an MCP client (this
+one included, via the repo's new `.mcp.json`) can apply
+`database/migrations/`/`database/seed/` directly without the PowerShell
+GUI. Deliberately shares the **exact same** `dbo.__ScriptRunnerHistory`
+ledger table/checksum scheme as `tools/db-script-runner/` — scripts run
+through either tool show as Applied to the other. TCP-only (Azure SQL /
+networked SQL Server), not LocalDB — defaults to reading `src/api/.env`
+for connection settings (so there's one source of truth for local
+credentials), overridable via `DB_MCP_ENV_FILE` or an explicit `env`
+block in whichever MCP client config loads it. Needs
+`npm install && npm run build` in that folder before first use. See its
+own README for the full setup (Claude Desktop config example included).
+
 ## Stack (as built)
 - UI: React 19 + Vite + Tailwind v4 + TanStack Query + framer-motion (`src/ui`)
 - API: NestJS + TypeScript (`src/api`)
@@ -585,9 +666,8 @@ alongside the old (harmless, vestigial) ones. No manual
 `__ScriptRunnerHistory` surgery is needed.
 
 ## Workflow reminders for this repo
-- Feature branch: `claude/sleepy-maxwell-mzyijb` — merge into `main` after
-  each change set (this has been the pattern all session; keep doing it
-  unless told otherwise)
+- Work directly on `main` — see "Repo identity" above for why the old
+  `claude/sleepy-maxwell-mzyijb` feature-branch-then-merge pattern ended.
 - Always run `npx tsc --noEmit` in both `src/api` and `src/ui` before
   committing
 - SQL Server reserved keywords bite here more than once (`Schema` broke a
