@@ -198,6 +198,17 @@ heading toward the multi-tenant SaaS model noted below (BU stops being a
 structurally special case, it's just another "University" row). No scope
 rows for a user still means unrestricted, unchanged.
 
+**Confirming an already-built capability**: a student (or any user) can be
+scoped to an individual Institution (AcademicUnit) *or* to a whole
+University directly — these are two independent layers, not an either/or
+choice forced on the admin. Built as part of the "Users scope editor: tree
+format" work — `UniversityInstitutionTree.tsx` renders Universities as
+top-level checkable rows with their Institutions nested/independently
+checkable underneath, backed by the separate `UserScopeUniversities` /
+`UserScopeAcademicUnits` tables. Checking a University doesn't remove
+control over its Institutions and vice versa. No new work was needed here
+when this was asked about again — it already does exactly this.
+
 ## Programs CRUD + mapping (confirmed, built)
 Programs (`Programs` table, consolidated into migration
 `003_institutions_courses_programs.sql`; `InstitutionId` FK = UI
@@ -240,6 +251,63 @@ gap:
   `canCreate`/`onCreate` wired to the new endpoint (previously hardcoded
   `canCreate={false}` with a comment noting no create endpoint existed —
   that comment/limitation is now resolved).
+
+## Program/Course/Topic sharing across Universities (confirmed, built)
+Closed a second gap in the Universities > Programs > Courses > Topics
+hierarchy, per explicit user request — a Program can now be offered by
+more than one University, pull in Courses from more than one Program, and
+a Topic's active/inactive state can be overridden per University. Design
+decisions (all confirmed explicitly via `AskUserQuestion` before writing
+any migration, since this reshapes relationships added in earlier
+sessions):
+- **Program <-> University stays owner + shared, not fully M:M.**
+  `Programs.InstitutionId` remains the Program's owning/managing
+  University — NOT removed. Migration 011 adds `ProgramUniversities
+  (ProgramId, InstitutionId)`, backfilled so the owner is always included
+  in it too — "every University offering this Program" is always just
+  `SELECT * FROM ProgramUniversities WHERE ProgramId = @id`, no special-
+  casing the owner in queries. The owner's row can't be removed from this
+  list via the API (`removeProgramUniversity` throws a
+  `BadRequestException`) — changing who owns a Program means editing the
+  Program's own "University" field instead.
+- **Course <-> Program became real many-to-many.** Migration 011 adds
+  `ProgramCourses (ProgramId, CourseId)`, backfilled from the existing
+  `Courses.ProgramId` values. `Courses.ProgramId` itself is left in place
+  unchanged (existing display/report queries — the course catalog's
+  "Program" column, the university public-page generator — keep working
+  off it as the course's original/primary Program) but it's no longer the
+  only way a Course relates to a Program: the new Program-management UI
+  reads/writes `ProgramCourses` instead, so a Course can now be pulled
+  into more than one Program (e.g. a shared intro course used by both a
+  CS and a Data Science program).
+- **Topic activation is per (University, Topic), not per
+  (Program, University, Topic).** Migration 011 adds
+  `UniversityTopicStatus (InstitutionId, TopicId, IsActive)` — absence of
+  a row means active, the same "absence = allowed" convention
+  `RolePermissions` already uses elsewhere in this schema. A topic's
+  active/inactive state for a given University is the same everywhere
+  that University sees it, regardless of which Program pulled the course
+  in (the simpler of the two designs offered — per-Program-AND-University
+  overrides were explicitly not chosen).
+- API: `CoursesController` gained `GET/POST /courses/programs/:id/
+  universities`, `DELETE .../universities/:institutionId`,
+  `GET/POST /courses/programs/:id/courses`, `DELETE .../courses/:courseId`
+  (all `programs`/`edit` permission-gated except the GETs), plus a new
+  generic `GET /courses/by-institution/:institutionId` (any University,
+  not just BU or "not-BU" like `findBuCourses`/`findExternalCourses` —
+  needed for the cross-university course-attach picker).
+  `CourseTopicsController`'s `GET courses/:courseId/topics` now accepts an
+  optional `?institutionId=` that adds `isActiveForUniversity` to each
+  topic; a new `PUT course-topics/:id/university-status` sets it.
+- UI: `ProgramsManagement.tsx`'s expanded row is now a two-column layout
+  (edit form left, sharing controls right) with two new sub-components —
+  `ProgramUniversitiesList` (assign/remove additional Universities) and
+  `ProgramCoursesList` (attach/detach Courses from any of the Program's
+  Universities' own catalogs, picked via a University-then-Course
+  dropdown pair). Expanding an attached Course shows
+  `CourseTopicsUniversityMatrix` — every Topic as a row, one checkbox
+  column per University the Program is offered at, toggling that
+  Topic's `UniversityTopicStatus` directly.
 
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
@@ -370,6 +438,17 @@ structural blocker):
 - **Page containers**: every `p-8 max-w-Nxl mx-auto` page wrapper (27
   occurrences across ~25 files) became `p-4 sm:p-8 max-w-Nxl mx-auto` —
   full padding is a lot of a 375px viewport's width.
+- **Update — "use 95% of space" for entity-table pages (confirmed,
+  built)**: the 11 pages whose main content is a `DataTable` (Universities,
+  Institutions, Programs, Agencies, Users, Course Database, Transcripts,
+  Audit Log, Pages, Forms, Form Submissions) had their `max-w-Nxl mx-auto`
+  cap replaced with `w-[95%] mx-auto` (and padding trimmed to `p-4 sm:p-6`)
+  per explicit follow-up request, so these tables use nearly the full
+  width next to the sidebar on large monitors instead of being capped at
+  ~1152px (`max-w-6xl`) with empty space on both sides. Pages without a
+  primary table (dashboards, editors, login) were deliberately left on
+  their original `max-w-*` caps — narrower forms/dashboards read better
+  capped, this was specifically about *tables*.
 - **Header rows**: the top-level title+actions `flex items-center
   justify-between` row on the 13 pages that have one (list pages,
   editors, the profile page) gained `flex-wrap gap-3` so action buttons

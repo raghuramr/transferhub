@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { CreateCourseDto } from './dto/create-course.dto';
@@ -128,6 +128,27 @@ const COURSE_SELECT = `
 @Injectable()
 export class CoursesService {
   constructor(private db: DatabaseService) {}
+
+  /**
+   * Generic "courses belonging to one University, whichever it is" lookup —
+   * used by admin tooling (e.g. the Program "attach a course" picker) that
+   * needs to work across any University, unlike findBuCourses/
+   * findExternalCourses which are split for the student-facing BU-vs-
+   * external transfer-evaluation flow and deliberately exclude each other.
+   */
+  async findCoursesByInstitution(institutionId: number, search?: string) {
+    let where = 'c.InstitutionId = @instId AND c.IsActive = 1';
+    const inputs: QueryInput[] = [{ name: 'instId', type: sql.Int, value: institutionId }];
+    if (search) {
+      where += ' AND (c.Code LIKE @q OR c.Title LIKE @q)';
+      inputs.push({ name: 'q', type: sql.NVarChar(100), value: `%${search}%` });
+    }
+    const res = await this.db.query<CourseRow>(
+      `SELECT ${COURSE_SELECT} WHERE ${where} ORDER BY c.Code`,
+      inputs,
+    );
+    return res.recordset.map(mapCourse);
+  }
 
   async findBuCourses(filters: { programArea?: string; search?: string } = {}, requestingUserId?: string) {
     let where = `i.Code = 'BU'`;
@@ -327,6 +348,94 @@ export class CoursesService {
       { name: 'id', type: sql.Int, value: id },
     ]);
     return { message: 'Program deactivated' };
+  }
+
+  // ── Program <-> University sharing (migration 011) ──────────────
+  // A Program's owning University (Programs.InstitutionId) is always
+  // included in ProgramUniversities (backfilled at migration time), so
+  // "every University offering this Program" is always just this table —
+  // no need to special-case the owner when reading.
+
+  async findProgramUniversities(programId: number) {
+    await this.findProgramById(programId);
+    const res = await this.db.query<{ InstitutionId: number; Code: string; Name: string }>(
+      `SELECT pu.InstitutionId, i.Code, i.Name
+       FROM ProgramUniversities pu
+       JOIN Institutions i ON i.Id = pu.InstitutionId
+       WHERE pu.ProgramId = @programId
+       ORDER BY i.Name`,
+      [{ name: 'programId', type: sql.Int, value: programId }],
+    );
+    return res.recordset.map((r) => ({ institutionId: r.InstitutionId, code: r.Code, name: r.Name }));
+  }
+
+  async addProgramUniversity(programId: number, institutionId: number) {
+    await this.findProgramById(programId);
+    await this.db.query(
+      `IF NOT EXISTS (SELECT 1 FROM ProgramUniversities WHERE ProgramId = @programId AND InstitutionId = @institutionId)
+         INSERT INTO ProgramUniversities (ProgramId, InstitutionId) VALUES (@programId, @institutionId)`,
+      [
+        { name: 'programId', type: sql.Int, value: programId },
+        { name: 'institutionId', type: sql.Int, value: institutionId },
+      ],
+    );
+    return this.findProgramUniversities(programId);
+  }
+
+  async removeProgramUniversity(programId: number, institutionId: number) {
+    const program = await this.findProgramById(programId);
+    if (program.institutionId === institutionId) {
+      throw new BadRequestException(
+        "Can't remove a Program's owning University from its shared list — change the Program's owner instead.",
+      );
+    }
+    await this.db.query(`DELETE FROM ProgramUniversities WHERE ProgramId = @programId AND InstitutionId = @institutionId`, [
+      { name: 'programId', type: sql.Int, value: programId },
+      { name: 'institutionId', type: sql.Int, value: institutionId },
+    ]);
+    return this.findProgramUniversities(programId);
+  }
+
+  // ── Program <-> Course sharing (migration 011) ───────────────────
+  // Courses.ProgramId (the course's original/primary Program) is left
+  // alone for existing display/report queries — this join table is the
+  // many-to-many source of truth the Program-management UI uses instead.
+
+  async findProgramCourses(programId: number) {
+    await this.findProgramById(programId);
+    const res = await this.db.query<{ Id: number; Code: string; Title: string; InstitutionCode: string }>(
+      `SELECT c.Id, c.Code, c.Title, i.Code AS InstitutionCode
+       FROM ProgramCourses pc
+       JOIN Courses c ON c.Id = pc.CourseId
+       JOIN Institutions i ON i.Id = c.InstitutionId
+       WHERE pc.ProgramId = @programId
+       ORDER BY i.Code, c.Code`,
+      [{ name: 'programId', type: sql.Int, value: programId }],
+    );
+    return res.recordset.map((r) => ({ id: r.Id, code: r.Code, title: r.Title, institutionCode: r.InstitutionCode }));
+  }
+
+  async addProgramCourse(programId: number, courseId: number) {
+    await this.findProgramById(programId);
+    await this.findById(courseId);
+    await this.db.query(
+      `IF NOT EXISTS (SELECT 1 FROM ProgramCourses WHERE ProgramId = @programId AND CourseId = @courseId)
+         INSERT INTO ProgramCourses (ProgramId, CourseId) VALUES (@programId, @courseId)`,
+      [
+        { name: 'programId', type: sql.Int, value: programId },
+        { name: 'courseId', type: sql.Int, value: courseId },
+      ],
+    );
+    return this.findProgramCourses(programId);
+  }
+
+  async removeProgramCourse(programId: number, courseId: number) {
+    await this.findProgramById(programId);
+    await this.db.query(`DELETE FROM ProgramCourses WHERE ProgramId = @programId AND CourseId = @courseId`, [
+      { name: 'programId', type: sql.Int, value: programId },
+      { name: 'courseId', type: sql.Int, value: courseId },
+    ]);
+    return this.findProgramCourses(programId);
   }
 
   async findInstitutions() {

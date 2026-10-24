@@ -15,7 +15,7 @@ interface CourseTopicRow {
   UpdatedAt: Date;
 }
 
-function mapTopic(row: CourseTopicRow) {
+function mapTopic(row: CourseTopicRow, isActiveForUniversity?: boolean) {
   let referenceLinks: { label: string; url: string }[] = [];
   if (row.ReferenceLinksJson) {
     try {
@@ -33,6 +33,11 @@ function mapTopic(row: CourseTopicRow) {
     referenceLinks,
     createdAt: row.CreatedAt,
     updatedAt: row.UpdatedAt,
+    // Only present when the caller asked for a specific University's
+    // context (see findByCourse's institutionId param) — absence of a
+    // UniversityTopicStatus row means active, the same "absence = allowed"
+    // convention RolePermissions uses elsewhere in this schema.
+    ...(isActiveForUniversity !== undefined ? { isActiveForUniversity } : {}),
   };
 }
 
@@ -40,13 +45,41 @@ function mapTopic(row: CourseTopicRow) {
 export class CourseTopicsService {
   constructor(private db: DatabaseService) {}
 
-  async findByCourse(courseId: number) {
+  async findByCourse(courseId: number, institutionId?: number) {
     const res = await this.db.query<CourseTopicRow>(
       `SELECT Id, CourseId, Title, Description, SortOrder, ReferenceLinksJson, CreatedAt, UpdatedAt
        FROM CourseTopics WHERE CourseId = @courseId ORDER BY SortOrder, Id`,
       [{ name: 'courseId', type: sql.Int, value: courseId }],
     );
-    return res.recordset.map(mapTopic);
+    if (institutionId === undefined) {
+      return res.recordset.map((r) => mapTopic(r));
+    }
+    const statusRes = await this.db.query<{ TopicId: number; IsActive: boolean }>(
+      `SELECT TopicId, IsActive FROM UniversityTopicStatus WHERE InstitutionId = @institutionId`,
+      [{ name: 'institutionId', type: sql.Int, value: institutionId }],
+    );
+    const overrides = new Map(statusRes.recordset.map((r) => [r.TopicId, !!r.IsActive]));
+    return res.recordset.map((r) => mapTopic(r, overrides.get(r.Id) ?? true));
+  }
+
+  /** Per-(University, Topic) active/inactive override — absence of a row means active. */
+  async setUniversityStatus(topicId: number, institutionId: number, isActive: boolean, userId?: string) {
+    await this.findById(topicId);
+    await this.db.query(
+      `MERGE UniversityTopicStatus AS target
+       USING (SELECT @institutionId AS InstitutionId, @topicId AS TopicId) AS source
+       ON target.InstitutionId = source.InstitutionId AND target.TopicId = source.TopicId
+       WHEN MATCHED THEN UPDATE SET IsActive = @isActive, UpdatedAt = SYSUTCDATETIME(), UpdatedBy = @userId
+       WHEN NOT MATCHED THEN INSERT (InstitutionId, TopicId, IsActive, UpdatedBy)
+         VALUES (@institutionId, @topicId, @isActive, @userId);`,
+      [
+        { name: 'institutionId', type: sql.Int, value: institutionId },
+        { name: 'topicId', type: sql.Int, value: topicId },
+        { name: 'isActive', type: sql.Bit, value: isActive ? 1 : 0 },
+        { name: 'userId', type: sql.UniqueIdentifier, value: userId ?? null },
+      ],
+    );
+    return { topicId, institutionId, isActive };
   }
 
   async findById(id: number) {

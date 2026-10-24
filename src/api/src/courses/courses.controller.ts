@@ -44,6 +44,16 @@ export class CoursesController {
       : this.coursesService.findBuCourses({ search: q }, req?.user?.id);
   }
 
+  @Get('by-institution/:institutionId')
+  @UseGuards(RolesGuard)
+  @Permission('programs', 'edit')
+  findCoursesByInstitution(
+    @Param('institutionId', ParseIntPipe) institutionId: number,
+    @Query('search') search?: string,
+  ) {
+    return this.coursesService.findCoursesByInstitution(institutionId, search);
+  }
+
   @Get('institutions')
   findInstitutions() {
     return this.coursesService.findInstitutions();
@@ -81,6 +91,49 @@ export class CoursesController {
   @Permission('programs', 'delete')
   deactivateProgram(@Param('id', ParseIntPipe) id: number) {
     return this.coursesService.deactivateProgram(id);
+  }
+
+  // ── Program <-> University sharing (migration 011) ──────────
+  @Get('programs/:id/universities')
+  findProgramUniversities(@Param('id', ParseIntPipe) id: number) {
+    return this.coursesService.findProgramUniversities(id);
+  }
+
+  @Post('programs/:id/universities')
+  @UseGuards(RolesGuard)
+  @Permission('programs', 'edit')
+  addProgramUniversity(@Param('id', ParseIntPipe) id: number, @Body('institutionId', ParseIntPipe) institutionId: number) {
+    return this.coursesService.addProgramUniversity(id, institutionId);
+  }
+
+  @Delete('programs/:id/universities/:institutionId')
+  @UseGuards(RolesGuard)
+  @Permission('programs', 'edit')
+  removeProgramUniversity(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('institutionId', ParseIntPipe) institutionId: number,
+  ) {
+    return this.coursesService.removeProgramUniversity(id, institutionId);
+  }
+
+  // ── Program <-> Course sharing (migration 011) ───────────────
+  @Get('programs/:id/courses')
+  findProgramCourses(@Param('id', ParseIntPipe) id: number) {
+    return this.coursesService.findProgramCourses(id);
+  }
+
+  @Post('programs/:id/courses')
+  @UseGuards(RolesGuard)
+  @Permission('programs', 'edit')
+  addProgramCourse(@Param('id', ParseIntPipe) id: number, @Body('courseId', ParseIntPipe) courseId: number) {
+    return this.coursesService.addProgramCourse(id, courseId);
+  }
+
+  @Delete('programs/:id/courses/:courseId')
+  @UseGuards(RolesGuard)
+  @Permission('programs', 'edit')
+  removeProgramCourse(@Param('id', ParseIntPipe) id: number, @Param('courseId', ParseIntPipe) courseId: number) {
+    return this.coursesService.removeProgramCourse(id, courseId);
   }
 
   @Get('equivalencies')

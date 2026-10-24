@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Delete, Body, Param, Query, Req, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { CourseTopicsService } from './course-topics.service';
 import { CreateCourseTopicDto, UpdateCourseTopicDto } from './dto/course-topic.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -18,8 +18,8 @@ export class CourseTopicsController {
   constructor(private topicsService: CourseTopicsService) {}
 
   @Get('courses/:courseId/topics')
-  findByCourse(@Param('courseId', ParseIntPipe) courseId: number) {
-    return this.topicsService.findByCourse(courseId);
+  findByCourse(@Param('courseId', ParseIntPipe) courseId: number, @Query('institutionId') institutionId?: string) {
+    return this.topicsService.findByCourse(courseId, institutionId ? parseInt(institutionId, 10) : undefined);
   }
 
   @Post('courses/:courseId/topics')
@@ -45,5 +45,18 @@ export class CourseTopicsController {
   @Permission('course_topics', 'delete')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.topicsService.remove(id);
+  }
+
+  /** Per-(University, Topic) active/inactive override — see migration 011. */
+  @Put('course-topics/:id/university-status')
+  @UseGuards(RolesGuard)
+  @Permission('course_topics', 'edit')
+  setUniversityStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('institutionId', ParseIntPipe) institutionId: number,
+    @Body('isActive') isActive: boolean,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.topicsService.setUniversityStatus(id, institutionId, isActive, req.user?.id);
   }
 }

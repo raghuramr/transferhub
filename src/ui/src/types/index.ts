@@ -283,6 +283,8 @@ export interface CourseTopic {
   title: string;
   description?: string;
   referenceLinks: TopicReferenceLink[];
+  /** Only present when fetched with an institutionId (per-University override, migration 011). */
+  isActiveForUniversity?: boolean;
 }
 
 // ─── Common ───────────────────────────────────────────────────

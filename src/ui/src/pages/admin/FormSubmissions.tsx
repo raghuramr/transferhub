@@ -33,7 +33,7 @@ export default function FormSubmissions() {
   const submissions = (data?.data as FormSubmission[]) ?? [];
 
   return (
-    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 w-[95%] mx-auto">
       <button onClick={() => navigate(`/admin/forms/${id}`)} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-6">
         <ArrowLeft size={16} /> Back to Form
       </button>

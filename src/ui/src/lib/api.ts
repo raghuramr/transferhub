@@ -157,6 +157,8 @@ export const coursesApi = {
   institutions: () => api.get('/courses/institutions'),
   programs: (institutionId?: number, includeInactive?: boolean) =>
     api.get('/courses/programs', { params: { institutionId, includeInactive } }),
+  byInstitution: (institutionId: number, search?: string) =>
+    api.get(`/courses/by-institution/${institutionId}`, { params: { search } }),
   createProgram: (data: unknown) => api.post('/courses/programs', data),
   updateProgram: (id: number, data: unknown) => api.patch(`/courses/programs/${id}`, data),
   deactivateProgram: (id: number) => api.delete(`/courses/programs/${id}`),
@@ -182,10 +184,28 @@ export const uploadsApi = {
 
 // ── Course Topics endpoints (reference-link detail per course) ────
 export const courseTopicsApi = {
-  list: (courseId: number) => api.get<CourseTopic[]>(`/courses/${courseId}/topics`),
+  list: (courseId: number, institutionId?: number) =>
+    api.get<CourseTopic[]>(`/courses/${courseId}/topics`, { params: { institutionId } }),
   create: (courseId: number, data: unknown) => api.post(`/courses/${courseId}/topics`, data),
   update: (id: number, data: unknown) => api.patch(`/course-topics/${id}`, data),
   remove: (id: number) => api.delete(`/course-topics/${id}`),
+  /** Per-(University, Topic) active/inactive override — see migration 011. */
+  setUniversityStatus: (id: number, institutionId: number, isActive: boolean) =>
+    api.put(`/course-topics/${id}/university-status`, { institutionId, isActive }),
+};
+
+// ── Program <-> University / Course sharing (migration 011) ─────
+export const programSharingApi = {
+  listUniversities: (programId: number) => api.get(`/courses/programs/${programId}/universities`),
+  addUniversity: (programId: number, institutionId: number) =>
+    api.post(`/courses/programs/${programId}/universities`, { institutionId }),
+  removeUniversity: (programId: number, institutionId: number) =>
+    api.delete(`/courses/programs/${programId}/universities/${institutionId}`),
+  listCourses: (programId: number) => api.get(`/courses/programs/${programId}/courses`),
+  addCourse: (programId: number, courseId: number) =>
+    api.post(`/courses/programs/${programId}/courses`, { courseId }),
+  removeCourse: (programId: number, courseId: number) =>
+    api.delete(`/courses/programs/${programId}/courses/${courseId}`),
 };
 
 // ── Transcripts endpoints ─────────────────────────────────────
