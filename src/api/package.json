@@ -19,6 +19,7 @@
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.4.15",
+    "@nestjs/serve-static": "^4.0.2",
     "@nestjs/throttler": "^6.4.0",
     "argon2": "^0.43.0",
     "class-transformer": "^0.5.1",
