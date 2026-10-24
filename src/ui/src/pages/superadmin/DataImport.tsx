@@ -47,8 +47,8 @@ export default function DataImport() {
   const [activeType, setActiveType] = useState<ImportType>('universities');
   const [jsonText, setJsonText] = useState('');
   const [showFormat, setShowFormat] = useState(true);
-  const [previewResult, setPreviewResult] = useState<unknown>(null);
-  const [importResult, setImportResult] = useState<unknown>(null);
+  const [previewResult, setPreviewResult] = useState<Record<string, unknown> | null>(null);
+  const [importResult, setImportResult] = useState<Record<string, unknown> | null>(null);
   const [parseError, setParseError] = useState('');
 
   const previewMutation = useMutation({

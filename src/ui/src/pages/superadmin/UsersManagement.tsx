@@ -64,47 +64,47 @@ const roleTabs: RoleTab[] = [
 ];
 
 const allColumns: DataTableColumn<UserRow>[] = [
-  { key: 'firstName', label: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
-  { key: 'email', label: 'Email' },
-  { key: 'role', label: 'Role', render: (r) => <RoleBadge role={r.role} /> },
-  { key: 'isActive', label: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
-  { key: 'mobile', label: 'Mobile', render: (r) => r.mobile ?? '—' },
+  { key: 'firstName', header: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
+  { key: 'email', header: 'Email' },
+  { key: 'role', header: 'Role', render: (r) => <RoleBadge role={r.role} /> },
+  { key: 'isActive', header: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
+  { key: 'mobile', header: 'Mobile', render: (r) => r.mobile ?? '—' },
 ];
 
 const studentColumns: DataTableColumn<UserRow>[] = [
-  { key: 'firstName', label: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
-  { key: 'email', label: 'Email' },
-  { key: 'studentId', label: 'Student ID', render: (r) => r.studentId ?? '—' },
-  { key: 'priorInstitutionName', label: 'Prior Institution', render: (r) => r.priorInstitutionName ?? '—' },
-  { key: 'targetInstitutionName', label: 'Target University', render: (r) => r.targetInstitutionName ?? '—' },
-  { key: 'targetProgramName', label: 'Target Program', render: (r) => r.targetProgramName ?? '—' },
-  { key: 'gpa', label: 'GPA', render: (r) => r.gpa != null ? r.gpa.toFixed(2) : '—' },
-  { key: 'highestEducationLevel', label: 'Education Level', render: (r) => r.highestEducationLevel ?? '—' },
-  { key: 'isActive', label: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
+  { key: 'firstName', header: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
+  { key: 'email', header: 'Email' },
+  { key: 'studentId', header: 'Student ID', render: (r) => r.studentId ?? '—' },
+  { key: 'priorInstitutionName', header: 'Prior Institution', render: (r) => r.priorInstitutionName ?? '—' },
+  { key: 'targetInstitutionName', header: 'Target University', render: (r) => r.targetInstitutionName ?? '—' },
+  { key: 'targetProgramName', header: 'Target Program', render: (r) => r.targetProgramName ?? '—' },
+  { key: 'gpa', header: 'GPA', render: (r) => r.gpa != null ? r.gpa.toFixed(2) : '—' },
+  { key: 'highestEducationLevel', header: 'Education Level', render: (r) => r.highestEducationLevel ?? '—' },
+  { key: 'isActive', header: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
 ];
 
 const facultyColumns: DataTableColumn<UserRow>[] = [
-  { key: 'firstName', label: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
-  { key: 'email', label: 'Email' },
-  { key: 'departmentName', label: 'Department', render: (r) => r.departmentName ?? '—' },
-  { key: 'mobile', label: 'Mobile', render: (r) => r.mobile ?? '—' },
-  { key: 'isActive', label: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
+  { key: 'firstName', header: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
+  { key: 'email', header: 'Email' },
+  { key: 'departmentName', header: 'Department', render: (r) => r.departmentName ?? '—' },
+  { key: 'mobile', header: 'Mobile', render: (r) => r.mobile ?? '—' },
+  { key: 'isActive', header: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
 ];
 
 const agencyColumns: DataTableColumn<UserRow>[] = [
-  { key: 'firstName', label: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
-  { key: 'email', label: 'Email' },
-  { key: 'agencyName', label: 'Agency', render: (r) => r.agencyName ?? '—' },
-  { key: 'mobile', label: 'Mobile', render: (r) => r.mobile ?? '—' },
-  { key: 'isActive', label: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
+  { key: 'firstName', header: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
+  { key: 'email', header: 'Email' },
+  { key: 'agencyName', header: 'Agency', render: (r) => r.agencyName ?? '—' },
+  { key: 'mobile', header: 'Mobile', render: (r) => r.mobile ?? '—' },
+  { key: 'isActive', header: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
 ];
 
 const adminColumns: DataTableColumn<UserRow>[] = [
-  { key: 'firstName', label: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
-  { key: 'email', label: 'Email' },
-  { key: 'mobile', label: 'Mobile', render: (r) => r.mobile ?? '—' },
-  { key: 'isActive', label: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
-  { key: 'isLocked', label: 'Locked', render: (r) => r.isLocked ? <span className="text-red-600 text-xs font-medium">Locked</span> : '—' },
+  { key: 'firstName', header: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
+  { key: 'email', header: 'Email' },
+  { key: 'mobile', header: 'Mobile', render: (r) => r.mobile ?? '—' },
+  { key: 'isActive', header: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
+  { key: 'isLocked', header: 'Locked', render: (r) => r.isLocked ? <span className="text-red-600 text-xs font-medium">Locked</span> : '—' },
 ];
 
 function getColumnsForRole(role: string | null): DataTableColumn<UserRow>[] {
@@ -170,7 +170,6 @@ export default function UsersManagement() {
       <DataTable<UserRow>
         columns={columns}
         rows={users}
-        rowKey="id"
         isLoading={isLoading}
         emptyMessage={`No ${activeRole ? activeRole.replace('_', ' ') : ''} users found.`}
         searchKeys={['firstName', 'lastName', 'email']}
