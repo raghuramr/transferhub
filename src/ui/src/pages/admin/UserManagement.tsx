@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, api } from '../../lib/api';
 import { Users, UserPlus, Lock, Unlock, MapPin, Upload, Download } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
+import { UniversityInstitutionTree } from '../../components/ui/UniversityInstitutionTree';
 
 const roleColors: Record<string, string> = {
   student:     'bg-blue-100 text-blue-700',
@@ -141,7 +142,8 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
   });
 
   const universities: { id: number; name: string }[] = (universitiesQuery.data?.data as any) ?? [];
-  const institutions: { id: number; name: string }[] = (institutionsQuery.data?.data as any) ?? [];
+  const institutions: { id: number; name: string; universityId: number }[] =
+    (institutionsQuery.data?.data as any) ?? [];
   const agencies: { id: number; name: string }[] = (agenciesQuery.data?.data as any) ?? [];
 
   const saveEditMutation = useMutation({
@@ -350,17 +352,14 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
           (the default — sees everything).
         </p>
         <div className="space-y-3">
-          <MultiSelect
-            label="Universities"
-            options={universities}
-            selected={scopeDraft.universityIds}
-            onChange={(ids) => setScopeDraft((s) => ({ ...s, universityIds: ids }))}
-          />
-          <MultiSelect
-            label="Institutions"
-            options={institutions}
-            selected={scopeDraft.academicUnitIds}
-            onChange={(ids) => setScopeDraft((s) => ({ ...s, academicUnitIds: ids }))}
+          <UniversityInstitutionTree
+            universities={universities}
+            institutions={institutions}
+            universityIds={scopeDraft.universityIds}
+            academicUnitIds={scopeDraft.academicUnitIds}
+            onChange={({ universityIds, academicUnitIds }) =>
+              setScopeDraft((s) => ({ ...s, universityIds, academicUnitIds }))
+            }
           />
           <MultiSelect
             label="Agencies"
