@@ -208,6 +208,7 @@ export default function UniversitiesManagement() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [createForm, setCreateForm] = useState<UniversityForm>(emptyForm);
+  const [justCreatedId, setJustCreatedId] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['universities'],
@@ -217,10 +218,14 @@ export default function UniversitiesManagement() {
 
   const createMutation = useMutation({
     mutationFn: (form: UniversityForm) => universitiesApi.create(form),
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['universities'] });
       setShowCreatePanel(false);
       setCreateForm(emptyForm);
+      // Auto-expand the new row so "Generate Public Page" (which needs an
+      // id that doesn't exist until after creation) is immediately one
+      // click away, instead of making the admin hunt for the new row.
+      setJustCreatedId((res.data as any).id);
     },
   });
 
@@ -337,7 +342,11 @@ export default function UniversitiesManagement() {
 
       {showCreatePanel && (
         <div className="mb-6 bg-white border border-gray-200 rounded-xl p-5 max-w-md">
-          <h2 className="font-semibold text-gray-900 mb-4">Add University</h2>
+          <h2 className="font-semibold text-gray-900 mb-1">Add University</h2>
+          <p className="text-xs text-gray-400 mb-4">
+            Generating a public "topics offered" page happens right after creating — the row expands
+            automatically with that option once saved.
+          </p>
           <UniversityFields form={createForm} onChange={setCreateForm} />
           <div className="flex gap-3 mt-5">
             <button
@@ -389,6 +398,7 @@ export default function UniversitiesManagement() {
         ]}
         onExport={() => handleExport()}
         emptyMessage="No universities found."
+        autoExpandId={justCreatedId}
         renderExpanded={(u) => (
           <UniversityEditForm
             university={u}
