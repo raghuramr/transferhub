@@ -42,22 +42,22 @@ export class ImportService {
 
   async preview(dto: ImportPayloadDto) {
     if (dto.type === 'universities') {
-      return this.previewUniversities(dto.data as UniversityItem[]);
+      return this.previewUniversities(dto.data as unknown as UniversityItem[]);
     } else if (dto.type === 'programs') {
-      return this.previewPrograms(dto.data as ProgramItem[]);
+      return this.previewPrograms(dto.data as unknown as ProgramItem[]);
     } else if (dto.type === 'courses') {
-      return this.previewCourses(dto.data as CourseItem[]);
+      return this.previewCourses(dto.data as unknown as CourseItem[]);
     }
     throw new BadRequestException('Unknown import type');
   }
 
   async execute(dto: ImportPayloadDto) {
     if (dto.type === 'universities') {
-      return this.importUniversities(dto.data as UniversityItem[]);
+      return this.importUniversities(dto.data as unknown as UniversityItem[]);
     } else if (dto.type === 'programs') {
-      return this.importPrograms(dto.data as ProgramItem[]);
+      return this.importPrograms(dto.data as unknown as ProgramItem[]);
     } else if (dto.type === 'courses') {
-      return this.importCourses(dto.data as CourseItem[]);
+      return this.importCourses(dto.data as unknown as CourseItem[]);
     }
     throw new BadRequestException('Unknown import type');
   }
