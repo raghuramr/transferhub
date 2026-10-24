@@ -14,7 +14,7 @@ import { Permission } from '../auth/permission.decorator';
 
 // Every endpoint is gated by the Roles & Permissions matrix (`agencies`
 // module) instead of a static @Roles() array, so toggling a grant off for
-// a role actually restricts it. See database/seed/011_roles_permissions.sql
+// a role actually restricts it. See database/seed/008_roles_permissions.sql
 // for the starting grant set and CLAUDE.md for the design.
 @Controller('agencies')
 @UseGuards(JwtAuthGuard, RolesGuard)

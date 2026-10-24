@@ -199,27 +199,43 @@ structurally special case, it's just another "University" row). No scope
 rows for a user still means unrestricted, unchanged.
 
 ## Programs CRUD + mapping (confirmed, built)
-Programs (`Programs` table, migration 003; `InstitutionId` FK = UI
+Programs (`Programs` table, consolidated into migration
+`003_institutions_courses_programs.sql`; `InstitutionId` FK = UI
 "University") previously had only a read endpoint (`GET /courses/programs`)
 — no way to create/edit one anywhere in the app, despite Courses and the
 cascading master-data picker already referencing `ProgramId`. Closed the
 gap:
-- Migration 017 adds `Programs.IsActive` (default 1) + `UpdatedAt`, so
-  Programs can be soft-deactivated like every other master-data entity
-  (`Courses.ProgramId` is nullable and may reference a Program
-  historically, so hard delete is never done).
+- `Programs.IsActive` (default 1) + `UpdatedAt` were added, so Programs can
+  be soft-deactivated like every other master-data entity (`Courses.
+  ProgramId` is nullable and may reference a Program historically, so hard
+  delete is never done).
 - `CoursesService`/`CoursesController` gained
   `createProgram`/`updateProgram`/`deactivateProgram` — `POST`/`PATCH
-  /courses/programs/:id`/`DELETE /courses/programs/:id`, gated
-  `admin`/`super_admin` like the other mutation endpoints; `GET
-  /courses/programs` now also accepts `includeInactive=true`.
-- UI: `UniversitiesManagement.tsx` now shows a "Programs" sub-list in each
-  University's expanded row (`UniversityProgramsList`, mirroring the
-  existing `UniversityInstitutionsList` pattern), stacked below
-  Institutions in the right-hand column — create a Program directly under
-  that University, or deactivate one. Programs have no "unmapped" concept
-  (they're always created directly under a University), so unlike
-  Institutions there's no assign-existing flow here.
+  /courses/programs/:id`/`DELETE /courses/programs/:id`, gated via the
+  `programs` module in the Roles & Permissions matrix (see below); `GET
+  /courses/programs` now also accepts `includeInactive=true` and joins
+  `Institutions` so callers get `institutionCode`/`institutionName`, not
+  just the raw FK id.
+- UI, two entry points (both call the same endpoints):
+  1. `UniversitiesManagement.tsx` shows a "Programs" sub-list in each
+     University's expanded row (`UniversityProgramsList`, mirroring the
+     existing `UniversityInstitutionsList` pattern), stacked below
+     Institutions in the right-hand column — create a Program directly
+     under that University, or deactivate one.
+  2. **`ProgramsManagement.tsx`** (`/superadmin/programs`, nav entry
+     "Programs" under super_admin — added after the user reported they
+     couldn't find Programs in the nav at all, since unlike Universities/
+     Institutions/Agencies, Programs previously had no standalone
+     full-catalog page) — a normal `DataTable` list across *every*
+     University's Programs at once (filterable by University), with
+     create/edit/deactivate. No import/export/bulk-action here since
+     those operations were never seeded for the `programs` permission
+     module (view/create/edit/delete only) and no backend endpoints exist
+     for them — `showExport={false}` on the DataTable reflects that
+     deliberately, not an oversight.
+  Programs have no "unmapped" concept (they're always created directly
+  under a University), so unlike Institutions there's no assign-existing
+  flow here.
 - `CascadingMasterDataSelect.tsx`'s Program level now has a real
   `canCreate`/`onCreate` wired to the new endpoint (previously hardcoded
   `canCreate={false}` with a comment noting no create endpoint existed —
@@ -267,7 +283,21 @@ chat history if needed, repeated here for quick reference)
   reach `(localdb)\...`). Azure SQL / any real SQL Server over TCP uses
   plain `DB_DRIVER=tedious` with `DB_ENCRYPT=true`.
 
-## Known demo accounts (after `npm run seed:users`)
+## Known demo accounts (after `npm run seed:users`) — why that step is required
+`database/seed/003_demo_users.sql` inserts the 5 named demo accounts (and
+the 120 synthetic students) with a **placeholder, non-functional
+`PasswordHash`** — the seed SQL deliberately can't compute a real argon2id
+hash itself (that needs the `argon2` npm package, not T-SQL). So right
+after a fresh `migrations/` + `seed/` run, these users exist in the DB but
+**cannot log in yet** — every login attempt fails. `npm run seed:users`
+(run from `src/api`, needs the API's own `.env` already set up) is a
+separate, required step: it hashes each demo password with
+`argon2.hash(..., argon2id)` and `UPDATE`s `Users.PasswordHash` in place
+for exactly these accounts (matched by email). **Always run migrations →
+seeds → `npm run seed:users`, in that order, on a fresh database** — this
+tripped someone up after a full DB reset+reseed in this project's own
+session history, so it's worth remembering as a checklist, not just a
+one-off fix.
 | Role | Email | Password |
 |---|---|---|
 | Student | `student@test.edu` | `Student@123!` |

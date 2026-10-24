@@ -8,7 +8,7 @@ import type { AuthenticatedRequest } from '../auth/authenticated-request.interfa
 
 // Editing course topics/reference links is gated by the Roles & Permissions
 // matrix (`course_topics` module), which starts seeded to SuperAdmin/Admin/
-// Faculty only (database/seed/011_roles_permissions.sql). Reading them is
+// Faculty only (database/seed/008_roles_permissions.sql). Reading them is
 // open to any authenticated role (students/agencies see them read-only when
 // reviewing a match).
 

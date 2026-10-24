@@ -39,6 +39,7 @@ import AuditLog from './pages/superadmin/AuditLog';
 import SystemSettings from './pages/superadmin/SystemSettings';
 import UniversitiesManagement from './pages/superadmin/UniversitiesManagement';
 import InstitutionsManagement from './pages/superadmin/InstitutionsManagement';
+import ProgramsManagement from './pages/superadmin/ProgramsManagement';
 import AgenciesManagement from './pages/superadmin/AgenciesManagement';
 import RolesPermissions from './pages/superadmin/RolesPermissions';
 
@@ -141,6 +142,7 @@ export default function App() {
           <Route path="users" element={<UserManagement />} />
           <Route path="universities" element={<UniversitiesManagement />} />
           <Route path="institutions" element={<InstitutionsManagement />} />
+          <Route path="programs" element={<ProgramsManagement />} />
           <Route path="agencies" element={<AgenciesManagement />} />
           <Route path="settings/roles-permissions" element={<RolesPermissions />} />
         </Route>

@@ -41,6 +41,7 @@ const navItems: Record<Role, { to: string; label: string; icon: React.ReactNode 
     { to: '/superadmin/users', label: 'Users', icon: <Users size={18} /> },
     { to: '/superadmin/universities', label: 'Universities', icon: <Building2 size={18} /> },
     { to: '/superadmin/institutions', label: 'Institutions', icon: <School size={18} /> },
+    { to: '/superadmin/programs', label: 'Programs', icon: <GraduationCap size={18} /> },
     { to: '/superadmin/agencies', label: 'Agencies', icon: <Handshake size={18} /> },
     { to: '/superadmin/audit', label: 'Audit Log', icon: <ScrollText size={18} /> },
     { to: '/superadmin/settings', label: 'Settings', icon: <Settings size={18} /> },

@@ -16,7 +16,7 @@ export interface RequiredPermission {
  * so toggling a grant off in the matrix actually blocks the action.
  *
  * moduleKey/operationKey must match a (PermissionModules.Key,
- * PermissionOperations.Key) pair seeded in database/seed/011_roles_permissions.sql.
+ * PermissionOperations.Key) pair seeded in database/seed/008_roles_permissions.sql.
  */
 export const Permission = (moduleKey: string, operationKey: string) =>
   SetMetadata(PERMISSION_KEY, { moduleKey, operationKey } satisfies RequiredPermission);

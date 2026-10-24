@@ -76,7 +76,7 @@ const dbConfig = buildSqlConfig({
   odbcDriver,
 });
 
-// ── 3. Demo accounts — emails must match seed/004_demo_users.sql ─
+// ── 3. Demo accounts — emails must match seed/003_demo_users.sql ─
 const demoPasswords: Record<string, string> = {
   'student@test.edu':    'Student@123!',
   'faculty.cs@bu.edu':   'Faculty@123!',
@@ -109,10 +109,10 @@ async function main() {
     const updated = res.recordset[0]?.Updated ?? 0;
     console.log(updated > 0
       ? `  ✓  ${email}  →  password = ${password}`
-      : `  ✗  ${email}  →  user not found (check seed/004_demo_users.sql)`);
+      : `  ✗  ${email}  →  user not found (check seed/003_demo_users.sql)`);
   }
 
-  // Bulk synthetic students (seed/008_bulk_students.sql) all share one password.
+  // Bulk synthetic students (also seed/003_demo_users.sql) all share one password.
   const bulkStudentPassword = 'Student@123!';
   const bulkHash = await argon2.hash(bulkStudentPassword, {
     type: argon2.argon2id,

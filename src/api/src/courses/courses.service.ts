@@ -10,6 +10,8 @@ function mapProgram(r: ProgramRow) {
   return {
     id: r.Id,
     institutionId: r.InstitutionId,
+    institutionCode: r.InstitutionCode ?? null,
+    institutionName: r.InstitutionName ?? null,
     area: r.Area,
     name: r.Name,
     degree: r.Degree,
@@ -55,6 +57,8 @@ interface ProgramRow {
   MatchStrength: string | null;
   Notes: string | null;
   IsActive: boolean;
+  InstitutionCode?: string;
+  InstitutionName?: string;
 }
 
 interface InstitutionRow {
@@ -218,15 +222,18 @@ export class CoursesService {
     let where = '1=1';
     const inputs: QueryInput[] = [];
     if (institutionId !== undefined) {
-      where += ' AND InstitutionId = @instId';
+      where += ' AND p.InstitutionId = @instId';
       inputs.push({ name: 'instId', type: sql.Int, value: institutionId });
     }
     if (!includeInactive) {
-      where += ' AND IsActive = 1';
+      where += ' AND p.IsActive = 1';
     }
     const res = await this.db.query<ProgramRow>(
-      `SELECT Id, InstitutionId, Area, Name, Degree, School, KeyRules, Source, MatchStrength, Notes, IsActive
-       FROM Programs WHERE ${where} ORDER BY Area, Name`,
+      `SELECT p.Id, p.InstitutionId, p.Area, p.Name, p.Degree, p.School, p.KeyRules, p.Source, p.MatchStrength, p.Notes, p.IsActive,
+              i.Code AS InstitutionCode, i.Name AS InstitutionName
+       FROM Programs p
+       LEFT JOIN Institutions i ON i.Id = p.InstitutionId
+       WHERE ${where} ORDER BY i.Name, p.Area, p.Name`,
       inputs,
     );
     return res.recordset.map(mapProgram);
