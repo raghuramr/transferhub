@@ -4,6 +4,19 @@ import { evaluationsApi } from '../../lib/api';
 import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner';
 import { ClipboardList, ChevronRight, Sparkles, Clock } from 'lucide-react';
 
+interface QueuedEvaluation {
+  id: string;
+  status: string;
+  queuedAt: string;
+  aiCandidatesCount?: number;
+  transcriptCourse?: {
+    courseCode: string;
+    courseTitle: string;
+    grade?: string;
+    transcript?: { institution?: { name: string } };
+  };
+}
+
 const statusBadge: Record<string, string> = {
   queued:      'bg-gray-100 text-gray-700',
   in_progress: 'bg-blue-100 text-blue-700',
@@ -18,7 +31,7 @@ export default function FacultyQueue() {
     refetchInterval: 60_000,
   });
 
-  const evaluations = (data?.data as any[]) ?? [];
+  const evaluations: QueuedEvaluation[] = (data?.data as QueuedEvaluation[]) ?? [];
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
@@ -42,7 +55,7 @@ export default function FacultyQueue() {
       )}
 
       <div className="space-y-3">
-        {evaluations.map((ev: any) => (
+        {evaluations.map((ev) => (
           <Link
             key={ev.id}
             to={`/faculty/evaluation/${ev.id}`}
@@ -66,7 +79,7 @@ export default function FacultyQueue() {
                   <Clock size={12} />
                   {new Date(ev.queuedAt).toLocaleDateString()}
                 </span>
-                {ev.aiCandidatesCount > 0 && (
+                {(ev.aiCandidatesCount ?? 0) > 0 && (
                   <span className="flex items-center gap-1 text-blue-600 font-medium">
                     <Sparkles size={12} />
                     {ev.aiCandidatesCount} AI candidates

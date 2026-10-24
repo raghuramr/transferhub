@@ -9,12 +9,47 @@ import {
   usersApi,
 } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
-import type { Role } from '../../types';
+import type { Role, CourseTopic } from '../../types';
 
 export interface MasterDataItem {
   id: number;
   label: string;
   sublabel?: string;
+}
+
+// ── Raw shapes returned by the master-data list endpoints ──────────
+// (minimal — only the fields this cascade actually reads).
+interface RawUniversity {
+  id: number;
+  name: string;
+  code: string;
+}
+
+interface RawInstitution {
+  id: number;
+  name: string;
+  code: string;
+}
+
+interface RawProgram {
+  id: number;
+  name: string;
+  degree?: string;
+  area?: string;
+}
+
+export interface RawExternalCourse {
+  id: number;
+  code: string;
+  title: string;
+  credits: number;
+  programId?: number | null;
+  institutionName?: string;
+  institutionCode?: string;
+}
+
+interface CreatedRow {
+  id: number;
 }
 
 interface MasterDataSelectProps {
@@ -295,13 +330,13 @@ interface CascadeProps {
 /** Course options for a given University (by id) + optional Program filter — shared by the main cascade and any per-row Course picker (e.g. one row per transcript course). */
 export function useCourseCatalog(universityId: number | null, programId?: number | null) {
   const universitiesQuery = useQuery({ queryKey: ['md-universities'], queryFn: () => universitiesApi.list({ isActive: true }) });
-  const universityCode = ((universitiesQuery.data?.data as any[]) ?? []).find((u: any) => u.id === universityId)?.code;
+  const universityCode = ((universitiesQuery.data?.data as RawUniversity[]) ?? []).find((u) => u.id === universityId)?.code;
   const coursesQuery = useQuery({
     queryKey: ['md-courses', universityId, programId],
     queryFn: () => coursesApi.listExternal(universityCode),
     enabled: !!universityId && !!universityCode,
   });
-  const raw: any[] = (coursesQuery.data?.data as any[]) ?? [];
+  const raw: RawExternalCourse[] = (coursesQuery.data?.data as RawExternalCourse[]) ?? [];
   const courses: MasterDataItem[] = raw
     .filter((c) => !programId || c.programId === programId)
     .map((c) => ({ id: c.id, label: `${c.code} — ${c.title}`, sublabel: `${c.credits} credits` }));
@@ -315,7 +350,7 @@ export function useTopicCatalog(courseId: number | null) {
     queryFn: () => courseTopicsApi.list(courseId!),
     enabled: !!courseId,
   });
-  const topics: MasterDataItem[] = ((topicsQuery.data?.data as any[]) ?? []).map((t: any) => ({ id: t.id, label: t.title }));
+  const topics: MasterDataItem[] = ((topicsQuery.data?.data as CourseTopic[]) ?? []).map((t) => ({ id: t.id, label: t.title }));
   return { topics, isLoading: topicsQuery.isLoading };
 }
 
@@ -340,7 +375,7 @@ export function MasterDataCascade({ value, onChange, includeTopic = true, throug
     queryKey: ['md-universities'],
     queryFn: () => universitiesApi.list({ isActive: true }),
   });
-  let universities: MasterDataItem[] = ((universitiesQuery.data?.data as any[]) ?? []).map((u: any) => ({
+  let universities: MasterDataItem[] = ((universitiesQuery.data?.data as RawUniversity[]) ?? []).map((u) => ({
     id: u.id,
     label: u.name,
     sublabel: u.code,
@@ -364,7 +399,7 @@ export function MasterDataCascade({ value, onChange, includeTopic = true, throug
     queryFn: () => institutionsApi.list({ universityId: value.universityId!, isActive: true }),
     enabled: !!value.universityId,
   });
-  let institutions: MasterDataItem[] = ((institutionsQuery.data?.data as any[]) ?? []).map((i: any) => ({
+  let institutions: MasterDataItem[] = ((institutionsQuery.data?.data as RawInstitution[]) ?? []).map((i) => ({
     id: i.id,
     label: i.name,
     sublabel: i.code,
@@ -396,7 +431,7 @@ export function MasterDataCascade({ value, onChange, includeTopic = true, throug
     queryFn: () => coursesApi.programs(value.universityId!),
     enabled: showProgram && !!value.universityId,
   });
-  const programs: MasterDataItem[] = ((programsQuery.data?.data as any[]) ?? []).map((p: any) => ({
+  const programs: MasterDataItem[] = ((programsQuery.data?.data as RawProgram[]) ?? []).map((p) => ({
     id: p.id,
     label: p.name,
     sublabel: [p.degree, p.area].filter(Boolean).join(' · ') || undefined,
@@ -404,24 +439,24 @@ export function MasterDataCascade({ value, onChange, includeTopic = true, throug
 
   // Courses are keyed by University code in this API (not id) — resolve it
   // from the University list we already have.
-  const selectedUniversityRaw = ((universitiesQuery.data?.data as any[]) ?? []).find(
-    (u: any) => u.id === value.universityId,
+  const selectedUniversityRaw = ((universitiesQuery.data?.data as RawUniversity[]) ?? []).find(
+    (u) => u.id === value.universityId,
   );
   const coursesQuery = useQuery({
     queryKey: ['md-courses', value.universityId, value.programId],
     queryFn: () => coursesApi.listExternal(selectedUniversityRaw?.code),
     enabled: showCourse && !!value.universityId && !!selectedUniversityRaw,
   });
-  const courses: MasterDataItem[] = ((coursesQuery.data?.data as any[]) ?? [])
-    .filter((c: any) => !value.programId || c.programId === value.programId)
-    .map((c: any) => ({ id: c.id, label: `${c.code} — ${c.title}`, sublabel: `${c.credits} credits` }));
+  const courses: MasterDataItem[] = ((coursesQuery.data?.data as RawExternalCourse[]) ?? [])
+    .filter((c) => !value.programId || c.programId === value.programId)
+    .map((c) => ({ id: c.id, label: `${c.code} — ${c.title}`, sublabel: `${c.credits} credits` }));
 
   const topicsQuery = useQuery({
     queryKey: ['md-topics', value.courseId],
     queryFn: () => courseTopicsApi.list(value.courseId!),
     enabled: showTopic && !!value.courseId,
   });
-  const topics: MasterDataItem[] = ((topicsQuery.data?.data as any[]) ?? []).map((t: any) => ({
+  const topics: MasterDataItem[] = ((topicsQuery.data?.data as CourseTopic[]) ?? []).map((t) => ({
     id: t.id,
     label: t.title,
   }));
@@ -439,7 +474,7 @@ export function MasterDataCascade({ value, onChange, includeTopic = true, throug
         onCreate={async (name) => {
           const res = await universitiesApi.create({ name, code: name.slice(0, 10).toUpperCase().replace(/\s+/g, '') });
           await qc.invalidateQueries({ queryKey: ['md-universities'] });
-          return (res.data as any).id;
+          return (res.data as CreatedRow).id;
         }}
       />
 
@@ -455,7 +490,7 @@ export function MasterDataCascade({ value, onChange, includeTopic = true, throug
         onCreate={async (name) => {
           const res = await institutionsApi.create({ name, universityId: value.universityId });
           await qc.invalidateQueries({ queryKey: ['md-institutions', value.universityId] });
-          return (res.data as any).id;
+          return (res.data as CreatedRow).id;
         }}
       />
 
@@ -493,7 +528,7 @@ export function MasterDataCascade({ value, onChange, includeTopic = true, throug
               credits: 4,
             });
             await qc.invalidateQueries({ queryKey: ['md-courses', value.universityId, value.programId] });
-            return (res.data as any).id;
+            return (res.data as CreatedRow).id;
           }}
         />
       )}
@@ -511,7 +546,7 @@ export function MasterDataCascade({ value, onChange, includeTopic = true, throug
           onCreate={async (title) => {
             const res = await courseTopicsApi.create(value.courseId!, { title });
             await qc.invalidateQueries({ queryKey: ['md-topics', value.courseId] });
-            return (res.data as any).id;
+            return (res.data as CreatedRow).id;
           }}
         />
       )}

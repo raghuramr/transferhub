@@ -2,11 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Link as LinkIcon } from 'lucide-react';
 import { courseTopicsApi } from '../../lib/api';
+import type { CourseTopic, TopicReferenceLink } from '../../types';
 
-interface ReferenceLink {
-  label: string;
-  url: string;
-}
+type ReferenceLink = TopicReferenceLink;
 
 interface TopicFormState {
   title: string;
@@ -41,7 +39,7 @@ export function CourseTopicsEditor({ courseId, courseLabel, canEdit, onClose }: 
     queryKey: ['course-topics', courseId],
     queryFn: () => courseTopicsApi.list(courseId),
   });
-  const topics: any[] = (data?.data as any[]) ?? [];
+  const topics: CourseTopic[] = data?.data ?? [];
 
   const createMutation = useMutation({
     mutationFn: () => courseTopicsApi.create(courseId, form),
@@ -66,7 +64,7 @@ export function CourseTopicsEditor({ courseId, courseLabel, canEdit, onClose }: 
     onSuccess: () => qc.invalidateQueries({ queryKey: ['course-topics', courseId] }),
   });
 
-  const startEdit = (topic: any) => {
+  const startEdit = (topic: CourseTopic) => {
     setEditingId(topic.id);
     setForm({
       title: topic.title,

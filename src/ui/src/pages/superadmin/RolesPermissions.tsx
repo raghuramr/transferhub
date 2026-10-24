@@ -44,7 +44,7 @@ export default function RolesPermissions() {
     queryFn: () => permissionsApi.getMatrix(),
   });
 
-  const matrix: MatrixResponse | undefined = data?.data as any;
+  const matrix: MatrixResponse | undefined = data?.data as MatrixResponse | undefined;
   const [activeModuleId, setActiveModuleId] = useState<number | null>(null);
   const [allowed, setAllowed] = useState<Record<string, boolean>>({});
   const [dirty, setDirty] = useState(false);

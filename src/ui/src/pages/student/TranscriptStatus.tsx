@@ -21,16 +21,16 @@ export default function TranscriptStatus() {
     refetchInterval: 30_000,
   });
 
-  const transcript = data?.data as any;
+  const transcript = data?.data;
 
   if (isLoading) return <div className="p-8 text-center text-gray-400">Loading…</div>;
   if (error || !transcript) return <div className="p-8 text-center text-red-500">Failed to load transcript.</div>;
 
   const total = transcript.courses?.length ?? 0;
-  const applied = transcript.courses?.filter((c: any) => c.lane === 'applied').length ?? 0;
+  const applied = transcript.courses?.filter((c) => c.lane === 'applied').length ?? 0;
   const credits = transcript.courses
-    ?.filter((c: any) => c.lane === 'applied')
-    .reduce((sum: number, c: any) => sum + (c.normalisedCredits ?? c.originalCredits ?? 0), 0) ?? 0;
+    ?.filter((c) => c.lane === 'applied')
+    .reduce((sum, c) => sum + (c.normalisedCredits ?? c.originalCredits ?? 0), 0) ?? 0;
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -70,7 +70,7 @@ export default function TranscriptStatus() {
           <h2 className="font-semibold text-gray-900">Course Evaluation Status</h2>
         </div>
         <div className="divide-y divide-gray-50">
-          {transcript.courses?.map((course: any) => {
+          {transcript.courses?.map((course) => {
             const cfg = laneConfig[course.lane] ?? laneConfig.pending;
             return (
               <div key={course.id} className="px-6 py-4 flex items-start gap-4">

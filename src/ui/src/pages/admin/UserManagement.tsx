@@ -15,6 +15,18 @@ const roleColors: Record<string, string> = {
 
 const roles = ['student', 'faculty', 'admin', 'agency', 'super_admin'];
 
+interface UserScope {
+  universityIds?: number[];
+  academicUnitIds?: number[];
+  agencyIds?: number[];
+}
+
+interface ImportResult {
+  created: number;
+  updated: number;
+  errors?: unknown[];
+}
+
 interface UserRow {
   id: string;
   email: string;
@@ -130,10 +142,11 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
     queryKey: ['scope', user.id],
     queryFn: async () => {
       const { data: scopeData } = await usersApi.getScope(user.id);
+      const scope = scopeData as UserScope | undefined;
       setScopeDraft({
-        universityIds: (scopeData as any)?.universityIds ?? [],
-        academicUnitIds: (scopeData as any)?.academicUnitIds ?? [],
-        agencyIds: (scopeData as any)?.agencyIds ?? [],
+        universityIds: scope?.universityIds ?? [],
+        academicUnitIds: scope?.academicUnitIds ?? [],
+        agencyIds: scope?.agencyIds ?? [],
       });
       setScopeLoaded(true);
       return scopeData;
@@ -141,10 +154,10 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
     enabled: !scopeLoaded,
   });
 
-  const universities: { id: number; name: string }[] = (universitiesQuery.data?.data as any) ?? [];
+  const universities: { id: number; name: string }[] = (universitiesQuery.data?.data as { id: number; name: string }[]) ?? [];
   const institutions: { id: number; name: string; universityId: number }[] =
-    (institutionsQuery.data?.data as any) ?? [];
-  const agencies: { id: number; name: string }[] = (agenciesQuery.data?.data as any) ?? [];
+    (institutionsQuery.data?.data as { id: number; name: string; universityId: number }[]) ?? [];
+  const agencies: { id: number; name: string }[] = (agenciesQuery.data?.data as { id: number; name: string }[]) ?? [];
 
   const saveEditMutation = useMutation({
     mutationFn: () => {
@@ -395,7 +408,7 @@ export default function UserManagement() {
     queryKey: ['users'],
     queryFn: () => usersApi.list(),
   });
-  const users: UserRow[] = ((data?.data as any) ?? []).map((u: UserRow) => ({
+  const users: UserRow[] = ((data?.data as UserRow[]) ?? []).map((u) => ({
     ...u,
     status: u.isLocked ? 'locked' : u.isActive ? 'active' : 'inactive',
   }));
@@ -515,14 +528,17 @@ export default function UserManagement() {
         </div>
       </div>
 
-      {importMutation.data && (
-        <div className="mb-4 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
-          Import complete — created {(importMutation.data.data as any).created}, updated{' '}
-          {(importMutation.data.data as any).updated}
-          {(importMutation.data.data as any).errors?.length > 0 &&
-            ` (${(importMutation.data.data as any).errors.length} skipped)`}
-        </div>
-      )}
+      {importMutation.data && (() => {
+        const result = importMutation.data.data as ImportResult;
+        return (
+          <div className="mb-4 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
+            Import complete — created {result.created}, updated{' '}
+            {result.updated}
+            {(result.errors?.length ?? 0) > 0 &&
+              ` (${result.errors!.length} skipped)`}
+          </div>
+        );
+      })()}
 
       {bulkRole !== null && (
         <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-brand-50 border border-brand-200 rounded-lg text-sm">

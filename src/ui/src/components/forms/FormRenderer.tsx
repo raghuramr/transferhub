@@ -6,6 +6,11 @@ import { Paperclip, Loader2, CheckCircle2 } from 'lucide-react';
 const inputCls =
   'w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500';
 
+// A submission value's shape depends on the field's `type` (string, string[]
+// for checkboxes, or an uploaded-file descriptor) — this is the Custom Forms
+// JSON-schema-driven payload, intentionally flexible per CLAUDE.md.
+export type FormFieldValue = string | string[] | { id: string; url: string; name: string } | undefined;
+
 /** Renders a fillable form from a field schema, controlled by the parent's `data` state. */
 export function FormRenderer({
   fields,
@@ -14,8 +19,8 @@ export function FormRenderer({
   errors,
 }: {
   fields: FormField[];
-  data: Record<string, any>;
-  onChange: (key: string, value: any) => void;
+  data: Record<string, FormFieldValue>;
+  onChange: (key: string, value: FormFieldValue) => void;
   errors?: Record<string, string>;
 }) {
   return (
@@ -45,8 +50,8 @@ function FieldInput({
   onChange,
 }: {
   field: FormField;
-  value: any;
-  onChange: (value: any) => void;
+  value: FormFieldValue;
+  onChange: (value: FormFieldValue) => void;
 }) {
   switch (field.type) {
     case 'textarea':
@@ -54,7 +59,7 @@ function FieldInput({
         <textarea
           className={inputCls}
           rows={4}
-          value={value ?? ''}
+          value={(value as string) ?? ''}
           placeholder={field.placeholder}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -62,7 +67,7 @@ function FieldInput({
 
     case 'select':
       return (
-        <select className={inputCls} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
+        <select className={inputCls} value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value)}>
           <option value="" disabled>Select…</option>
           {(field.options ?? []).map((opt) => (
             <option key={opt} value={opt}>{opt}</option>
@@ -125,14 +130,20 @@ function FieldInput({
       );
 
     case 'file':
-      return <FileFieldInput field={field} value={value} onChange={onChange} />;
+      return (
+        <FileFieldInput
+          field={field}
+          value={value as { id: string; url: string; name: string } | undefined}
+          onChange={onChange}
+        />
+      );
 
     case 'number':
       return (
         <input
           type="number"
           className={inputCls}
-          value={value ?? ''}
+          value={(value as string) ?? ''}
           placeholder={field.placeholder}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -143,7 +154,7 @@ function FieldInput({
         <input
           type="date"
           className={inputCls}
-          value={value ?? ''}
+          value={(value as string) ?? ''}
           onChange={(e) => onChange(e.target.value)}
         />
       );
@@ -156,7 +167,7 @@ function FieldInput({
         <input
           type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : 'text'}
           className={inputCls}
-          value={value ?? ''}
+          value={(value as string) ?? ''}
           placeholder={field.placeholder}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -176,7 +187,7 @@ function FileFieldInput({
 }: {
   field: FormField;
   value: { id: string; url: string; name: string } | undefined;
-  onChange: (value: any) => void;
+  onChange: (value: FormFieldValue) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);

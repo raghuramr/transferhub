@@ -22,6 +22,12 @@ type AgencyForm = {
 
 const emptyForm: AgencyForm = { name: '', contactEmail: '', contactPhone: '', country: '' };
 
+interface ImportResult {
+  created: number;
+  updated: number;
+  errors?: unknown[];
+}
+
 const FIELDS: { name: keyof AgencyForm; label: string; type: string }[] = [
   { name: 'name', label: 'Name', type: 'text' },
   { name: 'contactEmail', label: 'Contact Email', type: 'email' },
@@ -94,14 +100,14 @@ export default function AgenciesManagement() {
     queryKey: ['agencies'],
     queryFn: () => agenciesApi.list(),
   });
-  const agencies: Agency[] = (data?.data as any) ?? [];
+  const agencies: Agency[] = (data?.data as Agency[]) ?? [];
 
   const saveMutation = useMutation({
     mutationFn: ({ id, form }: { id: number | null; form: AgencyForm }) =>
       id ? agenciesApi.update(id, form) : agenciesApi.create(form),
-    onSuccess: (res: any) => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['agencies'] });
-      const createdId = res?.data?.id;
+      const createdId = (res?.data as { id?: number } | undefined)?.id;
       if (createdId != null) setAutoExpandId(createdId);
       setShowAddPanel(false);
       setAddForm(emptyForm);
@@ -200,14 +206,17 @@ export default function AgenciesManagement() {
         </div>
       </div>
 
-      {importMutation.data && (
-        <div className="mb-4 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
-          Import complete — created {(importMutation.data.data as any).created}, updated{' '}
-          {(importMutation.data.data as any).updated}
-          {(importMutation.data.data as any).errors?.length > 0 &&
-            ` (${(importMutation.data.data as any).errors.length} skipped)`}
-        </div>
-      )}
+      {importMutation.data && (() => {
+        const result = importMutation.data.data as ImportResult;
+        return (
+          <div className="mb-4 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
+            Import complete — created {result.created}, updated{' '}
+            {result.updated}
+            {(result.errors?.length ?? 0) > 0 &&
+              ` (${result.errors!.length} skipped)`}
+          </div>
+        );
+      })()}
 
       {showAddPanel && (
         <div className="mb-6 bg-white rounded-xl border border-gray-200 p-5">

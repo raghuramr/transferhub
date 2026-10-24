@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { pagesApi } from '../../lib/api';
+import { pagesApi, getErrorMessage } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { BlockEditor } from '../../components/blocks/BlockEditor';
@@ -57,7 +57,7 @@ export default function PageEditor() {
       const saved = res.data as CmsPage;
       if (isNew) navigate(`/admin/pages/${saved.id}`, { replace: true });
     },
-    onError: (err: any) => setError(err.response?.data?.message ?? 'Save failed'),
+    onError: (err: unknown) => setError(getErrorMessage(err, 'Save failed')),
   });
 
   const deleteMutation = useMutation({

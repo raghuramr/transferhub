@@ -42,14 +42,14 @@ function CourseEditForm({ course, canEdit }: { course: CourseRow; canEdit: boole
     queryFn: () => coursesApi.institutions(),
     enabled: canEdit,
   });
-  const institutions: { id: number; name: string; code: string }[] = (institutionsData?.data as any) ?? [];
+  const institutions: { id: number; name: string; code: string }[] = (institutionsData?.data as { id: number; name: string; code: string }[]) ?? [];
 
   const { data: programsData } = useQuery({
     queryKey: ['courses', 'programs', form.institutionId],
     queryFn: () => coursesApi.programs(form.institutionId),
     enabled: canEdit && form.institutionId !== undefined,
   });
-  const programs: { id: number; name: string; area: string }[] = (programsData?.data as any) ?? [];
+  const programs: { id: number; name: string; area: string }[] = (programsData?.data as { id: number; name: string; area: string }[]) ?? [];
 
   const saveMutation = useMutation({
     mutationFn: () => coursesApi.update(Number(course.id), form),
@@ -191,7 +191,7 @@ export default function CourseDatabase() {
     queryFn: () => coursesApi.listBU(),
   });
 
-  const courses: CourseRow[] = ((data?.data as any[]) ?? []).map((c: any) => ({
+  const courses: CourseRow[] = ((data?.data as CourseRow[]) ?? []).map((c) => ({
     ...c,
     id: c.id,
   }));
@@ -209,7 +209,7 @@ export default function CourseDatabase() {
     setImporting(true);
     try {
       const res = await coursesApi.import(file);
-      setImportResult(res.data as any);
+      setImportResult(res.data as { created: number; updated: number; errors?: unknown[] });
       qc.invalidateQueries({ queryKey: ['courses', 'bu'] });
     } finally {
       setImporting(false);

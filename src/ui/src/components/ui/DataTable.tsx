@@ -36,8 +36,8 @@ interface DataTableProps<T extends { id: string | number }> {
   autoExpandId?: string | number | null;
 }
 
-function getFilterValue(row: any, key: string) {
-  return row[key];
+function getFilterValue<T>(row: T, key: string) {
+  return (row as Record<string, unknown>)[key];
 }
 
 /**
@@ -86,21 +86,21 @@ export function DataTable<T extends { id: string | number }>({
     if (search.trim()) {
       const q = search.toLowerCase();
       const keys = searchKeys ?? columns.map((c) => c.key);
-      result = result.filter((row: any) =>
-        keys.some((k) => String(row[k as string] ?? '').toLowerCase().includes(q)),
+      result = result.filter((row) =>
+        keys.some((k) => String((row as Record<string, unknown>)[k as string] ?? '').toLowerCase().includes(q)),
       );
     }
 
     for (const [key, value] of Object.entries(activeFilters)) {
       if (!value) continue;
-      result = result.filter((row: any) => String(getFilterValue(row, key) ?? '') === value);
+      result = result.filter((row) => String(getFilterValue(row, key) ?? '') === value);
     }
 
     if (sortKey) {
       const col = columns.find((c) => c.key === sortKey);
       result = [...result].sort((a, b) => {
-        const av = col?.sortValue ? col.sortValue(a) : (a as any)[sortKey];
-        const bv = col?.sortValue ? col.sortValue(b) : (b as any)[sortKey];
+        const av = col?.sortValue ? col.sortValue(a) : (a as Record<string, unknown>)[sortKey];
+        const bv = col?.sortValue ? col.sortValue(b) : (b as Record<string, unknown>)[sortKey];
         if (av == null && bv == null) return 0;
         if (av == null) return -1;
         if (bv == null) return 1;
@@ -139,8 +139,8 @@ export function DataTable<T extends { id: string | number }>({
   const exportCsv = () => {
     if (onExport) return onExport(filtered);
     const header = columns.map((c) => c.header).join(',');
-    const lines = filtered.map((row: any) =>
-      columns.map((c) => `"${String(row[c.key] ?? '').replace(/"/g, '""')}"`).join(','),
+    const lines = filtered.map((row) =>
+      columns.map((c) => `"${String((row as Record<string, unknown>)[c.key] ?? '').replace(/"/g, '""')}"`).join(','),
     );
     const blob = new Blob([[header, ...lines].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -246,7 +246,7 @@ export function DataTable<T extends { id: string | number }>({
                   )}
                   {columns.map((c) => (
                     <td key={c.key} className={`px-6 py-3 ${c.align === 'right' ? 'text-right' : ''}`}>
-                      {c.render ? c.render(row) : String((row as any)[c.key] ?? '—')}
+                      {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '—')}
                     </td>
                   ))}
                 </tr>

@@ -13,6 +13,7 @@ import {
   useCourseCatalog,
   useTopicCatalog,
   type MasterDataSelection,
+  type RawExternalCourse,
 } from '../../components/ui/CascadingMasterDataSelect';
 
 const schema = z.object({
@@ -30,6 +31,8 @@ type CourseRow = {
   grade: string;
   term: string;
 };
+
+type ValidCourseRow = CourseRow & { course: RawExternalCourse };
 
 const EMPTY_COURSE: CourseRow = { courseId: null, topicId: null, credits: '', grade: '', term: '' };
 
@@ -71,8 +74,8 @@ export default function UploadTranscript() {
       return;
     }
     const validCourses = courses
-      .map((c) => ({ ...c, course: rawCourses.find((rc: any) => rc.id === c.courseId) }))
-      .filter((c) => c.course);
+      .map((c) => ({ ...c, course: rawCourses.find((rc) => rc.id === c.courseId) }))
+      .filter((c): c is ValidCourseRow => !!c.course);
     if (validCourses.length === 0) {
       setError('Add at least one course.');
       return;
@@ -101,7 +104,7 @@ export default function UploadTranscript() {
           term: c.term,
         })),
       });
-      navigate(`${basePath}/transcript/${(res.data as any).id}`);
+      navigate(`${basePath}/transcript/${(res.data as { id: string }).id}`);
     } catch {
       setError('Submission failed. Please try again.');
       setSubmitting(false);

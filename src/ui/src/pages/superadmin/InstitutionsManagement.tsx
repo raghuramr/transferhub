@@ -33,6 +33,12 @@ type InstitutionForm = {
 
 const emptyForm: InstitutionForm = { universityId: '', name: '', code: '', logoUrl: '', heroImageUrl: '' };
 
+interface ImportResult {
+  created: number;
+  updated: number;
+  errors?: unknown[];
+}
+
 function downloadBlob(data: BlobPart, filename: string) {
   const blob = new Blob([data], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -158,13 +164,13 @@ export default function InstitutionsManagement() {
     queryKey: ['institutions'],
     queryFn: () => institutionsApi.list(),
   });
-  const institutions: Institution[] = (data?.data as any) ?? [];
+  const institutions: Institution[] = (data?.data as Institution[]) ?? [];
 
   const { data: universitiesData } = useQuery({
     queryKey: ['universities'],
     queryFn: () => universitiesApi.list({ isActive: true }),
   });
-  const universities: University[] = (universitiesData?.data as any) ?? [];
+  const universities: University[] = (universitiesData?.data as University[]) ?? [];
 
   const createMutation = useMutation({
     mutationFn: (form: InstitutionForm) =>
@@ -276,14 +282,17 @@ export default function InstitutionsManagement() {
         </div>
       </div>
 
-      {importMutation.data && (
-        <div className="mb-4 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
-          Import complete — created {(importMutation.data.data as any).created}, updated{' '}
-          {(importMutation.data.data as any).updated}
-          {(importMutation.data.data as any).errors?.length > 0 &&
-            ` (${(importMutation.data.data as any).errors.length} skipped)`}
-        </div>
-      )}
+      {importMutation.data && (() => {
+        const result = importMutation.data.data as ImportResult;
+        return (
+          <div className="mb-4 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
+            Import complete — created {result.created}, updated{' '}
+            {result.updated}
+            {(result.errors?.length ?? 0) > 0 &&
+              ` (${result.errors!.length} skipped)`}
+          </div>
+        );
+      })()}
 
       {showCreatePanel && (
         <div className="mb-6 bg-white border border-gray-200 rounded-xl p-5 max-w-md">

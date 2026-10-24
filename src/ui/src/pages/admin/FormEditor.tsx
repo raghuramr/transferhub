@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { formsApi } from '../../lib/api';
+import { formsApi, getErrorMessage } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { FieldEditor } from '../../components/forms/FieldEditor';
 import { Save, ArrowLeft, Trash2, ClipboardList } from 'lucide-react';
-import type { FormDef, FormField } from '../../types';
+import type { FormDef, FormField, FormStatus } from '../../types';
 
 const inputCls =
   'w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500';
@@ -20,7 +20,7 @@ export default function FormEditor() {
   const [slug, setSlug] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<'draft' | 'open' | 'closed'>('draft');
+  const [status, setStatus] = useState<FormStatus>('draft');
   const [successMessage, setSuccessMessage] = useState('');
   const [fields, setFields] = useState<FormField[]>([]);
   const [error, setError] = useState('');
@@ -53,7 +53,7 @@ export default function FormEditor() {
       const saved = res.data as FormDef;
       if (isNew) navigate(`/admin/forms/${saved.id}`, { replace: true });
     },
-    onError: (err: any) => setError(err.response?.data?.message ?? 'Save failed'),
+    onError: (err: unknown) => setError(getErrorMessage(err, 'Save failed')),
   });
 
   const deleteMutation = useMutation({
@@ -107,7 +107,7 @@ export default function FormEditor() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-            <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as any)}>
+            <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as FormStatus)}>
               <option value="draft">Draft</option>
               <option value="open">Open</option>
               <option value="closed">Closed</option>

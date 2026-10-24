@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import type { AuthTokens, ApiError } from '../types';
+import type { AuthTokens, ApiError, CourseTopic, TranscriptSummary, Transcript, User } from '../types';
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -56,6 +56,17 @@ api.interceptors.response.use(
   },
 );
 
+// ── Error helper ──────────────────────────────────────────────
+/** Extracts the backend's error message from a failed mutation/query, falling back if the shape is unexpected. */
+export function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof AxiosError) {
+    const data = err.response?.data as ApiError | undefined;
+    if (data?.message) return data.message;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
+
 // ── Auth endpoints ───────────────────────────────────────────
 export const authApi = {
   login: (email: string, password: string) =>
@@ -68,7 +79,7 @@ export const authApi = {
 
 // ── Users endpoints ───────────────────────────────────────────
 export const usersApi = {
-  list: (params?: Record<string, unknown>) => api.get('/users', { params }),
+  list: (params?: Record<string, unknown>) => api.get<User[]>('/users', { params }),
   get: (id: string) => api.get(`/users/${id}`),
   create: (data: unknown) => api.post('/users', data),
   update: (id: string, data: unknown) => api.patch(`/users/${id}`, data),
@@ -167,7 +178,7 @@ export const uploadsApi = {
 
 // ── Course Topics endpoints (reference-link detail per course) ────
 export const courseTopicsApi = {
-  list: (courseId: number) => api.get(`/courses/${courseId}/topics`),
+  list: (courseId: number) => api.get<CourseTopic[]>(`/courses/${courseId}/topics`),
   create: (courseId: number, data: unknown) => api.post(`/courses/${courseId}/topics`, data),
   update: (id: number, data: unknown) => api.patch(`/course-topics/${id}`, data),
   remove: (id: number) => api.delete(`/course-topics/${id}`),
@@ -176,8 +187,8 @@ export const courseTopicsApi = {
 // ── Transcripts endpoints ─────────────────────────────────────
 export const transcriptsApi = {
   list: (params?: Record<string, unknown>) =>
-    api.get('/transcripts', { params }),
-  get: (id: string) => api.get(`/transcripts/${id}`),
+    api.get<TranscriptSummary[]>('/transcripts', { params }),
+  get: (id: string) => api.get<Transcript>(`/transcripts/${id}`),
   status: (id: string) => api.get(`/transcripts/${id}/status`),
   submit: (data: unknown) => api.post('/transcripts', data),
 };

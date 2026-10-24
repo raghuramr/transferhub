@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from 'react';
 import { motion } from 'framer-motion';
+import type { HTMLMotionProps } from 'framer-motion';
 import { cn } from '../../lib/cn';
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
@@ -31,7 +32,7 @@ export function MotionCard({
         'transition-shadow hover:shadow-md hover:shadow-brand-900/10',
         className,
       )}
-      {...(props as any)}
+      {...(props as HTMLMotionProps<'div'>)}
     />
   );
 }

@@ -84,6 +84,23 @@ export interface TranscriptCourse {
   evaluation?: Evaluation;
 }
 
+/**
+ * Summary shape returned by `GET /transcripts` (list view). `courseCount` is
+ * present on the plain admin listing; the student/agency "mine" listing
+ * additionally returns the per-course `lane` breakdown used for the dashboard
+ * tally — both are optional here since which fields come back depends on
+ * the query (see `transcripts.service.ts`).
+ */
+export interface TranscriptSummary {
+  id: string;
+  studentName?: string;
+  institution?: { id: number; code: string; name: string };
+  courseCount?: number;
+  courses?: TranscriptCourse[];
+  status: 'received' | 'processing' | 'complete';
+  receivedAt: string;
+}
+
 export interface Transcript {
   id: string;
   studentUserId: string;
@@ -252,6 +269,20 @@ export interface FormSubmission {
   adminNotes?: string;
   submittedAt: string;
   decidedAt?: string;
+}
+
+// ─── Course Topics (syllabus-level detail + reference links) ──
+export interface TopicReferenceLink {
+  label: string;
+  url: string;
+}
+
+export interface CourseTopic {
+  id: number;
+  courseId: number;
+  title: string;
+  description?: string;
+  referenceLinks: TopicReferenceLink[];
 }
 
 // ─── Common ───────────────────────────────────────────────────

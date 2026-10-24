@@ -3,6 +3,7 @@ import { LayoutDashboard, FileText, Users, BookOpen, Clock, CheckCircle } from '
 import { transcriptsApi, usersApi } from '../../lib/api';
 import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner';
 import { Link } from 'react-router-dom';
+import type { TranscriptSummary } from '../../types';
 
 function StatCard({ label, value, icon, to }: { label: string; value: string | number; icon: React.ReactNode; to: string }) {
   return (
@@ -26,8 +27,8 @@ export default function AdminDashboard() {
     queryFn: () => usersApi.list(),
   });
 
-  const allTranscripts: any[] = (transcripts?.data as any) ?? [];
-  const allUsers: any[] = (users?.data as any) ?? [];
+  const allTranscripts: TranscriptSummary[] = transcripts?.data ?? [];
+  const allUsers = users?.data ?? [];
 
   const pending = allTranscripts.filter((t) => t.status === 'received' || t.status === 'processing').length;
   const complete = allTranscripts.filter((t) => t.status === 'complete').length;
@@ -58,7 +59,7 @@ export default function AdminDashboard() {
           <Link to="/admin/transcripts" className="text-sm text-brand-800 hover:underline">View all</Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {allTranscripts.slice(0, 5).map((t: any) => (
+          {allTranscripts.slice(0, 5).map((t) => (
             <div key={t.id} className="flex items-center justify-between px-6 py-4">
               <div>
                 <p className="font-medium text-sm text-gray-900">{t.studentName}</p>

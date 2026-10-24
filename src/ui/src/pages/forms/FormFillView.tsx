@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { formsApi } from '../../lib/api';
-import { FormRenderer } from '../../components/forms/FormRenderer';
+import { formsApi, getErrorMessage } from '../../lib/api';
+import { FormRenderer, type FormFieldValue } from '../../components/forms/FormRenderer';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Reveal } from '../../components/ui/PageTransition';
@@ -11,7 +11,7 @@ import type { FormDef } from '../../types';
 
 export default function FormFillView() {
   const { slug } = useParams<{ slug: string }>();
-  const [data, setData] = useState<Record<string, any>>({});
+  const [data, setData] = useState<Record<string, FormFieldValue>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [apiError, setApiError] = useState('');
@@ -25,12 +25,12 @@ export default function FormFillView() {
   const submitMutation = useMutation({
     mutationFn: () => formsApi.submit(form!.id, data),
     onSuccess: (res) => {
-      setSubmitted((res.data as any).successMessage ?? 'Thank you — your response has been recorded.');
+      setSubmitted((res.data as { successMessage?: string }).successMessage ?? 'Thank you — your response has been recorded.');
     },
-    onError: (err: any) => setApiError(err.response?.data?.message ?? 'Submission failed.'),
+    onError: (err: unknown) => setApiError(getErrorMessage(err, 'Submission failed.')),
   });
 
-  const handleChange = (key: string, value: any) => {
+  const handleChange = (key: string, value: FormFieldValue) => {
     setData((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: '' }));
   };

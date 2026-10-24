@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { UserCircle, Lock, X } from 'lucide-react';
-import { usersApi, api } from '../lib/api';
+import { usersApi, api, getErrorMessage } from '../lib/api';
 import { useAuthStore } from '../store/auth';
 
 const emptyPasswordForm = { currentPassword: '', newPassword: '', confirm: '' };
@@ -38,7 +38,7 @@ export default function ProfilePage() {
       updateUser(form);
       setProfileError('');
     },
-    onError: (err: any) => setProfileError(err?.response?.data?.message || 'Could not update profile'),
+    onError: (err: unknown) => setProfileError(getErrorMessage(err, 'Could not update profile')),
   });
 
   const openPasswordModal = () => {
@@ -63,8 +63,8 @@ export default function ProfilePage() {
       setPasswordError('');
       setPasswordSuccess(true);
     },
-    onError: (err: any) =>
-      setPasswordError(err?.response?.data?.message || err?.message || 'Could not change password'),
+    onError: (err: unknown) =>
+      setPasswordError(getErrorMessage(err, 'Could not change password')),
   });
 
   const field = (

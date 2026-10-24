@@ -3,15 +3,16 @@ import { LayoutDashboard, Users, ScrollText, Activity } from 'lucide-react';
 import { usersApi, transcriptsApi } from '../../lib/api';
 import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner';
 import { Link } from 'react-router-dom';
+import type { User } from '../../types';
 
 export default function SuperAdminDashboard() {
   const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => usersApi.list() });
   const { data: transcripts } = useQuery({ queryKey: ['transcripts'], queryFn: () => transcriptsApi.list() });
 
-  const allUsers: any[] = (users?.data as any) ?? [];
-  const allTranscripts: any[] = (transcripts?.data as any) ?? [];
+  const allUsers: User[] = users?.data ?? [];
+  const allTranscripts = transcripts?.data ?? [];
 
-  const byRole = allUsers.reduce((acc: any, u: any) => {
+  const byRole = allUsers.reduce((acc: Record<string, number>, u) => {
     const role = u.role || 'unknown';
     acc[role] = (acc[role] || 0) + 1;
     return acc;
@@ -49,7 +50,7 @@ export default function SuperAdminDashboard() {
             <p className="text-sm font-medium text-gray-500">Locked Accounts</p>
             <Activity className="text-red-500" size={20} />
           </div>
-          <p className="text-3xl font-bold text-gray-900">{allUsers.filter((u: any) => u.isLocked).length}</p>
+          <p className="text-3xl font-bold text-gray-900">{allUsers.filter((u) => u.isLocked).length}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-3">
