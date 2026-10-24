@@ -23,6 +23,8 @@ interface DataTableProps<T extends { id: string | number }> {
   filters?: DataTableFilter[];
   bulkActions?: { label: string; onClick: (selected: T[]) => void; danger?: boolean }[];
   onExport?: (rows: T[]) => void;
+  /** Hide the Export button entirely (e.g. the caller's role lacks the 'export' permission). Default true. */
+  showExport?: boolean;
   isLoading?: boolean;
   emptyMessage?: string;
   /**
@@ -53,6 +55,7 @@ export function DataTable<T extends { id: string | number }>({
   filters = [],
   bulkActions = [],
   onExport,
+  showExport = true,
   isLoading,
   emptyMessage = 'No records found.',
   renderExpanded,
@@ -176,12 +179,14 @@ export function DataTable<T extends { id: string | number }>({
             ))}
           </select>
         ))}
-        <button
-          onClick={exportCsv}
-          className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
-        >
-          <Download size={14} /> Export
-        </button>
+        {showExport && (
+          <button
+            onClick={exportCsv}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            <Download size={14} /> Export
+          </button>
+        )}
       </div>
 
       {selected.size > 0 && bulkActions.length > 0 && (

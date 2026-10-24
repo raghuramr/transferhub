@@ -141,15 +141,50 @@ and operations based on requirement":
   `/superadmin/settings/roles-permissions`, linked from the "Roles &
   Permissions" entry in the super_admin nav (under Settings).
 
-**Important — NOT yet wired into live enforcement.** This is a
-master-data/configuration layer only for this pass. The existing
-`@Roles()`/`RolesGuard` decorators scattered across the controllers are
-unchanged and remain the actual source of truth for access control today.
-Making the guards actually read from `RolePermissions` at runtime (e.g. a
-`RolesGuard` that falls back to or is replaced by a DB-driven check) is
-deferred future work — similar in scope/risk to the AI Agents trio and
-dynamic tenant isolation already noted below, and should be done
-deliberately since it touches dozens of files across the whole API.
+**Update — now wired into live enforcement.** The matrix is no longer
+configuration-only; it is consulted at request time:
+- A new `@Permission(moduleKey, operationKey)` decorator
+  (`src/api/src/auth/permission.decorator.ts`) marks an endpoint as
+  DB-driven. `RolesGuard` checks `@Permission()` first when present —
+  via `RolePermissionsCacheService` (`src/api/src/auth/
+  role-permissions-cache.service.ts`, a 30s in-memory cache of
+  `RolePermissions`, invalidated immediately on every
+  `PermissionsService.saveMatrix()` write) — and that check REPLACES the
+  static `@Roles()` array for that endpoint, so toggling a grant off for a
+  role actually blocks it, live, on the very next request. An endpoint
+  with no `@Permission()` still falls back to its old `@Roles()` check
+  unchanged (additive rollout, not a rewrite of every guard at once).
+- Applied to the mutation endpoints (create/edit/delete/import/export)
+  across `agencies`, `users` (the pure admin-management endpoints only —
+  `findOne`/`update`/`unlock`/`scope` keep their own "self or admin" logic
+  since that isn't expressible as a single module grant),
+  `universities`, `institutions`, `courses` (+ the new `programs`
+  sub-routes), `course_topics`, `pages`, `forms`, and `audit_log`. Pure
+  read/list endpoints that were already opened to any authenticated role
+  were deliberately left alone (lower risk, and already matches the
+  seeded `view` grants). `evaluations`' mixed self/role endpoints were
+  left on `@Roles()` for the same reason as the `users` exceptions above.
+- `GET /permissions/my` — intentionally open to every authenticated role
+  (not just super_admin) — returns the caller's own effective grants as
+  `{ [moduleKey]: { [operationKey]: boolean } }`. The UI's
+  `usePermissions()` hook (`src/ui/src/hooks/usePermissions.ts`) calls it
+  and a `can(moduleKey, operationKey)` check now gates the Import/Export
+  buttons and each bulk-action in `UserManagement.tsx`,
+  `CourseDatabase.tsx`, `UniversitiesManagement.tsx`,
+  `InstitutionsManagement.tsx`, and `AgenciesManagement.tsx` — so a grant
+  toggled off in the matrix both hides the control AND (via the backend
+  `@Permission()` check) blocks the request if it's called anyway.
+  `DataTable` gained a `showExport` prop to let a page actually hide its
+  Export button (it previously always rendered one, falling back to a
+  naive client-side CSV when no `onExport` was given).
+- **Known gap, deliberately out of scope for this pass**: the per-row
+  "+Add new" affordances inside `UniversityInstitutionsList` /
+  `UniversityProgramsList` (the Universities admin page's nested
+  sub-lists) and `CascadingMasterDataSelect.tsx`'s own `canCreate` checks
+  still use their original hardcoded role arrays, not the matrix — the
+  backend endpoints they call now enforce the real `@Permission()` check
+  either way, so this is a UI-polish gap (a disallowed create attempt
+  gets a 403 instead of being hidden), not a security one.
 
 ## Scope-visibility decision (confirmed — updated)
 BU course listings (`findBuCourses`) are now scoped by

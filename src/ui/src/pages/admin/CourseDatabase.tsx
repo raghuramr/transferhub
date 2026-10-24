@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from 'react';
 import { DataTable, type DataTableColumn, type DataTableFilter } from '../../components/ui/DataTable';
 import { CourseTopicsEditor } from '../../components/ui/CourseTopicsEditor';
 import { useAuthStore } from '../../store/auth';
+import { usePermissions } from '../../hooks/usePermissions';
 
 const TOPIC_EDITOR_ROLES = ['super_admin', 'admin', 'faculty'];
 const COURSE_EDITOR_ROLES = ['super_admin', 'admin'];
@@ -181,6 +182,7 @@ export default function CourseDatabase() {
   const role = useAuthStore((s) => s.user?.role);
   const canEditTopics = !!role && TOPIC_EDITOR_ROLES.includes(role);
   const canEditCourse = !!role && COURSE_EDITOR_ROLES.includes(role);
+  const { can } = usePermissions();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importResult, setImportResult] = useState<{ created: number; updated: number; errors?: unknown[] } | null>(null);
@@ -258,14 +260,18 @@ export default function CourseDatabase() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
-          <button
-            onClick={handleImportClick}
-            disabled={importing}
-            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-60"
-          >
-            <Upload size={14} /> {importing ? 'Importing…' : 'Import CSV'}
-          </button>
+          {can('courses', 'import') && (
+            <>
+              <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
+              <button
+                onClick={handleImportClick}
+                disabled={importing}
+                className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-60"
+              >
+                <Upload size={14} /> {importing ? 'Importing…' : 'Import CSV'}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -285,22 +291,31 @@ export default function CourseDatabase() {
         isLoading={isLoading}
         emptyMessage="No courses found."
         onExport={() => coursesApi.export().then((res) => downloadBlob(res.data, 'courses.csv'))}
+        showExport={can('courses', 'export')}
         bulkActions={[
-          {
-            label: 'Activate',
-            onClick: async (selected) => {
-              await Promise.all(selected.map((row) => coursesApi.update(Number(row.id), { isActive: true })));
-              qc.invalidateQueries({ queryKey: ['courses', 'bu'] });
-            },
-          },
-          {
-            label: 'Deactivate',
-            danger: true,
-            onClick: async (selected) => {
-              await Promise.all(selected.map((row) => coursesApi.deactivate(Number(row.id))));
-              qc.invalidateQueries({ queryKey: ['courses', 'bu'] });
-            },
-          },
+          ...(can('courses', 'edit')
+            ? [
+                {
+                  label: 'Activate',
+                  onClick: async (selected: typeof courses) => {
+                    await Promise.all(selected.map((row) => coursesApi.update(Number(row.id), { isActive: true })));
+                    qc.invalidateQueries({ queryKey: ['courses', 'bu'] });
+                  },
+                },
+              ]
+            : []),
+          ...(can('courses', 'delete')
+            ? [
+                {
+                  label: 'Deactivate',
+                  danger: true,
+                  onClick: async (selected: typeof courses) => {
+                    await Promise.all(selected.map((row) => coursesApi.deactivate(Number(row.id))));
+                    qc.invalidateQueries({ queryKey: ['courses', 'bu'] });
+                  },
+                },
+              ]
+            : []),
         ]}
         renderExpanded={(row) => (
           <div>

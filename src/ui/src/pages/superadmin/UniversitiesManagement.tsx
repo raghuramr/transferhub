@@ -4,6 +4,7 @@ import { universitiesApi, institutionsApi, coursesApi } from '../../lib/api';
 import { Building2, Plus, Upload, Power, Globe2, School, GraduationCap } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ImageSourceField } from '../../components/shared/ImageSourceField';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface University {
   id: number;
@@ -450,6 +451,7 @@ function UniversityEditForm({
 
 export default function UniversitiesManagement() {
   const qc = useQueryClient();
+  const { can } = usePermissions();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [createForm, setCreateForm] = useState<UniversityForm>(emptyForm);
@@ -539,7 +541,7 @@ export default function UniversitiesManagement() {
       render: (u) => (
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-400">Click row to edit</span>
-          {u.isActive && (
+          {u.isActive && can('universities', 'delete') && (
             <button
               onClick={() => deactivateMutation.mutate(u.id)}
               className="flex items-center gap-1 text-xs text-red-500 hover:underline"
@@ -560,19 +562,25 @@ export default function UniversitiesManagement() {
           <h1 className="text-2xl font-bold text-gray-900">Universities</h1>
         </div>
         <div className="flex items-center gap-2">
-          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
-          <button
-            onClick={handleImportClick}
-            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            <Upload size={14} /> Import CSV
-          </button>
-          <button
-            onClick={() => setShowCreatePanel((s) => !s)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
-          >
-            <Plus size={16} /> Add University
-          </button>
+          {can('universities', 'import') && (
+            <>
+              <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
+              <button
+                onClick={handleImportClick}
+                className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                <Upload size={14} /> Import CSV
+              </button>
+            </>
+          )}
+          {can('universities', 'create') && (
+            <button
+              onClick={() => setShowCreatePanel((s) => !s)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
+            >
+              <Plus size={16} /> Add University
+            </button>
+          )}
         </div>
       </div>
 
@@ -631,17 +639,15 @@ export default function UniversitiesManagement() {
           },
         ]}
         bulkActions={[
-          {
-            label: 'Activate',
-            onClick: (selected) => bulkActivateMutation.mutate(selected.map((u) => u.id)),
-          },
-          {
-            label: 'Deactivate',
-            onClick: (selected) => bulkDeactivateMutation.mutate(selected.map((u) => u.id)),
-            danger: true,
-          },
+          ...(can('universities', 'edit')
+            ? [{ label: 'Activate', onClick: (selected: University[]) => bulkActivateMutation.mutate(selected.map((u) => u.id)) }]
+            : []),
+          ...(can('universities', 'delete')
+            ? [{ label: 'Deactivate', onClick: (selected: University[]) => bulkDeactivateMutation.mutate(selected.map((u) => u.id)), danger: true }]
+            : []),
         ]}
         onExport={() => handleExport()}
+        showExport={can('universities', 'export')}
         emptyMessage="No universities found."
         autoExpandId={justCreatedId}
         renderExpanded={(u) => (

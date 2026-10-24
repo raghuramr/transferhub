@@ -4,6 +4,7 @@ import { institutionsApi, universitiesApi } from '../../lib/api';
 import { School, Plus, Upload, Power } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ImageSourceField } from '../../components/shared/ImageSourceField';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface Institution {
   id: number;
@@ -156,6 +157,7 @@ function InstitutionEditForm({
 
 export default function InstitutionsManagement() {
   const qc = useQueryClient();
+  const { can } = usePermissions();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [createForm, setCreateForm] = useState<InstitutionForm>(emptyForm);
@@ -252,7 +254,7 @@ export default function InstitutionsManagement() {
       render: (i) => (
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-400">Click row to edit</span>
-          {i.isActive && (
+          {i.isActive && can('institutions', 'delete') && (
             <button
               onClick={() => deactivateMutation.mutate(i.id)}
               className="flex items-center gap-1 text-xs text-red-500 hover:underline"
@@ -284,19 +286,25 @@ export default function InstitutionsManagement() {
             />
             Unmapped only
           </label>
-          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
-          <button
-            onClick={handleImportClick}
-            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            <Upload size={14} /> Import CSV
-          </button>
-          <button
-            onClick={() => setShowCreatePanel((s) => !s)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
-          >
-            <Plus size={16} /> Add Institution
-          </button>
+          {can('institutions', 'import') && (
+            <>
+              <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
+              <button
+                onClick={handleImportClick}
+                className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                <Upload size={14} /> Import CSV
+              </button>
+            </>
+          )}
+          {can('institutions', 'create') && (
+            <button
+              onClick={() => setShowCreatePanel((s) => !s)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
+            >
+              <Plus size={16} /> Add Institution
+            </button>
+          )}
         </div>
       </div>
 
@@ -359,17 +367,15 @@ export default function InstitutionsManagement() {
           },
         ]}
         bulkActions={[
-          {
-            label: 'Activate',
-            onClick: (selected) => bulkActivateMutation.mutate(selected.map((i) => i.id)),
-          },
-          {
-            label: 'Deactivate',
-            onClick: (selected) => bulkDeactivateMutation.mutate(selected.map((i) => i.id)),
-            danger: true,
-          },
+          ...(can('institutions', 'edit')
+            ? [{ label: 'Activate', onClick: (selected: Institution[]) => bulkActivateMutation.mutate(selected.map((i) => i.id)) }]
+            : []),
+          ...(can('institutions', 'delete')
+            ? [{ label: 'Deactivate', onClick: (selected: Institution[]) => bulkDeactivateMutation.mutate(selected.map((i) => i.id)), danger: true }]
+            : []),
         ]}
         onExport={() => handleExport()}
+        showExport={can('institutions', 'export')}
         emptyMessage="No institutions found."
         renderExpanded={(i) => (
           <InstitutionEditForm

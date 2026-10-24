@@ -16,6 +16,7 @@ import { UpsertFormDto, SubmitFormDto, DecideSubmissionDto } from './dto/upsert-
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Permission } from '../auth/permission.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 @Controller('forms')
@@ -44,21 +45,21 @@ export class FormsController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('forms', 'create')
   create(@Body() dto: UpsertFormDto, @Req() req: AuthenticatedRequest) {
     return this.formsService.create(dto, req.user.id);
   }
 
   @Put(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('forms', 'edit')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpsertFormDto) {
     return this.formsService.update(id, dto);
   }
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('super_admin')
+  @Permission('forms', 'delete')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.formsService.remove(id);
   }

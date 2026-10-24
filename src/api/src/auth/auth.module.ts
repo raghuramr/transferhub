@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { LocalStrategy } from './local.strategy';
 import { RolesGuard } from './roles.guard';
+import { RolePermissionsCacheService } from './role-permissions-cache.service';
 
 @Module({
   imports: [
@@ -20,8 +21,8 @@ import { RolesGuard } from './roles.guard';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, LocalStrategy, RolesGuard],
+  providers: [AuthService, JwtStrategy, LocalStrategy, RolesGuard, RolePermissionsCacheService],
   controllers: [AuthController],
-  exports: [AuthService, JwtModule, RolesGuard],
+  exports: [AuthService, JwtModule, RolesGuard, RolePermissionsCacheService],
 })
 export class AuthModule {}

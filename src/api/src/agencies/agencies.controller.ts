@@ -10,15 +10,19 @@ import { CreateAgencyDto } from './dto/create-agency.dto';
 import { UpdateAgencyDto } from './dto/update-agency.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { Permission } from '../auth/permission.decorator';
 
+// Every endpoint is gated by the Roles & Permissions matrix (`agencies`
+// module) instead of a static @Roles() array, so toggling a grant off for
+// a role actually restricts it. See database/seed/011_roles_permissions.sql
+// for the starting grant set and CLAUDE.md for the design.
 @Controller('agencies')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin', 'super_admin')
 export class AgenciesController {
   constructor(private agenciesService: AgenciesService) {}
 
   @Get()
+  @Permission('agencies', 'view')
   findAll(@Query('search') search?: string, @Query('isActive') isActive?: string) {
     return this.agenciesService.findAll({
       search,
@@ -27,6 +31,7 @@ export class AgenciesController {
   }
 
   @Get('export')
+  @Permission('agencies', 'export')
   async exportCsv(@Res() res: Response) {
     const csv = await this.agenciesService.exportCsv();
     res.setHeader('Content-Type', 'text/csv');
@@ -35,16 +40,19 @@ export class AgenciesController {
   }
 
   @Get(':id')
+  @Permission('agencies', 'view')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.agenciesService.findById(id);
   }
 
   @Post()
+  @Permission('agencies', 'create')
   create(@Body() dto: CreateAgencyDto) {
     return this.agenciesService.create(dto);
   }
 
   @Post('import')
+  @Permission('agencies', 'import')
   @UseInterceptors(FileInterceptor('file'))
   async importCsv(@UploadedFile() file: UploadedFileLike) {
     if (!file) throw new BadRequestException('No file uploaded');
@@ -52,11 +60,13 @@ export class AgenciesController {
   }
 
   @Patch(':id')
+  @Permission('agencies', 'edit')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateAgencyDto) {
     return this.agenciesService.update(id, dto);
   }
 
   @Delete(':id')
+  @Permission('agencies', 'delete')
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.agenciesService.deactivate(id);
   }

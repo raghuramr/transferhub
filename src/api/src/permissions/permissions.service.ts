@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
+import { RolePermissionsCacheService } from '../auth/role-permissions-cache.service';
 
 interface ModuleRow {
   Id: number;
@@ -56,7 +57,10 @@ export interface MatrixUpsert {
 
 @Injectable()
 export class PermissionsService {
-  constructor(private db: DatabaseService) {}
+  constructor(
+    private db: DatabaseService,
+    private permissionsCache: RolePermissionsCacheService,
+  ) {}
 
   async findModules() {
     const res = await this.db.query<ModuleRow>(
@@ -117,6 +121,31 @@ export class PermissionsService {
     return { roles, modules, operations, entries };
   }
 
+  /**
+   * The calling user's own effective grants, as a nested
+   * { [moduleKey]: { [operationKey]: boolean } } map — used by the UI to
+   * show/hide import/export/bulk-action controls per the live matrix,
+   * instead of a hardcoded role check. Mirrors what RolesGuard's
+   * @Permission() checks enforce server-side (see role-permissions-cache.service.ts).
+   */
+  async findMyPermissions(roleName: string) {
+    const res = await this.db.query<{ ModuleKey: string; OperationKey: string }>(
+      `SELECT m.[Key] AS ModuleKey, o.[Key] AS OperationKey
+       FROM RolePermissions rp
+       JOIN Roles r ON r.Id = rp.RoleId
+       JOIN PermissionModules m ON m.Id = rp.ModuleId
+       JOIN PermissionOperations o ON o.Id = rp.OperationId
+       WHERE rp.IsAllowed = 1 AND r.Name = @roleName`,
+      [{ name: 'roleName', type: sql.VarChar(20), value: roleName }],
+    );
+    const grants: Record<string, Record<string, boolean>> = {};
+    for (const row of res.recordset) {
+      grants[row.ModuleKey] ??= {};
+      grants[row.ModuleKey][row.OperationKey] = true;
+    }
+    return grants;
+  }
+
   /** Bulk upsert — applies each {roleId, moduleId, operationId, isAllowed}. */
   async saveMatrix(updates: MatrixUpsert[]) {
     for (const u of updates) {
@@ -135,6 +164,7 @@ export class PermissionsService {
         ],
       );
     }
+    this.permissionsCache.invalidate();
     return { updated: updates.length };
   }
 }

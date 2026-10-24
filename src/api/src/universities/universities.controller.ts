@@ -10,6 +10,7 @@ import { UpdateUniversityDto } from './dto/update-university.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Permission } from '../auth/permission.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 
@@ -32,7 +33,7 @@ export class UniversitiesController {
 
   @Get('export')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('universities', 'export')
   async exportCsv(@Res() res: Response) {
     const csv = await this.universitiesService.exportCsv();
     res.setHeader('Content-Type', 'text/csv');
@@ -47,14 +48,14 @@ export class UniversitiesController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('universities', 'create')
   create(@Body() dto: CreateUniversityDto) {
     return this.universitiesService.create(dto);
   }
 
   @Post('import')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('universities', 'import')
   @UseInterceptors(FileInterceptor('file'))
   async importCsv(@UploadedFile() file: UploadedFileLike) {
     if (!file) throw new BadRequestException('No file uploaded');
@@ -63,14 +64,14 @@ export class UniversitiesController {
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('universities', 'edit')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUniversityDto) {
     return this.universitiesService.update(id, dto);
   }
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('universities', 'delete')
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.universitiesService.deactivate(id);
   }

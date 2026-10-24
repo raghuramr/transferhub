@@ -10,6 +10,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Permission } from '../auth/permission.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 
@@ -19,7 +20,7 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  @Roles('admin', 'super_admin')
+  @Permission('users', 'view')
   findAll(@Query('role') role?: string, @Query('isActive') isActive?: string) {
     return this.usersService.findAll({
       role,
@@ -28,7 +29,7 @@ export class UsersController {
   }
 
   @Get('export')
-  @Roles('admin', 'super_admin')
+  @Permission('users', 'export')
   async exportCsv(@Res() res: Response) {
     const csv = await this.usersService.exportCsv();
     res.setHeader('Content-Type', 'text/csv');
@@ -37,7 +38,7 @@ export class UsersController {
   }
 
   @Post('import')
-  @Roles('super_admin')
+  @Permission('users', 'import')
   @UseInterceptors(FileInterceptor('file'))
   async importCsv(@UploadedFile() file: UploadedFileLike, @Req() req: AuthenticatedRequest) {
     if (!file) throw new BadRequestException('No file uploaded');
@@ -55,7 +56,7 @@ export class UsersController {
   }
 
   @Post()
-  @Roles('super_admin')
+  @Permission('users', 'create')
   create(@Body() dto: CreateUserDto, @Req() req: AuthenticatedRequest) {
     return this.usersService.create(dto, req.user.id);
   }
@@ -74,7 +75,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @Roles('super_admin')
+  @Permission('users', 'delete')
   deactivate(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.usersService.deactivate(id, req.user.id);
   }

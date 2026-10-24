@@ -10,7 +10,7 @@ import { CreateProgramDto } from './dto/create-program.dto';
 import { UpdateProgramDto } from './dto/update-program.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { Permission } from '../auth/permission.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 
@@ -64,21 +64,21 @@ export class CoursesController {
 
   @Post('programs')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('programs', 'create')
   createProgram(@Body() dto: CreateProgramDto) {
     return this.coursesService.createProgram(dto);
   }
 
   @Patch('programs/:id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('programs', 'edit')
   updateProgram(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProgramDto) {
     return this.coursesService.updateProgram(id, dto);
   }
 
   @Delete('programs/:id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('programs', 'delete')
   deactivateProgram(@Param('id', ParseIntPipe) id: number) {
     return this.coursesService.deactivateProgram(id);
   }
@@ -96,7 +96,7 @@ export class CoursesController {
 
   @Get('export')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('courses', 'export')
   async exportCsv(@Res() res: Response) {
     const csv = await this.coursesService.exportCsv();
     res.setHeader('Content-Type', 'text/csv');
@@ -106,7 +106,7 @@ export class CoursesController {
 
   @Post('import')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('courses', 'import')
   @UseInterceptors(FileInterceptor('file'))
   async importCsv(@UploadedFile() file: UploadedFileLike) {
     if (!file) throw new BadRequestException('No file uploaded');
@@ -120,21 +120,21 @@ export class CoursesController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('courses', 'create')
   create(@Body() dto: CreateCourseDto) {
     return this.coursesService.create(dto);
   }
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('courses', 'edit')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: Partial<CreateCourseDto>) {
     return this.coursesService.update(id, dto);
   }
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'super_admin')
+  @Permission('courses', 'delete')
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.coursesService.deactivate(id);
   }

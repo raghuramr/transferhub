@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { agenciesApi } from '../../lib/api';
 import { Handshake, Plus, Upload, Power } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface Agency {
   id: number;
@@ -91,6 +92,7 @@ function AgencyEditForm({
 
 export default function AgenciesManagement() {
   const qc = useQueryClient();
+  const { can } = usePermissions();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addForm, setAddForm] = useState<AgencyForm>(emptyForm);
@@ -166,7 +168,7 @@ export default function AgenciesManagement() {
       header: 'Actions',
       render: (a) => (
         <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-          {a.isActive && (
+          {a.isActive && can('agencies', 'delete') && (
             <button
               onClick={() => deactivateMutation.mutate(a.id)}
               className="flex items-center gap-1 text-xs text-red-500 hover:underline"
@@ -187,22 +189,28 @@ export default function AgenciesManagement() {
           <h1 className="text-2xl font-bold text-gray-900">Agencies</h1>
         </div>
         <div className="flex items-center gap-2">
-          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
-          <button
-            onClick={handleImportClick}
-            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            <Upload size={14} /> Import CSV
-          </button>
-          <button
-            onClick={() => {
-              setAddForm(emptyForm);
-              setShowAddPanel((v) => !v);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
-          >
-            <Plus size={16} /> Add Agency
-          </button>
+          {can('agencies', 'import') && (
+            <>
+              <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
+              <button
+                onClick={handleImportClick}
+                className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                <Upload size={14} /> Import CSV
+              </button>
+            </>
+          )}
+          {can('agencies', 'create') && (
+            <button
+              onClick={() => {
+                setAddForm(emptyForm);
+                setShowAddPanel((v) => !v);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
+            >
+              <Plus size={16} /> Add Agency
+            </button>
+          )}
         </div>
       </div>
 
@@ -247,17 +255,15 @@ export default function AgenciesManagement() {
           },
         ]}
         bulkActions={[
-          {
-            label: 'Activate',
-            onClick: (selected) => bulkActivateMutation.mutate(selected.map((a) => a.id)),
-          },
-          {
-            label: 'Deactivate',
-            onClick: (selected) => bulkDeactivateMutation.mutate(selected.map((a) => a.id)),
-            danger: true,
-          },
+          ...(can('agencies', 'edit')
+            ? [{ label: 'Activate', onClick: (selected: Agency[]) => bulkActivateMutation.mutate(selected.map((a) => a.id)) }]
+            : []),
+          ...(can('agencies', 'delete')
+            ? [{ label: 'Deactivate', onClick: (selected: Agency[]) => bulkDeactivateMutation.mutate(selected.map((a) => a.id)), danger: true }]
+            : []),
         ]}
         onExport={() => handleExport()}
+        showExport={can('agencies', 'export')}
         emptyMessage="No agencies found."
         renderExpanded={(a) => (
           <AgencyEditForm

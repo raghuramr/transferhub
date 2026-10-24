@@ -244,11 +244,13 @@ export const formsApi = {
     api.post(`/forms/submissions/${submissionId}/decide`, data),
 };
 
-// ── Roles & Permissions master-data endpoints (super_admin only) ─
+// ── Roles & Permissions master-data endpoints (super_admin only, except `my`) ─
 export const permissionsApi = {
   getModules: () => api.get('/permissions/modules'),
   getOperations: () => api.get('/permissions/operations'),
   getMatrix: () => api.get('/permissions/matrix'),
   saveMatrix: (entries: { roleId: number; moduleId: number; operationId: number; isAllowed: boolean }[]) =>
     api.put('/permissions/matrix', { entries }),
+  /** The logged-in user's own effective grants: { [moduleKey]: { [operationKey]: boolean } }. */
+  my: () => api.get<Record<string, Record<string, boolean>>>('/permissions/my'),
 };

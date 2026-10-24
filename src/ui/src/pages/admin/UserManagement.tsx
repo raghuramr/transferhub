@@ -4,6 +4,7 @@ import { usersApi, api } from '../../lib/api';
 import { Users, UserPlus, Lock, Unlock, MapPin, Upload, Download } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { UniversityInstitutionTree } from '../../components/ui/UniversityInstitutionTree';
+import { usePermissions } from '../../hooks/usePermissions';
 
 const roleColors: Record<string, string> = {
   student:     'bg-blue-100 text-blue-700',
@@ -398,6 +399,7 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
 
 export default function UserManagement() {
   const qc = useQueryClient();
+  const { can } = usePermissions();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ email: '', firstName: '', lastName: '', role: 'student', password: '' });
@@ -505,26 +507,34 @@ export default function UserManagement() {
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
         </div>
         <div className="flex items-center gap-2">
-          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
-          <button
-            onClick={handleImportClick}
-            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            <Upload size={14} /> Import CSV
-          </button>
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            <Download size={14} /> Export CSV
-          </button>
-          <button
-            onClick={() => setShowCreate((s) => !s)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
-          >
-            <UserPlus size={16} />
-            Add User
-          </button>
+          {can('users', 'import') && (
+            <>
+              <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
+              <button
+                onClick={handleImportClick}
+                className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                <Upload size={14} /> Import CSV
+              </button>
+            </>
+          )}
+          {can('users', 'export') && (
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              <Download size={14} /> Export CSV
+            </button>
+          )}
+          {can('users', 'create') && (
+            <button
+              onClick={() => setShowCreate((s) => !s)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
+            >
+              <UserPlus size={16} />
+              Add User
+            </button>
+          )}
         </div>
       </div>
 
@@ -659,11 +669,16 @@ export default function UserManagement() {
           },
         ]}
         bulkActions={[
-          { label: 'Activate', onClick: bulkActivate },
-          { label: 'Deactivate', onClick: bulkDeactivate, danger: true },
-          { label: 'Assign Role…', onClick: bulkAssignRole },
+          ...(can('users', 'edit')
+            ? [
+                { label: 'Activate', onClick: bulkActivate },
+                { label: 'Assign Role…', onClick: bulkAssignRole },
+              ]
+            : []),
+          ...(can('users', 'delete') ? [{ label: 'Deactivate', onClick: bulkDeactivate, danger: true }] : []),
         ]}
         onExport={() => handleExport()}
+        showExport={can('users', 'export')}
         emptyMessage="No users found."
         renderExpanded={(u) => <EditAndScopePanel user={u} />}
       />
