@@ -8,6 +8,7 @@ import { TRANSCRIPT_STEPS, stepProgressLabel } from '../../components/ui/Transfe
 import {
   Upload, Clock, CheckCircle, AlertCircle, ChevronRight, Users,
 } from 'lucide-react';
+import type { TranscriptSummary } from '../../types';
 
 const statusColor: Record<string, string> = {
   received: 'bg-blue-100 text-blue-700',
@@ -29,12 +30,12 @@ export default function AgencyDashboard() {
     queryFn: () => transcriptsApi.list(),
   });
 
-  const transcripts = (data?.data as any) ?? [];
-  const inProgress = transcripts.filter((t: any) => t.status !== 'complete').length;
-  const completed = transcripts.filter((t: any) => t.status === 'complete').length;
+  const transcripts: TranscriptSummary[] = data?.data ?? [];
+  const inProgress = transcripts.filter((t) => t.status !== 'complete').length;
+  const completed = transcripts.filter((t) => t.status === 'complete').length;
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
@@ -111,7 +112,7 @@ export default function AgencyDashboard() {
           </div>
         )}
 
-        {transcripts.map((t: any) => {
+        {transcripts.map((t) => {
           const stepLabel = stepProgressLabel(t.status, TRANSCRIPT_STEPS);
           return (
             <Link

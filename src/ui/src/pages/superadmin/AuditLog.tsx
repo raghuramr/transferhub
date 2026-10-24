@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { ScrollText } from 'lucide-react';
 import { DataTable, type DataTableColumn, type DataTableFilter } from '../../components/ui/DataTable';
+import type { PagedResult } from '../../types';
 
 interface AuditRow {
   id: string | number;
@@ -20,10 +21,10 @@ export default function AuditLog() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['audit', page],
-    queryFn: () => api.get('/audit', { params: { page, pageSize: 25 } }),
+    queryFn: () => api.get<PagedResult<AuditRow>>('/audit', { params: { page, pageSize: 25 } }),
   });
 
-  const result = data?.data as any;
+  const result = data?.data;
   const logs: AuditRow[] = result?.data ?? [];
   const total: number = result?.total ?? 0;
   const pages = Math.ceil(total / 25);
@@ -88,7 +89,7 @@ export default function AuditLog() {
   ];
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 w-[95%] mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <ScrollText className="text-purple-600" size={24} />
         <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>

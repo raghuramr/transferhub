@@ -15,6 +15,8 @@ import { UpsertPageDto } from './dto/upsert-page.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Permission } from '../auth/permission.decorator';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 @Controller('pages')
 export class PagesController {
@@ -53,21 +55,21 @@ export class PagesController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'super_admin')
-  create(@Body() dto: UpsertPageDto, @Req() req: any) {
+  @Permission('pages', 'create')
+  create(@Body() dto: UpsertPageDto, @Req() req: AuthenticatedRequest) {
     return this.pagesService.create(dto, req.user.id);
   }
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'super_admin')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpsertPageDto, @Req() req: any) {
+  @Permission('pages', 'edit')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpsertPageDto, @Req() req: AuthenticatedRequest) {
     return this.pagesService.update(id, dto, req.user.id);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('super_admin')
+  @Permission('pages', 'delete')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.pagesService.remove(id);
   }

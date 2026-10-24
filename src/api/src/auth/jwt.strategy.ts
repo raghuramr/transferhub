@@ -4,7 +4,19 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
 import { JwtPayload } from './jwt-payload.interface';
+import type { AuthenticatedUser } from './authenticated-request.interface';
 import * as sql from 'mssql';
+
+interface JwtUserRow {
+  Id: string;
+  Email: string;
+  FirstName: string;
+  LastName: string;
+  IsActive: boolean;
+  IsLocked: boolean;
+  DepartmentId: number | null;
+  Role: string;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -19,8 +31,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtPayload) {
-    const result = await this.db.query<any>(
+  async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
+    const result = await this.db.query<JwtUserRow>(
       `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.IsActive, u.IsLocked, u.DepartmentId,
               r.Name AS Role
        FROM Users u JOIN Roles r ON r.Id = u.RoleId

@@ -1,9 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { CreateCourseTopicDto, UpdateCourseTopicDto } from './dto/course-topic.dto';
 
-function mapTopic(row: any) {
+interface CourseTopicRow {
+  Id: number;
+  CourseId: number;
+  Title: string;
+  Description: string | null;
+  SortOrder: number;
+  // Deliberately dynamic: a flexible {label, url}[] blob stored as JSON text.
+  ReferenceLinksJson: string | null;
+  CreatedAt: Date;
+  UpdatedAt: Date;
+}
+
+function mapTopic(row: CourseTopicRow, isActiveForUniversity?: boolean) {
   let referenceLinks: { label: string; url: string }[] = [];
   if (row.ReferenceLinksJson) {
     try {
@@ -21,6 +33,11 @@ function mapTopic(row: any) {
     referenceLinks,
     createdAt: row.CreatedAt,
     updatedAt: row.UpdatedAt,
+    // Only present when the caller asked for a specific University's
+    // context (see findByCourse's institutionId param) — absence of a
+    // UniversityTopicStatus row means active, the same "absence = allowed"
+    // convention RolePermissions uses elsewhere in this schema.
+    ...(isActiveForUniversity !== undefined ? { isActiveForUniversity } : {}),
   };
 }
 
@@ -28,17 +45,45 @@ function mapTopic(row: any) {
 export class CourseTopicsService {
   constructor(private db: DatabaseService) {}
 
-  async findByCourse(courseId: number) {
-    const res = await this.db.query<any>(
+  async findByCourse(courseId: number, institutionId?: number) {
+    const res = await this.db.query<CourseTopicRow>(
       `SELECT Id, CourseId, Title, Description, SortOrder, ReferenceLinksJson, CreatedAt, UpdatedAt
        FROM CourseTopics WHERE CourseId = @courseId ORDER BY SortOrder, Id`,
       [{ name: 'courseId', type: sql.Int, value: courseId }],
     );
-    return res.recordset.map(mapTopic);
+    if (institutionId === undefined) {
+      return res.recordset.map((r) => mapTopic(r));
+    }
+    const statusRes = await this.db.query<{ TopicId: number; IsActive: boolean }>(
+      `SELECT TopicId, IsActive FROM UniversityTopicStatus WHERE InstitutionId = @institutionId`,
+      [{ name: 'institutionId', type: sql.Int, value: institutionId }],
+    );
+    const overrides = new Map(statusRes.recordset.map((r) => [r.TopicId, !!r.IsActive]));
+    return res.recordset.map((r) => mapTopic(r, overrides.get(r.Id) ?? true));
+  }
+
+  /** Per-(University, Topic) active/inactive override — absence of a row means active. */
+  async setUniversityStatus(topicId: number, institutionId: number, isActive: boolean, userId?: string) {
+    await this.findById(topicId);
+    await this.db.query(
+      `MERGE UniversityTopicStatus AS target
+       USING (SELECT @institutionId AS InstitutionId, @topicId AS TopicId) AS source
+       ON target.InstitutionId = source.InstitutionId AND target.TopicId = source.TopicId
+       WHEN MATCHED THEN UPDATE SET IsActive = @isActive, UpdatedAt = SYSUTCDATETIME(), UpdatedBy = @userId
+       WHEN NOT MATCHED THEN INSERT (InstitutionId, TopicId, IsActive, UpdatedBy)
+         VALUES (@institutionId, @topicId, @isActive, @userId);`,
+      [
+        { name: 'institutionId', type: sql.Int, value: institutionId },
+        { name: 'topicId', type: sql.Int, value: topicId },
+        { name: 'isActive', type: sql.Bit, value: isActive ? 1 : 0 },
+        { name: 'userId', type: sql.UniqueIdentifier, value: userId ?? null },
+      ],
+    );
+    return { topicId, institutionId, isActive };
   }
 
   async findById(id: number) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<CourseTopicRow>(
       `SELECT Id, CourseId, Title, Description, SortOrder, ReferenceLinksJson, CreatedAt, UpdatedAt
        FROM CourseTopics WHERE Id = @id`,
       [{ name: 'id', type: sql.Int, value: id }],
@@ -48,7 +93,7 @@ export class CourseTopicsService {
   }
 
   async create(courseId: number, dto: CreateCourseTopicDto, userId?: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ Id: number }>(
       `INSERT INTO CourseTopics (CourseId, Title, Description, SortOrder, ReferenceLinksJson, CreatedBy, UpdatedBy)
        OUTPUT inserted.Id
        VALUES (@courseId, @title, @desc, @sortOrder, @links, @createdBy, @createdBy)`,
@@ -67,7 +112,7 @@ export class CourseTopicsService {
   async update(id: number, dto: UpdateCourseTopicDto, userId?: string) {
     await this.findById(id);
     const sets: string[] = ['UpdatedAt = SYSUTCDATETIME()', 'UpdatedBy = @updatedBy'];
-    const inputs: any[] = [
+    const inputs: QueryInput[] = [
       { name: 'id', type: sql.Int, value: id },
       { name: 'updatedBy', type: sql.UniqueIdentifier, value: userId ?? null },
     ];

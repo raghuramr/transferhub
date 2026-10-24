@@ -6,6 +6,7 @@ export class CreateCourseDto {
   @IsString() title: string;
   @IsOptional() @IsString() description?: string;
   @IsNumber() credits: number;
+  @IsOptional() @IsNumber() programId?: number;
   @IsOptional() @IsString() programArea?: string;
   @IsOptional() @IsString() requirementType?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;

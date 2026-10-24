@@ -1,9 +1,12 @@
 -- ============================================================
--- Seed 007 – Agencies, AcademicUnits ("Institutions" in UI), Programs
+-- Seed 006 – Agencies, AcademicUnits ("Institutions" in UI), Programs
 -- ============================================================
 -- Source: BU_Transfer_Program_Course_Match.xlsx, "Programs" sheet.
 -- "BU school" / "NU college" / "NYU school" columns become AcademicUnits
 -- rows, FK'd to the matching University (existing Institutions table).
+-- Unchanged from the original seed/007_agencies_academicunits_programs.sql
+-- (already idempotent via MERGE / WHERE NOT EXISTS).
+-- ============================================================
 USE CreditEvalManager;
 GO
 

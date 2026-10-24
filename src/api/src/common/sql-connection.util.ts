@@ -22,6 +22,8 @@
  * "ODBC Driver 18 for SQL Server" — set DB_ODBC_DRIVER in .env to match.
  */
 
+import type * as sql from 'mssql';
+
 export interface SqlConnectionOptions {
   driver: string;              // 'tedious' (default) | 'msnodesqlv8'
   server: string;
@@ -36,7 +38,12 @@ export interface SqlConnectionOptions {
 
 export const DEFAULT_ODBC_DRIVER = 'ODBC Driver 17 for SQL Server';
 
-export function buildSqlConfig(opts: SqlConnectionOptions): any {
+/** Connection-string form used for the msnodesqlv8/ODBC driver. */
+export interface OdbcConnectionConfig {
+  connectionString: string;
+}
+
+export function buildSqlConfig(opts: SqlConnectionOptions): sql.config | OdbcConnectionConfig {
   if (opts.driver === 'msnodesqlv8') {
     const odbcDriver = opts.odbcDriver || DEFAULT_ODBC_DRIVER;
     const parts = [
@@ -65,7 +72,7 @@ export function buildSqlConfig(opts: SqlConnectionOptions): any {
   }
 
   // ── tedious (TCP-only) ──────────────────────────────────────
-  const config: any = {
+  const config: sql.config = {
     server: opts.server,
     database: opts.database,
     options: {
@@ -82,7 +89,12 @@ export function buildSqlConfig(opts: SqlConnectionOptions): any {
   return config;
 }
 
-/** Loads the correct `mssql` entrypoint for the chosen driver. */
+/**
+ * Loads the correct `mssql` entrypoint for the chosen driver. Both branches
+ * return the same `mssql` module shape (just backed by a different native
+ * driver), but there's no exported type for "the mssql module object"
+ * itself — left as `any` deliberately, same as the package's own `require`.
+ */
 export function loadSqlDriver(driver: string): any {
   if (driver === 'msnodesqlv8') {
     // eslint-disable-next-line @typescript-eslint/no-var-requires

@@ -4,13 +4,45 @@ import Anthropic from '@anthropic-ai/sdk';
 import { DatabaseService } from '../database/database.service';
 import * as sql from 'mssql';
 
-interface CourseMatchResult {
+export interface CourseMatchResult {
   buCourseId: number;
   buCode: string;
   buTitle: string;
   rank: number;
   confidenceScore: number;
   rationale: string;
+}
+
+interface ExternalCourseRow {
+  EvalId: string;
+  TcId: string;
+  CourseCode: string;
+  CourseTitle: string;
+  OriginalCredits: number | null;
+  NormalisedCredits: number | null;
+  InstitutionName: string;
+  Calendar: string | null;
+}
+
+interface BuCourseRow {
+  Id: number;
+  Code: string;
+  Title: string;
+  Credits: number;
+  ProgramArea: string | null;
+  Description: string | null;
+}
+
+interface TranscriptSummaryRow {
+  Id: string;
+  Status: string;
+  StudentName: string;
+  InstitutionName: string;
+  TotalCourses: number;
+  Applied: number;
+  Pending: number;
+  NotEligible: number;
+  Elective: number;
 }
 
 const AUTO_LIKELY_THRESHOLD = 0.75;
@@ -30,7 +62,7 @@ export class AiService {
   }
 
   async matchCourse(evaluationId: string, requestedByUserId: string): Promise<CourseMatchResult[]> {
-    const evalRes = await this.db.query<any>(
+    const evalRes = await this.db.query<ExternalCourseRow>(
       `SELECT e.Id AS EvalId, tc.Id AS TcId, tc.CourseCode, tc.CourseTitle,
               tc.OriginalCredits, tc.NormalisedCredits,
               i.Name AS InstitutionName, i.Calendar
@@ -44,7 +76,7 @@ export class AiService {
     if (!evalRes.recordset[0]) throw new NotFoundException('Evaluation not found');
     const extCourse = evalRes.recordset[0];
 
-    const buRes = await this.db.query<any>(
+    const buRes = await this.db.query<BuCourseRow>(
       `SELECT c.Id, c.Code, c.Title, c.Credits, c.ProgramArea, c.Description
        FROM Courses c
        JOIN Institutions i ON i.Id = c.InstitutionId
@@ -66,7 +98,7 @@ EXTERNAL COURSE:
 - Credits: ${extCourse.NormalisedCredits ?? extCourse.OriginalCredits}
 
 BU COURSE CATALOG (${buCourses.length} courses):
-${buCourses.map((c: any) => `[ID:${c.Id}] ${c.Code} - ${c.Title} (${c.Credits} cr) | ${c.ProgramArea || 'N/A'} | ${c.Description ? c.Description.substring(0, 100) : 'No description'}`).join('\n')}
+${buCourses.map((c) => `[ID:${c.Id}] ${c.Code} - ${c.Title} (${c.Credits} cr) | ${c.ProgramArea || 'N/A'} | ${c.Description ? c.Description.substring(0, 100) : 'No description'}`).join('\n')}
 
 Return a JSON array of exactly 3 objects with this structure:
 [
@@ -95,7 +127,8 @@ Rank by confidence (highest first). If fewer than 3 good matches exist, still re
     let candidates: CourseMatchResult[];
 
     try {
-      candidates = JSON.parse(responseText);
+      // Model output parsed as JSON — deliberately dynamic until validated below.
+      candidates = JSON.parse(responseText) as CourseMatchResult[];
     } catch (e) {
       this.logger.error(`Failed to parse AI response: ${responseText}`);
       throw new Error('AI returned invalid response');
@@ -117,7 +150,7 @@ Rank by confidence (highest first). If fewer than 3 good matches exist, still re
           { name: 'score', type: sql.Decimal(5, 4), value: candidate.confidenceScore },
           { name: 'rationale', type: sql.NVarChar(sql.MAX), value: candidate.rationale },
         ],
-      ).catch(err => this.logger.error(`Failed to store candidate ${candidate.buCourseId}: ${err.message}`));
+      ).catch((err: Error) => this.logger.error(`Failed to store candidate ${candidate.buCourseId}: ${err.message}`));
     }
 
     const top = [...candidates].sort((a, b) => a.rank - b.rank)[0];
@@ -152,7 +185,7 @@ Rank by confidence (highest first). If fewer than 3 good matches exist, still re
   }
 
   async generateSummary(transcriptId: string): Promise<string> {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<TranscriptSummaryRow>(
       `SELECT t.Id, t.Status,
               u.FirstName + ' ' + u.LastName AS StudentName,
               i.Name AS InstitutionName,

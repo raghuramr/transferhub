@@ -9,6 +9,7 @@ import {
   Upload, Clock, CheckCircle, AlertCircle, ChevronRight, GraduationCap
 } from 'lucide-react';
 import { TRANSCRIPT_STEPS, stepProgressLabel } from '../../components/ui/TransferWorkflowStepper';
+import type { TranscriptSummary } from '../../types';
 
 const statusColor: Record<string, string> = {
   received: 'bg-blue-100 text-blue-700',
@@ -41,10 +42,10 @@ export default function StudentDashboard() {
     queryFn: () => transcriptsApi.list({ mine: true }),
   });
 
-  const transcripts = (data?.data as any) ?? [];
+  const transcripts: TranscriptSummary[] = data?.data ?? [];
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
@@ -75,7 +76,7 @@ export default function StudentDashboard() {
           </div>
           <div>
             <p className="font-semibold text-gray-900">
-              {transcripts.filter((t: any) => t.status !== 'complete').length}
+              {transcripts.filter((t) => t.status !== 'complete').length}
             </p>
             <p className="text-sm text-gray-500">In progress</p>
           </div>
@@ -87,7 +88,7 @@ export default function StudentDashboard() {
           </div>
           <div>
             <p className="font-semibold text-gray-900">
-              {transcripts.filter((t: any) => t.status === 'complete').length}
+              {transcripts.filter((t) => t.status === 'complete').length}
             </p>
             <p className="text-sm text-gray-500">Completed</p>
           </div>
@@ -124,7 +125,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {transcripts.map((t: any) => {
+        {transcripts.map((t) => {
           const stepLabel = stepProgressLabel(t.status, TRANSCRIPT_STEPS);
           return (
           <Link
@@ -150,7 +151,7 @@ export default function StudentDashboard() {
               {t.courses && (
                 <div className="flex gap-3 mt-2 flex-wrap">
                   {Object.entries(
-                    (t.courses as any[]).reduce((acc: Record<string, number>, c: any) => {
+                    t.courses.reduce((acc: Record<string, number>, c) => {
                       acc[c.lane] = (acc[c.lane] ?? 0) + 1;
                       return acc;
                     }, {}),

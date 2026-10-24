@@ -21,19 +21,19 @@ export default function TranscriptStatus() {
     refetchInterval: 30_000,
   });
 
-  const transcript = data?.data as any;
+  const transcript = data?.data;
 
   if (isLoading) return <div className="p-8 text-center text-gray-400">Loading…</div>;
   if (error || !transcript) return <div className="p-8 text-center text-red-500">Failed to load transcript.</div>;
 
   const total = transcript.courses?.length ?? 0;
-  const applied = transcript.courses?.filter((c: any) => c.lane === 'applied').length ?? 0;
+  const applied = transcript.courses?.filter((c) => c.lane === 'applied').length ?? 0;
   const credits = transcript.courses
-    ?.filter((c: any) => c.lane === 'applied')
-    .reduce((sum: number, c: any) => sum + (c.normalisedCredits ?? c.originalCredits ?? 0), 0) ?? 0;
+    ?.filter((c) => c.lane === 'applied')
+    .reduce((sum, c) => sum + (c.normalisedCredits ?? c.originalCredits ?? 0), 0) ?? 0;
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
@@ -51,7 +51,7 @@ export default function TranscriptStatus() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {[
           { label: 'Total courses', value: total },
           { label: 'Auto-applied', value: applied },
@@ -70,7 +70,7 @@ export default function TranscriptStatus() {
           <h2 className="font-semibold text-gray-900">Course Evaluation Status</h2>
         </div>
         <div className="divide-y divide-gray-50">
-          {transcript.courses?.map((course: any) => {
+          {transcript.courses?.map((course) => {
             const cfg = laneConfig[course.lane] ?? laneConfig.pending;
             return (
               <div key={course.id} className="px-6 py-4 flex items-start gap-4">

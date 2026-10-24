@@ -1,8 +1,10 @@
 import {
   Controller, Post, Get, Body, Req, UseGuards, HttpCode, HttpStatus,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import type { AuthenticatedRequest } from './authenticated-request.interface';
 import { IsEmail, IsString, MinLength } from 'class-validator';
 
 class LoginDto {
@@ -18,13 +20,18 @@ class LogoutDto {
   @IsString() refreshToken: string;
 }
 
+class ChangePasswordDto {
+  @IsString() currentPassword: string;
+  @IsString() @MinLength(8) newPassword: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto, @Req() req: any) {
+  async login(@Body() dto: LoginDto, @Req() req: Request) {
     const ip = req.ip || req.connection?.remoteAddress;
     const userAgent = req.headers['user-agent'];
     const user = await this.authService.validateUser(dto.email, dto.password, ip, userAgent);
@@ -40,14 +47,22 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Body() dto: LogoutDto, @Req() req: any) {
+  async logout(@Body() dto: LogoutDto, @Req() req: AuthenticatedRequest) {
     await this.authService.logout(req.user.id, dto.refreshToken);
     return { message: 'Logged out successfully' };
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async me(@Req() req: any) {
+  async me(@Req() req: AuthenticatedRequest) {
     return this.authService.me(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(@Body() dto: ChangePasswordDto, @Req() req: AuthenticatedRequest) {
+    await this.authService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
+    return { message: 'Password changed successfully' };
   }
 }

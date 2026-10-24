@@ -1,5 +1,12 @@
 -- ============================================================
--- Migration 005 – Useful views and stored procedures
+-- Migration 005 – Views and stored procedures
+-- ============================================================
+-- Must run after all tables it references exist (Institutions, Courses,
+-- Programs, Equivalencies, Users, Departments, Transcripts,
+-- TranscriptCourses, Evaluations, AIMatchCandidates, AuditLog).
+-- CREATE OR ALTER VIEW / PROCEDURE is naturally idempotent — no IF-EXISTS
+-- gymnastics needed. Content unchanged from the original
+-- 005_views_and_procedures.sql.
 -- ============================================================
 USE CreditEvalManager;
 GO

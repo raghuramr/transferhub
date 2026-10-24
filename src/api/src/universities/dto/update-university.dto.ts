@@ -8,4 +8,6 @@ export class UpdateUniversityDto {
   @IsOptional() @IsBoolean() isBU?: boolean;
   @IsOptional() @IsString() source?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsString() logoUrl?: string;
+  @IsOptional() @IsString() heroImageUrl?: string;
 }

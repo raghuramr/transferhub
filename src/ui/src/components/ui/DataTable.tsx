@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Search, ArrowUp, ArrowDown, Download } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Search, ArrowUp, ArrowDown, Download, ChevronDown, ChevronRight } from 'lucide-react';
 
 export interface DataTableColumn<T> {
   key: string;
@@ -23,12 +23,23 @@ interface DataTableProps<T extends { id: string | number }> {
   filters?: DataTableFilter[];
   bulkActions?: { label: string; onClick: (selected: T[]) => void; danger?: boolean }[];
   onExport?: (rows: T[]) => void;
+  /** Hide the Export button entirely (e.g. the caller's role lacks the 'export' permission). Default true. */
+  showExport?: boolean;
   isLoading?: boolean;
   emptyMessage?: string;
+  /**
+   * Renders inline, directly under a row, when that row is expanded via the
+   * chevron toggle — used in place of popup/modal edit forms (e.g. an
+   * edit form, a topics editor). When provided, a chevron column is added
+   * and clicking a row (or its chevron) toggles that row's expansion.
+   */
+  renderExpanded?: (row: T) => React.ReactNode;
+  /** Expand a specific row by id as soon as the table renders it (e.g. right after creating it). */
+  autoExpandId?: string | number | null;
 }
 
-function getFilterValue(row: any, key: string) {
-  return row[key];
+function getFilterValue<T>(row: T, key: string) {
+  return (row as Record<string, unknown>)[key];
 }
 
 /**
@@ -44,14 +55,33 @@ export function DataTable<T extends { id: string | number }>({
   filters = [],
   bulkActions = [],
   onExport,
+  showExport = true,
   isLoading,
   emptyMessage = 'No records found.',
+  renderExpanded,
+  autoExpandId,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [selected, setSelected] = useState<Set<string | number>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string | number>>(
+    () => new Set(autoExpandId != null ? [autoExpandId] : []),
+  );
+
+  const toggleExpanded = (id: string | number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (autoExpandId != null) setExpanded((prev) => new Set(prev).add(autoExpandId));
+  }, [autoExpandId]);
 
   const filtered = useMemo(() => {
     let result = rows;
@@ -59,21 +89,21 @@ export function DataTable<T extends { id: string | number }>({
     if (search.trim()) {
       const q = search.toLowerCase();
       const keys = searchKeys ?? columns.map((c) => c.key);
-      result = result.filter((row: any) =>
-        keys.some((k) => String(row[k as string] ?? '').toLowerCase().includes(q)),
+      result = result.filter((row) =>
+        keys.some((k) => String((row as Record<string, unknown>)[k as string] ?? '').toLowerCase().includes(q)),
       );
     }
 
     for (const [key, value] of Object.entries(activeFilters)) {
       if (!value) continue;
-      result = result.filter((row: any) => String(getFilterValue(row, key) ?? '') === value);
+      result = result.filter((row) => String(getFilterValue(row, key) ?? '') === value);
     }
 
     if (sortKey) {
       const col = columns.find((c) => c.key === sortKey);
       result = [...result].sort((a, b) => {
-        const av = col?.sortValue ? col.sortValue(a) : (a as any)[sortKey];
-        const bv = col?.sortValue ? col.sortValue(b) : (b as any)[sortKey];
+        const av = col?.sortValue ? col.sortValue(a) : (a as Record<string, unknown>)[sortKey];
+        const bv = col?.sortValue ? col.sortValue(b) : (b as Record<string, unknown>)[sortKey];
         if (av == null && bv == null) return 0;
         if (av == null) return -1;
         if (bv == null) return 1;
@@ -112,8 +142,8 @@ export function DataTable<T extends { id: string | number }>({
   const exportCsv = () => {
     if (onExport) return onExport(filtered);
     const header = columns.map((c) => c.header).join(',');
-    const lines = filtered.map((row: any) =>
-      columns.map((c) => `"${String(row[c.key] ?? '').replace(/"/g, '""')}"`).join(','),
+    const lines = filtered.map((row) =>
+      columns.map((c) => `"${String((row as Record<string, unknown>)[c.key] ?? '').replace(/"/g, '""')}"`).join(','),
     );
     const blob = new Blob([[header, ...lines].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -149,12 +179,14 @@ export function DataTable<T extends { id: string | number }>({
             ))}
           </select>
         ))}
-        <button
-          onClick={exportCsv}
-          className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
-        >
-          <Download size={14} /> Export
-        </button>
+        {showExport && (
+          <button
+            onClick={exportCsv}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            <Download size={14} /> Export
+          </button>
+        )}
       </div>
 
       {selected.size > 0 && bulkActions.length > 0 && (
@@ -176,6 +208,7 @@ export function DataTable<T extends { id: string | number }>({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
             <tr>
+              {renderExpanded && <th className="px-2 py-3 w-8" />}
               {bulkActions.length > 0 && (
                 <th className="px-4 py-3 w-10">
                   <input
@@ -201,18 +234,35 @@ export function DataTable<T extends { id: string | number }>({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filtered.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-50">
-                {bulkActions.length > 0 && (
-                  <td className="px-4 py-3">
-                    <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleRow(row.id)} />
-                  </td>
+              <Fragment key={row.id}>
+                <tr
+                  className={`hover:bg-gray-50 ${renderExpanded ? 'cursor-pointer' : ''}`}
+                  onClick={renderExpanded ? () => toggleExpanded(row.id) : undefined}
+                >
+                  {renderExpanded && (
+                    <td className="px-2 py-3 text-gray-400">
+                      {expanded.has(row.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </td>
+                  )}
+                  {bulkActions.length > 0 && (
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleRow(row.id)} />
+                    </td>
+                  )}
+                  {columns.map((c) => (
+                    <td key={c.key} className={`px-6 py-3 ${c.align === 'right' ? 'text-right' : ''}`}>
+                      {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '—')}
+                    </td>
+                  ))}
+                </tr>
+                {renderExpanded && expanded.has(row.id) && (
+                  <tr className="bg-gray-50/70">
+                    <td colSpan={columns.length + (bulkActions.length > 0 ? 1 : 0) + 1} className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      {renderExpanded(row)}
+                    </td>
+                  </tr>
                 )}
-                {columns.map((c) => (
-                  <td key={c.key} className={`px-6 py-3 ${c.align === 'right' ? 'text-right' : ''}`}>
-                    {c.render ? c.render(row) : String((row as any)[c.key] ?? '—')}
-                  </td>
-                ))}
-              </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { pagesApi } from '../../lib/api';
+import { pagesApi, getErrorMessage } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { BlockEditor } from '../../components/blocks/BlockEditor';
@@ -57,7 +57,7 @@ export default function PageEditor() {
       const saved = res.data as CmsPage;
       if (isNew) navigate(`/admin/pages/${saved.id}`, { replace: true });
     },
-    onError: (err: any) => setError(err.response?.data?.message ?? 'Save failed'),
+    onError: (err: unknown) => setError(getErrorMessage(err, 'Save failed')),
   });
 
   const deleteMutation = useMutation({
@@ -69,8 +69,8 @@ export default function PageEditor() {
   });
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <button
           onClick={() => navigate('/admin/pages')}
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900"
@@ -100,7 +100,7 @@ export default function PageEditor() {
         {/* Editor column */}
         <div className="space-y-6">
           <Card className="p-5 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
                 <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} />

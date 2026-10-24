@@ -10,10 +10,37 @@ import { UpsertFormDto, SubmitFormDto, DecideSubmissionDto } from './dto/upsert-
 
 const VALID_FIELD_TYPES = [
   'text', 'textarea', 'email', 'phone', 'number', 'date',
-  'select', 'radio', 'checkboxes', 'yesno',
+  'select', 'radio', 'checkboxes', 'yesno', 'file',
 ];
 
-function mapForm(row: any) {
+interface FormRow {
+  Id: number;
+  Slug: string;
+  Title: string;
+  Description: string | null;
+  Status: string;
+  // Deliberately dynamic: a flexible form-field schema stored as JSON text.
+  SchemaJson: string;
+  SuccessMessage: string | null;
+  CreatedAt: Date;
+  UpdatedAt: Date;
+}
+
+interface SubmissionRow {
+  Id: string;
+  FormId: number;
+  FormTitle: string;
+  SubmittedByName: string | null;
+  SubmittedByEmail: string | null;
+  // Deliberately dynamic: the submission payload shape follows the form's own schema.
+  Data: string;
+  Status: string;
+  AdminNotes: string | null;
+  SubmittedAt: Date;
+  DecidedAt: Date | null;
+}
+
+function mapForm(row: FormRow) {
   return {
     id: row.Id,
     slug: row.Slug,
@@ -27,7 +54,7 @@ function mapForm(row: any) {
   };
 }
 
-function mapSubmission(row: any) {
+function mapSubmission(row: SubmissionRow) {
   return {
     id: row.Id,
     formId: row.FormId,
@@ -46,6 +73,7 @@ function mapSubmission(row: any) {
 export class FormsService {
   constructor(private db: DatabaseService) {}
 
+  // Deliberately dynamic: form field schema shape varies per field `type`.
   private validateSchema(schema: { fields: Record<string, any>[] }) {
     if (!schema || !Array.isArray(schema.fields)) {
       throw new BadRequestException('schema.fields must be an array');
@@ -72,7 +100,7 @@ export class FormsService {
 
   async findAll(includeNonOpen: boolean) {
     const where = includeNonOpen ? '1=1' : `Status = 'open'`;
-    const res = await this.db.query<any>(
+    const res = await this.db.query<FormRow>(
       `SELECT Id, Slug, Title, Description, Status, SchemaJson, SuccessMessage, CreatedAt, UpdatedAt
        FROM Forms WHERE ${where} ORDER BY Title`,
     );
@@ -80,7 +108,7 @@ export class FormsService {
   }
 
   async findById(id: number) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<FormRow>(
       `SELECT Id, Slug, Title, Description, Status, SchemaJson, SuccessMessage, CreatedAt, UpdatedAt
        FROM Forms WHERE Id = @id`,
       [{ name: 'id', type: sql.Int, value: id }],
@@ -91,7 +119,7 @@ export class FormsService {
 
   /** Public-facing lookup — only returns the form if it's currently open for submissions. */
   async findOpenBySlug(slug: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<FormRow>(
       `SELECT Id, Slug, Title, Description, Status, SchemaJson, SuccessMessage, CreatedAt, UpdatedAt
        FROM Forms WHERE Slug = @slug AND Status = 'open'`,
       [{ name: 'slug', type: sql.VarChar(150), value: slug }],
@@ -103,12 +131,12 @@ export class FormsService {
   async create(dto: UpsertFormDto, userId: string) {
     this.validateSchema(dto.schema);
 
-    const existing = await this.db.query<any>(`SELECT Id FROM Forms WHERE Slug = @slug`, [
+    const existing = await this.db.query<{ Id: number }>(`SELECT Id FROM Forms WHERE Slug = @slug`, [
       { name: 'slug', type: sql.VarChar(150), value: dto.slug },
     ]);
     if (existing.recordset[0]) throw new ConflictException('A form with this slug already exists');
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ Id: number }>(
       `INSERT INTO Forms (Slug, Title, Description, Status, SchemaJson, SuccessMessage, CreatedBy)
        OUTPUT inserted.Id
        VALUES (@slug, @title, @desc, @status, @schema, @success, @userId)`,
@@ -129,7 +157,7 @@ export class FormsService {
     await this.findById(id);
     this.validateSchema(dto.schema);
 
-    const dupe = await this.db.query<any>(`SELECT Id FROM Forms WHERE Slug = @slug AND Id <> @id`, [
+    const dupe = await this.db.query<{ Id: number }>(`SELECT Id FROM Forms WHERE Slug = @slug AND Id <> @id`, [
       { name: 'slug', type: sql.VarChar(150), value: dto.slug },
       { name: 'id', type: sql.Int, value: id },
     ]);
@@ -168,7 +196,8 @@ export class FormsService {
     const form = await this.findById(formId);
     if (form.status !== 'open') throw new BadRequestException('This form is not currently open for submissions');
 
-    const requiredKeys = (form.schema.fields as any[]).filter((f) => f.required).map((f) => f.key);
+    // form.schema is deliberately-dynamic JSON (validated structurally in validateSchema, not strictly typed)
+    const requiredKeys = (form.schema.fields as { key: string; required?: boolean }[]).filter((f) => f.required).map((f) => f.key);
     for (const key of requiredKeys) {
       const value = dto.data[key];
       if (value === undefined || value === null || value === '') {
@@ -176,7 +205,7 @@ export class FormsService {
       }
     }
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ Id: string }>(
       `INSERT INTO FormSubmissions (FormId, SubmittedByUserId, Data)
        OUTPUT inserted.Id
        VALUES (@formId, @userId, @data)`,
@@ -191,7 +220,7 @@ export class FormsService {
   }
 
   async listSubmissions(formId: number) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<SubmissionRow>(
       `SELECT fs.Id, fs.FormId, f.Title AS FormTitle,
               u.FirstName + ' ' + u.LastName AS SubmittedByName, u.Email AS SubmittedByEmail,
               fs.Data, fs.Status, fs.AdminNotes, fs.SubmittedAt, fs.DecidedAt
@@ -206,7 +235,7 @@ export class FormsService {
   }
 
   async decideSubmission(submissionId: string, dto: DecideSubmissionDto, decidedBy: string) {
-    const existing = await this.db.query<any>(`SELECT Id FROM FormSubmissions WHERE Id = @id`, [
+    const existing = await this.db.query<{ Id: string }>(`SELECT Id FROM FormSubmissions WHERE Id = @id`, [
       { name: 'id', type: sql.UniqueIdentifier, value: submissionId },
     ]);
     if (!existing.recordset[0]) throw new NotFoundException('Submission not found');

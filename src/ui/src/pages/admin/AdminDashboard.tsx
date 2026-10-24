@@ -3,11 +3,12 @@ import { LayoutDashboard, FileText, Users, BookOpen, Clock, CheckCircle } from '
 import { transcriptsApi, usersApi } from '../../lib/api';
 import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner';
 import { Link } from 'react-router-dom';
+import type { TranscriptSummary } from '../../types';
 
 function StatCard({ label, value, icon, to }: { label: string; value: string | number; icon: React.ReactNode; to: string }) {
   return (
     <Link to={to} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <p className="text-sm font-medium text-gray-500">{label}</p>
         <span className="text-brand-500">{icon}</span>
       </div>
@@ -26,14 +27,14 @@ export default function AdminDashboard() {
     queryFn: () => usersApi.list(),
   });
 
-  const allTranscripts: any[] = (transcripts?.data as any) ?? [];
-  const allUsers: any[] = (users?.data as any) ?? [];
+  const allTranscripts: TranscriptSummary[] = transcripts?.data ?? [];
+  const allUsers = users?.data ?? [];
 
   const pending = allTranscripts.filter((t) => t.status === 'received' || t.status === 'processing').length;
   const complete = allTranscripts.filter((t) => t.status === 'complete').length;
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-8">
         <LayoutDashboard className="text-brand-800" size={24} />
         <div>
@@ -58,7 +59,7 @@ export default function AdminDashboard() {
           <Link to="/admin/transcripts" className="text-sm text-brand-800 hover:underline">View all</Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {allTranscripts.slice(0, 5).map((t: any) => (
+          {allTranscripts.slice(0, 5).map((t) => (
             <div key={t.id} className="flex items-center justify-between px-6 py-4">
               <div>
                 <p className="font-medium text-sm text-gray-900">{t.studentName}</p>

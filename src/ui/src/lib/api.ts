@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import type { AuthTokens, ApiError } from '../types';
+import type { AuthTokens, ApiError, CourseTopic, TranscriptSummary, Transcript, User } from '../types';
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -56,6 +56,17 @@ api.interceptors.response.use(
   },
 );
 
+// ── Error helper ──────────────────────────────────────────────
+/** Extracts the backend's error message from a failed mutation/query, falling back if the shape is unexpected. */
+export function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof AxiosError) {
+    const data = err.response?.data as ApiError | undefined;
+    if (data?.message) return data.message;
+  }
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
+
 // ── Auth endpoints ───────────────────────────────────────────
 export const authApi = {
   login: (email: string, password: string) =>
@@ -68,7 +79,7 @@ export const authApi = {
 
 // ── Users endpoints ───────────────────────────────────────────
 export const usersApi = {
-  list: (params?: Record<string, unknown>) => api.get('/users', { params }),
+  list: (params?: Record<string, unknown>) => api.get<User[]>('/users', { params }),
   get: (id: string) => api.get(`/users/${id}`),
   create: (data: unknown) => api.post('/users', data),
   update: (id: string, data: unknown) => api.patch(`/users/${id}`, data),
@@ -76,6 +87,12 @@ export const usersApi = {
   unlock: (id: string) => api.post(`/users/${id}/unlock`),
   getScope: (id: string) => api.get(`/users/${id}/scope`),
   setScope: (id: string, data: unknown) => api.put(`/users/${id}/scope`, data),
+  export: () => api.get('/users/export', { responseType: 'blob' }),
+  import: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/users/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // ── Universities endpoints (SQL `Institutions` table) ──────────
@@ -91,6 +108,7 @@ export const universitiesApi = {
     form.append('file', file);
     return api.post('/universities/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+  generatePage: (id: number) => api.post(`/universities/${id}/generate-page`),
 };
 
 // ── Institutions endpoints (SQL `AcademicUnits` table) ──────────
@@ -133,21 +151,68 @@ export const coursesApi = {
     api.get('/courses/equivalency', { params: { code, institution } }),
   search: (q: string, institution?: string) =>
     api.get('/courses/search', { params: { q, institution } }),
+  create: (data: unknown) => api.post('/courses', data),
+  update: (id: number, data: unknown) => api.patch(`/courses/${id}`, data),
+  deactivate: (id: number) => api.delete(`/courses/${id}`),
+  institutions: () => api.get('/courses/institutions'),
+  programs: (institutionId?: number, includeInactive?: boolean) =>
+    api.get('/courses/programs', { params: { institutionId, includeInactive } }),
+  byInstitution: (institutionId: number, search?: string) =>
+    api.get(`/courses/by-institution/${institutionId}`, { params: { search } }),
+  createProgram: (data: unknown) => api.post('/courses/programs', data),
+  updateProgram: (id: number, data: unknown) => api.patch(`/courses/programs/${id}`, data),
+  deactivateProgram: (id: number) => api.delete(`/courses/programs/${id}`),
+  export: () => api.get('/courses/export', { responseType: 'blob' }),
+  import: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/courses/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
+// ── Uploads (private docs + public logo/hero images) ──────────
+export const uploadsApi = {
+  upload: (file: File, opts?: { isPublic?: boolean; entityType?: string; entityId?: string }) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (opts?.isPublic) form.append('isPublic', 'true');
+    if (opts?.entityType) form.append('entityType', opts.entityType);
+    if (opts?.entityId) form.append('entityId', opts.entityId);
+    return api.post('/uploads', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 // ── Course Topics endpoints (reference-link detail per course) ────
 export const courseTopicsApi = {
-  list: (courseId: number) => api.get(`/courses/${courseId}/topics`),
+  list: (courseId: number, institutionId?: number) =>
+    api.get<CourseTopic[]>(`/courses/${courseId}/topics`, { params: { institutionId } }),
   create: (courseId: number, data: unknown) => api.post(`/courses/${courseId}/topics`, data),
   update: (id: number, data: unknown) => api.patch(`/course-topics/${id}`, data),
   remove: (id: number) => api.delete(`/course-topics/${id}`),
+  /** Per-(University, Topic) active/inactive override — see migration 011. */
+  setUniversityStatus: (id: number, institutionId: number, isActive: boolean) =>
+    api.put(`/course-topics/${id}/university-status`, { institutionId, isActive }),
+};
+
+// ── Program <-> University / Course sharing (migration 011) ─────
+export const programSharingApi = {
+  listUniversities: (programId: number) => api.get(`/courses/programs/${programId}/universities`),
+  addUniversity: (programId: number, institutionId: number) =>
+    api.post(`/courses/programs/${programId}/universities`, { institutionId }),
+  removeUniversity: (programId: number, institutionId: number) =>
+    api.delete(`/courses/programs/${programId}/universities/${institutionId}`),
+  listCourses: (programId: number) => api.get(`/courses/programs/${programId}/courses`),
+  addCourse: (programId: number, courseId: number) =>
+    api.post(`/courses/programs/${programId}/courses`, { courseId }),
+  removeCourse: (programId: number, courseId: number) =>
+    api.delete(`/courses/programs/${programId}/courses/${courseId}`),
 };
 
 // ── Transcripts endpoints ─────────────────────────────────────
 export const transcriptsApi = {
   list: (params?: Record<string, unknown>) =>
-    api.get('/transcripts', { params }),
-  get: (id: string) => api.get(`/transcripts/${id}`),
+    api.get<TranscriptSummary[]>('/transcripts', { params }),
+  get: (id: string) => api.get<Transcript>(`/transcripts/${id}`),
   status: (id: string) => api.get(`/transcripts/${id}/status`),
   submit: (data: unknown) => api.post('/transcripts', data),
 };
@@ -197,4 +262,15 @@ export const formsApi = {
   submissions: (id: number) => api.get(`/forms/${id}/submissions`),
   decideSubmission: (submissionId: string, data: unknown) =>
     api.post(`/forms/submissions/${submissionId}/decide`, data),
+};
+
+// ── Roles & Permissions master-data endpoints (super_admin only, except `my`) ─
+export const permissionsApi = {
+  getModules: () => api.get('/permissions/modules'),
+  getOperations: () => api.get('/permissions/operations'),
+  getMatrix: () => api.get('/permissions/matrix'),
+  saveMatrix: (entries: { roleId: number; moduleId: number; operationId: number; isAllowed: boolean }[]) =>
+    api.put('/permissions/matrix', { entries }),
+  /** The logged-in user's own effective grants: { [moduleKey]: { [operationKey]: boolean } }. */
+  my: () => api.get<Record<string, Record<string, boolean>>>('/permissions/my'),
 };

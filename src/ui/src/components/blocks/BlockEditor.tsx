@@ -4,7 +4,7 @@ import {
   Plus, Trash2, ChevronUp, ChevronDown, Eye, EyeOff,
   Heading1, FileText, Bell, LayoutGrid, MousePointerClick, Minus, Image as ImageIcon, Sparkle,
 } from 'lucide-react';
-import type { Block, BlockType, CardItem } from '../../types';
+import type { Block, BlockType, CardItem, NoticeTone } from '../../types';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 
@@ -175,7 +175,7 @@ function BlockFields({ block, onChange }: { block: Block; onChange: (patch: Part
       return (
         <div className="space-y-2">
           <select className={inputCls} value={block.tone}
-            onChange={(e) => onChange({ tone: e.target.value as any } as Partial<Block>)}>
+            onChange={(e) => onChange({ tone: e.target.value as NoticeTone } as Partial<Block>)}>
             <option value="info">Info</option>
             <option value="warning">Warning</option>
             <option value="success">Success</option>

@@ -10,3 +10,7 @@ src/api/.env.local
 
 # .env.test and .env.production ARE committed (no real secrets, just DB name + flags)
 # Add real secrets via your hosting platform's secret manager or CI environment vars
+
+# User-uploaded files (private docs + public logos/hero images) — local-disk
+# storage only, never committed. See CLAUDE.md "Uploads subsystem".
+src/api/storage/

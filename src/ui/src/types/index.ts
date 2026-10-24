@@ -11,6 +11,14 @@ export interface User {
   departmentName?: string;
   studentId?: string;
   agencyName?: string;
+  mobile?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  countryOfOrigin?: string;
   isActive: boolean;
   isLocked: boolean;
   mustChangePass: boolean;
@@ -74,6 +82,23 @@ export interface TranscriptCourse {
   status: CourseStatus;
   externalCourse?: Course;
   evaluation?: Evaluation;
+}
+
+/**
+ * Summary shape returned by `GET /transcripts` (list view). `courseCount` is
+ * present on the plain admin listing; the student/agency "mine" listing
+ * additionally returns the per-course `lane` breakdown used for the dashboard
+ * tally — both are optional here since which fields come back depends on
+ * the query (see `transcripts.service.ts`).
+ */
+export interface TranscriptSummary {
+  id: string;
+  studentName?: string;
+  institution?: { id: number; code: string; name: string };
+  courseCount?: number;
+  courses?: TranscriptCourse[];
+  status: 'received' | 'processing' | 'complete';
+  receivedAt: string;
 }
 
 export interface Transcript {
@@ -205,7 +230,7 @@ export interface CmsPage {
 // ─── Custom Forms (JSON-schema driven) ─────────────────────────
 export type FormFieldType =
   | 'text' | 'textarea' | 'email' | 'phone' | 'number' | 'date'
-  | 'select' | 'radio' | 'checkboxes' | 'yesno';
+  | 'select' | 'radio' | 'checkboxes' | 'yesno' | 'file';
 
 export interface FormField {
   key: string;
@@ -244,6 +269,22 @@ export interface FormSubmission {
   adminNotes?: string;
   submittedAt: string;
   decidedAt?: string;
+}
+
+// ─── Course Topics (syllabus-level detail + reference links) ──
+export interface TopicReferenceLink {
+  label: string;
+  url: string;
+}
+
+export interface CourseTopic {
+  id: number;
+  courseId: number;
+  title: string;
+  description?: string;
+  referenceLinks: TopicReferenceLink[];
+  /** Only present when fetched with an institutionId (per-University override, migration 011). */
+  isActiveForUniversity?: boolean;
 }
 
 // ─── Common ───────────────────────────────────────────────────

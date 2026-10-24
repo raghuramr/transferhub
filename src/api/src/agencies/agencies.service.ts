@@ -1,11 +1,22 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { CreateAgencyDto } from './dto/create-agency.dto';
 import { UpdateAgencyDto } from './dto/update-agency.dto';
 import { parseCsvRows, toCsv } from '../common/csv.util';
 
-function mapAgency(row: any) {
+interface AgencyRow {
+  Id: number;
+  Name: string;
+  ContactEmail: string | null;
+  ContactPhone: string | null;
+  Country: string | null;
+  IsActive: boolean;
+  CreatedAt: Date;
+  UpdatedAt: Date;
+}
+
+function mapAgency(row: AgencyRow) {
   return {
     id: row.Id,
     name: row.Name,
@@ -26,7 +37,7 @@ export class AgenciesService {
 
   async findAll(filters: { search?: string; isActive?: boolean } = {}) {
     let where = '1=1';
-    const inputs: any[] = [];
+    const inputs: QueryInput[] = [];
     if (filters.search) {
       where += ' AND (Name LIKE @q OR ContactEmail LIKE @q OR Country LIKE @q)';
       inputs.push({ name: 'q', type: sql.NVarChar(200), value: `%${filters.search}%` });
@@ -36,7 +47,7 @@ export class AgenciesService {
       inputs.push({ name: 'active', type: sql.Bit, value: filters.isActive ? 1 : 0 });
     }
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<AgencyRow>(
       `SELECT Id, Name, ContactEmail, ContactPhone, Country, IsActive, CreatedAt, UpdatedAt
        FROM Agencies WHERE ${where} ORDER BY Name`,
       inputs,
@@ -45,7 +56,7 @@ export class AgenciesService {
   }
 
   async findById(id: number) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<AgencyRow>(
       `SELECT Id, Name, ContactEmail, ContactPhone, Country, IsActive, CreatedAt, UpdatedAt
        FROM Agencies WHERE Id = @id`,
       [{ name: 'id', type: sql.Int, value: id }],
@@ -55,7 +66,7 @@ export class AgenciesService {
   }
 
   async findByName(name: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<AgencyRow>(
       `SELECT Id, Name, ContactEmail, ContactPhone, Country, IsActive, CreatedAt, UpdatedAt
        FROM Agencies WHERE Name = @name`,
       [{ name: 'name', type: sql.NVarChar(200), value: name }],
@@ -67,7 +78,7 @@ export class AgenciesService {
     const existing = await this.findByName(dto.name);
     if (existing) throw new ConflictException('An agency with this name already exists');
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<{ Id: number }>(
       `INSERT INTO Agencies (Name, ContactEmail, ContactPhone, Country, IsActive)
        OUTPUT inserted.Id
        VALUES (@name, @email, @phone, @country, @active)`,
@@ -85,7 +96,7 @@ export class AgenciesService {
   async update(id: number, dto: UpdateAgencyDto) {
     await this.findById(id);
     const sets: string[] = ['UpdatedAt = SYSUTCDATETIME()'];
-    const inputs: any[] = [{ name: 'id', type: sql.Int, value: id }];
+    const inputs: QueryInput[] = [{ name: 'id', type: sql.Int, value: id }];
 
     if (dto.name !== undefined) {
       sets.push('Name = @name');

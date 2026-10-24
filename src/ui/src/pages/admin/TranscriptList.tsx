@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { FileText, ChevronRight } from 'lucide-react';
 import { transcriptsApi } from '../../lib/api';
 import { useState } from 'react';
+import type { TranscriptSummary } from '../../types';
 
 const STATUS_FILTERS = ['all', 'received', 'processing', 'complete'];
 
@@ -12,11 +13,11 @@ export default function TranscriptList() {
     queryFn: () => transcriptsApi.list(statusFilter !== 'all' ? { status: statusFilter } : {}),
   });
 
-  const transcripts: any[] = (data?.data as any) ?? [];
+  const transcripts: TranscriptSummary[] = data?.data ?? [];
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-6 w-[95%] mx-auto">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <div className="flex items-center gap-3">
           <FileText className="text-brand-800" size={24} />
           <div>
@@ -47,7 +48,7 @@ export default function TranscriptList() {
         {transcripts.length === 0 && !isLoading && (
           <div className="text-center py-16 text-gray-400">No transcripts found.</div>
         )}
-        {transcripts.map((t: any) => (
+        {transcripts.map((t) => (
           <div key={t.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50">
             <div className="flex-1">
               <p className="font-medium text-sm text-gray-900">{t.studentName}</p>

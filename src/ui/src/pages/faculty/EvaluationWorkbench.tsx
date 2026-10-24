@@ -4,6 +4,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { evaluationsApi, aiApi } from '../../lib/api';
 import { Sparkles, CheckCircle, XCircle, BookOpen, ChevronDown } from 'lucide-react';
 import { TransferWorkflowStepper, EVALUATION_STEPS } from '../../components/ui/TransferWorkflowStepper';
+import type { AICandidate } from '../../types';
+
+interface EvaluationDetail {
+  status: string;
+  aiCandidates?: AICandidate[];
+  transcriptCourse?: {
+    courseCode: string;
+    courseTitle: string;
+    originalCredits?: number;
+    grade?: string;
+    transcript?: { institution?: { name: string; calendar?: string } };
+  };
+}
 
 type DecidePayload = {
   outcome: string;
@@ -32,7 +45,7 @@ export default function EvaluationWorkbench() {
     queryKey: ['evaluation', id],
     queryFn: () => evaluationsApi.get(id!),
   });
-  const ev = data?.data as any;
+  const ev = data?.data as EvaluationDetail | undefined;
 
   const matchMutation = useMutation({
     mutationFn: () => aiApi.match(id!),
@@ -61,10 +74,10 @@ export default function EvaluationWorkbench() {
   if (!ev) return <div className="p-8 text-red-500">Evaluation not found.</div>;
 
   const tc = ev.transcriptCourse;
-  const candidates: any[] = ev.aiCandidates ?? [];
+  const candidates: AICandidate[] = ev.aiCandidates ?? [];
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Evaluation Workbench</h1>
       <p className="text-gray-500 mb-6">
         {tc?.courseCode} — {tc?.courseTitle} from {tc?.transcript?.institution?.name}
@@ -80,7 +93,7 @@ export default function EvaluationWorkbench() {
           {/* Source course */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="font-semibold text-gray-900 mb-3">Transfer Course</h2>
-            <dl className="grid grid-cols-2 gap-3 text-sm">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               {[
                 ['Code', tc?.courseCode],
                 ['Title', tc?.courseTitle],
@@ -131,7 +144,7 @@ export default function EvaluationWorkbench() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {candidates.map((c: any) => (
+                    {candidates.map((c) => (
                       <div
                         key={c.buCourse?.id}
                         onClick={() => {

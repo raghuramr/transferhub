@@ -9,28 +9,33 @@ import { CreateInstitutionDto } from './dto/create-institution.dto';
 import { UpdateInstitutionDto } from './dto/update-institution.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { Permission } from '../auth/permission.decorator';
 
+// Read endpoints (list/get) are open to any authenticated role — see the
+// matching note in universities.controller.ts. Only mutations are gated.
 @Controller('institutions')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin', 'super_admin')
+@UseGuards(JwtAuthGuard)
 export class InstitutionsController {
   constructor(private institutionsService: InstitutionsService) {}
 
   @Get()
   findAll(
     @Query('universityId') universityId?: string,
+    @Query('unmapped') unmapped?: string,
     @Query('search') search?: string,
     @Query('isActive') isActive?: string,
   ) {
     return this.institutionsService.findAll({
       universityId: universityId !== undefined ? parseInt(universityId, 10) : undefined,
+      unmapped: unmapped === 'true',
       search,
       isActive: isActive !== undefined ? isActive === 'true' : undefined,
     });
   }
 
   @Get('export')
+  @UseGuards(RolesGuard)
+  @Permission('institutions', 'export')
   async exportCsv(@Res() res: Response, @Query('universityId') universityId?: string) {
     const csv = await this.institutionsService.exportCsv({
       universityId: universityId !== undefined ? parseInt(universityId, 10) : undefined,
@@ -46,11 +51,15 @@ export class InstitutionsController {
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Permission('institutions', 'create')
   create(@Body() dto: CreateInstitutionDto) {
     return this.institutionsService.create(dto);
   }
 
   @Post('import')
+  @UseGuards(RolesGuard)
+  @Permission('institutions', 'import')
   @UseInterceptors(FileInterceptor('file'))
   async importCsv(@UploadedFile() file: any) {
     if (!file) throw new BadRequestException('No file uploaded');
@@ -58,11 +67,15 @@ export class InstitutionsController {
   }
 
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Permission('institutions', 'edit')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateInstitutionDto) {
     return this.institutionsService.update(id, dto);
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Permission('institutions', 'delete')
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.institutionsService.deactivate(id);
   }

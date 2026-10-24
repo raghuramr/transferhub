@@ -3,6 +3,7 @@ import { AiService } from './ai.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 @Controller('ai')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -11,7 +12,7 @@ export class AiController {
 
   @Post('match/:evaluationId')
   @Roles('faculty', 'admin', 'super_admin')
-  matchCourse(@Param('evaluationId') evaluationId: string, @Req() req: any): Promise<any> {
+  matchCourse(@Param('evaluationId') evaluationId: string, @Req() req: AuthenticatedRequest) {
     return this.aiService.matchCourse(evaluationId, req.user.id);
   }
 

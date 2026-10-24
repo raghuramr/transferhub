@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { formsApi } from '../../lib/api';
-import { FormRenderer } from '../../components/forms/FormRenderer';
+import { formsApi, getErrorMessage } from '../../lib/api';
+import { FormRenderer, type FormFieldValue } from '../../components/forms/FormRenderer';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Reveal } from '../../components/ui/PageTransition';
@@ -11,7 +11,7 @@ import type { FormDef } from '../../types';
 
 export default function FormFillView() {
   const { slug } = useParams<{ slug: string }>();
-  const [data, setData] = useState<Record<string, any>>({});
+  const [data, setData] = useState<Record<string, FormFieldValue>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [apiError, setApiError] = useState('');
@@ -25,12 +25,12 @@ export default function FormFillView() {
   const submitMutation = useMutation({
     mutationFn: () => formsApi.submit(form!.id, data),
     onSuccess: (res) => {
-      setSubmitted((res.data as any).successMessage ?? 'Thank you — your response has been recorded.');
+      setSubmitted((res.data as { successMessage?: string }).successMessage ?? 'Thank you — your response has been recorded.');
     },
-    onError: (err: any) => setApiError(err.response?.data?.message ?? 'Submission failed.'),
+    onError: (err: unknown) => setApiError(getErrorMessage(err, 'Submission failed.')),
   });
 
-  const handleChange = (key: string, value: any) => {
+  const handleChange = (key: string, value: FormFieldValue) => {
     setData((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: '' }));
   };
@@ -67,7 +67,7 @@ export default function FormFillView() {
 
   if (submitted) {
     return (
-      <div className="p-8 max-w-xl mx-auto">
+      <div className="p-4 sm:p-8 max-w-xl mx-auto">
         <Card className="p-8 text-center">
           <CheckCircle2 className="mx-auto text-green-600 mb-3" size={40} />
           <p className="text-gray-900 font-medium">{submitted}</p>
@@ -77,7 +77,7 @@ export default function FormFillView() {
   }
 
   return (
-    <div className="p-8 max-w-xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-xl mx-auto">
       <Reveal>
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{form.title}</h1>
         {form.description && <p className="text-gray-500 mb-6">{form.description}</p>}

@@ -11,12 +11,14 @@ import { parseCsvRows, toCsv } from '../common/csv.util';
 function mapInstitution(row: any) {
   return {
     id: row.Id,
-    universityId: row.InstitutionId,
-    universityCode: row.UniversityCode,
-    universityName: row.UniversityName,
+    universityId: row.InstitutionId ?? null,
+    universityCode: row.UniversityCode ?? null,
+    universityName: row.UniversityName ?? null,
     name: row.Name,
     code: row.Code,
     isActive: !!row.IsActive,
+    logoUrl: row.LogoUrl ?? null,
+    heroImageUrl: row.HeroImageUrl ?? null,
     createdAt: row.CreatedAt,
     updatedAt: row.UpdatedAt,
   };
@@ -24,21 +26,28 @@ function mapInstitution(row: any) {
 
 const EXPORT_COLUMNS = ['id', 'universityCode', 'universityName', 'code', 'name', 'isActive'];
 
+// LEFT JOIN: an AcademicUnit ("Institution") may have no University mapping
+// yet (AcademicUnits.InstitutionId is nullable as of migration 016).
 const BASE_SELECT = `
-  SELECT au.Id, au.InstitutionId, au.Name, au.Code, au.IsActive, au.CreatedAt, au.UpdatedAt,
+  SELECT au.Id, au.InstitutionId, au.Name, au.Code, au.IsActive, au.LogoUrl, au.HeroImageUrl, au.CreatedAt, au.UpdatedAt,
          i.Code AS UniversityCode, i.Name AS UniversityName
   FROM AcademicUnits au
-  JOIN Institutions i ON i.Id = au.InstitutionId
+  LEFT JOIN Institutions i ON i.Id = au.InstitutionId
 `;
 
 @Injectable()
 export class InstitutionsService {
   constructor(private db: DatabaseService) {}
 
-  async findAll(filters: { universityId?: number; search?: string; isActive?: boolean } = {}) {
+  async findAll(
+    filters: { universityId?: number; unmapped?: boolean; search?: string; isActive?: boolean } = {},
+  ) {
     let where = '1=1';
     const inputs: any[] = [];
-    if (filters.universityId !== undefined) {
+    if (filters.unmapped) {
+      // "— Unmapped —" filter: Institutions with no University assigned yet.
+      where += ' AND au.InstitutionId IS NULL';
+    } else if (filters.universityId !== undefined) {
       where += ' AND au.InstitutionId = @uid';
       inputs.push({ name: 'uid', type: sql.Int, value: filters.universityId });
     }
@@ -63,7 +72,10 @@ export class InstitutionsService {
     return mapInstitution(res.recordset[0]);
   }
 
-  async findByUniversityAndName(universityId: number, name: string) {
+  async findByUniversityAndName(universityId: number | null | undefined, name: string) {
+    // Unmapped institutions (no universityId) aren't checked for duplicate
+    // names — only (university, name) pairs are meant to be unique.
+    if (universityId === null || universityId === undefined) return null;
     const res = await this.db.query<any>(`${BASE_SELECT} WHERE au.InstitutionId = @uid AND au.Name = @name`, [
       { name: 'uid', type: sql.Int, value: universityId },
       { name: 'name', type: sql.NVarChar(200), value: name },
@@ -79,18 +91,21 @@ export class InstitutionsService {
   }
 
   async create(dto: CreateInstitutionDto) {
-    const existing = await this.findByUniversityAndName(dto.universityId, dto.name);
+    const universityId = dto.universityId ?? null;
+    const existing = await this.findByUniversityAndName(universityId, dto.name);
     if (existing) throw new ConflictException('An institution with this name already exists for that university');
 
     const res = await this.db.query<any>(
-      `INSERT INTO AcademicUnits (InstitutionId, Name, Code, IsActive)
+      `INSERT INTO AcademicUnits (InstitutionId, Name, Code, IsActive, LogoUrl, HeroImageUrl)
        OUTPUT inserted.Id
-       VALUES (@uid, @name, @code, @active)`,
+       VALUES (@uid, @name, @code, @active, @logoUrl, @heroImageUrl)`,
       [
-        { name: 'uid', type: sql.Int, value: dto.universityId },
+        { name: 'uid', type: sql.Int, value: universityId },
         { name: 'name', type: sql.NVarChar(200), value: dto.name },
         { name: 'code', type: sql.VarChar(30), value: dto.code || null },
         { name: 'active', type: sql.Bit, value: dto.isActive !== false ? 1 : 0 },
+        { name: 'logoUrl', type: sql.NVarChar(500), value: dto.logoUrl || null },
+        { name: 'heroImageUrl', type: sql.NVarChar(500), value: dto.heroImageUrl || null },
       ],
     );
     return this.findById(res.recordset[0].Id);
@@ -116,6 +131,14 @@ export class InstitutionsService {
     if (dto.isActive !== undefined) {
       sets.push('IsActive = @active');
       inputs.push({ name: 'active', type: sql.Bit, value: dto.isActive ? 1 : 0 });
+    }
+    if (dto.logoUrl !== undefined) {
+      sets.push('LogoUrl = @logoUrl');
+      inputs.push({ name: 'logoUrl', type: sql.NVarChar(500), value: dto.logoUrl || null });
+    }
+    if (dto.heroImageUrl !== undefined) {
+      sets.push('HeroImageUrl = @heroImageUrl');
+      inputs.push({ name: 'heroImageUrl', type: sql.NVarChar(500), value: dto.heroImageUrl || null });
     }
 
     await this.db.query(`UPDATE AcademicUnits SET ${sets.join(', ')} WHERE Id = @id`, inputs);

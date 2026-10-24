@@ -1,7 +1,41 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { DecideEvaluationDto, AssignEvaluationDto } from './dto/create-evaluation.dto';
+
+interface EvaluationListRow {
+  Id: string;
+  Status: string;
+  QueuedAt: Date;
+  CourseCode: string;
+  CourseTitle: string;
+  Grade: string;
+  InstitutionName: string;
+  AiCandidateCount: number;
+}
+
+interface EvaluationDetailRow {
+  Id: string;
+  Status: string;
+  AIConfidence: number | null;
+  AIRationale: string | null;
+  CourseCode: string;
+  CourseTitle: string;
+  OriginalCredits: number;
+  Grade: string;
+  InstitutionName: string;
+  Calendar: string | null;
+}
+
+interface AiCandidateRow {
+  Rank: number;
+  Score: number;
+  Rationale: string | null;
+  BuId: number;
+  BuCode: string;
+  BuTitle: string;
+  BuCredits: number;
+}
 
 @Injectable()
 export class EvaluationsService {
@@ -16,7 +50,7 @@ export class EvaluationsService {
    */
   async list(filters: { statusList?: string[]; assignedToMe?: boolean; userId?: string } = {}) {
     let where = '1=1';
-    const inputs: any[] = [];
+    const inputs: QueryInput[] = [];
 
     if (filters.statusList?.length) {
       const names = filters.statusList.map((_, i) => `@s${i}`);
@@ -28,7 +62,7 @@ export class EvaluationsService {
       inputs.push({ name: 'uid', type: sql.UniqueIdentifier, value: filters.userId });
     }
 
-    const res = await this.db.query<any>(
+    const res = await this.db.query<EvaluationListRow>(
       `SELECT e.Id, e.Status, e.CreatedAt AS QueuedAt,
               tc.CourseCode, tc.CourseTitle, tc.Grade,
               i.Name AS InstitutionName,
@@ -42,7 +76,7 @@ export class EvaluationsService {
       inputs,
     );
 
-    return res.recordset.map((r: any) => ({
+    return res.recordset.map((r) => ({
       id: r.Id,
       status: r.Status,
       queuedAt: r.QueuedAt,
@@ -57,7 +91,7 @@ export class EvaluationsService {
   }
 
   async findById(id: string) {
-    const res = await this.db.query<any>(
+    const res = await this.db.query<EvaluationDetailRow>(
       `SELECT e.Id, e.Status, e.AIConfidence, e.AIRationale,
               tc.CourseCode, tc.CourseTitle, tc.OriginalCredits, tc.Grade,
               i.Name AS InstitutionName, i.Calendar
@@ -71,7 +105,7 @@ export class EvaluationsService {
     if (!res.recordset[0]) throw new NotFoundException('Evaluation not found');
     const e = res.recordset[0];
 
-    const candidatesRes = await this.db.query<any>(
+    const candidatesRes = await this.db.query<AiCandidateRow>(
       `SELECT amc.Rank, amc.Score, amc.Rationale,
               c.Id AS BuId, c.Code AS BuCode, c.Title AS BuTitle, c.Credits AS BuCredits
        FROM AIMatchCandidates amc
@@ -93,7 +127,7 @@ export class EvaluationsService {
         grade: e.Grade,
         transcript: { institution: { name: e.InstitutionName, calendar: e.Calendar } },
       },
-      aiCandidates: candidatesRes.recordset.map((c: any) => ({
+      aiCandidates: candidatesRes.recordset.map((c) => ({
         rank: c.Rank,
         score: c.Score,
         rationale: c.Rationale,
@@ -103,7 +137,7 @@ export class EvaluationsService {
   }
 
   async decide(id: string, dto: DecideEvaluationDto, decidedBy: string) {
-    const exists = await this.db.query<any>(`SELECT Id FROM Evaluations WHERE Id = @id`, [
+    const exists = await this.db.query<{ Id: string }>(`SELECT Id FROM Evaluations WHERE Id = @id`, [
       { name: 'id', type: sql.UniqueIdentifier, value: id },
     ]);
     if (!exists.recordset[0]) throw new NotFoundException('Evaluation not found');

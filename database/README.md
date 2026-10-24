@@ -4,23 +4,34 @@ SQL Server 2019+ / LocalDB `(localdb)\MSSQLLocalDB`
 
 ## Run order
 
+The schema and seed data are consolidated **one idempotent file per
+entity** (see `CLAUDE.md`'s "DB Script Runner tool" section for the full
+rationale) — each file is safe to run against an empty database, a
+partially-migrated one, or one that already has its final shape. Run them
+in filename order, via `tools/db-script-runner/` or `sqlcmd` directly:
+
 ```
 # 1. Create database + schema
-sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/001_create_database.sql
-sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/002_auth_and_users.sql
-sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/003_institutions_and_courses.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/001_database.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/002_auth_and_roles.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/003_institutions_courses_programs.sql
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/004_transcripts_and_evaluations.sql
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/005_views_and_procedures.sql
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/006_pages.sql
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/007_forms.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/008_universities_institutions_agencies.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/009_course_topics.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i migrations/010_uploads.sql
 
 # 2. Seed reference data + course catalog
 sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/001_reference_data.sql
-sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/002_bu_courses.sql
-sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/003_peer_courses_and_matches.sql
-sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/004_demo_users.sql
-sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/005_pages.sql
-sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/006_forms.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/002_courses_and_equivalencies.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/003_demo_users.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/004_pages.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/005_forms.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/006_agencies_academicunits_programs.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/007_course_topics.sql
+sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed/008_roles_permissions.sql
 
 # 3. Set real password hashes (run from src/api)
 cd ../src/api && npm run seed:users
@@ -28,7 +39,7 @@ cd ../src/api && npm run seed:users
 
 For Docker dev (used in this repo):
 ```
-sqlcmd -S "localhost,1433" -U sa -P "Dev_Passw0rd!" -C -i migrations/001_create_database.sql
+sqlcmd -S "localhost,1433" -U sa -P "Dev_Passw0rd!" -C -i migrations/001_database.sql
 # ... same pattern
 ```
 

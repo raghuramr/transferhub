@@ -39,13 +39,18 @@ import AuditLog from './pages/superadmin/AuditLog';
 import SystemSettings from './pages/superadmin/SystemSettings';
 import UniversitiesManagement from './pages/superadmin/UniversitiesManagement';
 import InstitutionsManagement from './pages/superadmin/InstitutionsManagement';
+import ProgramsManagement from './pages/superadmin/ProgramsManagement';
 import AgenciesManagement from './pages/superadmin/AgenciesManagement';
+import RolesPermissions from './pages/superadmin/RolesPermissions';
 
 // Custom Pages (CMS) — public-facing view, any authenticated role
 import CmsPageView from './pages/cms/CmsPageView';
 
 // Custom Forms — fill-out view, any authenticated role
 import FormFillView from './pages/forms/FormFillView';
+
+// Own-profile editor — any authenticated role
+import ProfilePage from './pages/ProfilePage';
 
 // Public landing / hero page
 import HomePage from './pages/public/HomePage';
@@ -137,7 +142,9 @@ export default function App() {
           <Route path="users" element={<UserManagement />} />
           <Route path="universities" element={<UniversitiesManagement />} />
           <Route path="institutions" element={<InstitutionsManagement />} />
+          <Route path="programs" element={<ProgramsManagement />} />
           <Route path="agencies" element={<AgenciesManagement />} />
+          <Route path="settings/roles-permissions" element={<RolesPermissions />} />
         </Route>
 
         {/* Shared CMS page view (any authenticated role) */}
@@ -148,6 +155,10 @@ export default function App() {
         {/* Shared form fill-out view (any authenticated role) */}
         <Route path="/forms/:slug" element={<RequireAuth><AppLayout /></RequireAuth>}>
           <Route index element={<FormFillView />} />
+        </Route>
+
+        <Route path="/profile" element={<RequireAuth><AppLayout /></RequireAuth>}>
+          <Route index element={<ProfilePage />} />
         </Route>
 
         {/* Fallback */}

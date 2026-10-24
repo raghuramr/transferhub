@@ -48,8 +48,8 @@ export function parseCsvRows(text: string): Record<string, string>[] {
 }
 
 /** Serializes an array of objects into CSV text using the given column order. */
-export function toCsv(rows: Record<string, any>[], columns: string[]): string {
-  const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+export function toCsv(rows: Record<string, unknown>[], columns: string[]): string {
+  const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const header = columns.join(',');
   const lines = rows.map((r) => columns.map((c) => esc(r[c])).join(','));
   return [header, ...lines].join('\n');
