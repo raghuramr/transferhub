@@ -5,6 +5,7 @@ import type { Role } from './types';
 
 // Auth
 import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
 import ChangePasswordPage from './pages/auth/ChangePasswordPage';
 
 // Layout
@@ -92,6 +93,7 @@ export default function App() {
       <Routes>
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/unauthorized" element={<div className="p-8 text-center text-red-600 text-xl">Not authorised</div>} />
 

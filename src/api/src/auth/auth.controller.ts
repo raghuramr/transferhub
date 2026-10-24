@@ -1,11 +1,12 @@
 import {
-  Controller, Post, Get, Body, Req, UseGuards, HttpCode, HttpStatus,
+  Controller, Post, Get, Body, Query, Req, UseGuards, HttpCode, HttpStatus, ParseIntPipe,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './authenticated-request.interface';
 import { IsEmail, IsString, MinLength } from 'class-validator';
+import { RegisterStudentDto } from './dto/register-student.dto';
 
 class LoginDto {
   @IsEmail() email: string;
@@ -28,6 +29,27 @@ class ChangePasswordDto {
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
+
+  /** Public — no auth. Student self-registration; auto-logs in on success. */
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  async register(@Body() dto: RegisterStudentDto, @Req() req: Request) {
+    const ip = req.ip || req.connection?.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.register(dto, ip, userAgent);
+  }
+
+  /** Public — no auth. Registration-page dropdown data. */
+  @Get('universities')
+  publicUniversities() {
+    return this.authService.publicUniversities();
+  }
+
+  /** Public — no auth. Registration-page dropdown data. */
+  @Get('programs')
+  publicPrograms(@Query('institutionId', ParseIntPipe) institutionId: number) {
+    return this.authService.publicPrograms(institutionId);
+  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)

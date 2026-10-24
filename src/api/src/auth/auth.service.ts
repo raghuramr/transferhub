@@ -2,16 +2,20 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  ConflictException,
+  NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
+import { EmailService } from '../common/email.service';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import * as sql from 'mssql';
 import type { AuthenticatedUser } from './authenticated-request.interface';
+import type { RegisterStudentDto } from './dto/register-student.dto';
 
 interface UserAuthRow {
   Id: string;
@@ -75,6 +79,7 @@ export class AuthService {
     private db: DatabaseService,
     private jwtService: JwtService,
     private config: ConfigService,
+    private emailService: EmailService,
   ) {}
 
   async validateUser(email: string, password: string, ip: string, userAgent: string): Promise<AuthenticatedUser> {
@@ -151,6 +156,149 @@ export class AuthService {
       role: user.Role,
       departmentId: user.DepartmentId,
     };
+  }
+
+  /**
+   * Public student self-registration (see RegisterStudentDto / migration
+   * 012). Creates the Users row + a StudentProfiles row (education,
+   * emergency contact, and an informational target University/Program —
+   * deliberately NOT a UserScopeUniversities row, so registering never
+   * narrows the student's own visibility; see CLAUDE.md scope-visibility
+   * notes). Logs the caller straight in afterward, same response shape as
+   * `login()`.
+   */
+  async register(dto: RegisterStudentDto, ip: string, userAgent: string) {
+    const existing = await this.db.query<{ Id: string }>(
+      `SELECT Id FROM Users WHERE Email = @email`,
+      [{ name: 'email', type: sql.NVarChar(254), value: dto.email }],
+    );
+    if (existing.recordset[0]) throw new ConflictException('Email already in use');
+
+    const roleRes = await this.db.query<{ Id: number }>(
+      `SELECT Id FROM Roles WHERE Name = 'student'`,
+    );
+    const roleId = roleRes.recordset[0]?.Id;
+    if (!roleId) throw new NotFoundException('student role not found — has the DB been seeded?');
+
+    if (dto.targetInstitutionId !== undefined) {
+      const inst = await this.db.query<{ Id: number }>(
+        `SELECT Id FROM Institutions WHERE Id = @id`,
+        [{ name: 'id', type: sql.Int, value: dto.targetInstitutionId }],
+      );
+      if (!inst.recordset[0]) throw new BadRequestException('targetInstitutionId not found');
+    }
+    if (dto.targetProgramId !== undefined) {
+      const prog = await this.db.query<{ Id: number }>(
+        `SELECT Id FROM Programs WHERE Id = @id`,
+        [{ name: 'id', type: sql.Int, value: dto.targetProgramId }],
+      );
+      if (!prog.recordset[0]) throw new BadRequestException('targetProgramId not found');
+    }
+
+    const hash = await argon2.hash(dto.password);
+
+    const userRes = await this.db.query<{ Id: string }>(
+      `INSERT INTO Users (
+         Email, PasswordHash, FirstName, LastName, RoleId, MustChangePass,
+         Mobile, AddressLine1, AddressLine2, City, State, PostalCode, Country, CountryOfOrigin
+       )
+       OUTPUT inserted.Id
+       VALUES (
+         @email, @hash, @first, @last, @roleId, 0,
+         @mobile, @addr1, @addr2, @city, @state, @postal, @country, @countryOfOrigin
+       )`,
+      [
+        { name: 'email', type: sql.NVarChar(254), value: dto.email },
+        { name: 'hash', type: sql.NVarChar(255), value: hash },
+        { name: 'first', type: sql.NVarChar(100), value: dto.firstName },
+        { name: 'last', type: sql.NVarChar(100), value: dto.lastName },
+        { name: 'roleId', type: sql.Int, value: roleId },
+        { name: 'mobile', type: sql.NVarChar(30), value: dto.mobile || null },
+        { name: 'addr1', type: sql.NVarChar(200), value: dto.addressLine1 || null },
+        { name: 'addr2', type: sql.NVarChar(200), value: dto.addressLine2 || null },
+        { name: 'city', type: sql.NVarChar(100), value: dto.city || null },
+        { name: 'state', type: sql.NVarChar(100), value: dto.state || null },
+        { name: 'postal', type: sql.NVarChar(20), value: dto.postalCode || null },
+        { name: 'country', type: sql.NVarChar(100), value: dto.country || null },
+        { name: 'countryOfOrigin', type: sql.NVarChar(100), value: dto.countryOfOrigin || null },
+      ],
+    );
+    const userId = userRes.recordset[0].Id;
+
+    await this.db.query(
+      `INSERT INTO StudentProfiles (
+         UserId, TargetInstitutionId, TargetProgramId,
+         PriorInstitutionName, HighestEducationLevel, FieldOfStudy, GPA, GraduationYear,
+         EmergencyContactName, EmergencyContactPhone
+       )
+       VALUES (
+         @userId, @targetInstitutionId, @targetProgramId,
+         @priorInstitutionName, @highestEducationLevel, @fieldOfStudy, @gpa, @graduationYear,
+         @emergencyContactName, @emergencyContactPhone
+       )`,
+      [
+        { name: 'userId', type: sql.UniqueIdentifier, value: userId },
+        { name: 'targetInstitutionId', type: sql.Int, value: dto.targetInstitutionId ?? null },
+        { name: 'targetProgramId', type: sql.Int, value: dto.targetProgramId ?? null },
+        { name: 'priorInstitutionName', type: sql.NVarChar(200), value: dto.priorInstitutionName || null },
+        { name: 'highestEducationLevel', type: sql.NVarChar(100), value: dto.highestEducationLevel || null },
+        { name: 'fieldOfStudy', type: sql.NVarChar(200), value: dto.fieldOfStudy || null },
+        { name: 'gpa', type: sql.Decimal(3, 2), value: dto.gpa ?? null },
+        { name: 'graduationYear', type: sql.Int, value: dto.graduationYear ?? null },
+        { name: 'emergencyContactName', type: sql.NVarChar(200), value: dto.emergencyContactName || null },
+        { name: 'emergencyContactPhone', type: sql.NVarChar(30), value: dto.emergencyContactPhone || null },
+      ] as QueryInput[],
+    );
+
+    await this.audit(userId, dto.email, 'student', 'STUDENT_REGISTERED', 'User', userId, ip, userAgent);
+
+    try {
+      await this.emailService.send(
+        dto.email,
+        'Welcome to TransferHub',
+        `<p>Hi ${dto.firstName},</p>
+         <p>Your TransferHub account has been created. You can sign in any time with the
+         email and password you registered with.</p>`,
+      );
+    } catch {
+      // Best-effort only — never fail registration because email delivery failed.
+    }
+
+    const user: AuthenticatedUser = {
+      id: userId,
+      email: dto.email,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      role: 'student',
+      departmentId: null,
+    };
+    return this.login(user, ip, userAgent);
+  }
+
+  /** Public (no auth) — dropdown data for the registration page. */
+  async publicUniversities() {
+    const res = await this.db.query<{ Id: number; Code: string; Name: string }>(
+      `SELECT Id, Code, Name FROM Institutions WHERE IsActive = 1 ORDER BY Name`,
+    );
+    return res.recordset.map((r) => ({ id: r.Id, code: r.Code, name: r.Name }));
+  }
+
+  /**
+   * Public (no auth) — Programs offered at a University, via
+   * ProgramUniversities (includes the owner, backfilled there — migration
+   * 011) rather than just Programs.InstitutionId, so a shared Program shows
+   * up for every University that offers it.
+   */
+  async publicPrograms(institutionId: number) {
+    const res = await this.db.query<{ Id: number; Name: string; Degree: string | null; Area: string | null }>(
+      `SELECT p.Id, p.Name, p.Degree, p.Area
+       FROM ProgramUniversities pu
+       JOIN Programs p ON p.Id = pu.ProgramId
+       WHERE pu.InstitutionId = @institutionId AND p.IsActive = 1
+       ORDER BY p.Name`,
+      [{ name: 'institutionId', type: sql.Int, value: institutionId }],
+    );
+    return res.recordset.map((r) => ({ id: r.Id, name: r.Name, degree: r.Degree, area: r.Area }));
   }
 
   async login(user: AuthenticatedUser, ip: string, userAgent: string) {
