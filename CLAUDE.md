@@ -257,6 +257,39 @@ Getting there eventually would mean:
 Again: this is just a direction noted for future reference, not committed
 work. No action item follows from it right now.
 
+## DB Script Runner tool (confirmed, built)
+`tools/db-script-runner/` is a standalone PowerShell + Windows Forms GUI
+for applying `.sql` migration/seed scripts to SQL Server / Azure SQL,
+built to replace manually running scripts one at a time in SSMS (which is
+what caused a prior "column already exists" incident from re-running an
+already-applied migration with no tracking of what had run). Use it
+instead of SSMS whenever applying a batch of migrations/seeds, especially
+against Azure SQL Database.
+- `DbScriptRunner.ps1` — the GUI: pick a folder containing a `.env`-style
+  file and load connection settings from it (generic `KEY=value` parser,
+  all fields editable afterwards); pick a folder of `.sql` scripts
+  (defaults to `database/migrations` in this repo, auto-detects a sibling
+  `database/seed` folder as a second tab); lists scripts naturally sorted
+  (`002_` before `011_`) with Applied/Not Applied/Changed/Failed status;
+  checkbox-select and "Run Selected" executes them in filename order via
+  `sqlcmd.exe` (falls back to `Invoke-Sqlcmd`/`SqlServer` module if
+  `sqlcmd.exe` isn't on PATH), streaming output live and stopping the
+  batch on the first error.
+- `Run.bat` — double-click launcher (`-ExecutionPolicy Bypass` scoped to
+  just that invocation, no global policy change).
+- Tracks what's already been applied in a `dbo.__ScriptRunnerHistory`
+  table it creates automatically in the target database (script name,
+  timestamp, success flag, SHA-256 checksum) — re-running something
+  already marked Applied prompts for confirmation instead of silently
+  erroring or silently re-running.
+- Supports both Windows/trusted auth and SQL auth, and Azure SQL's
+  required encrypted connection (`-N -C` sqlcmd flags / `Encrypt=Mandatory`
+  + `TrustServerCertificate` for `Invoke-Sqlcmd`).
+- **Deliberately generic / not hardcoded to this repo** — it's meant to be
+  copied as-is into any other SQL-Server-based project; see
+  `tools/db-script-runner/README.md` for the full explanation and how to
+  point it at a different project's env vars/folder layout.
+
 ## Workflow reminders for this repo
 - Feature branch: `claude/sleepy-maxwell-mzyijb` — merge into `main` after
   each change set (this has been the pattern all session; keep doing it
