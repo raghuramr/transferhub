@@ -160,6 +160,33 @@ heading toward the multi-tenant SaaS model noted below (BU stops being a
 structurally special case, it's just another "University" row). No scope
 rows for a user still means unrestricted, unchanged.
 
+## Programs CRUD + mapping (confirmed, built)
+Programs (`Programs` table, migration 003; `InstitutionId` FK = UI
+"University") previously had only a read endpoint (`GET /courses/programs`)
+— no way to create/edit one anywhere in the app, despite Courses and the
+cascading master-data picker already referencing `ProgramId`. Closed the
+gap:
+- Migration 017 adds `Programs.IsActive` (default 1) + `UpdatedAt`, so
+  Programs can be soft-deactivated like every other master-data entity
+  (`Courses.ProgramId` is nullable and may reference a Program
+  historically, so hard delete is never done).
+- `CoursesService`/`CoursesController` gained
+  `createProgram`/`updateProgram`/`deactivateProgram` — `POST`/`PATCH
+  /courses/programs/:id`/`DELETE /courses/programs/:id`, gated
+  `admin`/`super_admin` like the other mutation endpoints; `GET
+  /courses/programs` now also accepts `includeInactive=true`.
+- UI: `UniversitiesManagement.tsx` now shows a "Programs" sub-list in each
+  University's expanded row (`UniversityProgramsList`, mirroring the
+  existing `UniversityInstitutionsList` pattern), stacked below
+  Institutions in the right-hand column — create a Program directly under
+  that University, or deactivate one. Programs have no "unmapped" concept
+  (they're always created directly under a University), so unlike
+  Institutions there's no assign-existing flow here.
+- `CascadingMasterDataSelect.tsx`'s Program level now has a real
+  `canCreate`/`onCreate` wired to the new endpoint (previously hardcoded
+  `canCreate={false}` with a comment noting no create endpoint existed —
+  that comment/limitation is now resolved).
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group

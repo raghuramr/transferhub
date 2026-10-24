@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { universitiesApi, institutionsApi } from '../../lib/api';
-import { Building2, Plus, Upload, Power, Globe2, School } from 'lucide-react';
+import { universitiesApi, institutionsApi, coursesApi } from '../../lib/api';
+import { Building2, Plus, Upload, Power, Globe2, School, GraduationCap } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ImageSourceField } from '../../components/shared/ImageSourceField';
 
@@ -271,6 +271,112 @@ function UniversityInstitutionsList({ universityId }: { universityId: number }) 
   );
 }
 
+interface Program {
+  id: number;
+  institutionId: number;
+  area: string | null;
+  name: string;
+  degree: string | null;
+  isActive: boolean;
+}
+
+/**
+ * Programs belong directly to a University (SQL `Institutions` table) --
+ * unlike Institutions (AcademicUnits), Programs have no "unmapped" state,
+ * so this is a simpler create-only list (no assign-existing flow).
+ */
+function UniversityProgramsList({ universityId }: { universityId: number }) {
+  const qc = useQueryClient();
+  const [newName, setNewName] = useState('');
+  const [newArea, setNewArea] = useState('');
+
+  const invalidateAll = () => qc.invalidateQueries({ queryKey: ['programs', { universityId }] });
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['programs', { universityId }],
+    queryFn: () => coursesApi.programs(universityId),
+  });
+  const programs: Program[] = (data?.data as Program[]) ?? [];
+
+  const addMutation = useMutation({
+    mutationFn: () =>
+      coursesApi.createProgram({ institutionId: universityId, name: newName.trim(), area: newArea.trim() || undefined }),
+    onSuccess: () => {
+      setNewName('');
+      setNewArea('');
+      invalidateAll();
+    },
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: number) => coursesApi.deactivateProgram(id),
+    onSuccess: invalidateAll,
+  });
+
+  return (
+    <div className="pl-4 border-l-2 border-brand-200">
+      <div className="flex items-center gap-1.5 mb-2">
+        <GraduationCap size={14} className="text-brand-700" />
+        <h3 className="text-sm font-semibold text-gray-700">Programs</h3>
+      </div>
+
+      {isLoading ? (
+        <p className="text-xs text-gray-400">Loading…</p>
+      ) : programs.length === 0 ? (
+        <p className="text-xs text-gray-400 mb-2">No programs under this university yet.</p>
+      ) : (
+        <ul className="space-y-1 mb-3">
+          {programs.map((p) => (
+            <li
+              key={p.id}
+              className="flex items-center justify-between text-sm bg-white border border-gray-200 rounded-lg px-3 py-1.5"
+            >
+              <span className="text-gray-800">
+                {p.name}
+                {p.area && <span className="text-gray-400"> ({p.area})</span>}
+                {p.degree && <span className="text-gray-400"> — {p.degree}</span>}
+              </span>
+              <button
+                onClick={() => deactivateMutation.mutate(p.id)}
+                disabled={deactivateMutation.isPending}
+                title="Deactivate program"
+                className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+              >
+                <Power size={13} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex gap-2">
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="New program name…"
+          className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+        />
+        <input
+          value={newArea}
+          onChange={(e) => setNewArea(e.target.value)}
+          placeholder="Area (optional)"
+          className="w-32 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+        />
+        <button
+          onClick={() => newName.trim() && addMutation.mutate()}
+          disabled={addMutation.isPending || !newName.trim()}
+          className="flex items-center gap-1 px-3 py-1.5 bg-brand-800 text-white rounded-lg text-xs font-medium hover:bg-brand-900 disabled:bg-brand-400"
+        >
+          <Plus size={12} /> Add Program
+        </button>
+      </div>
+      {(addMutation.isError || deactivateMutation.isError) && (
+        <p className="mt-1 text-xs text-red-600">Could not save. Please try again.</p>
+      )}
+    </div>
+  );
+}
+
 function UniversityEditForm({
   university,
   onSave,
@@ -331,7 +437,10 @@ function UniversityEditForm({
           </div>
         </div>
 
-        <UniversityInstitutionsList universityId={university.id} />
+        <div className="space-y-6">
+          <UniversityInstitutionsList universityId={university.id} />
+          <UniversityProgramsList universityId={university.id} />
+        </div>
       </div>
 
       <p className="mt-4 text-xs text-gray-400">Click the row again to collapse.</p>

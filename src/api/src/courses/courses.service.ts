@@ -2,7 +2,25 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { CreateCourseDto } from './dto/create-course.dto';
+import { CreateProgramDto } from './dto/create-program.dto';
+import { UpdateProgramDto } from './dto/update-program.dto';
 import { parseCsvRows, toCsv } from '../common/csv.util';
+
+function mapProgram(r: ProgramRow) {
+  return {
+    id: r.Id,
+    institutionId: r.InstitutionId,
+    area: r.Area,
+    name: r.Name,
+    degree: r.Degree,
+    school: r.School,
+    keyRules: r.KeyRules,
+    source: r.Source,
+    matchStrength: r.MatchStrength,
+    notes: r.Notes,
+    isActive: !!r.IsActive,
+  };
+}
 
 const EXPORT_COLUMNS = ['id', 'institutionCode', 'programName', 'code', 'title', 'programArea', 'requirementType', 'credits', 'level', 'verified', 'notes'];
 
@@ -32,6 +50,11 @@ interface ProgramRow {
   Name: string;
   Degree: string | null;
   School: string | null;
+  KeyRules: string | null;
+  Source: string | null;
+  MatchStrength: string | null;
+  Notes: string | null;
+  IsActive: boolean;
 }
 
 interface InstitutionRow {
@@ -191,26 +214,112 @@ export class CoursesService {
     return mapCourse(res.recordset[0]);
   }
 
-  async findPrograms(institutionId?: number) {
+  async findPrograms(institutionId?: number, includeInactive = false) {
     let where = '1=1';
     const inputs: QueryInput[] = [];
     if (institutionId !== undefined) {
       where += ' AND InstitutionId = @instId';
       inputs.push({ name: 'instId', type: sql.Int, value: institutionId });
     }
+    if (!includeInactive) {
+      where += ' AND IsActive = 1';
+    }
     const res = await this.db.query<ProgramRow>(
-      `SELECT Id, InstitutionId, Area, Name, Degree, School
+      `SELECT Id, InstitutionId, Area, Name, Degree, School, KeyRules, Source, MatchStrength, Notes, IsActive
        FROM Programs WHERE ${where} ORDER BY Area, Name`,
       inputs,
     );
-    return res.recordset.map((r) => ({
-      id: r.Id,
-      institutionId: r.InstitutionId,
-      area: r.Area,
-      name: r.Name,
-      degree: r.Degree,
-      school: r.School,
-    }));
+    return res.recordset.map(mapProgram);
+  }
+
+  async findProgramById(id: number) {
+    const res = await this.db.query<ProgramRow>(
+      `SELECT Id, InstitutionId, Area, Name, Degree, School, KeyRules, Source, MatchStrength, Notes, IsActive
+       FROM Programs WHERE Id = @id`,
+      [{ name: 'id', type: sql.Int, value: id }],
+    );
+    if (!res.recordset[0]) throw new NotFoundException('Program not found');
+    return mapProgram(res.recordset[0]);
+  }
+
+  async createProgram(dto: CreateProgramDto) {
+    const res = await this.db.query<{ Id: number }>(
+      `INSERT INTO Programs (InstitutionId, Area, Name, Degree, School, KeyRules, Source, MatchStrength, Notes, IsActive)
+       OUTPUT inserted.Id
+       VALUES (@institutionId, @area, @name, @degree, @school, @keyRules, @source, @matchStrength, @notes, @isActive)`,
+      [
+        { name: 'institutionId', type: sql.Int, value: dto.institutionId },
+        { name: 'area', type: sql.NVarChar(100), value: dto.area || null },
+        { name: 'name', type: sql.NVarChar(200), value: dto.name },
+        { name: 'degree', type: sql.VarChar(10), value: dto.degree || null },
+        { name: 'school', type: sql.NVarChar(200), value: dto.school || null },
+        { name: 'keyRules', type: sql.NVarChar(sql.MAX), value: dto.keyRules || null },
+        { name: 'source', type: sql.NVarChar(500), value: dto.source || null },
+        { name: 'matchStrength', type: sql.VarChar(20), value: dto.matchStrength || null },
+        { name: 'notes', type: sql.NVarChar(sql.MAX), value: dto.notes || null },
+        { name: 'isActive', type: sql.Bit, value: dto.isActive !== false ? 1 : 0 },
+      ],
+    );
+    return this.findProgramById(res.recordset[0].Id);
+  }
+
+  async updateProgram(id: number, dto: UpdateProgramDto) {
+    await this.findProgramById(id);
+    const sets: string[] = ['UpdatedAt = SYSUTCDATETIME()'];
+    const inputs: QueryInput[] = [{ name: 'id', type: sql.Int, value: id }];
+
+    if (dto.institutionId !== undefined) {
+      sets.push('InstitutionId = @institutionId');
+      inputs.push({ name: 'institutionId', type: sql.Int, value: dto.institutionId });
+    }
+    if (dto.area !== undefined) {
+      sets.push('Area = @area');
+      inputs.push({ name: 'area', type: sql.NVarChar(100), value: dto.area || null });
+    }
+    if (dto.name !== undefined) {
+      sets.push('Name = @name');
+      inputs.push({ name: 'name', type: sql.NVarChar(200), value: dto.name });
+    }
+    if (dto.degree !== undefined) {
+      sets.push('Degree = @degree');
+      inputs.push({ name: 'degree', type: sql.VarChar(10), value: dto.degree || null });
+    }
+    if (dto.school !== undefined) {
+      sets.push('School = @school');
+      inputs.push({ name: 'school', type: sql.NVarChar(200), value: dto.school || null });
+    }
+    if (dto.keyRules !== undefined) {
+      sets.push('KeyRules = @keyRules');
+      inputs.push({ name: 'keyRules', type: sql.NVarChar(sql.MAX), value: dto.keyRules || null });
+    }
+    if (dto.source !== undefined) {
+      sets.push('Source = @source');
+      inputs.push({ name: 'source', type: sql.NVarChar(500), value: dto.source || null });
+    }
+    if (dto.matchStrength !== undefined) {
+      sets.push('MatchStrength = @matchStrength');
+      inputs.push({ name: 'matchStrength', type: sql.VarChar(20), value: dto.matchStrength || null });
+    }
+    if (dto.notes !== undefined) {
+      sets.push('Notes = @notes');
+      inputs.push({ name: 'notes', type: sql.NVarChar(sql.MAX), value: dto.notes || null });
+    }
+    if (dto.isActive !== undefined) {
+      sets.push('IsActive = @isActive');
+      inputs.push({ name: 'isActive', type: sql.Bit, value: dto.isActive ? 1 : 0 });
+    }
+
+    await this.db.query(`UPDATE Programs SET ${sets.join(', ')} WHERE Id = @id`, inputs);
+    return this.findProgramById(id);
+  }
+
+  /** Soft delete — Courses.ProgramId can reference a Program historically. */
+  async deactivateProgram(id: number) {
+    await this.findProgramById(id);
+    await this.db.query(`UPDATE Programs SET IsActive = 0, UpdatedAt = SYSUTCDATETIME() WHERE Id = @id`, [
+      { name: 'id', type: sql.Int, value: id },
+    ]);
+    return { message: 'Program deactivated' };
   }
 
   async findInstitutions() {

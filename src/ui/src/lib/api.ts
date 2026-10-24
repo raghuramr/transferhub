@@ -155,7 +155,11 @@ export const coursesApi = {
   update: (id: number, data: unknown) => api.patch(`/courses/${id}`, data),
   deactivate: (id: number) => api.delete(`/courses/${id}`),
   institutions: () => api.get('/courses/institutions'),
-  programs: (institutionId?: number) => api.get('/courses/programs', { params: { institutionId } }),
+  programs: (institutionId?: number, includeInactive?: boolean) =>
+    api.get('/courses/programs', { params: { institutionId, includeInactive } }),
+  createProgram: (data: unknown) => api.post('/courses/programs', data),
+  updateProgram: (id: number, data: unknown) => api.patch(`/courses/programs/${id}`, data),
+  deactivateProgram: (id: number) => api.delete(`/courses/programs/${id}`),
   export: () => api.get('/courses/export', { responseType: 'blob' }),
   import: (file: File) => {
     const form = new FormData();

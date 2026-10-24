@@ -6,6 +6,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { CoursesService } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
+import { CreateProgramDto } from './dto/create-program.dto';
+import { UpdateProgramDto } from './dto/update-program.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -53,8 +55,32 @@ export class CoursesController {
   }
 
   @Get('programs')
-  findPrograms(@Query('institutionId') institutionId?: string) {
-    return this.coursesService.findPrograms(institutionId ? parseInt(institutionId, 10) : undefined);
+  findPrograms(@Query('institutionId') institutionId?: string, @Query('includeInactive') includeInactive?: string) {
+    return this.coursesService.findPrograms(
+      institutionId ? parseInt(institutionId, 10) : undefined,
+      includeInactive === 'true',
+    );
+  }
+
+  @Post('programs')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
+  createProgram(@Body() dto: CreateProgramDto) {
+    return this.coursesService.createProgram(dto);
+  }
+
+  @Patch('programs/:id')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
+  updateProgram(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProgramDto) {
+    return this.coursesService.updateProgram(id, dto);
+  }
+
+  @Delete('programs/:id')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'super_admin')
+  deactivateProgram(@Param('id', ParseIntPipe) id: number) {
+    return this.coursesService.deactivateProgram(id);
   }
 
   @Get('equivalencies')

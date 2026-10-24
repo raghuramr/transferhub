@@ -268,9 +268,10 @@ export function MasterDataSelect({
 //   - Institutions  POST /institutions        -> admin, super_admin
 //   - Courses       POST /courses             -> admin, super_admin
 //   - Topics        POST /courses/:id/topics  -> admin, super_admin, faculty
-//   - Programs      (no create endpoint exists at all — never offered)
+//   - Programs      POST /courses/programs    -> admin, super_admin
 const CAN_CREATE_UNIVERSITY: Role[] = ['admin', 'super_admin'];
 const CAN_CREATE_INSTITUTION: Role[] = ['admin', 'super_admin'];
+const CAN_CREATE_PROGRAM: Role[] = ['admin', 'super_admin'];
 const CAN_CREATE_COURSE: Role[] = ['admin', 'super_admin'];
 const CAN_CREATE_TOPIC: Role[] = ['admin', 'super_admin', 'faculty'];
 
@@ -503,7 +504,12 @@ export function MasterDataCascade({ value, onChange, includeTopic = true, throug
           disabled={!value.universityId}
           loading={programsQuery.isLoading}
           onSelect={(id) => onChange({ ...value, programId: id, courseId: null, topicId: null })}
-          canCreate={false}
+          canCreate={!!role && CAN_CREATE_PROGRAM.includes(role) && !!value.universityId}
+          onCreate={async (name) => {
+            const res = await coursesApi.createProgram({ institutionId: value.universityId, name });
+            await qc.invalidateQueries({ queryKey: ['md-programs', value.universityId] });
+            return (res.data as CreatedRow).id;
+          }}
         />
       )}
 
