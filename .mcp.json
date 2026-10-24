@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "transferhub-db": {
+      "command": "node",
+      "args": ["tools/db-mcp-server/dist/index.js"],
+      "description": "Applies database/migrations and database/seed to the configured SQL Server / Azure SQL database. Defaults to the same DB as src/api/.env — see tools/db-mcp-server/README.md."
+    }
+  }
+}
