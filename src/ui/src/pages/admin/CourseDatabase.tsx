@@ -61,7 +61,7 @@ function CourseEditForm({ course, canEdit }: { course: CourseRow; canEdit: boole
     return (
       <div className="mb-5">
         <h3 className="text-sm font-semibold text-gray-900 mb-2">Course Details</h3>
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
           <dt className="text-gray-500">University</dt><dd className="text-gray-900">{course.institutionName || '—'}</dd>
           <dt className="text-gray-500">Program</dt><dd className="text-gray-900">{course.programName || '—'}</dd>
           <dt className="text-gray-500">Code</dt><dd className="font-mono text-gray-900">{course.code}</dd>
@@ -76,7 +76,7 @@ function CourseEditForm({ course, canEdit }: { course: CourseRow; canEdit: boole
   return (
     <div className="mb-5 pb-5 border-b border-gray-200">
       <h3 className="text-sm font-semibold text-gray-900 mb-3">Course Details</h3>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">University</label>
           <select
@@ -250,8 +250,8 @@ export default function CourseDatabase() {
   ];
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
         <div className="flex items-center gap-3">
           <BookOpen className="text-brand-800" size={24} />
           <div>

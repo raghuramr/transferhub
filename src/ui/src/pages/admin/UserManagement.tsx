@@ -202,7 +202,7 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <h3 className="font-semibold text-gray-900 mb-3 text-sm">Edit User</h3>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">First Name</label>
               <input
@@ -229,7 +229,7 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
               <select
@@ -255,7 +255,7 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
           </div>
           <div className="pt-2 border-t border-gray-100">
             <p className="text-xs font-medium text-gray-500 mb-2">Contact & Address</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Mobile</label>
                 <input
@@ -289,7 +289,7 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">City</label>
                 <input
@@ -307,7 +307,7 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Postal Code</label>
                 <input
@@ -500,8 +500,8 @@ export default function UserManagement() {
   ];
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <Users className="text-brand-800" size={24} />
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>

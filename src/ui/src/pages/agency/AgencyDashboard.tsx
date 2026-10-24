@@ -35,7 +35,7 @@ export default function AgencyDashboard() {
   const completed = transcripts.filter((t) => t.status === 'complete').length;
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">

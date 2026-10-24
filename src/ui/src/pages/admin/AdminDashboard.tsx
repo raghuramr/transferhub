@@ -8,7 +8,7 @@ import type { TranscriptSummary } from '../../types';
 function StatCard({ label, value, icon, to }: { label: string; value: string | number; icon: React.ReactNode; to: string }) {
   return (
     <Link to={to} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <p className="text-sm font-medium text-gray-500">{label}</p>
         <span className="text-brand-500">{icon}</span>
       </div>
@@ -34,7 +34,7 @@ export default function AdminDashboard() {
   const complete = allTranscripts.filter((t) => t.status === 'complete').length;
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-8">
         <LayoutDashboard className="text-brand-800" size={24} />
         <div>

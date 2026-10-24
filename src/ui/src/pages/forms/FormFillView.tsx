@@ -67,7 +67,7 @@ export default function FormFillView() {
 
   if (submitted) {
     return (
-      <div className="p-8 max-w-xl mx-auto">
+      <div className="p-4 sm:p-8 max-w-xl mx-auto">
         <Card className="p-8 text-center">
           <CheckCircle2 className="mx-auto text-green-600 mb-3" size={40} />
           <p className="text-gray-900 font-medium">{submitted}</p>
@@ -77,7 +77,7 @@ export default function FormFillView() {
   }
 
   return (
-    <div className="p-8 max-w-xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-xl mx-auto">
       <Reveal>
         <h1 className="text-2xl font-bold text-gray-900 mb-1">{form.title}</h1>
         {form.description && <p className="text-gray-500 mb-6">{form.description}</p>}

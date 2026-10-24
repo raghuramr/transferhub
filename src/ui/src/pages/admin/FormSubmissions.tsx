@@ -33,7 +33,7 @@ export default function FormSubmissions() {
   const submissions = (data?.data as FormSubmission[]) ?? [];
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
       <button onClick={() => navigate(`/admin/forms/${id}`)} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-6">
         <ArrowLeft size={16} /> Back to Form
       </button>
@@ -59,7 +59,7 @@ export default function FormSubmissions() {
                 <Badge tone={statusTone[sub.status] ?? 'gray'}>{sub.status}</Badge>
               </div>
 
-              <dl className="grid grid-cols-2 gap-3 text-sm mb-4">
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mb-4">
                 {Object.entries(sub.data).map(([key, value]) => (
                   <div key={key}>
                     <dt className="text-gray-500 text-xs">{key}</dt>

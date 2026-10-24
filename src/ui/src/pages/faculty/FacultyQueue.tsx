@@ -34,7 +34,7 @@ export default function FacultyQueue() {
   const evaluations: QueuedEvaluation[] = (data?.data as QueuedEvaluation[]) ?? [];
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-8">
         <ClipboardList className="text-brand-800" size={24} />
         <div>

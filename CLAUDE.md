@@ -319,6 +319,51 @@ Getting there eventually would mean:
 Again: this is just a direction noted for future reference, not committed
 work. No action item follows from it right now.
 
+## Responsive/mobile pass (confirmed, built — first pass)
+User asked for an effort estimate on making every page mobile-friendly, then
+said to pick it up. Scope of this first pass (mechanical + the one real
+structural blocker):
+- **App shell (`AppLayout.tsx`)**: the sidebar was a fixed `w-64` column
+  always rendered — the single biggest mobile blocker, since it alone ate
+  256px of any viewport. Now `hidden md:flex` on desktop, replaced below
+  `md` by a slide-over drawer (backdrop + `Menu`/`X` toggle, closes on
+  every route change) and a mobile top bar carrying the hamburger + logo.
+- **Page containers**: every `p-8 max-w-Nxl mx-auto` page wrapper (27
+  occurrences across ~25 files) became `p-4 sm:p-8 max-w-Nxl mx-auto` —
+  full padding is a lot of a 375px viewport's width.
+- **Header rows**: the top-level title+actions `flex items-center
+  justify-between` row on the 13 pages that have one (list pages,
+  editors, the profile page) gained `flex-wrap gap-3` so action buttons
+  wrap onto a second line instead of overflowing/squeezing. Deliberately
+  left alone: smaller nested card/section headers (e.g. inside
+  `SuperAdminDashboard`'s stat cards) — different risk/benefit, not the
+  reported problem.
+- **Fixed multi-column grids**: every always-on `grid-cols-2`/`grid-cols-3`
+  (form field pairs, stat card rows, dashboard panels — ~17 occurrences)
+  became `grid-cols-1 sm:grid-cols-N`, so they stack on a phone instead of
+  squeezing into unreadably narrow columns.
+- `DataTable` (used on ~15 pages) was already reasonably mobile-tolerant
+  going in — its toolbar already used `flex-wrap` and its table already
+  scrolled horizontally (`overflow-x-auto`) — so it needed no structural
+  change here, just the `showExport` prop added for the Roles &
+  Permissions work above.
+- Verified: the public `/login` page renders correctly at 375×667 (headless
+  Chromium screenshot). Could not visually verify authenticated pages in
+  this pass — this sandbox has no SQL Server/Docker available to run the
+  real API+DB stack, and faking `localStorage` auth to view a protected
+  route directly hits an unrelated pre-existing quirk (hard-loading a
+  protected URL always bounces to `/login` for one render before
+  `initFromStorage()`'s effect fires — not something this pass touched or
+  introduced). The shell/grid/wrapper changes are otherwise standard,
+  TypeScript-checked Tailwind responsive patterns already used elsewhere
+  in this codebase.
+- **Known gap, not done in this pass**: no page-by-page bespoke mobile
+  redesign (e.g. turning `DataTable`'s desktop table into a stacked
+  card list below a breakpoint) — this pass fixes the structural
+  blockers and the worst offenders mechanically; a true "every page
+  pixel-checked on a real phone" pass would be a separate, larger effort
+  if still wanted after seeing this.
+
 ## DB Script Runner tool (confirmed, built)
 `tools/db-script-runner/` is a standalone PowerShell + Windows Forms GUI
 for applying `.sql` migration/seed scripts to SQL Server / Azure SQL,

@@ -19,7 +19,7 @@ export default function SuperAdminDashboard() {
   }, {});
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-8">
         <LayoutDashboard className="text-brand-800" size={24} />
         <div>
@@ -30,7 +30,7 @@ export default function SuperAdminDashboard() {
 
       <AnnouncementsBanner />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-medium text-gray-500">Total Users</p>
@@ -62,7 +62,7 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* User breakdown */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-4">Users by Role</h2>
           <div className="space-y-2">

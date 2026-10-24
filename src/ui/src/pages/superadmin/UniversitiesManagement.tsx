@@ -72,7 +72,7 @@ function UniversityFields({
           placeholder="e.g. Boston University"
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Calendar</label>
           <select
@@ -555,8 +555,8 @@ export default function UniversitiesManagement() {
   ];
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <Building2 className="text-brand-800" size={24} />
           <h1 className="text-2xl font-bold text-gray-900">Universities</h1>

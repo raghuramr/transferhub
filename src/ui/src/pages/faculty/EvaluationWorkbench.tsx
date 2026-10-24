@@ -77,7 +77,7 @@ export default function EvaluationWorkbench() {
   const candidates: AICandidate[] = ev.aiCandidates ?? [];
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Evaluation Workbench</h1>
       <p className="text-gray-500 mb-6">
         {tc?.courseCode} — {tc?.courseTitle} from {tc?.transcript?.institution?.name}
@@ -93,7 +93,7 @@ export default function EvaluationWorkbench() {
           {/* Source course */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="font-semibold text-gray-900 mb-3">Transfer Course</h2>
-            <dl className="grid grid-cols-2 gap-3 text-sm">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               {[
                 ['Code', tc?.courseCode],
                 ['Title', tc?.courseTitle],

@@ -112,7 +112,7 @@ export default function UploadTranscript() {
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Submit Transcript</h1>
       <p className="text-gray-500 mb-8">Select your transfer institution and courses from the catalog below.</p>
 
@@ -254,7 +254,7 @@ function CourseRowFields({
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-3 mt-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Credits taken</label>
           <input

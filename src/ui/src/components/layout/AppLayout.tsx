@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
@@ -7,7 +8,7 @@ import { PageTransition } from '../ui/PageTransition';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
-  Building2, School, Handshake, ShieldCheck,
+  Building2, School, Handshake, ShieldCheck, Menu, X,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -51,6 +52,7 @@ export default function AppLayout() {
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const { data: navPagesData } = useQuery({
     queryKey: ['pages', 'nav'],
@@ -67,81 +69,127 @@ export default function AppLayout() {
 
   const items = user ? navItems[user.role] ?? [] : [];
 
+  // Close the mobile drawer on every navigation.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  const sidebarContent = (
+    <>
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-6 py-5 border-b border-brand-100/60">
+        <div className="w-9 h-9 rounded-xl bg-brand-800 flex items-center justify-center shrink-0">
+          <GraduationCap className="text-white" size={20} />
+        </div>
+        <div>
+          <p className="font-bold text-gray-900 text-sm leading-tight">TransferHub</p>
+          <p className="text-xs text-gray-500">Credit Evaluation</p>
+        </div>
+        <button
+          onClick={() => setMobileNavOpen(false)}
+          className="ml-auto md:hidden text-gray-400 hover:text-gray-700 p-1"
+          aria-label="Close menu"
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        {items.map(({ to, label, icon }) => (
+          <NavItem key={to} to={to} label={label} icon={icon} />
+        ))}
+
+        {navPages.length > 0 && (
+          <div className="pt-4 mt-2 border-t border-brand-100/60">
+            <p className="px-3 pb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+              Resources
+            </p>
+            {navPages.map((p) => (
+              <NavItem
+                key={p.slug}
+                to={`/pages/${p.slug}`}
+                label={p.navLabel || p.title}
+                icon={<FileQuestion size={18} />}
+              />
+            ))}
+          </div>
+        )}
+      </nav>
+
+      {/* User + logout */}
+      <div className="border-t border-brand-100/60 px-4 py-4 shrink-0">
+        <NavLink
+          to="/profile"
+          className="flex items-center gap-3 mb-3 w-full text-left rounded-lg px-1 -mx-1 py-1 hover:bg-brand-50 transition-colors"
+        >
+          <div className="w-8 h-8 rounded-full bg-brand-800 text-white flex items-center justify-center text-sm font-bold shrink-0">
+            {user?.firstName[0]}{user?.lastName[0]}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="text-xs text-gray-500 capitalize">
+              {user?.role.replace('_', ' ')}
+            </p>
+          </div>
+        </NavLink>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-600 hover:text-brand-800 hover:bg-brand-50 rounded-lg transition-colors"
+        >
+          <LogOut size={16} />
+          Sign out
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex min-h-screen bg-[#faf7f8]">
-      {/* Sidebar — sticky to the viewport so the nav/footer never scroll away
-          with long page content (only the nav list itself scrolls). */}
-      <aside className="w-64 h-screen sticky top-0 bg-white border-r border-brand-100/60 flex flex-col shrink-0">
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-brand-100/60">
-          <div className="w-9 h-9 rounded-xl bg-brand-800 flex items-center justify-center shrink-0">
-            <GraduationCap className="text-white" size={20} />
-          </div>
-          <div>
-            <p className="font-bold text-gray-900 text-sm leading-tight">TransferHub</p>
-            <p className="text-xs text-gray-500">Credit Evaluation</p>
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {items.map(({ to, label, icon }) => (
-            <NavItem key={to} to={to} label={label} icon={icon} />
-          ))}
-
-          {navPages.length > 0 && (
-            <div className="pt-4 mt-2 border-t border-brand-100/60">
-              <p className="px-3 pb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                Resources
-              </p>
-              {navPages.map((p) => (
-                <NavItem
-                  key={p.slug}
-                  to={`/pages/${p.slug}`}
-                  label={p.navLabel || p.title}
-                  icon={<FileQuestion size={18} />}
-                />
-              ))}
-            </div>
-          )}
-        </nav>
-
-        {/* User + logout */}
-        <div className="border-t border-brand-100/60 px-4 py-4 shrink-0">
-          <NavLink
-            to="/profile"
-            className="flex items-center gap-3 mb-3 w-full text-left rounded-lg px-1 -mx-1 py-1 hover:bg-brand-50 transition-colors"
-          >
-            <div className="w-8 h-8 rounded-full bg-brand-800 text-white flex items-center justify-center text-sm font-bold shrink-0">
-              {user?.firstName[0]}{user?.lastName[0]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.firstName} {user?.lastName}
-              </p>
-              <p className="text-xs text-gray-500 capitalize">
-                {user?.role.replace('_', ' ')}
-              </p>
-            </div>
-          </NavLink>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-600 hover:text-brand-800 hover:bg-brand-50 rounded-lg transition-colors"
-          >
-            <LogOut size={16} />
-            Sign out
-          </button>
-        </div>
+      {/* Desktop sidebar — sticky to the viewport so the nav/footer never
+          scroll away with long page content (only the nav list itself
+          scrolls). Hidden below md; replaced by the slide-over drawer. */}
+      <aside className="hidden md:flex w-64 h-screen sticky top-0 bg-white border-r border-brand-100/60 flex-col shrink-0">
+        {sidebarContent}
       </aside>
 
-      {/* Main — fluid page transitions on route change */}
-      <main className="flex-1 overflow-auto">
-        <AnimatePresence mode="wait" initial={false}>
-          <PageTransition key={location.pathname}>
-            <Outlet />
-          </PageTransition>
-        </AnimatePresence>
-      </main>
+      {/* Mobile slide-over drawer + backdrop */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileNavOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white flex flex-col shadow-xl">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Mobile top bar with hamburger — only shown below md */}
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-brand-100/60 sticky top-0 z-30">
+          <button
+            onClick={() => setMobileNavOpen(true)}
+            className="text-gray-600 hover:text-brand-800 p-1 -ml-1"
+            aria-label="Open menu"
+          >
+            <Menu size={22} />
+          </button>
+          <div className="w-7 h-7 rounded-lg bg-brand-800 flex items-center justify-center shrink-0">
+            <GraduationCap className="text-white" size={16} />
+          </div>
+          <p className="font-bold text-gray-900 text-sm">TransferHub</p>
+        </div>
+
+        {/* Main — fluid page transitions on route change */}
+        <main className="flex-1 overflow-auto">
+          <AnimatePresence mode="wait" initial={false}>
+            <PageTransition key={location.pathname}>
+              <Outlet />
+            </PageTransition>
+          </AnimatePresence>
+        </main>
+      </div>
     </div>
   );
 }
