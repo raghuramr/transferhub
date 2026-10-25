@@ -174,7 +174,11 @@ function SettingsTab() {
   const numOrNull = (v: string) => (v === '' ? null : Number(v));
 
   const save = useMutation({
-    mutationFn: () => aiControlsApi.saveSettings({ ...draft!, institutionId: scope }),
+    mutationFn: () => {
+      // The API rejects unknown properties, so drop the read-only row fields.
+      const { id: _id, institutionName: _name, institutionId: _inst, ...fields } = draft!;
+      return aiControlsApi.saveSettings({ ...fields, institutionId: scope });
+    },
     onSuccess: () => { setDirty(false); setError(''); setMsg('Saved. Applies to the next request.'); void qc.invalidateQueries({ queryKey: ['ai-settings'] }); },
     onError: (e) => setError(errMsg(e, 'Could not save settings.')),
   });
