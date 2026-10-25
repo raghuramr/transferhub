@@ -99,3 +99,18 @@ WHEN NOT MATCHED THEN
         source.Area, source.Name, source.Degree, source.School, source.KeyRules, source.Source, source.MatchStrength, source.Notes
     );
 GO
+
+-- ─── Courses.ProgramId backfill (repeated here, idempotent) ───
+-- Migration 003_institutions_courses_programs.sql runs this same backfill,
+-- but at that point Programs is still empty (it isn't seeded until this
+-- file runs), so it's always a no-op there on a fresh database — every
+-- course's ProgramId stays NULL forever, which breaks any UI that filters
+-- a course catalog by Program (e.g. the student transcript-upload course
+-- picker always showing "No matches" once a Program is selected). Re-run
+-- it here, now that Programs actually has rows, so the match can succeed.
+UPDATE c
+SET c.ProgramId = p.Id
+FROM Courses c
+JOIN Programs p ON p.InstitutionId = c.InstitutionId AND p.Area = c.ProgramArea
+WHERE c.ProgramId IS NULL AND c.ProgramArea IS NOT NULL;
+GO
