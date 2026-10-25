@@ -6,13 +6,17 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  // Captured before NestFactory.create(AppModule) runs ConfigModule's .env
-  // loading, which can overwrite process.env.PORT in place with whatever a
-  // deployed .env file (or Azure Application Setting) defines — that must
-  // never beat the real, dynamically-assigned port Azure's httpPlatformHandler
-  // injects at the OS env level, or IIS's reverse proxy can never reach the
-  // process it just started (healthy boot, permanent 502/503).
-  const injectedPort = process.env.PORT;
+  // Captured before NestFactory.create(AppModule) touches process.env at all.
+  // HTTP_PLATFORM_PORT is the variable IIS's httpPlatformHandler natively
+  // guarantees on every spawned process on Windows Azure App Service — no
+  // web.config <environmentVariables> mapping required, unlike our prior
+  // PORT alias, which kept failing to propagate for reasons that didn't
+  // repro consistently. Reading the platform's own variable directly removes
+  // that indirection; PORT is kept only as a non-Azure/local-dev fallback.
+  const injectedPort = process.env.HTTP_PLATFORM_PORT || process.env.PORT;
+  console.log(
+    `[bootstrap] HTTP_PLATFORM_PORT=${process.env.HTTP_PLATFORM_PORT ?? '(unset)'} PORT=${process.env.PORT ?? '(unset)'}`,
+  );
 
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
