@@ -6,6 +6,14 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  // Captured before NestFactory.create(AppModule) runs ConfigModule's .env
+  // loading, which can overwrite process.env.PORT in place with whatever a
+  // deployed .env file (or Azure Application Setting) defines — that must
+  // never beat the real, dynamically-assigned port Azure's httpPlatformHandler
+  // injects at the OS env level, or IIS's reverse proxy can never reach the
+  // process it just started (healthy boot, permanent 502/503).
+  const injectedPort = process.env.PORT;
+
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
@@ -26,13 +34,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  // process.env.PORT (not ConfigService) is the source of truth for the actual
-  // listen port: on Windows Azure App Service, httpPlatformHandler injects the
-  // real, dynamically-assigned port via PORT at the OS env level, which must
-  // win over any PORT a deployed .env file or Azure Application Setting
-  // happens to also define — otherwise the app binds to the wrong port and
-  // IIS's reverse proxy can never reach it (healthy boot, permanent 502/503).
-  const port = Number(process.env.PORT) || config.get<number>('PORT', 3001);
+  const port = Number(injectedPort) || config.get<number>('PORT', 3001);
   await app.listen(port);
   console.log(`University Manager API running on http://localhost:${port}/api`);
 }
