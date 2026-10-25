@@ -428,6 +428,13 @@ export class AiService {
       out.reasons.push(!settings.isEnabled ? 'AI is switched off' : 'Auto-run on intake is off');
       return out;
     }
+    const key = this.config.get<string>('ANTHROPIC_API_KEY');
+    if (!key || key.startsWith('REPLACE_WITH')) {
+      // No key yet: skip quietly (reviewers match by hand) instead of failing course by course.
+      out.skipped = 1;
+      out.reasons.push('AI key not configured');
+      return out;
+    }
     const evals = await this.db.query<{ Id: string }>(
       `SELECT e.Id FROM Evaluations e JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId
        WHERE tc.TranscriptId = @t AND e.Status = 'queued' AND e.AISuggestedCourseId IS NULL`,

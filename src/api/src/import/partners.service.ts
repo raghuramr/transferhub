@@ -250,6 +250,8 @@ export class PartnersService {
       `  -H "Content-Type: application/json" \\`,
       `  -d '{"note":"Catalogue update","courses":[{"universityCode":"${universityCode}","code":"CS101","name":"Intro to Computing","credits":3}]}'`,
       ``,
+      `No coding? Upload an Excel or JSON file instead at ${this.email.baseUrl.replace(/\/$/, '')}/partner (sign in with this key).`,
+      ``,
       `Format guide : GET ${base}/format`,
       `Check status : GET ${base}/submissions/<reference>   (same X-API-Key header)`,
       ``,

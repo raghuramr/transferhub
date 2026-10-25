@@ -63,6 +63,7 @@ import ProfilePage from './pages/ProfilePage';
 
 // Public landing / hero page
 import HomePage from './pages/public/HomePage';
+import PartnerPortal from './pages/public/PartnerPortal';
 
 // Guards
 function RequireAuth({ children, roles }: { children: React.ReactElement; roles?: Role[] }) {
@@ -102,6 +103,7 @@ export default function App() {
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/partner" element={<PartnerPortal />} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/unauthorized" element={<div className="p-8 text-center text-red-600 text-xl">Not authorised</div>} />
 

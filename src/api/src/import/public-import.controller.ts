@@ -21,6 +21,14 @@ export class PublicImportController {
     return FORMAT_DOC;
   }
 
+  /** Validates a key and says who it belongs to (used by the partner portal's sign-in). */
+  @Get('me')
+  @UseGuards(ApiKeyGuard)
+  me(@Req() req: PartnerRequest) {
+    const p = req.partner;
+    return { universityName: p.universityName, universityCode: p.universityCode, contactName: p.contactName };
+  }
+
   @Post('submissions')
   @UseGuards(ApiKeyGuard)
   async submit(@Req() req: PartnerRequest, @Body() body: SubmissionBodyDto) {

@@ -457,6 +457,15 @@ stage owner only clicks approve/reject.
 Public API (no login, `X-API-Key`): `POST/GET /api/public/v1/submissions[/ref]`,
 `GET /api/public/v1/format`; see `docs/PARTNER_API.md`. Rate limit 60/min per key, body
 limit raised to 6 MB in `main.ts`.
+**Partner portal** (`/partner`, public, `pages/public/PartnerPortal.tsx`): the partner signs
+in with their API key (kept in sessionStorage; `GET /public/v1/me`), downloads an Excel
+template (sheets Universities/Programs/Courses/Topics) or JSON example, uploads `.xlsx`/`.json`
+(parsed in the browser with `read-excel-file`/`write-excel-file`, `lib/importFile.ts`),
+previews, and sends to the same `/public/v1/submissions` queue; also lists their
+submissions with per-row outcomes and shows the API guide.
+**AI paused (decision)**: no Anthropic key yet, so AI matching is meant to stay off until it
+exists - toggle in AI Controls > Settings, or set `AI_DISABLED=true` (hard override). Without a
+key the pipeline now skips quietly ("AI key not configured") instead of failing per course.
 **Correction**: the original `ImportService` targeted columns that do not exist
 (`Institutions.Country`, `Programs.Code`, `Courses.IsBU`); it was rewritten against the real
 schema. Programs are identified by (university, name); courses reference `programName`.

@@ -9,7 +9,13 @@ A super admin onboards you under **Data Import > Partners & API keys** (universi
 university code, point of contact, email). You receive an API key and the endpoint.
 The key is shown once; if lost, ask for a new one.
 
-## Sending data
+## Three ways to send data
+1. **Excel** - sign in at `/partner` with your key, download the template (sheets Universities, Programs, Courses, Topics), fill it in and upload it.
+2. **JSON file** - upload a `.json` file at `/partner` (same shape as the API body below).
+3. **API** - POST from your own systems (below).
+All three land in the same review queue.
+
+## Sending data (API)
 ```
 POST /api/public/v1/submissions
 X-API-Key: th_live_...

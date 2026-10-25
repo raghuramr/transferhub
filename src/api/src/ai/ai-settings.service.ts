@@ -136,7 +136,13 @@ export class AiSettingsService {
   constructor(private db: DatabaseService) {}
 
   /** University override if there is one, else the global row, else built-in defaults. Never throws. */
+  /** Effective settings. AI_DISABLED=true in the environment is a hard kill switch over whatever the database says. */
   async getEffective(institutionId?: number | null): Promise<AiSettings> {
+    const s = await this.loadEffective(institutionId);
+    return process.env.AI_DISABLED === 'true' ? { ...s, isEnabled: false } : s;
+  }
+
+  private async loadEffective(institutionId?: number | null): Promise<AiSettings> {
     try {
       const res = await this.db.query<SettingsRow>(
         `SELECT TOP 1 * FROM AiSettings

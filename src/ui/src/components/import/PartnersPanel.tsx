@@ -179,6 +179,12 @@ export default function PartnersPanel() {
         </button>
         {showGuide && (
           <div className="mt-3 space-y-2 text-sm text-gray-600">
+            <p className="flex flex-wrap items-center gap-2">
+              <strong>No coding needed:</strong> partners can sign in with their key at
+              <code className="rounded bg-gray-100 px-1">{window.location.origin}/partner</code>
+              <CopyButton text={`${window.location.origin}/partner`} label="Copy link" />
+              to upload an Excel or JSON file, and follow the result.
+            </p>
             <p>Partners send a JSON POST with their key in the <code className="rounded bg-gray-100 px-1">X-API-Key</code> header:</p>
             <pre className="overflow-x-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100">{`curl -X POST ${submitUrl} \\
   -H "X-API-Key: <their key>" -H "Content-Type: application/json" \\
