@@ -45,6 +45,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     try {
       this.pool = new driverSql.ConnectionPool(config);
       await this.pool.connect();
+      this.logger.log(`Connected to SQL Server: ${server}/${database} (driver: ${driver})`);
     } catch (err) {
       if (driver !== 'msnodesqlv8' && /^\(localdb\)/i.test(server ?? '')) {
         this.logger.error(
@@ -59,11 +60,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           `Run "Get-OdbcDriver | Select-Object Name" in PowerShell to see installed drivers, ` +
           `then set DB_ODBC_DRIVER in your .env to match exactly (e.g. "ODBC Driver 18 for SQL Server").`,
         );
+      } else {
+        this.logger.error(`DB connection failed (${server}/${database}): ${(err as Error).message}`);
       }
-      throw err;
+      // Do not throw — let the app start so the SPA and health endpoint remain reachable.
+      // API endpoints that need the DB will fail with 500 until connectivity is restored.
     }
-
-    this.logger.log(`Connected to SQL Server: ${server}/${database} (driver: ${driver})`);
   }
 
   async onModuleDestroy() {
