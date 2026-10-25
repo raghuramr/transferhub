@@ -26,7 +26,13 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  const port = config.get<number>('PORT', 3001);
+  // process.env.PORT (not ConfigService) is the source of truth for the actual
+  // listen port: on Windows Azure App Service, httpPlatformHandler injects the
+  // real, dynamically-assigned port via PORT at the OS env level, which must
+  // win over any PORT a deployed .env file or Azure Application Setting
+  // happens to also define — otherwise the app binds to the wrong port and
+  // IIS's reverse proxy can never reach it (healthy boot, permanent 502/503).
+  const port = Number(process.env.PORT) || config.get<number>('PORT', 3001);
   await app.listen(port);
   console.log(`University Manager API running on http://localhost:${port}/api`);
 }
