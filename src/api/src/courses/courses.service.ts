@@ -288,6 +288,15 @@ export class CoursesService {
         { name: 'isActive', type: sql.Bit, value: dto.isActive !== false ? 1 : 0 },
       ],
     );
+    // The owning University is always one of the Universities offering the Program (ProgramUniversities is what readers query).
+    await this.db.query(
+      `IF NOT EXISTS (SELECT 1 FROM ProgramUniversities WHERE ProgramId = @p AND InstitutionId = @i)
+         INSERT INTO ProgramUniversities (ProgramId, InstitutionId) VALUES (@p, @i)`,
+      [
+        { name: 'p', type: sql.Int, value: res.recordset[0].Id },
+        { name: 'i', type: sql.Int, value: dto.institutionId },
+      ],
+    );
     return this.findProgramById(res.recordset[0].Id);
   }
 

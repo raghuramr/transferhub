@@ -440,6 +440,48 @@ stage owner only clicks approve/reject.
   (`continue-on-error`) with a final step that fails the run after deploy if
   they failed, so a SQL-firewall RBAC problem can't block deployments.
 
+## Partner data intake + workflow automation (built; migration 014)
+**Data Import** (`/superadmin/settings/import`, `components/import/`) now has three tabs:
+- **Submissions** - a review queue. Anything pushed by a partner (or staged by staff via
+  "Stage rows yourself") lands in `ImportBatches`/`ImportBatchRows`; rows are validated on
+  arrival (`ImportService.checkRow`) and shown in a table with filters, per-row edit, and
+  bulk select / import / reject / restore. Only the selected rows are written, universities
+  first, then programs, then courses (chunks of 500). Importing emails the partner a
+  per-row report (`SubmissionsService.sendReport`, via `EmailService.sendRichNotice`);
+  "Reject remaining" emails the reason. Imported partner courses get `Verified = 'Check'`.
+- **Partners & API keys** - onboarding form (university, code, point of contact, email) ->
+  `DataPartners` + a generated key. Keys are `th_live_...`, only the SHA-256 hash is
+  stored (`PartnerApiKeys`), the plaintext is shown once (optionally emailed). A partner can
+  only submit rows for its own `UniversityCode`.
+- **Direct import** - the old paste-and-write path, kept for super admins (no review).
+Public API (no login, `X-API-Key`): `POST/GET /api/public/v1/submissions[/ref]`,
+`GET /api/public/v1/format`; see `docs/PARTNER_API.md`. Rate limit 60/min per key, body
+limit raised to 6 MB in `main.ts`.
+**Correction**: the original `ImportService` targeted columns that do not exist
+(`Institutions.Country`, `Programs.Code`, `Courses.IsBU`); it was rewritten against the real
+schema. Programs are identified by (university, name); courses reference `programName`.
+Imported programs also get their `ProgramUniversities` owner row, and `createProgram`
+now does too (previously new programs were invisible to `publicPrograms()`).
+
+**Workflow automation** (all tolerant of migration 014 not being applied yet):
+- Stages can **auto-approve** (`WorkflowStages.AutoApprove`, `AutoApproveMinConfidence`): on
+  activation the engine accepts AI suggestions >= the threshold (`sp_RecordDecision`,
+  outcome `equivalent`), rebuilds the brief, and if nothing is flagged approves the stage as
+  the agent (`TranscriptStages.AutoApproved`); otherwise it leaves a note and a person
+  reviews. It never rejects. Approvers also get **Accept AI suggestions >= X%** on the
+  review page, and **Approve N** (bulk) in the queue (`POST /requests/bulk-approve`).
+- `finalize` only posts *decided* evaluations; it now leaves an internal note when courses had
+  no decision. (Earlier, approving a stage never recorded any match - that gap is closed by
+  the accept-suggestions paths above.)
+- `SlaWatcherService` (hourly, in-process, `SLA_WATCHER=off` disables) escalates each overdue
+  stage once (`OverdueNotifiedAt`): emails approvers + admins, notes for reviewers/student.
+- `GET /ai-controls/readiness` powers a setup checklist card (AI key, email, migration,
+  default workflow, stages with no approver, stalled automation, overdue).
+- `GET /workflows/insights` + Insights tab: per-stage turnaround/backlog/lateness.
+- AI Controls: Economy/Balanced/Accuracy presets and a monthly-budget meter.
+- Fixed: the designer posted server-only fields (`stageKey`, approver `id`...) that the API's
+  whitelist validation rejects; it now sends only editable fields.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group

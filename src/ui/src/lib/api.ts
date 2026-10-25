@@ -1,8 +1,9 @@
 import axios, { AxiosError } from 'axios';
+import type { Partner, PartnerInput, IssuedKey, BatchSummary, BatchDetail, ImportRunResult } from '../types/import';
 import type { AuthTokens, ApiError, CourseTopic, TranscriptSummary, Transcript, User } from '../types';
 import type {
   AgentSkill, AiSettings, ApproverGroup, QueueRow, RequestTimeline, RequestUsageDetail, RequestUsageRow,
-  StaffUser, UsageSummary, WorkflowDetail, WorkflowStageDef, WorkflowSummary,
+  BulkApproveResult, Readiness, StaffUser, UsageSummary, WorkflowDetail, WorkflowInsights, WorkflowStageDef, WorkflowSummary,
 } from '../types/workflow';
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api';
@@ -292,8 +293,29 @@ export const permissionsApi = {
 // ── Data Import endpoints (super_admin only) ──────────────────
 export const importApi = {
   getFormat: () => api.get('/import/format'),
+  endpointInfo: () => api.get<{ baseUrl: string; submitUrl: string; formatUrl: string }>('/import/endpoint-info'),
   preview: (type: string, data: unknown[]) => api.post('/import/preview', { type, data }),
   execute: (type: string, data: unknown[]) => api.post('/import', { type, data }),
+  // partners & API keys
+  partners: () => api.get<Partner[]>('/import/partners'),
+  createPartner: (data: PartnerInput) => api.post<IssuedKey & { partnerId: number }>('/import/partners', data),
+  updatePartner: (id: number, data: Partial<PartnerInput>) => api.patch(`/import/partners/${id}`, data),
+  setPartnerActive: (id: number, active: boolean) => api.post(`/import/partners/${id}/${active ? 'activate' : 'deactivate'}`),
+  issueKey: (id: number, data: { label?: string; expiresInDays?: number; emailKey?: boolean }) =>
+    api.post<IssuedKey>(`/import/partners/${id}/keys`, data),
+  revokeKey: (id: number, keyId: number) => api.delete(`/import/partners/${id}/keys/${keyId}`),
+  // submissions (staging + review)
+  batches: (params?: { status?: string; partnerId?: number }) => api.get<BatchSummary[]>('/import/batches', { params }),
+  batch: (id: number) => api.get<BatchDetail>(`/import/batches/${id}`),
+  stage: (body: { note?: string; universities?: unknown[]; programs?: unknown[]; courses?: unknown[] }) =>
+    api.post<{ reference: string; batchId: number }>('/import/batches', body),
+  editRow: (id: number, rowId: number, payload: Record<string, unknown>) => api.patch(`/import/batches/${id}/rows/${rowId}`, { payload }),
+  rejectRows: (id: number, rowIds: number[], note?: string) => api.post(`/import/batches/${id}/rows/reject`, { rowIds, note }),
+  restoreRows: (id: number, rowIds: number[]) => api.post(`/import/batches/${id}/rows/restore`, { rowIds }),
+  importRows: (id: number, rowIds: number[], opts: { sendReport?: boolean; note?: string }) =>
+    api.post<ImportRunResult>(`/import/batches/${id}/import`, { rowIds, ...opts }),
+  rejectBatch: (id: number, note: string, sendReport = true) => api.post(`/import/batches/${id}/reject`, { note, sendReport }),
+  sendReport: (id: number, note?: string) => api.post<{ sent: boolean; message: string }>(`/import/batches/${id}/send-report`, { note }),
 };
 
 // ── Transfer request workflow (stages, decisions, notes, reminders) ───
@@ -303,6 +325,9 @@ export const requestsApi = {
   timeline: (id: string) => api.get<RequestTimeline>(`/requests/${id}`),
   decide: (id: string, data: { decision: 'approve' | 'reject' | 'return'; comment?: string; studentComment?: string }) =>
     api.post<{ message: string; timeline: RequestTimeline }>(`/requests/${id}/decision`, data),
+  acceptSuggestions: (id: string, minConfidence: number) =>
+    api.post<{ accepted: number; belowThreshold: number; timeline: RequestTimeline }>(`/requests/${id}/accept-suggestions`, { minConfidence }),
+  bulkApprove: (ids: string[], comment?: string) => api.post<BulkApproveResult>('/requests/bulk-approve', { ids, comment }),
   skipStage: (id: string, reason: string) => api.post<{ timeline: RequestTimeline }>(`/requests/${id}/skip-stage`, { reason }),
   accept: (id: string, reason: string) => api.post<{ timeline: RequestTimeline }>(`/requests/${id}/accept`, { reason }),
   startWorkflow: (id: string) => api.post<{ timeline: RequestTimeline }>(`/requests/${id}/start-workflow`),
@@ -327,6 +352,7 @@ export interface SaveWorkflowPayload {
   requiredDocs: { docTypeKey: string; isRequired: boolean }[];
 }
 export const workflowsApi = {
+  insights: (days: number) => api.get<WorkflowInsights>('/workflows/insights', { params: { days } }),
   list: () => api.get<WorkflowSummary[]>('/workflows'),
   get: (id: number) => api.get<WorkflowDetail>(`/workflows/${id}`),
   lookups: () =>
@@ -341,6 +367,7 @@ export const workflowsApi = {
 
 // ── AI controls: spend switches, agent playbook, token accounting ──
 export const aiControlsApi = {
+  readiness: () => api.get<Readiness>('/ai-controls/readiness'),
   settings: () => api.get<AiSettings[]>('/ai-controls/settings'),
   saveSettings: (data: Partial<AiSettings> & { institutionId?: number | null }) => api.put<AiSettings>('/ai-controls/settings', data),
   removeOverride: (institutionId: number) => api.delete(`/ai-controls/settings/${institutionId}`),

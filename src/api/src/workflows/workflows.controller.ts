@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Permission } from '../auth/permission.decorator';
@@ -25,6 +25,12 @@ export class WorkflowsController {
       this.workflows.documentTypes(),
     ]);
     return { staff, groups, documentTypes };
+  }
+
+  @Get('workflows/insights')
+  @Permission('workflows', 'view')
+  insights(@Query('days') days?: string) {
+    return this.workflows.insights(days ? Number(days) : 90);
   }
 
   @Get('workflows/:id')

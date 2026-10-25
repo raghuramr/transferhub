@@ -7,10 +7,11 @@ import { EmailService } from '../common/email.service';
 import { RequestsController } from './requests.controller';
 import { RequestsService } from './requests.service';
 import { WorkflowEngineService } from './workflow-engine.service';
+import { SlaWatcherService } from './sla-watcher.service';
 
 @Module({
   imports: [AuthModule, AiModule, UploadsModule, WorkflowsModule],
-  providers: [RequestsService, WorkflowEngineService, EmailService],
+  providers: [RequestsService, WorkflowEngineService, SlaWatcherService, EmailService],
   controllers: [RequestsController],
   exports: [WorkflowEngineService, RequestsService],
 })

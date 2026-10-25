@@ -25,6 +25,8 @@ export interface WorkflowStageDef {
   isEnabled: boolean;
   canBypass: boolean;
   requiresComment: boolean;
+  autoApprove: boolean;
+  autoApproveMinConfidence: number | null;
   approvers: StageApprover[];
 }
 
@@ -90,6 +92,7 @@ export class WorkflowsService {
        WHERE s.WorkflowId = @id ORDER BY a.Id`,
       [{ name: 'id', type: sql.Int, value: workflowId }],
     );
+    const auto = await this.automationFor(workflowId);
     return stages.recordset.map((s) => ({
       id: s.Id,
       stageOrder: s.StageOrder,
@@ -102,6 +105,8 @@ export class WorkflowsService {
       isEnabled: !!s.IsEnabled,
       canBypass: !!s.CanBypass,
       requiresComment: !!s.RequiresComment,
+      autoApprove: auto.get(s.Id)?.autoApprove ?? false,
+      autoApproveMinConfidence: auto.get(s.Id)?.min ?? null,
       approvers: approvers.recordset
         .filter((a) => a.StageId === s.Id)
         .map((a) => ({
@@ -114,6 +119,94 @@ export class WorkflowsService {
           userName: a.UserName,
         })),
     }));
+  }
+
+
+  /** Auto-approve settings live in migration 014's columns; until it is applied they read as "off". */
+  private async automationFor(workflowId: number): Promise<Map<number, { autoApprove: boolean; min: number | null }>> {
+    const map = new Map<number, { autoApprove: boolean; min: number | null }>();
+    try {
+      const r = await this.db.query<{ Id: number; AutoApprove: boolean; AutoApproveMinConfidence: number | null }>(
+        `SELECT Id, AutoApprove, AutoApproveMinConfidence FROM WorkflowStages WHERE WorkflowId = @id`,
+        [{ name: 'id', type: sql.Int, value: workflowId }],
+      );
+      for (const row of r.recordset) {
+        map.set(row.Id, { autoApprove: !!row.AutoApprove, min: row.AutoApproveMinConfidence == null ? null : Number(row.AutoApproveMinConfidence) });
+      }
+    } catch {
+      // migration 014 not applied yet
+    }
+    return map;
+  }
+
+  private async saveAutomation(stageId: number, s: { autoApprove?: boolean; autoApproveMinConfidence?: number | null; stageType?: string }) {
+    const on = !!s.autoApprove && s.stageType !== 'system';
+    try {
+      await this.db.query(`UPDATE WorkflowStages SET AutoApprove = @a, AutoApproveMinConfidence = @m WHERE Id = @id`, [
+        { name: 'a', type: sql.Bit, value: on ? 1 : 0 },
+        { name: 'm', type: sql.Decimal(4, 3), value: on ? (s.autoApproveMinConfidence ?? null) : null },
+        { name: 'id', type: sql.Int, value: stageId },
+      ]);
+    } catch (e) {
+      if (on) throw new BadRequestException('Auto-approve needs database migration 014. Apply it, then save again.');
+    }
+  }
+
+
+  /** Where requests spend their time: per-stage turnaround, backlog and lateness over the last `days`. */
+  async insights(days: number) {
+    const d = Math.min(Math.max(Math.floor(days) || 90, 1), 730);
+    const inputs = [{ name: 'd', type: sql.Int, value: d }];
+    const stages = await this.db.query(
+      `SELECT ts.StageKey AS stageKey, MIN(ts.StageOrder) AS stageOrder, MAX(ts.StageName) AS name, MAX(ts.StageType) AS stageType,
+              SUM(CASE WHEN ts.Status IN ('approved','bypassed','rejected') AND ts.CompletedAt IS NOT NULL THEN 1 ELSE 0 END) AS completed,
+              AVG(CASE WHEN ts.Status IN ('approved','bypassed','rejected') AND ts.ActivatedAt IS NOT NULL AND ts.CompletedAt IS NOT NULL
+                       THEN CAST(DATEDIFF(MINUTE, ts.ActivatedAt, ts.CompletedAt) AS FLOAT) END) / 60.0 AS avgHours,
+              SUM(CASE WHEN ts.Status = 'active' THEN 1 ELSE 0 END) AS activeNow,
+              SUM(CASE WHEN ts.Status = 'active' AND ts.DueAt < SYSUTCDATETIME() THEN 1 ELSE 0 END) AS overdueNow,
+              SUM(CASE WHEN ts.CompletedAt IS NOT NULL AND ts.DueAt IS NOT NULL AND ts.CompletedAt > ts.DueAt THEN 1 ELSE 0 END) AS late,
+              SUM(CASE WHEN ts.Status = 'bypassed' THEN 1 ELSE 0 END) AS skipped
+       FROM TranscriptStages ts JOIN Transcripts t ON t.Id = ts.TranscriptId
+       WHERE t.ReceivedAt >= DATEADD(DAY, -@d, SYSUTCDATETIME()) AND ts.StageType <> 'system'
+       GROUP BY ts.StageKey ORDER BY MIN(ts.StageOrder)`,
+      inputs,
+    );
+    const totals = await this.db.query(
+      `SELECT COUNT(*) AS requests,
+              SUM(CASE WHEN WorkflowStatus = 'active' THEN 1 ELSE 0 END) AS active,
+              SUM(CASE WHEN WorkflowStatus = 'approved' THEN 1 ELSE 0 END) AS approved,
+              SUM(CASE WHEN WorkflowStatus = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+              SUM(CASE WHEN WorkflowStatus = 'bypassed' THEN 1 ELSE 0 END) AS bypassed,
+              AVG(CASE WHEN WorkflowStatus IN ('approved','bypassed') AND ProcessedAt IS NOT NULL
+                       THEN CAST(DATEDIFF(MINUTE, ReceivedAt, ProcessedAt) AS FLOAT) END) / 1440.0 AS avgDaysToComplete
+       FROM Transcripts WHERE WorkflowId IS NOT NULL AND ReceivedAt >= DATEADD(DAY, -@d, SYSUTCDATETIME())`,
+      inputs,
+    );
+    let autoApproved = 0;
+    try {
+      const a = await this.db.query<{ N: number }>(
+        `SELECT COUNT(*) AS N FROM TranscriptStages ts JOIN Transcripts t ON t.Id = ts.TranscriptId
+         WHERE ts.AutoApproved = 1 AND t.ReceivedAt >= DATEADD(DAY, -@d, SYSUTCDATETIME())`,
+        inputs,
+      );
+      autoApproved = a.recordset[0].N;
+    } catch {
+      // migration 014 not applied
+    }
+    const t = totals.recordset[0] ?? {};
+    return {
+      days: d,
+      totals: {
+        requests: t.requests ?? 0,
+        active: t.active ?? 0,
+        approved: t.approved ?? 0,
+        rejected: t.rejected ?? 0,
+        bypassed: t.bypassed ?? 0,
+        autoApprovedStages: autoApproved,
+        avgDaysToComplete: t.avgDaysToComplete == null ? null : Number(t.avgDaysToComplete),
+      },
+      stages: stages.recordset.map((s) => ({ ...s, avgHours: s.avgHours == null ? null : Number(s.avgHours) })),
+    };
   }
 
   /** The university's own active workflow, else the global default. */
@@ -154,6 +247,7 @@ export class WorkflowsService {
           this.stageInputs(newId, s.stageOrder, s.stageKey, s),
         );
         for (const a of s.approvers) await this.insertApprover(st.recordset[0].Id, a);
+        if (s.autoApprove) await this.saveAutomation(st.recordset[0].Id, s);
       }
       await this.db.query(
         `INSERT INTO WorkflowRequiredDocs (WorkflowId, DocTypeKey, IsRequired)
@@ -257,6 +351,7 @@ export class WorkflowsService {
         stageId = ins.recordset[0].Id;
       }
       keptIds.push(stageId);
+      await this.saveAutomation(stageId, s);
       await this.db.query(`DELETE FROM WorkflowStageApprovers WHERE StageId = @s`, [{ name: 's', type: sql.Int, value: stageId }]);
       for (const a of s.approvers) await this.insertApprover(stageId, a);
     }

@@ -21,7 +21,43 @@ const WORKFLOW_BADGE: Record<string, string> = {
   rejected: 'bg-red-50 text-red-700',
 };
 
-function Brief({ brief, evalBase }: { brief: StageBrief; evalBase: string }) {
+function AcceptSuggestions({ brief, requestId, onDone }: { brief: StageBrief; requestId: string; onDone: (t: TimelineData) => void }) {
+  const [min, setMin] = useState(0.8);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const open = brief.courses.filter((c) => !c.decided && c.suggested && c.suggested.confidence != null);
+  const ready = open.filter((c) => (c.suggested!.confidence ?? 0) >= min).length;
+  if (!open.length && !msg) return null;
+  const run = async () => {
+    setBusy(true);
+    setMsg('');
+    try {
+      const r = (await requestsApi.acceptSuggestions(requestId, min)).data;
+      setMsg(`Accepted ${r.accepted} suggestion${r.accepted === 1 ? '' : 's'}${r.belowThreshold ? `; ${r.belowThreshold} below ${Math.round(min * 100)}% left for you` : ''}.`);
+      onDone(r.timeline);
+    } catch (e) {
+      setMsg(errMsg(e, 'Could not accept the suggestions.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 text-sm">
+      <Sparkles size={15} className="text-indigo-600" />
+      <span className="text-gray-700">Accept every AI suggestion at or above</span>
+      <select value={min} onChange={(e) => setMin(Number(e.target.value))} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm">
+        {[0.7, 0.8, 0.9].map((v) => <option key={v} value={v}>{Math.round(v * 100)}%</option>)}
+      </select>
+      <button type="button" disabled={busy || ready === 0} onClick={() => void run()}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-40">
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Accept {ready} match{ready === 1 ? '' : 'es'}
+      </button>
+      {msg && <span className="text-gray-600">{msg}</span>}
+    </div>
+  );
+}
+
+function Brief({ brief, evalBase, requestId, canAct, onDone }: { brief: StageBrief; evalBase: string; requestId: string; canAct: boolean; onDone: (t: TimelineData) => void }) {
   const t = brief.totals;
   const chips = [
     { label: 'Applied', n: t.applied, cls: 'bg-emerald-50 text-emerald-700' },
@@ -58,6 +94,7 @@ function Brief({ brief, evalBase }: { brief: StageBrief; evalBase: string }) {
           ))}
         </div>
       )}
+      {canAct && <AcceptSuggestions brief={brief} requestId={requestId} onDone={onDone} />}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="text-xs uppercase tracking-wide text-gray-400">
@@ -279,7 +316,7 @@ export default function RequestReview() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          {active?.aiBrief && <Brief brief={active.aiBrief} evalBase={evalBase} />}
+          {active?.aiBrief && <Brief brief={active.aiBrief} evalBase={evalBase} requestId={id!} canAct={tl.permissions.canAct} onDone={set} />}
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="mb-4 text-base font-semibold text-gray-900">Progress</h2>
             <RequestTimeline

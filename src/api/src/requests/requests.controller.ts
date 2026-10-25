@@ -6,7 +6,7 @@ import { Permission } from '../auth/permission.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import { RequestsService, Viewer } from './requests.service';
 import { WorkflowEngineService } from './workflow-engine.service';
-import { AddDocumentDto, DecisionDto, NoteDto, ReasonDto, RemindDto } from './dto/requests.dto';
+import { AcceptSuggestionsDto, AddDocumentDto, BulkApproveDto, DecisionDto, NoteDto, ReasonDto, RemindDto } from './dto/requests.dto';
 
 const viewerOf = (req: AuthenticatedRequest): Viewer => ({
   id: req.user.id,
@@ -35,6 +35,22 @@ export class RequestsController {
     return this.requests.queue(viewerOf(req), scope === 'all' ? 'all' : 'mine');
   }
 
+  /** Approve several requests at once (each is checked on its own: you must be an approver of its current stage). */
+  @Post('bulk-approve')
+  @Roles('faculty', 'admin', 'super_admin')
+  async bulkApprove(@Body() dto: BulkApproveDto, @Req() req: AuthenticatedRequest) {
+    const results: { id: string; ok: boolean; message: string }[] = [];
+    for (const id of dto.ids) {
+      try {
+        const r = await this.engine.decide(id, viewerOf(req), { decision: 'approve', comment: dto.comment });
+        results.push({ id, ok: true, message: r.message });
+      } catch (e) {
+        results.push({ id, ok: false, message: (e as Error).message });
+      }
+    }
+    return { approved: results.filter((r) => r.ok).length, failed: results.filter((r) => !r.ok).length, results };
+  }
+
   @Get(':id')
   timeline(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.requests.getTimeline(id, viewerOf(req));
@@ -44,6 +60,13 @@ export class RequestsController {
   @Roles('faculty', 'admin', 'super_admin')
   async decide(@Param('id') id: string, @Body() dto: DecisionDto, @Req() req: AuthenticatedRequest) {
     const result = await this.engine.decide(id, viewerOf(req), dto);
+    return { ...result, timeline: await this.requests.getTimeline(id, viewerOf(req)) };
+  }
+
+  @Post(':id/accept-suggestions')
+  @Roles('faculty', 'admin', 'super_admin')
+  async acceptSuggestions(@Param('id') id: string, @Body() dto: AcceptSuggestionsDto, @Req() req: AuthenticatedRequest) {
+    const result = await this.engine.acceptSuggestions(id, viewerOf(req), dto.minConfidence);
     return { ...result, timeline: await this.requests.getTimeline(id, viewerOf(req)) };
   }
 

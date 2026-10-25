@@ -5,6 +5,7 @@ import { Bot, Coins, Database, Gauge, Loader2, Plus, Save, Sparkles, Trash2, Zap
 import { aiControlsApi, universitiesApi } from '../../lib/api';
 import { usePermissions } from '../../hooks/usePermissions';
 import { cn } from '../../lib/cn';
+import ReadinessCard from '../../components/workflow/ReadinessCard';
 import type { AgentSkill, AiSettings } from '../../types/workflow';
 
 type Tab = 'usage' | 'settings' | 'playbook' | 'requests';
@@ -25,6 +26,21 @@ const MODELS = [
 const CATEGORY_LABEL: Record<AgentSkill['category'], string> = {
   matching: 'Matching', policy: 'Policy', token_saving: 'Token saving',
 };
+
+const PRESETS: { key: string; label: string; blurb: string; values: Partial<AiSettings> }[] = [
+  {
+    key: 'economy', label: 'Economy', blurb: 'Lowest spend. Cheap model, small shortlist, no escalation.',
+    values: { matchModel: 'claude-haiku-4-5', escalationModel: null, escalateBelowConfidence: 0.5, prefilterTopN: 5, maxDescriptionChars: 300, useTopics: false, useResultCache: true, usePromptCaching: true, maxOutputTokens: 400, narrativeBriefEnabled: false },
+  },
+  {
+    key: 'balanced', label: 'Balanced', blurb: 'Recommended. Cheap first pass, stronger model only when unsure.',
+    values: { matchModel: 'claude-haiku-4-5', escalationModel: 'claude-sonnet-4-5', escalateBelowConfidence: 0.6, prefilterTopN: 8, maxDescriptionChars: 500, useTopics: true, useResultCache: true, usePromptCaching: true, maxOutputTokens: 600, narrativeBriefEnabled: false },
+  },
+  {
+    key: 'accuracy', label: 'Accuracy', blurb: 'Best matches. Stronger model first, wider shortlist, higher spend.',
+    values: { matchModel: 'claude-sonnet-4-5', escalationModel: 'claude-opus-4-5', escalateBelowConfidence: 0.75, prefilterTopN: 15, maxDescriptionChars: 900, useTopics: true, useResultCache: true, usePromptCaching: true, maxOutputTokens: 900, narrativeBriefEnabled: false },
+  },
+];
 
 function Stat({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint?: string }) {
   return (
@@ -69,9 +85,12 @@ function UsageTab({ days }: { days: number }) {
     mutationFn: () => aiControlsApi.clearCache(),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['ai-usage-summary'] }),
   });
+  const settingsQ = useQuery({ queryKey: ['ai-settings'], queryFn: () => aiControlsApi.settings() });
+  const budget = settingsQ.data?.data.find((r) => r.institutionId == null)?.monthlyTokenBudget ?? null;
   const s = data?.data;
   if (isLoading || !s) return <p className="text-gray-400">Loading…</p>;
   const spent = s.totals.inputTokens + s.totals.outputTokens;
+  const budgetPct = budget ? Math.min(100, Math.round((s.monthTokens / budget) * 100)) : null;
   const saved = s.totals.tokensSaved + s.prefilterTokensSaved;
   const maxDay = Math.max(1, ...s.byDay.map((d) => d.tokens + d.tokensSaved));
 
@@ -83,6 +102,19 @@ function UsageTab({ days }: { days: number }) {
         <Stat icon={<Sparkles size={13} />} label="Tokens saved" value={fmt(saved)} hint="cache hits, skipped calls, catalogue shortlist" />
         <Stat icon={<Zap size={13} />} label="This month" value={fmt(s.monthTokens)} hint={`${fmt(s.totals.calls)} AI calls · ${fmt(s.totals.skippedCalls)} skipped`} />
       </div>
+
+      {budgetPct !== null && budget && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="mb-2 flex items-baseline justify-between text-sm">
+            <span className="font-semibold text-gray-900">Monthly token budget</span>
+            <span className="text-gray-500">{fmt(s.monthTokens)} of {fmt(budget)} used ({budgetPct}%)</span>
+          </div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-gray-100">
+            <div className={cn('h-full rounded-full', budgetPct >= 100 ? 'bg-red-500' : budgetPct >= 80 ? 'bg-amber-500' : 'bg-emerald-500')} style={{ width: `${budgetPct}%` }} />
+          </div>
+          {budgetPct >= 80 && <p className="mt-2 text-xs text-amber-700">{budgetPct >= 100 ? 'The budget is used up, so AI matching is paused until next month or until you raise it.' : 'Close to the limit. AI matching pauses when it is reached.'}</p>}
+        </div>
+      )}
 
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <h3 className="mb-3 text-sm font-semibold text-gray-900">Tokens per day</h3>
@@ -218,6 +250,21 @@ function SettingsTab() {
 
       {!draft ? <p className="text-gray-400">Loading…</p> : (
         <div className="space-y-5">
+          {canEdit && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <h3 className="mb-1 font-semibold text-gray-900">Quick presets</h3>
+              <p className="mb-3 text-xs text-gray-500">Fill in the model and token-saving fields in one go. Nothing changes until you press Save settings.</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {PRESETS.map((p) => (
+                  <button key={p.key} type="button" onClick={() => set(p.values)} className="rounded-lg border border-gray-200 p-3 text-left hover:border-brand-400 hover:bg-brand-50/40">
+                    <div className="text-sm font-semibold text-gray-900">{p.label}</div>
+                    <div className="mt-0.5 text-xs text-gray-500">{p.blurb}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="font-semibold text-gray-900">Switches</h3>
             <Check checked={draft.isEnabled} disabled={!canEdit} onChange={(v) => set({ isEnabled: v })} label="AI matching enabled" hint="Off = no tokens are spent. Reviewers match courses by hand and see the rules-based brief only." />
@@ -439,6 +486,7 @@ export default function AiControls() {
           </select>
         )}
       </div>
+      <ReadinessCard />
       <div className="mb-6 inline-flex flex-wrap rounded-lg border border-gray-200 bg-white p-0.5 text-sm">
         {tabs.map((t) => (
           <button key={t.key} type="button" onClick={() => setTab(t.key)} className={cn('rounded-md px-4 py-1.5 font-medium', tab === t.key ? 'bg-brand-800 text-white' : 'text-gray-600 hover:bg-gray-50')}>{t.label}</button>

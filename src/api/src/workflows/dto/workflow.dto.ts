@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import {
-  ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateNested,
+  ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateNested,
 } from 'class-validator';
 
 export class ApproverDto {
@@ -20,6 +20,9 @@ export class StageDto {
   @IsBoolean() isEnabled: boolean;
   @IsBoolean() canBypass: boolean;
   @IsBoolean() requiresComment: boolean;
+  /** The agent approves this stage by itself when every course is matched with enough confidence and nothing is flagged. */
+  @IsOptional() @IsBoolean() autoApprove?: boolean;
+  @IsOptional() @IsNumber() @Min(0.5) @Max(1) autoApproveMinConfidence?: number | null;
   @IsArray() @ArrayMaxSize(30) @ValidateNested({ each: true }) @Type(() => ApproverDto) approvers: ApproverDto[];
 }
 

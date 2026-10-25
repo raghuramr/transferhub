@@ -150,6 +150,8 @@ export interface WorkflowStageDef {
   isEnabled: boolean;
   canBypass: boolean;
   requiresComment: boolean;
+  autoApprove?: boolean;
+  autoApproveMinConfidence?: number | null;
   approvers: StageApprover[];
 }
 
@@ -259,4 +261,35 @@ export interface RequestUsageDetail {
     cacheWriteTokens: number; costUsd: number; skipped: boolean; skipReason: string | null; tokensSaved: number;
     catalogSize: number | null; candidatesSent: number | null; createdAt: string;
   }[];
+}
+
+export interface ReadinessItem {
+  key: string;
+  label: string;
+  status: 'ok' | 'warn' | 'error';
+  detail: string;
+  hint?: string;
+}
+
+export interface Readiness {
+  ready: boolean;
+  items: ReadinessItem[];
+}
+
+export interface WorkflowInsights {
+  days: number;
+  totals: {
+    requests: number; active: number; approved: number; rejected: number; bypassed: number;
+    autoApprovedStages: number; avgDaysToComplete: number | null;
+  };
+  stages: {
+    stageKey: string; stageOrder: number; name: string; stageType: string; completed: number; avgHours: number | null;
+    activeNow: number; overdueNow: number; late: number; skipped: number;
+  }[];
+}
+
+export interface BulkApproveResult {
+  approved: number;
+  failed: number;
+  results: { id: string; ok: boolean; message: string }[];
 }

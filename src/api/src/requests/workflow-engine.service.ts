@@ -162,7 +162,7 @@ export class WorkflowEngineService {
       }
       await this.activate(next);
       if (next.StageType !== 'system') {
-        await this.onHumanStageActivated(transcriptId, next);
+        await this.onHumanStageActivated(transcriptId, next, actorUserId);
         return;
       }
       if (background && next.AgentTask === 'match') {
@@ -238,7 +238,7 @@ export class WorkflowEngineService {
 
   // ── human stage hooks ───────────────────────────────────────
 
-  private async onHumanStageActivated(transcriptId: string, stage: StageRow) {
+  private async onHumanStageActivated(transcriptId: string, stage: StageRow, actorUserId: string) {
     try {
       const { brief, recommendation } = await this.buildBrief(transcriptId);
       await this.db.query(
@@ -252,8 +252,118 @@ export class WorkflowEngineService {
     } catch (err) {
       this.logger.warn(`Could not build brief for ${transcriptId}: ${(err as Error).message}`);
     }
+    try {
+      if (await this.tryAutoApprove(transcriptId, stage, actorUserId)) return;
+    } catch (err) {
+      this.logger.warn(`Auto-approve failed for ${transcriptId}; leaving the stage for a person: ${(err as Error).message}`);
+    }
     await this.addNote(transcriptId, stage.Id, 'student', 'system', null, null, `Your request is now in "${stage.StageName}".`);
     void this.notifyApprovers(transcriptId, stage).catch((e) => this.logger.warn(`Approver email failed: ${(e as Error).message}`));
+  }
+
+  // ── automation: accepting AI suggestions, auto-approving clean stages ──
+
+  /** Records the AI's suggested course as the decision for every undecided course at or above `minConfidence`. */
+  private async applySuggestions(transcriptId: string, userId: string, minConfidence: number, by: string) {
+    const rows = await this.db.query<{ EvalId: string; Conf: number; SugId: number; BuCredits: number }>(
+      `SELECT e.Id AS EvalId, e.AIConfidence AS Conf, e.AISuggestedCourseId AS SugId, c.Credits AS BuCredits
+       FROM Evaluations e
+       JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId
+       JOIN Courses c ON c.Id = e.AISuggestedCourseId
+       WHERE tc.TranscriptId = @t AND e.Status IN ('queued','in_progress') AND e.AISuggestedCourseId IS NOT NULL`,
+      [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+    );
+    let accepted = 0;
+    let belowThreshold = 0;
+    for (const r of rows.recordset) {
+      if (r.Conf == null || Number(r.Conf) < minConfidence) {
+        belowThreshold++;
+        continue;
+      }
+      await this.db.execute('sp_RecordDecision', [
+        { name: 'EvaluationId', type: sql.UniqueIdentifier, value: r.EvalId },
+        { name: 'DecidedBy', type: sql.UniqueIdentifier, value: userId },
+        { name: 'Outcome', type: sql.VarChar(20), value: 'equivalent' },
+        { name: 'BUCourseId', type: sql.Int, value: r.SugId },
+        { name: 'AwardedCredits', type: sql.Decimal(5, 2), value: r.BuCredits },
+        { name: 'EvaluatorNotes', type: sql.NVarChar(sql.MAX), value: `Accepted the AI suggestion (${Math.round(Number(r.Conf) * 100)}% confidence) - ${by}` },
+      ]);
+      accepted++;
+    }
+    return { accepted, belowThreshold };
+  }
+
+  /** An approver accepts every AI suggestion that is confident enough in one click, then reviews only what is left. */
+  async acceptSuggestions(transcriptId: string, actor: Actor, minConfidence: number) {
+    const { stage } = await this.loadActive(transcriptId);
+    if (stage.StageType === 'system') throw new BadRequestException('This stage is automatic.');
+    if (!(await this.canAct(actor, stage))) throw new ForbiddenException('You are not an approver for this stage.');
+    const r = await this.applySuggestions(transcriptId, actor.id, minConfidence, `${actor.firstName ?? ''} ${actor.lastName ?? ''}`.trim() || 'reviewer');
+    if (r.accepted) {
+      await this.addNote(transcriptId, stage.Id, 'internal', 'decision', actor.id, actor.role,
+        `Accepted ${r.accepted} AI suggestion(s) at ${Math.round(minConfidence * 100)}% confidence or higher${r.belowThreshold ? `; ${r.belowThreshold} left for review` : ''}.`);
+      // Refresh the brief so the page shows the new state.
+      const { brief, recommendation } = await this.buildBrief(transcriptId);
+      await this.db.query(
+        `UPDATE TranscriptStages SET AiBrief = @b, AiRecommendation = @r, BriefGeneratedAt = SYSUTCDATETIME() WHERE Id = @id`,
+        [
+          { name: 'b', type: sql.NVarChar(sql.MAX), value: JSON.stringify(brief) },
+          { name: 'r', type: sql.VarChar(10), value: recommendation },
+          { name: 'id', type: sql.Int, value: stage.Id },
+        ],
+      );
+    }
+    return r;
+  }
+
+  /**
+   * If the stage is set to auto-approve: accept confident AI suggestions, and when that leaves nothing
+   * flagged, approve the stage as the agent. Otherwise explains why a person is still needed.
+   * Never rejects, and never runs when the setting (migration 014) is absent.
+   */
+  private async tryAutoApprove(transcriptId: string, stage: StageRow, actorUserId: string): Promise<boolean> {
+    if (!stage.WorkflowStageId) return false;
+    let cfg: { AutoApprove: boolean; AutoApproveMinConfidence: number | null } | undefined;
+    try {
+      const r = await this.db.query<{ AutoApprove: boolean; AutoApproveMinConfidence: number | null }>(
+        `SELECT AutoApprove, AutoApproveMinConfidence FROM WorkflowStages WHERE Id = @id`,
+        [{ name: 'id', type: sql.Int, value: stage.WorkflowStageId }],
+      );
+      cfg = r.recordset[0];
+    } catch {
+      return false; // migration 014 not applied
+    }
+    if (!cfg?.AutoApprove) return false;
+    const min = cfg.AutoApproveMinConfidence != null ? Number(cfg.AutoApproveMinConfidence) : 0.85;
+    const pct = Math.round(min * 100);
+
+    await this.applySuggestions(transcriptId, actorUserId, min, 'the agent');
+    const { brief, recommendation } = await this.buildBrief(transcriptId);
+    await this.db.query(
+      `UPDATE TranscriptStages SET AiBrief = @b, AiRecommendation = @r, BriefGeneratedAt = SYSUTCDATETIME() WHERE Id = @id`,
+      [
+        { name: 'b', type: sql.NVarChar(sql.MAX), value: JSON.stringify(brief) },
+        { name: 'r', type: sql.VarChar(10), value: recommendation },
+        { name: 'id', type: sql.Int, value: stage.Id },
+      ],
+    );
+    if (recommendation !== 'approve' || brief.totals.courses === 0) {
+      const why = brief.flags.length ? brief.flags.join('; ') : 'there is nothing to approve yet';
+      await this.addNote(transcriptId, stage.Id, 'internal', 'system', null, null, `Auto-approve (${pct}%) did not apply, so a person needs to review: ${why}.`);
+      return false;
+    }
+
+    await this.completeStage(stage.Id, 'approved', null);
+    try {
+      await this.db.query(`UPDATE TranscriptStages SET AutoApproved = 1 WHERE Id = @id`, [{ name: 'id', type: sql.Int, value: stage.Id }]);
+    } catch {
+      // flag column missing: the note below still records it
+    }
+    await this.addNote(transcriptId, stage.Id, 'internal', 'decision', null, null,
+      `Auto-approved by the agent: ${brief.totals.courses} course(s), every match at ${pct}% confidence or higher, documents complete, nothing flagged.`);
+    await this.addNote(transcriptId, stage.Id, 'student', 'system', null, null, `"${stage.StageName}" was completed automatically.`);
+    await this.advance(transcriptId, stage.StageOrder, actorUserId);
+    return true;
   }
 
   async notifyApprovers(transcriptId: string, stage: Pick<StageRow, 'WorkflowStageId' | 'StageName'>) {
@@ -339,7 +449,7 @@ export class WorkflowEngineService {
         { name: 'id', type: sql.Int, value: prev.recordset[0].Id },
       ]);
       await this.activate(prevRow.recordset[0]);
-      await this.onHumanStageActivated(transcriptId, prevRow.recordset[0]);
+      await this.onHumanStageActivated(transcriptId, prevRow.recordset[0], actor.id);
       return { message: 'Returned to the previous stage', workflowStatus: 'active' };
     }
 
@@ -449,6 +559,15 @@ export class WorkflowEngineService {
         { name: 't', type: sql.UniqueIdentifier, value: transcriptId },
       ],
     );
+    const undecided = await this.db.query<{ N: number }>(
+      `SELECT COUNT(*) AS N FROM Evaluations e JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId
+       WHERE tc.TranscriptId = @t AND e.Status IN ('queued','in_progress')`,
+      [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+    );
+    if (undecided.recordset[0]?.N) {
+      await this.addNote(transcriptId, null, 'internal', 'system', null, null,
+        `${undecided.recordset[0].N} course(s) had no decision when the request was completed, so no credit was posted for them.`);
+    }
     await this.emailStudent(transcriptId, outcome, '', 'Completed');
   }
 

@@ -203,6 +203,49 @@ export class EmailService {
     await this.send(opts.to, opts.subject, this.wrapHtml(opts.heading, content));
   }
 
+  /**
+   * Richer variant of sendWorkflowNotice: optional results table and a monospace
+   * block (e.g. an API key). Everything passed in is plain text and HTML-escaped here.
+   */
+  async sendRichNotice(opts: {
+    to: string;
+    subject: string;
+    heading: string;
+    greetingName: string;
+    intro: string;
+    details?: { label: string; value: string }[];
+    code?: { label: string; text: string };
+    table?: { headers: string[]; rows: string[][]; footnote?: string };
+    quote?: { label: string; text: string };
+    ctaLabel?: string;
+    ctaPath?: string;
+  }): Promise<void> {
+    const details = (opts.details ?? [])
+      .map((d) => `<div style="margin-bottom:10px;"><div class="label">${this.esc(d.label)}</div><div class="value">${this.esc(d.value)}</div></div>`)
+      .join('');
+    const code = opts.code
+      ? `<div style="margin:16px 0;"><div class="label">${this.esc(opts.code.label)}</div><pre style="background:#0f172a;color:#e2e8f0;padding:14px;border-radius:8px;font-size:12px;white-space:pre-wrap;word-break:break-all;margin:6px 0 0;">${this.esc(opts.code.text)}</pre></div>`
+      : '';
+    const table = opts.table
+      ? `<table style="width:100%;border-collapse:collapse;font-size:12px;margin:16px 0;">
+           <thead><tr>${opts.table.headers.map((h) => `<th style="text-align:left;padding:6px 8px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;">${this.esc(h)}</th>`).join('')}</tr></thead>
+           <tbody>${opts.table.rows.map((r) => `<tr>${r.map((c) => `<td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;vertical-align:top;">${this.esc(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+         </table>${opts.table.footnote ? `<p style="font-size:12px;color:#6b7280;">${this.esc(opts.table.footnote)}</p>` : ''}`
+      : '';
+    const quote = opts.quote
+      ? `<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;" /><div class="label">${this.esc(opts.quote.label)}</div><div class="value" style="font-size:14px;white-space:pre-wrap;">${this.esc(opts.quote.text)}</div>`
+      : '';
+    const cta = opts.ctaLabel && opts.ctaPath
+      ? `<p style="text-align:center;margin-top:32px;"><a href="${this.appBaseUrl}${opts.ctaPath}" class="cta-button">${this.esc(opts.ctaLabel)}</a></p>`
+      : '';
+    const content = `
+      <h2>${this.esc(opts.heading)}</h2>
+      <p>Hi ${this.esc(opts.greetingName)}, ${this.esc(opts.intro)}</p>
+      ${details || quote ? `<div class="info-card">${details}${quote}</div>` : ''}
+      ${code}${table}${cta}`;
+    await this.send(opts.to, opts.subject, this.wrapHtml(opts.heading, content).replace('max-width: 600px', 'max-width: 760px'));
+  }
+
   async send(to: string, subject: string, html: string): Promise<void> {
     if (!this.resend) {
       this.logger.warn(`RESEND_API_KEY not set — skipping email to ${to}: "${subject}"`);

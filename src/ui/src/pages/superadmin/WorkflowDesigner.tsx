@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, Bot, GitBranch, Loader2, Plus, Save, Trash2, Users, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, BarChart3, Bot, GitBranch, Loader2, Plus, Save, Sparkles, Trash2, Users, X } from 'lucide-react';
 import { universitiesApi, workflowsApi } from '../../lib/api';
 import { usePermissions } from '../../hooks/usePermissions';
 import { cn } from '../../lib/cn';
+import ReadinessCard from '../../components/workflow/ReadinessCard';
 import type { AgentTask, ApproverGroup, StageApprover, StageType, StaffUser, WorkflowDetail, WorkflowStageDef } from '../../types/workflow';
 
 const errMsg = (e: unknown, fallback: string) => {
@@ -30,7 +31,7 @@ const ROLES = [
 
 const blankStage = (): WorkflowStageDef => ({
   name: 'New stage', description: '', stageType: 'approval', agentTask: 'none', slaDays: 3,
-  isEnabled: true, canBypass: true, requiresComment: false, approvers: [],
+  isEnabled: true, canBypass: true, requiresComment: false, autoApprove: false, autoApproveMinConfidence: null, approvers: [],
 });
 
 function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
@@ -139,6 +140,34 @@ function StageCard({ stage, index, total, onChange, onMove, onRemove, groups, st
               </label>
             )}
           </div>
+
+          {!system && (
+            <div className={cn('rounded-lg border p-3', stage.autoApprove ? 'border-indigo-200 bg-indigo-50/60' : 'border-gray-200 bg-gray-50/60')}>
+              <Toggle
+                checked={!!stage.autoApprove}
+                disabled={disabled}
+                onChange={(v) => set({ autoApprove: v, autoApproveMinConfidence: v ? stage.autoApproveMinConfidence ?? 0.85 : null })}
+                label="Let the agent approve this stage automatically when everything lines up"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                The agent accepts every course match above the confidence below. If that leaves nothing flagged (documents complete, no unmatched or ineligible courses) it approves the stage itself and the request moves on;
+                otherwise a person reviews as usual. It never rejects. Recommended for early review stages, not the final sign-off.
+              </p>
+              {stage.autoApprove && (
+                <label className="mt-2 inline-flex items-center gap-2 text-sm text-gray-700">
+                  <Sparkles size={14} className="text-indigo-600" /> Minimum match confidence
+                  <select
+                    disabled={disabled}
+                    value={stage.autoApproveMinConfidence ?? 0.85}
+                    onChange={(e) => set({ autoApproveMinConfidence: Number(e.target.value) })}
+                    className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                  >
+                    {[0.7, 0.75, 0.8, 0.85, 0.9, 0.95].map((v) => <option key={v} value={v}>{Math.round(v * 100)}%</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
+          )}
         </div>
         {!disabled && (
           <div className="flex flex-col gap-1">
@@ -237,12 +266,71 @@ function GroupsTab({ groups, staff, canEdit }: { groups: ApproverGroup[]; staff:
   );
 }
 
+function InsightsTab() {
+  const [days, setDays] = useState(90);
+  const q = useQuery({ queryKey: ['workflow-insights', days], queryFn: () => workflowsApi.insights(days) });
+  const d = q.data?.data;
+  if (q.isLoading || !d) return <p className="text-gray-400">Loading…</p>;
+  const maxHours = Math.max(1, ...d.stages.map((s) => s.avgHours ?? 0));
+  const fmtHours = (h: number | null) => (h == null ? '—' : h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${h.toFixed(1)} h` : `${(h / 24).toFixed(1)} days`);
+  const stat = (label: string, value: string | number, tone = 'text-gray-900') => (
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="text-xs text-gray-500">{label}</div>
+      <div className={cn('text-2xl font-bold', tone)}>{value}</div>
+    </div>
+  );
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">How requests move through your stages, so you can see where they wait.</p>
+        <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
+          {[30, 90, 180, 365].map((v) => <option key={v} value={v}>Last {v} days</option>)}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+        {stat('Requests', d.totals.requests)}
+        {stat('In progress', d.totals.active, 'text-brand-800')}
+        {stat('Approved', d.totals.approved + d.totals.bypassed, 'text-emerald-700')}
+        {stat('Rejected', d.totals.rejected, 'text-red-600')}
+        {stat('Auto-approved stages', d.totals.autoApprovedStages, 'text-indigo-600')}
+        {stat('Avg time to finish', d.totals.avgDaysToComplete == null ? '—' : `${d.totals.avgDaysToComplete.toFixed(1)} d`)}
+      </div>
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <h3 className="mb-3 text-sm font-semibold text-gray-900">Time spent at each stage</h3>
+        {d.stages.length === 0 ? <p className="text-sm text-gray-400">No requests have reached an approval stage in this period.</p> : (
+          <div className="space-y-3">
+            {d.stages.map((s) => (
+              <div key={s.stageKey}>
+                <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2 text-sm">
+                  <span className="font-medium text-gray-800">{s.name}</span>
+                  <span className="text-xs text-gray-500">
+                    {s.completed} done · {s.activeNow} waiting now
+                    {s.overdueNow > 0 && <span className="font-medium text-red-600"> · {s.overdueNow} overdue</span>}
+                    {s.late > 0 && <> · {s.late} finished late</>}
+                    {s.skipped > 0 && <> · {s.skipped} skipped</>}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                    <div className={cn('h-full rounded-full', s.overdueNow > 0 ? 'bg-red-400' : 'bg-brand-600')} style={{ width: `${((s.avgHours ?? 0) / maxHours) * 100}%` }} />
+                  </div>
+                  <span className="w-20 text-right text-xs font-medium text-gray-700">{fmtHours(s.avgHours)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function WorkflowDesigner() {
   const qc = useQueryClient();
   const { can } = usePermissions();
   const canEdit = can('workflows', 'edit');
   const canCreate = can('workflows', 'create');
-  const [tab, setTab] = useState<'workflows' | 'groups'>('workflows');
+  const [tab, setTab] = useState<'workflows' | 'groups' | 'insights'>('workflows');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draft, setDraft] = useState<WorkflowDetail | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -276,7 +364,26 @@ export default function WorkflowDesigner() {
   const save = useMutation({
     mutationFn: () => workflowsApi.save(draft!.id, {
       name: draft!.name, description: draft!.description, allowBypass: draft!.allowBypass, isActive: draft!.isActive,
-      stages: draft!.stages,
+      // The API rejects unknown properties, so send only the editable fields (not stageKey/stageOrder or approver display names).
+      stages: draft!.stages.map((st) => ({
+        id: st.id,
+        name: st.name,
+        description: st.description ?? undefined,
+        stageType: st.stageType,
+        agentTask: st.agentTask,
+        slaDays: st.slaDays,
+        isEnabled: st.isEnabled,
+        canBypass: st.canBypass,
+        requiresComment: st.requiresComment,
+        autoApprove: st.stageType !== 'system' && !!st.autoApprove,
+        autoApproveMinConfidence: st.stageType !== 'system' && st.autoApprove ? st.autoApproveMinConfidence ?? 0.85 : null,
+        approvers: st.approvers.map((a) => ({
+          approverType: a.approverType,
+          roleName: a.roleName ?? undefined,
+          groupId: a.groupId ?? undefined,
+          userId: a.userId ?? undefined,
+        })),
+      })),
       requiredDocs: draft!.documents.filter((d) => d.offered).map((d) => ({ docTypeKey: d.docTypeKey, isRequired: d.isRequired })),
     }),
     onSuccess: (res) => { setDraft(structuredClone(res.data)); setDirty(false); setSaved(true); setError(''); void qc.invalidateQueries({ queryKey: ['workflows'] }); void qc.invalidateQueries({ queryKey: ['workflow', selectedId] }); },
@@ -301,14 +408,19 @@ export default function WorkflowDesigner() {
       </div>
 
       <div className="mb-6 inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-sm">
-        {(['workflows', 'groups'] as const).map((t) => (
-          <button key={t} type="button" onClick={() => setTab(t)} className={cn('rounded-md px-4 py-1.5 font-medium', tab === t ? 'bg-brand-800 text-white' : 'text-gray-600 hover:bg-gray-50')}>
-            {t === 'workflows' ? 'Workflows' : 'Approver groups'}
+        {(['workflows', 'groups', 'insights'] as const).map((t) => (
+          <button key={t} type="button" onClick={() => setTab(t)} className={cn('inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 font-medium', tab === t ? 'bg-brand-800 text-white' : 'text-gray-600 hover:bg-gray-50')}>
+            {t === 'insights' && <BarChart3 size={14} />}
+            {t === 'workflows' ? 'Workflows' : t === 'groups' ? 'Approver groups' : 'Insights'}
           </button>
         ))}
       </div>
 
-      {tab === 'groups' ? (
+      <ReadinessCard />
+
+      {tab === 'insights' ? (
+        <InsightsTab />
+      ) : tab === 'groups' ? (
         <GroupsTab groups={groups} staff={staff} canEdit={canEdit} />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[16rem_1fr]">

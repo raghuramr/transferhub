@@ -16,3 +16,4 @@ tools/db-mcp-server/.env
 # User-uploaded files (private docs + public logos/hero images) — local-disk
 # storage only, never committed. See CLAUDE.md "Uploads subsystem".
 src/api/storage/
+*.tsbuildinfo

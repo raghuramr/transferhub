@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength, IsInt } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, IsInt } from 'class-validator';
 
 export class DecisionDto {
   @IsIn(['approve', 'reject', 'return']) decision: 'approve' | 'reject' | 'return';
@@ -27,4 +27,14 @@ export class AddDocumentDto {
 
 export class RemindDto {
   @IsOptional() @IsString() @MaxLength(500) message?: string;
+}
+
+export class AcceptSuggestionsDto {
+  /** 0.5 - 1. Suggestions at or above this confidence become the decision. */
+  @IsNumber() @Min(0.5) @Max(1) minConfidence: number;
+}
+
+export class BulkApproveDto {
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @IsUUID('all', { each: true }) ids: string[];
+  @IsOptional() @IsString() @MaxLength(4000) comment?: string;
 }

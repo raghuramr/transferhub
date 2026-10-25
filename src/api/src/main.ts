@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
@@ -18,10 +19,12 @@ async function bootstrap() {
     `[bootstrap] HTTP_PLATFORM_PORT=${process.env.HTTP_PLATFORM_PORT ?? '(unset)'} PORT=${process.env.PORT ?? '(unset)'}`,
   );
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
 
   app.use(helmet());
+  // Partner data submissions can carry thousands of rows; Express' 100kb default would reject them.
+  app.useBodyParser('json', { limit: '6mb' });
 
   app.enableCors({
     origin: config.get<string>('CORS_ORIGIN', 'http://localhost:5173'),

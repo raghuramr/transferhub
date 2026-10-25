@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, ArrowRight, Flag, Inbox, Sparkles } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, ArrowRight, CheckCheck, Flag, Inbox, Loader2, Sparkles } from 'lucide-react';
 import { requestsApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
 import { cn } from '../../lib/cn';
@@ -24,6 +24,22 @@ export default function RequestsQueue() {
     refetchInterval: 60_000,
   });
   const q = data?.data;
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
+  const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const readyIds = (q?.rows ?? []).filter((r) => r.canAct && r.aiRecommendation === 'approve' && r.flagCount === 0).map((r) => r.transcriptId);
+  const bulk = useMutation({
+    mutationFn: (ids: string[]) => requestsApi.bulkApprove(ids),
+    onSuccess: (res) => {
+      const { approved, failed, results } = res.data;
+      const firstError = results.find((r) => !r.ok)?.message;
+      setBanner({ ok: failed === 0, text: `${approved} approved${failed ? `, ${failed} could not be approved${firstError ? ` (${firstError})` : ''}` : ''}.` });
+      setSelected(new Set());
+      void qc.invalidateQueries({ queryKey: ['requests-queue'] });
+    },
+    onError: () => setBanner({ ok: false, text: 'Bulk approve failed. Nothing was changed.' }),
+  });
 
   return (
     <div className="mx-auto w-[95%] max-w-6xl p-4 sm:p-6">
@@ -59,6 +75,32 @@ export default function RequestsQueue() {
         </div>
       )}
 
+      {banner && (
+        <div className={cn('mb-4 flex items-start justify-between rounded-lg p-3 text-sm', banner.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800')}>
+          <span>{banner.text}</span><button type="button" onClick={() => setBanner(null)} aria-label="Dismiss">×</button>
+        </div>
+      )}
+      {q && q.rows.some((r) => r.canAct) && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+          <button type="button" disabled={readyIds.length === 0} onClick={() => setSelected(new Set(readyIds))} className="font-medium text-brand-800 hover:underline disabled:text-gray-400 disabled:no-underline">
+            Select the {readyIds.length} that are ready to approve
+          </button>
+          {selected.size > 0 && (
+            <>
+              <button
+                type="button"
+                disabled={bulk.isPending}
+                onClick={() => window.confirm(`Approve ${selected.size} request${selected.size === 1 ? '' : 's'} at their current stage?`) && bulk.mutate([...selected])}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {bulk.isPending ? <Loader2 size={14} className="animate-spin" /> : <CheckCheck size={14} />} Approve {selected.size}
+              </button>
+              <button type="button" onClick={() => setSelected(new Set())} className="text-gray-500 hover:underline">Clear</button>
+            </>
+          )}
+        </div>
+      )}
+
       {isLoading && <p className="text-gray-400">Loading…</p>}
       {error && <p className="text-red-500">Could not load the queue.</p>}
       {q && q.rows.length === 0 && (
@@ -69,10 +111,13 @@ export default function RequestsQueue() {
 
       <ul className="space-y-3">
         {q?.rows.map((r) => (
-          <li key={r.stageId}>
+          <li key={r.stageId} className="flex items-stretch gap-2">
+            <label className={cn('flex w-6 shrink-0 items-center justify-center', !r.canAct && 'opacity-0')}>
+              <input type="checkbox" disabled={!r.canAct} checked={selected.has(r.transcriptId)} onChange={() => toggle(r.transcriptId)} className="h-4 w-4 rounded border-gray-300 text-brand-800" aria-label={`Select ${r.studentName}`} />
+            </label>
             <Link
               to={`/requests/${r.transcriptId}`}
-              className="group flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow"
+              className="group flex min-w-0 flex-1 flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow"
             >
               <div className="min-w-[12rem] flex-1">
                 <div className="font-semibold text-gray-900">{r.studentName}</div>

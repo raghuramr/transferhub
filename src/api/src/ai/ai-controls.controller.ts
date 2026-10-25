@@ -5,6 +5,7 @@ import { Permission } from '../auth/permission.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import { AiSettingsService, AiSettingsInput } from './ai-settings.service';
 import { AiUsageService } from './ai-usage.service';
+import { ReadinessService } from './readiness.service';
 import { SaveAiSettingsDto, SaveSkillDto } from './dto/ai-controls.dto';
 
 /** Everything the "AI Controls" admin page needs: spend switches, the agent playbook, and token accounting. */
@@ -14,7 +15,15 @@ export class AiControlsController {
   constructor(
     private settings: AiSettingsService,
     private usage: AiUsageService,
+    private readiness: ReadinessService,
   ) {}
+
+  /** Is the installation ready to run requests end to end? (keys, migrations, approvers, stalled automation) */
+  @Get('readiness')
+  @Permission('ai_controls', 'view')
+  checkReadiness() {
+    return this.readiness.check();
+  }
 
   @Get('settings')
   @Permission('ai_controls', 'view')
