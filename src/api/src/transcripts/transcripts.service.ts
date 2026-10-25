@@ -3,6 +3,7 @@ import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { SubmitTranscriptDto } from './dto/create-transcript.dto';
 import { EmailService } from '../common/email.service';
+import { UploadsService } from '../uploads/uploads.service';
 
 interface TranscriptCourseJoinRow {
   Id: string;
@@ -28,6 +29,7 @@ interface TranscriptHeaderRow {
   ReceivedAt: Date;
   ProcessedAt: Date | null;
   Notes: string | null;
+  OriginalFileName: string | null;
   InstitutionId: number;
   InstitutionCode: string;
   InstitutionName: string;
@@ -78,7 +80,11 @@ function mapCourseRow(r: TranscriptCourseJoinRow) {
 
 @Injectable()
 export class TranscriptsService {
-  constructor(private db: DatabaseService, private emailService: EmailService) {}
+  constructor(
+    private db: DatabaseService,
+    private emailService: EmailService,
+    private uploadsService: UploadsService,
+  ) {}
 
   /** Finds the BU-side Institution row for a code, or creates a minimal one. */
   private async findOrCreateInstitution(code: string, name: string, calendar: string) {
@@ -132,7 +138,7 @@ export class TranscriptsService {
    * on each one (grade eligibility, credit normalisation, equivalency
    * lookup). Courses that still need a human look get a queued Evaluation.
    */
-  async submit(dto: SubmitTranscriptDto, submittedByUserId: string) {
+  async submit(dto: SubmitTranscriptDto, submittedByUserId: string, submittedByRole: string) {
     const institutionId = await this.findOrCreateInstitution(
       dto.institutionCode.toUpperCase(),
       dto.institutionName,
@@ -144,15 +150,31 @@ export class TranscriptsService {
     if (dto.studentId) notesParts.push(`Student ID on file: ${dto.studentId}`);
     if (dto.notes) notesParts.push(dto.notes);
 
+    // The uploaded document is optional — re-verifies ownership via the same
+    // check GET /uploads/:id uses, so a documentUploadId can't be used to
+    // attach someone else's file to this transcript.
+    let fileStoragePath: string | null = null;
+    let originalFileName: string | null = null;
+    if (dto.documentUploadId) {
+      const upload = await this.uploadsService.getForAuthenticatedUser(dto.documentUploadId, {
+        id: submittedByUserId,
+        role: submittedByRole,
+      });
+      fileStoragePath = upload.path;
+      originalFileName = upload.fileName;
+    }
+
     const transcriptRes = await this.db.query<{ Id: string }>(
-      `INSERT INTO Transcripts (StudentUserId, SubmittedById, InstitutionId, Status, Notes)
+      `INSERT INTO Transcripts (StudentUserId, SubmittedById, InstitutionId, Status, Notes, FileStoragePath, OriginalFileName)
        OUTPUT inserted.Id
-       VALUES (@student, @submitter, @instId, 'received', @notes)`,
+       VALUES (@student, @submitter, @instId, 'received', @notes, @filePath, @fileName)`,
       [
         { name: 'student', type: sql.UniqueIdentifier, value: submittedByUserId },
         { name: 'submitter', type: sql.UniqueIdentifier, value: submittedByUserId },
         { name: 'instId', type: sql.Int, value: institutionId },
         { name: 'notes', type: sql.NVarChar(sql.MAX), value: notesParts.join(' | ') || null },
+        { name: 'filePath', type: sql.NVarChar(500), value: fileStoragePath },
+        { name: 'fileName', type: sql.NVarChar(300), value: originalFileName },
       ],
     );
     const transcriptId = transcriptRes.recordset[0].Id;
@@ -207,7 +229,7 @@ export class TranscriptsService {
 
   async findById(id: string) {
     const res = await this.db.query<TranscriptHeaderRow>(
-      `SELECT t.Id, t.Status, t.ReceivedAt, t.ProcessedAt, t.Notes,
+      `SELECT t.Id, t.Status, t.ReceivedAt, t.ProcessedAt, t.Notes, t.OriginalFileName,
               i.Id AS InstitutionId, i.Code AS InstitutionCode, i.Name AS InstitutionName, i.Calendar,
               u.FirstName + ' ' + u.LastName AS StudentName, u.Email AS StudentEmail
        FROM Transcripts t
@@ -240,6 +262,7 @@ export class TranscriptsService {
       notes: t.Notes,
       studentName: t.StudentName,
       studentEmail: t.StudentEmail,
+      documentFileName: t.OriginalFileName,
       institution: {
         id: t.InstitutionId,
         code: t.InstitutionCode,
@@ -248,6 +271,24 @@ export class TranscriptsService {
       },
       courses: courses.recordset.map(mapCourseRow),
     };
+  }
+
+  /** The transcript document itself, if one was attached at submission — see submit(). */
+  async getDocument(id: string) {
+    const res = await this.db.query<{
+      FileStoragePath: string | null;
+      OriginalFileName: string | null;
+      StudentEmail: string;
+    }>(
+      `SELECT t.FileStoragePath, t.OriginalFileName, u.Email AS StudentEmail
+       FROM Transcripts t JOIN Users u ON u.Id = t.StudentUserId
+       WHERE t.Id = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+    );
+    const row = res.recordset[0];
+    if (!row) throw new NotFoundException('Transcript not found');
+    if (!row.FileStoragePath) throw new NotFoundException('No document was attached to this transcript');
+    return { path: row.FileStoragePath, fileName: row.OriginalFileName || 'transcript', studentEmail: row.StudentEmail };
   }
 
   /**

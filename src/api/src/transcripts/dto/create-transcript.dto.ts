@@ -20,6 +20,8 @@ export class SubmitTranscriptDto {
   @IsOptional() @IsString() studentName?: string;
   @IsOptional() @IsString() studentId?: string;
   @IsOptional() @IsString() notes?: string;
+  /** Id of an Upload (entityType 'transcript') the student attached — see UploadsService. */
+  @IsOptional() @IsString() documentUploadId?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

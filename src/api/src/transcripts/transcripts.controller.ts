@@ -1,6 +1,8 @@
 import {
-  Controller, Get, Post, Patch, Param, Body, Query, Req, UseGuards, ForbiddenException,
+  Controller, Get, Post, Patch, Param, Body, Query, Req, Res, UseGuards, ForbiddenException, NotFoundException,
 } from '@nestjs/common';
+import type { Response } from 'express';
+import * as fs from 'fs';
 import { TranscriptsService } from './transcripts.service';
 import { SubmitTranscriptDto } from './dto/create-transcript.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -38,7 +40,20 @@ export class TranscriptsController {
 
   @Post()
   create(@Body() dto: SubmitTranscriptDto, @Req() req: AuthenticatedRequest) {
-    return this.transcriptsService.submit(dto, req.user.id);
+    return this.transcriptsService.submit(dto, req.user.id, req.user.role);
+  }
+
+  /** The attached transcript document (if any) — same visibility rule as GET :id. */
+  @Get(':id/document')
+  async downloadDocument(@Param('id') id: string, @Req() req: AuthenticatedRequest, @Res() res: Response) {
+    const doc = await this.transcriptsService.getDocument(id);
+    const { email, role } = req.user;
+    if (role === 'student' && doc.studentEmail !== email) {
+      throw new ForbiddenException();
+    }
+    if (!fs.existsSync(doc.path)) throw new NotFoundException('File missing on disk');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.fileName)}"`);
+    res.sendFile(doc.path);
   }
 
   @Patch(':id/status')

@@ -109,6 +109,7 @@ export interface Transcript {
   status: 'received' | 'processing' | 'complete';
   receivedAt: string;
   processedAt?: string;
+  documentFileName?: string | null;
   courses: TranscriptCourse[];
 }
 

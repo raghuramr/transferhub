@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { transcriptsApi } from '../../lib/api';
-import { Upload, Info } from 'lucide-react';
+import { transcriptsApi, uploadsApi } from '../../lib/api';
+import { Upload, Info, Paperclip, Loader2, CheckCircle2, X } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import {
   MasterDataCascade,
@@ -55,12 +55,31 @@ export default function UploadTranscript() {
   const [courses, setCourses] = useState<CourseRow[]>([{ ...EMPTY_COURSE }]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [transcriptFile, setTranscriptFile] = useState<{ id: string; name: string } | null>(null);
+  const [documentUploading, setDocumentUploading] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { calendar: 'semester' } });
+
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setDocumentUploading(true);
+    setError('');
+    try {
+      const res = await uploadsApi.upload(file, { entityType: 'transcript' });
+      const { id } = res.data as { id: string };
+      setTranscriptFile({ id, name: file.name });
+    } catch {
+      setError('Document upload failed. Please try again.');
+    } finally {
+      setDocumentUploading(false);
+    }
+  };
 
   const addCourse = () => setCourses((prev) => [...prev, { ...EMPTY_COURSE }]);
   const removeCourse = (i: number) =>
@@ -96,6 +115,7 @@ export default function UploadTranscript() {
         studentName: data.studentName,
         studentId: data.studentId,
         notes: data.notes,
+        documentUploadId: transcriptFile?.id,
         courses: validCourses.map((c) => ({
           courseCode: c.course.code,
           courseTitle: c.course.title,
@@ -149,6 +169,40 @@ export default function UploadTranscript() {
           <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
             <Info size={16} className="shrink-0 mt-0.5" />
             Quarter-system credits are automatically converted to semester credits (÷ 1.5, rounded to nearest 0.5).
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Transcript document <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-600 cursor-pointer hover:bg-gray-50 w-fit">
+                {documentUploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
+                {documentUploading ? 'Uploading…' : transcriptFile ? 'Replace file' : 'Attach PDF or image'}
+                <input
+                  type="file"
+                  accept=".pdf,image/*"
+                  className="hidden"
+                  onChange={handleDocumentUpload}
+                  disabled={documentUploading}
+                />
+              </label>
+              {transcriptFile && !documentUploading && (
+                <span className="flex items-center gap-1.5 text-sm text-gray-600">
+                  <CheckCircle2 size={14} className="text-green-600" /> {transcriptFile.name}
+                  <button
+                    type="button"
+                    onClick={() => setTranscriptFile(null)}
+                    className="text-gray-400 hover:text-red-500"
+                  >
+                    <X size={14} />
+                  </button>
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-gray-400">
+              Attach a scanned copy of your official transcript for the evaluator to review alongside the courses below.
+            </p>
           </div>
         </div>
 

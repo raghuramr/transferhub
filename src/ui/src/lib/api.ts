@@ -223,6 +223,7 @@ export const transcriptsApi = {
   get: (id: string) => api.get<Transcript>(`/transcripts/${id}`),
   status: (id: string) => api.get(`/transcripts/${id}/status`),
   submit: (data: unknown) => api.post('/transcripts', data),
+  document: (id: string) => api.get(`/transcripts/${id}/document`, { responseType: 'blob' }),
 };
 
 // ── Evaluations endpoints ─────────────────────────────────────

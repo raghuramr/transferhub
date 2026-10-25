@@ -1,8 +1,19 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { transcriptsApi } from '../../lib/api';
-import { CheckCircle, Clock, AlertCircle, BookOpen, Sparkles } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, BookOpen, Sparkles, FileDown } from 'lucide-react';
 import { TransferWorkflowStepper, TRANSCRIPT_STEPS } from '../../components/ui/TransferWorkflowStepper';
+
+function downloadDocument(id: string, fileName: string) {
+  transcriptsApi.document(id).then((res) => {
+    const url = URL.createObjectURL(new Blob([res.data]));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
 
 const laneConfig: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   applied:       { label: 'Auto-Applied',    color: 'text-green-700',  bg: 'bg-green-50',  icon: <CheckCircle size={16} /> },
@@ -43,6 +54,14 @@ export default function TranscriptStatus() {
           Submitted {new Date(transcript.receivedAt).toLocaleDateString()} ·{' '}
           <span className="capitalize font-medium">{transcript.status}</span>
         </p>
+        {transcript.documentFileName && (
+          <button
+            onClick={() => downloadDocument(transcript.id, transcript.documentFileName!)}
+            className="mt-2 inline-flex items-center gap-1.5 text-sm text-brand-800 hover:text-brand-900 font-medium"
+          >
+            <FileDown size={15} /> {transcript.documentFileName}
+          </button>
+        )}
       </div>
 
       {/* Workflow progress */}
