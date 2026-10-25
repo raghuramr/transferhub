@@ -18,6 +18,8 @@ import { AgenciesModule } from './agencies/agencies.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ImportModule } from './import/import.module';
+import { WorkflowsModule } from './workflows/workflows.module';
+import { RequestsModule } from './requests/requests.module';
 import { AuditController } from './common/audit.controller';
 import { HealthController } from './common/health.controller';
 
@@ -50,6 +52,8 @@ const envFilePath =
     UploadsModule,
     PermissionsModule,
     ImportModule,
+    WorkflowsModule,
+    RequestsModule,
   ],
   controllers: [AuditController, HealthController],
 })

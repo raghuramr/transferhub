@@ -45,6 +45,12 @@ import AgenciesManagement from './pages/superadmin/AgenciesManagement';
 import RolesPermissions from './pages/superadmin/RolesPermissions';
 import DataImport from './pages/superadmin/DataImport';
 import UsersManagement from './pages/superadmin/UsersManagement';
+import WorkflowDesigner from './pages/superadmin/WorkflowDesigner';
+import AiControls from './pages/superadmin/AiControls';
+
+// Approval workflow (staff)
+import RequestsQueue from './pages/staff/RequestsQueue';
+import RequestReview from './pages/staff/RequestReview';
 
 // Custom Pages (CMS) — public-facing view, any authenticated role
 import CmsPageView from './pages/cms/CmsPageView';
@@ -136,6 +142,8 @@ export default function App() {
           <Route path="forms/new" element={<FormEditor />} />
           <Route path="forms/:id" element={<FormEditor />} />
           <Route path="forms/:id/submissions" element={<FormSubmissions />} />
+          <Route path="workflows" element={<WorkflowDesigner />} />
+          <Route path="ai-controls" element={<AiControls />} />
         </Route>
 
         {/* Super Admin */}
@@ -150,6 +158,14 @@ export default function App() {
           <Route path="agencies" element={<AgenciesManagement />} />
           <Route path="settings/roles-permissions" element={<RolesPermissions />} />
           <Route path="settings/import" element={<DataImport />} />
+          <Route path="settings/workflows" element={<WorkflowDesigner />} />
+          <Route path="settings/ai-controls" element={<AiControls />} />
+        </Route>
+
+        {/* Approval queue + request review (stage owners) */}
+        <Route path="/requests" element={<RequireAuth roles={['faculty','admin','super_admin']}><AppLayout /></RequireAuth>}>
+          <Route index element={<RequestsQueue />} />
+          <Route path=":id" element={<RequestReview />} />
         </Route>
 
         {/* Shared CMS page view (any authenticated role) */}

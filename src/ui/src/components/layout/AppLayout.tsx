@@ -8,7 +8,7 @@ import { PageTransition } from '../ui/PageTransition';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
-  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle,
+  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -27,12 +27,16 @@ const navItems: Record<Role, NavEntry[]> = {
   ],
   faculty: [
     { to: '/faculty', label: 'Review Queue', icon: <ClipboardList size={18} /> },
+    { to: '/requests', label: 'Approval queue', icon: <Inbox size={18} /> },
     { to: '/profile', label: 'My Profile', icon: <UserCircle size={18} /> },
   ],
   admin: [
     { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { to: '/requests', label: 'Approval queue', icon: <Inbox size={18} /> },
     { to: '/admin/transcripts', label: 'Transcripts', icon: <FileText size={18} /> },
     { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
+    { to: '/admin/workflows', label: 'Workflows', icon: <GitBranch size={18} /> },
+    { to: '/admin/ai-controls', label: 'AI Controls', icon: <Bot size={18} /> },
     { to: '/admin/users', label: 'Users', icon: <Users size={18} /> },
     { to: '/admin/pages', label: 'Custom Pages', icon: <FileEdit size={18} /> },
     { to: '/admin/forms', label: 'Custom Forms', icon: <ListChecks size={18} /> },
@@ -46,7 +50,8 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/superadmin/programs', label: 'Programs', icon: <GraduationCap size={18} /> },
     { to: '/superadmin/agencies', label: 'Agencies', icon: <Handshake size={18} /> },
     // Operations
-    { to: '/admin/transcripts', label: 'Transcripts', icon: <FileText size={18} />, group: 'Operations' },
+    { to: '/requests', label: 'Approval queue', icon: <Inbox size={18} />, group: 'Operations' },
+    { to: '/admin/transcripts', label: 'Transcripts', icon: <FileText size={18} /> },
     { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
     { to: '/admin/pages', label: 'Custom Pages', icon: <FileEdit size={18} /> },
     { to: '/admin/forms', label: 'Custom Forms', icon: <ListChecks size={18} /> },
@@ -57,6 +62,8 @@ const navItems: Record<Role, NavEntry[]> = {
     // Settings
     { to: '/superadmin/settings', label: 'Settings', icon: <Settings size={18} />, group: 'Settings' },
     { to: '/superadmin/settings/roles-permissions', label: 'Roles & Permissions', icon: <ShieldCheck size={18} /> },
+    { to: '/superadmin/settings/workflows', label: 'Workflows', icon: <GitBranch size={18} /> },
+    { to: '/superadmin/settings/ai-controls', label: 'AI Controls', icon: <Bot size={18} /> },
     { to: '/superadmin/settings/import', label: 'Data Import', icon: <Upload size={18} /> },
   ],
 };

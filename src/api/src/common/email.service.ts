@@ -160,6 +160,49 @@ export class EmailService {
     };
   }
 
+  get isConfigured(): boolean {
+    return this.resend !== null;
+  }
+
+  get baseUrl(): string {
+    return this.appBaseUrl;
+  }
+
+  private esc(text: string): string {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /**
+   * One generic, HTML-escaped template for every workflow email (stage
+   * assigned, nudge, status update, decision). Callers pass plain text.
+   */
+  async sendWorkflowNotice(opts: {
+    to: string;
+    subject: string;
+    heading: string;
+    greetingName: string;
+    intro: string;
+    details?: { label: string; value: string }[];
+    quote?: { label: string; text: string };
+    ctaLabel: string;
+    ctaPath: string;
+  }): Promise<void> {
+    const details = (opts.details ?? [])
+      .map((d) => `<div style="margin-bottom:10px;"><div class="label">${this.esc(d.label)}</div><div class="value">${this.esc(d.value)}</div></div>`)
+      .join('');
+    const quote = opts.quote
+      ? `<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;" /><div class="label">${this.esc(opts.quote.label)}</div><div class="value" style="font-size:14px;white-space:pre-wrap;">${this.esc(opts.quote.text)}</div>`
+      : '';
+    const content = `
+      <h2>${this.esc(opts.heading)}</h2>
+      <p>Hi ${this.esc(opts.greetingName)}, ${this.esc(opts.intro)}</p>
+      ${details || quote ? `<div class="info-card">${details}${quote}</div>` : ''}
+      <p style="text-align:center;margin-top:32px;">
+        <a href="${this.appBaseUrl}${opts.ctaPath}" class="cta-button">${this.esc(opts.ctaLabel)}</a>
+      </p>`;
+    await this.send(opts.to, opts.subject, this.wrapHtml(opts.heading, content));
+  }
+
   async send(to: string, subject: string, html: string): Promise<void> {
     if (!this.resend) {
       this.logger.warn(`RESEND_API_KEY not set — skipping email to ${to}: "${subject}"`);

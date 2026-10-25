@@ -89,7 +89,13 @@ jobs:
         id: runner_ip
         run: echo "ip=$(curl -s https://api.ipify.org)" >> "$GITHUB_OUTPUT"
 
+      # The three DB steps below are non-blocking (continue-on-error): a database
+      # or firewall-permission problem must not stop the app from deploying. The
+      # last step of the job fails the run afterwards so the problem is still
+      # visible and nothing is silently skipped.
       - name: Allow this runner through the Azure SQL firewall
+        id: db_fw
+        continue-on-error: true
         run: |
           az sql server firewall-rule create \
             --resource-group "${{ secrets.AZURE_SQL_RESOURCE_GROUP }}" \
@@ -99,10 +105,17 @@ jobs:
             --end-ip-address "${{ steps.runner_ip.outputs.ip }}"
 
       - name: Install db-mcp-server dependencies
+        id: db_install
+        if: steps.db_fw.outcome == 'success'
+        continue-on-error: true
         working-directory: tools/db-mcp-server
         run: npm ci
 
       - name: Apply pending migrations and seeds
+        id: db_apply
+        if: steps.db_install.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 10
         working-directory: tools/db-mcp-server
         run: npx tsx src/applyAll.ts
         env:
@@ -129,3 +142,12 @@ jobs:
           app-name: 'codecrafters'
           slot-name: 'Production'
           package: src/api
+
+      # Deploy has run by now. If any DB step failed, fail the run so the
+      # un-applied migrations/seeds are noticed (apply them with
+      # tools/db-script-runner or `npm run apply:all` in tools/db-mcp-server).
+      - name: Fail the run if the database update did not complete
+        if: steps.db_fw.outcome != 'success' || steps.db_install.outcome != 'success' || steps.db_apply.outcome != 'success'
+        run: |
+          echo "::error::App deployed, but pending database migrations/seeds were NOT applied (firewall=${{ steps.db_fw.outcome }}, install=${{ steps.db_install.outcome }}, apply=${{ steps.db_apply.outcome }}). The new app code may need migration 013 and seed 009."
+          exit 1

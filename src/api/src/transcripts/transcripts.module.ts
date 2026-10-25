@@ -3,10 +3,11 @@ import { TranscriptsService } from './transcripts.service';
 import { TranscriptsController } from './transcripts.controller';
 import { AuthModule } from '../auth/auth.module';
 import { UploadsModule } from '../uploads/uploads.module';
+import { RequestsModule } from '../requests/requests.module';
 import { EmailService } from '../common/email.service';
 
 @Module({
-  imports: [AuthModule, UploadsModule],
+  imports: [AuthModule, UploadsModule, RequestsModule],
   providers: [TranscriptsService, EmailService],
   controllers: [TranscriptsController],
   exports: [TranscriptsService],

@@ -390,6 +390,50 @@ sessions):
   column per University the Program is offered at, toggling that
   Topic's `UniversityTopicStatus` directly.
 
+## Transfer-request approval workflow + AI controls (built; migration 013 / seed 009)
+Each transfer request (a `Transcripts` row) now runs through a per-intaking-
+university workflow of stages, with agents doing the reading/matching so a
+stage owner only clicks approve/reject.
+- **Schema**: migration `013_transfer_workflow_and_ai_controls.sql` (approver
+  groups, `WorkflowDefinitions`/`WorkflowStages`/`WorkflowStageApprovers`,
+  document types + required docs, per-request `TranscriptStages` snapshots,
+  `TranscriptNotes` (audience `internal`|`student`), `StatusReminders`,
+  `AiSettings`, `AiUsageLog`, `AiMatchCache`, `AgentSkills`, and new
+  `Transcripts.TargetInstitutionId/WorkflowId/CurrentStageOrder/WorkflowStatus`).
+  Seed `009_workflow_defaults.sql`: 4 approver groups, a global default
+  workflow (new > start/AI match > faculty > finance > 1st approver > final
+  approver > completed), doc types, AI settings, 7 agent skills, and the
+  `requests`/`workflows`/`ai_controls` permission modules.
+- **Workflow resolution**: `WorkflowsService.resolveForInstitution` = the
+  university's own active workflow, else the global default
+  (`InstitutionId NULL`). Target university = `StudentProfiles.TargetInstitutionId`,
+  falling back to BU. A stage with no approvers can be acted on by admins.
+- **Engine** (`src/api/src/requests/workflow-engine.service.ts`): stage types
+  `system|review|approval`; agent tasks `none|intake|match|finalize`. Two
+  distinct bypasses: per-stage `CanBypass` (admin skips one stage) and the
+  workflow's `AllowBypass` (admin accepts the whole request). Notes: internal
+  notes are visible only to people in that stage's approver set + admins.
+  Student/staff reminders are rate-limited (24h / 12h). `startWorkflow`
+  failing never fails a transcript submission.
+- **AI controls** (`/ai-controls`, UI `AiControls.tsx`): global + per-university
+  switches/budgets, cheap model with escalation, lexical catalogue shortlist
+  (zero tokens), cross-student match cache, prompt caching, editable agent
+  playbook (`AgentSkills`), `AiUsageLog` token/cost/tokens-saved per call and
+  per request. The briefing text for reviewers is a free template unless
+  `narrativeBriefEnabled`. Rules thresholds in `sp_TriageCourse` are still
+  fixed (not yet configurable per university).
+- **UI**: `/requests` + `/requests/:id` (staff), vertical animated timeline
+  (`components/workflow/`), student `TranscriptStatus` shows it with notes,
+  documents, and a "nudge" reminder; admin pages `WorkflowDesigner.tsx`
+  (`/superadmin/settings/workflows`, `/admin/workflows`) and `AiControls.tsx`
+  (`/superadmin/settings/ai-controls`, `/admin/ai-controls`).
+- **Needs from infra**: real `ANTHROPIC_API_KEY`; `RESEND_API_KEY` (+
+  `RESEND_FROM_EMAIL`) for emails (no-op otherwise); real members in the
+  approver groups (Finance Office is empty by default).
+- **CI**: the DB-apply steps in `main_codecrafters.yml` are non-blocking
+  (`continue-on-error`) with a final step that fails the run after deploy if
+  they failed, so a SQL-firewall RBAC problem can't block deployments.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group

@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { SubmitTranscriptDto } from './dto/create-transcript.dto';
 import { EmailService } from '../common/email.service';
 import { UploadsService } from '../uploads/uploads.service';
+import { WorkflowEngineService } from '../requests/workflow-engine.service';
 
 interface TranscriptCourseJoinRow {
   Id: string;
@@ -84,7 +85,9 @@ export class TranscriptsService {
     private db: DatabaseService,
     private emailService: EmailService,
     private uploadsService: UploadsService,
+    private workflowEngine: WorkflowEngineService,
   ) {}
+  private readonly logger = new Logger(TranscriptsService.name);
 
   /** Finds the BU-side Institution row for a code, or creates a minimal one. */
   private async findOrCreateInstitution(code: string, name: string, calendar: string) {
@@ -223,6 +226,14 @@ export class TranscriptsService {
       `UPDATE Transcripts SET Status = 'processing' WHERE Id = @id`,
       [{ name: 'id', type: sql.UniqueIdentifier, value: transcriptId }],
     );
+
+    // Hand the request to the intaking university's approval workflow. Never let a workflow problem
+    // (e.g. migration 013 not applied yet) fail a submission that has already been saved.
+    try {
+      await this.workflowEngine.startWorkflow(transcriptId, submittedByUserId);
+    } catch (err) {
+      this.logger.warn(`Request ${transcriptId} saved but workflow did not start: ${(err as Error).message}`);
+    }
 
     return this.findById(transcriptId);
   }

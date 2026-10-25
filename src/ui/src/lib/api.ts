@@ -1,5 +1,9 @@
 import axios, { AxiosError } from 'axios';
 import type { AuthTokens, ApiError, CourseTopic, TranscriptSummary, Transcript, User } from '../types';
+import type {
+  AgentSkill, AiSettings, ApproverGroup, QueueRow, RequestTimeline, RequestUsageDetail, RequestUsageRow,
+  StaffUser, UsageSummary, WorkflowDetail, WorkflowStageDef, WorkflowSummary,
+} from '../types/workflow';
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -290,4 +294,62 @@ export const importApi = {
   getFormat: () => api.get('/import/format'),
   preview: (type: string, data: unknown[]) => api.post('/import/preview', { type, data }),
   execute: (type: string, data: unknown[]) => api.post('/import', { type, data }),
+};
+
+// ── Transfer request workflow (stages, decisions, notes, reminders) ───
+export const requestsApi = {
+  queue: (scope: 'mine' | 'all') =>
+    api.get<{ scope: string; total: number; overdue: number; rows: QueueRow[] }>('/requests/queue', { params: { scope } }),
+  timeline: (id: string) => api.get<RequestTimeline>(`/requests/${id}`),
+  decide: (id: string, data: { decision: 'approve' | 'reject' | 'return'; comment?: string; studentComment?: string }) =>
+    api.post<{ message: string; timeline: RequestTimeline }>(`/requests/${id}/decision`, data),
+  skipStage: (id: string, reason: string) => api.post<{ timeline: RequestTimeline }>(`/requests/${id}/skip-stage`, { reason }),
+  accept: (id: string, reason: string) => api.post<{ timeline: RequestTimeline }>(`/requests/${id}/accept`, { reason }),
+  startWorkflow: (id: string) => api.post<{ timeline: RequestTimeline }>(`/requests/${id}/start-workflow`),
+  resume: (id: string) => api.post<{ timeline: RequestTimeline }>(`/requests/${id}/resume`),
+  addNote: (id: string, data: { audience: 'internal' | 'student'; body: string; stageId?: number }) =>
+    api.post<RequestTimeline>(`/requests/${id}/notes`, data),
+  addDocument: (id: string, data: { docTypeKey: string; uploadId: string; transcriptCourseId?: string; notes?: string }) =>
+    api.post<RequestTimeline>(`/requests/${id}/documents`, data),
+  removeDocument: (id: string, docId: number) => api.delete<RequestTimeline>(`/requests/${id}/documents/${docId}`),
+  remind: (id: string, message?: string) =>
+    api.post<{ sent: number; direction: string; emailConfigured: boolean }>(`/requests/${id}/remind`, { message }),
+  aiUsage: (id: string) => api.get<RequestUsageDetail>(`/requests/${id}/ai-usage`),
+};
+
+// ── Workflow designer + approver groups ───────────────────────
+export interface SaveWorkflowPayload {
+  name: string;
+  description?: string | null;
+  allowBypass: boolean;
+  isActive: boolean;
+  stages: WorkflowStageDef[];
+  requiredDocs: { docTypeKey: string; isRequired: boolean }[];
+}
+export const workflowsApi = {
+  list: () => api.get<WorkflowSummary[]>('/workflows'),
+  get: (id: number) => api.get<WorkflowDetail>(`/workflows/${id}`),
+  lookups: () =>
+    api.get<{ staff: StaffUser[]; groups: ApproverGroup[]; documentTypes: { docTypeKey: string; label: string }[] }>('/workflows/lookups'),
+  create: (data: { institutionId: number; name: string; copyFromWorkflowId?: number }) => api.post<WorkflowDetail>('/workflows', data),
+  save: (id: number, data: SaveWorkflowPayload) => api.put<WorkflowDetail>(`/workflows/${id}`, data),
+  remove: (id: number) => api.delete<{ message: string }>(`/workflows/${id}`),
+  saveGroup: (id: number | null, data: { name: string; description?: string; isActive: boolean; memberUserIds: string[] }) =>
+    id ? api.put<ApproverGroup>(`/approver-groups/${id}`, data) : api.post<ApproverGroup>('/approver-groups', data),
+  removeGroup: (id: number) => api.delete<{ message: string }>(`/approver-groups/${id}`),
+};
+
+// ── AI controls: spend switches, agent playbook, token accounting ──
+export const aiControlsApi = {
+  settings: () => api.get<AiSettings[]>('/ai-controls/settings'),
+  saveSettings: (data: Partial<AiSettings> & { institutionId?: number | null }) => api.put<AiSettings>('/ai-controls/settings', data),
+  removeOverride: (institutionId: number) => api.delete(`/ai-controls/settings/${institutionId}`),
+  skills: () => api.get<AgentSkill[]>('/ai-controls/skills'),
+  saveSkill: (id: number | null, data: Omit<AgentSkill, 'id' | 'tokenEstimate' | 'skillKey'> & { skillKey?: string }) =>
+    id ? api.put<AgentSkill>(`/ai-controls/skills/${id}`, data) : api.post<AgentSkill>('/ai-controls/skills', data),
+  removeSkill: (id: number) => api.delete(`/ai-controls/skills/${id}`),
+  promptPreview: () => api.get<{ text: string; tokenEstimate: number; skillCount: number }>('/ai-controls/prompt-preview'),
+  summary: (days: number) => api.get<UsageSummary>('/ai-controls/usage/summary', { params: { days } }),
+  byRequest: (days: number) => api.get<RequestUsageRow[]>('/ai-controls/usage/requests', { params: { days } }),
+  clearCache: () => api.post<{ cleared: number }>('/ai-controls/cache/clear'),
 };

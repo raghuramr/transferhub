@@ -1,6 +1,9 @@
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { transcriptsApi } from '../../lib/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { requestsApi, transcriptsApi } from '../../lib/api';
+import { GeneralNotes, RequestTimeline } from '../../components/workflow/RequestTimeline';
+import { DocumentsPanel, NoteComposer, ReminderPanel } from '../../components/workflow/RequestPanels';
+import type { RequestTimeline as TimelineData } from '../../types/workflow';
 import { CheckCircle, Clock, AlertCircle, BookOpen, Sparkles, FileDown } from 'lucide-react';
 import { TransferWorkflowStepper, TRANSCRIPT_STEPS } from '../../components/ui/TransferWorkflowStepper';
 
@@ -34,6 +37,16 @@ export default function TranscriptStatus() {
 
   const transcript = data?.data;
 
+  const qc = useQueryClient();
+  const timelineQuery = useQuery({
+    queryKey: ['request', id],
+    queryFn: () => requestsApi.timeline(id!),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+  const timeline = timelineQuery.data?.data;
+  const setTimeline = (t: TimelineData) => qc.setQueryData(['request', id], { data: t });
+
   if (isLoading) return <div className="p-8 text-center text-gray-400">Loading…</div>;
   if (error || !transcript) return <div className="p-8 text-center text-red-500">Failed to load transcript.</div>;
 
@@ -64,9 +77,24 @@ export default function TranscriptStatus() {
         )}
       </div>
 
-      {/* Workflow progress */}
+      {/* Workflow progress: the per-university approval stages when the request has them, else the simple 3-step status */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-        <TransferWorkflowStepper currentStatus={transcript.status} steps={TRANSCRIPT_STEPS} />
+        {timeline?.transcript.workflow ? (
+          <>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold text-gray-900">Where your request is</h2>
+              {timeline.transcript.workflowStatus && timeline.transcript.workflowStatus !== 'active' && (
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium capitalize text-gray-700">
+                  {timeline.transcript.workflowStatus === 'bypassed' ? 'approved' : timeline.transcript.workflowStatus}
+                </span>
+              )}
+            </div>
+            <RequestTimeline stages={timeline.stages} />
+            <div className="mt-6"><GeneralNotes notes={timeline.generalNotes} /></div>
+          </>
+        ) : (
+          <TransferWorkflowStepper currentStatus={transcript.status} steps={TRANSCRIPT_STEPS} />
+        )}
       </div>
 
       {/* Stats */}
@@ -119,6 +147,25 @@ export default function TranscriptStatus() {
           })}
         </div>
       </div>
+
+      {timeline && timeline.transcript.workflow && (
+        <div className="mt-8 grid gap-4 lg:grid-cols-2">
+          <NoteComposer requestId={transcript.id} timeline={timeline} onUpdated={setTimeline} />
+          <ReminderPanel
+            requestId={transcript.id}
+            timeline={timeline}
+            onSent={() => void qc.invalidateQueries({ queryKey: ['request', id] })}
+          />
+          <div className="lg:col-span-2">
+            <DocumentsPanel
+              requestId={transcript.id}
+              timeline={timeline}
+              courses={transcript.courses?.map((c) => ({ id: String(c.id), label: c.courseCode }))}
+              onUpdated={setTimeline}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
