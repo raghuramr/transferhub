@@ -172,14 +172,32 @@ export async function runScripts(
     const checksum = getFileSha256(path);
     const batches = splitIntoBatches(text);
 
+    // Every batch of one script must run on the SAME connection: scripts use
+    // session-scoped temp tables (#Gen, #Topics) across GO boundaries, and
+    // pool.request() may hand each batch to a different pooled connection.
+    // A transaction pins one connection for the script's whole run and also
+    // makes each script all-or-nothing, so a failed script leaves no
+    // half-applied data behind.
+    const tx = new sql.Transaction(pool);
+    let began = false;
     try {
+      await tx.begin();
+      began = true;
       for (const batch of batches) {
-        await pool.request().query(batch);
+        await new sql.Request(tx).query(batch);
       }
+      await tx.commit();
       await recordHistory(pool, name, checksum, true);
       results.push({ name, success: true, skipped: false, message: 'Applied successfully.' });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      if (began) {
+        try {
+          await tx.rollback();
+        } catch {
+          // the server already rolled the transaction back (e.g. severe error); nothing to undo
+        }
+      }
       await recordHistory(pool, name, checksum, false);
       results.push({ name, success: false, skipped: false, message });
       stopped = true;

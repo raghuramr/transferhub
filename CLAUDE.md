@@ -81,7 +81,13 @@ networked SQL Server), not LocalDB — defaults to reading `src/api/.env`
 for connection settings (so there's one source of truth for local
 credentials), overridable via `DB_MCP_ENV_FILE` or an explicit `env`
 block in whichever MCP client config loads it. Needs
-`npm install && npm run build` in that folder before first use. See its
+`npm install && npm run build` in that folder before first use.
+Each script runs inside one transaction on one pinned connection (not
+`pool.request()` per batch) because seeds such as `003_demo_users.sql` and
+`007_course_topics.sql` use `#temp` tables across `GO` batches; running
+batches on different pooled connections made them fail with "Invalid object
+name '#Gen'" / "Cannot drop the table '#Topics'". A failed script now rolls
+back fully. See its
 own README for the full setup (Claude Desktop config example included).
 
 ## Stack (as built)
