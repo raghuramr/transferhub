@@ -1,7 +1,21 @@
 # Deploy TransferHub to Azure App Service (codecrafters)
 # Strategy: build UI (Vite) → copy dist into API public/ → build API (NestJS)
-# → deploy src/api as the single deployable unit.
-# The API's ServeStaticModule serves the React SPA; all /api/* routes go to NestJS.
+# → apply any pending database migrations/seeds → deploy src/api as the
+# single deployable unit. The API's ServeStaticModule serves the React SPA;
+# all /api/* routes go to NestJS.
+#
+# The DB-apply step needs these repo secrets in addition to the existing
+# Azure login ones (see README.md / CLAUDE.md "DB MCP server"):
+#   DB_SERVER, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD  — same values as the
+#     App Service's own Application settings (Azure SQL connection).
+#   AZURE_SQL_SERVER_NAME     — the logical SQL server name only, e.g.
+#     "codecrafterstransferhub" (NOT the full *.database.windows.net host).
+#   AZURE_SQL_RESOURCE_GROUP  — the resource group that server lives in,
+#     e.g. "rg-clopay-codecrafters".
+# The existing azure/login service principal also needs a role that can
+# manage that SQL server's firewall rules (e.g. Contributor, or SQL Server
+# Contributor) — this step adds a temporary rule for the runner's own
+# public IP, runs the pending scripts, then always removes it again.
 
 name: Build and deploy to Azure Web App - codecrafters
 
@@ -67,6 +81,47 @@ jobs:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_CCB95B45FCC94A0A8F86C87442E1C005 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_1296AC8FD0554F6998229CD4259A2E6A }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_957BFFC6A0884E69835D3C1AE14D7B4E }}
+
+      # ── Apply database migrations/seeds ─────────────────────────────────
+      # GitHub-hosted runners have no static IP, so Azure SQL's firewall is
+      # opened for this run's IP only, for the duration of this job.
+      - name: Get runner public IP
+        id: runner_ip
+        run: echo "ip=$(curl -s https://api.ipify.org)" >> "$GITHUB_OUTPUT"
+
+      - name: Allow this runner through the Azure SQL firewall
+        run: |
+          az sql server firewall-rule create \
+            --resource-group "${{ secrets.AZURE_SQL_RESOURCE_GROUP }}" \
+            --server "${{ secrets.AZURE_SQL_SERVER_NAME }}" \
+            --name "gha-runner-${{ github.run_id }}" \
+            --start-ip-address "${{ steps.runner_ip.outputs.ip }}" \
+            --end-ip-address "${{ steps.runner_ip.outputs.ip }}"
+
+      - name: Install db-mcp-server dependencies
+        working-directory: tools/db-mcp-server
+        run: npm ci
+
+      - name: Apply pending migrations and seeds
+        working-directory: tools/db-mcp-server
+        run: npx tsx src/applyAll.ts
+        env:
+          DB_SERVER: ${{ secrets.DB_SERVER }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_ENCRYPT: 'true'
+          DB_TRUSTED_CONNECTION: 'false'
+
+      - name: Remove the temporary firewall rule
+        if: always()
+        run: |
+          az sql server firewall-rule delete \
+            --resource-group "${{ secrets.AZURE_SQL_RESOURCE_GROUP }}" \
+            --server "${{ secrets.AZURE_SQL_SERVER_NAME }}" \
+            --name "gha-runner-${{ github.run_id }}" \
+            || true
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3

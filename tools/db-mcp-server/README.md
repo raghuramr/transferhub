@@ -113,3 +113,28 @@ To target a database other than whatever `src/api/.env` points at, add an
 ```bash
 npm run dev    # runs src/index.ts directly via tsx, no build step
 ```
+
+## CI auto-apply (`src/applyAll.ts`)
+
+A non-interactive counterpart to the `run_migrations`/`run_seeds` MCP tools
+and the PowerShell GUI, meant for automation rather than a human: applies
+every pending script in `database/migrations/` then `database/seed/` (in
+filename order, stopping at the first failure in a folder), using the exact
+same `dbo.__ScriptRunnerHistory` ledger — a script applied through any of
+the three tools shows as Applied in all of them.
+
+```bash
+npm run apply:all    # reads the same env as run/dev — see "Configuring the connection" above
+```
+
+Wired into `.github/workflows/main_codecrafters.yml`: it runs on every push
+to `main`, right after the Azure login step and before the app deploy, so a
+fresh database schema is in place before the new code that expects it goes
+live. Since GitHub-hosted runners have no static IP, that workflow step
+opens a temporary Azure SQL firewall rule for the runner's own public IP,
+runs this script, then always removes the rule again — see the workflow
+file's header comment for the exact secrets that step needs
+(`DB_SERVER`/`DB_PORT`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`,
+`AZURE_SQL_SERVER_NAME`, `AZURE_SQL_RESOURCE_GROUP`), none of which exist
+yet — add them under the repo's Settings → Secrets and variables → Actions
+before relying on this.
