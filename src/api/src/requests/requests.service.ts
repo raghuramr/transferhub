@@ -6,6 +6,7 @@ import { DatabaseService } from '../database/database.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { EmailService } from '../common/email.service';
+import { templates } from '../common/email-templates';
 import { AiUsageService } from '../ai/ai-usage.service';
 import { Actor, WorkflowEngineService, isAdminRole } from './workflow-engine.service';
 
@@ -98,6 +99,30 @@ export class RequestsService {
 
   // ── timeline ────────────────────────────────────────────────
 
+  /** Preview / official / pre-approval, credit position and (for staff) the application profile. */
+  private async policyExtras(transcriptId: string, staff: boolean) {
+    let evaluationKind = 'official';
+    let preapprovalExpiresAt: Date | null = null;
+    let student: Awaited<ReturnType<RequestsService['studentProfile']>> = null;
+    let credit: Awaited<ReturnType<TransferPolicyService['creditSummary']>> | null = null;
+    if (await this.schema.policyReady()) {
+      const k = await this.db.query<{ EvaluationKind: string; PreapprovalExpiresAt: Date | null; StudentUserId: string }>(
+        `SELECT EvaluationKind, PreapprovalExpiresAt, StudentUserId FROM Transcripts WHERE Id = @t`,
+        [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+      );
+      const row = k.recordset[0];
+      evaluationKind = row?.EvaluationKind ?? 'official';
+      preapprovalExpiresAt = row?.PreapprovalExpiresAt ?? null;
+      if (row) {
+        [credit, student] = await Promise.all([
+          this.policy.creditSummary(row.StudentUserId),
+          staff ? this.studentProfile(row.StudentUserId) : Promise.resolve(null),
+        ]);
+      }
+    }
+    return { evaluationKind, preapprovalExpiresAt, student, credit };
+  }
+
   async getTimeline(transcriptId: string, viewer: Viewer) {
     await this.assertCanView(transcriptId, viewer);
     const staff = !isOwnerRole(viewer.role);
@@ -180,44 +205,29 @@ export class RequestsService {
     const workflowActive = t.workflowStatus === 'active';
     const now = Date.now();
 
-    const reminders = await this.db.query<{ Direction: string; Last: Date }>(
-      `SELECT Direction, MAX(CreatedAt) AS Last FROM StatusReminders WHERE TranscriptId = @t AND RequestedByUserId = @u GROUP BY Direction`,
-      [
-        { name: 't', type: sql.UniqueIdentifier, value: transcriptId },
-        { name: 'u', type: sql.UniqueIdentifier, value: viewer.id },
-      ],
-    ).catch(() => ({ recordset: [] as { Direction: string; Last: Date }[] }));
+    // These lookups are independent: run them together instead of one round trip after another.
+    const [reminders, checklist, docs, policyExtras] = await Promise.all([
+      this.db.query<{ Direction: string; Last: Date }>(
+        `SELECT Direction, MAX(CreatedAt) AS Last FROM StatusReminders WHERE TranscriptId = @t AND RequestedByUserId = @u GROUP BY Direction`,
+        [
+          { name: 't', type: sql.UniqueIdentifier, value: transcriptId },
+          { name: 'u', type: sql.UniqueIdentifier, value: viewer.id },
+        ],
+      ).catch(() => ({ recordset: [] as { Direction: string; Last: Date }[] })),
+      t.workflowId ? this.engine.documentChecklist(transcriptId) : Promise.resolve([]),
+      this.db.query(
+        `SELECT d.Id AS id, d.DocTypeKey AS docTypeKey, dt.Label AS label, d.FileName AS fileName, d.UploadId AS uploadId,
+                d.TranscriptCourseId AS transcriptCourseId, tc.CourseCode AS courseCode, d.Notes AS notes, d.CreatedAt AS createdAt
+         FROM TranscriptDocuments d JOIN DocumentTypes dt ON dt.DocTypeKey = d.DocTypeKey
+         LEFT JOIN TranscriptCourses tc ON tc.Id = d.TranscriptCourseId
+         WHERE d.TranscriptId = @t ORDER BY d.CreatedAt`,
+        [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+      ).catch(() => ({ recordset: [] })),
+      this.policyExtras(transcriptId, staff),
+    ]);
     const lastOf = (d: string) => reminders.recordset.find((r) => r.Direction === d)?.Last ?? null;
     const within = (d: Date | null, hours: number) => !!d && now - new Date(d).getTime() < hours * 3_600_000;
-
-    const checklist = t.workflowId ? await this.engine.documentChecklist(transcriptId) : [];
-    const docs = await this.db.query(
-      `SELECT d.Id AS id, d.DocTypeKey AS docTypeKey, dt.Label AS label, d.FileName AS fileName, d.UploadId AS uploadId,
-              d.TranscriptCourseId AS transcriptCourseId, tc.CourseCode AS courseCode, d.Notes AS notes, d.CreatedAt AS createdAt
-       FROM TranscriptDocuments d JOIN DocumentTypes dt ON dt.DocTypeKey = d.DocTypeKey
-       LEFT JOIN TranscriptCourses tc ON tc.Id = d.TranscriptCourseId
-       WHERE d.TranscriptId = @t ORDER BY d.CreatedAt`,
-      [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
-    ).catch(() => ({ recordset: [] }));
-
-    // Preview / official / pre-approval, credit position and (for staff) the application profile.
-    let evaluationKind = 'official';
-    let preapprovalExpiresAt: Date | null = null;
-    let student: Awaited<ReturnType<RequestsService['studentProfile']>> = null;
-    let credit: Awaited<ReturnType<TransferPolicyService['creditSummary']>> | null = null;
-    if (await this.schema.policyReady()) {
-      const k = await this.db.query<{ EvaluationKind: string; PreapprovalExpiresAt: Date | null; StudentUserId: string }>(
-        `SELECT EvaluationKind, PreapprovalExpiresAt, StudentUserId FROM Transcripts WHERE Id = @t`,
-        [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
-      );
-      const row = k.recordset[0];
-      evaluationKind = row?.EvaluationKind ?? 'official';
-      preapprovalExpiresAt = row?.PreapprovalExpiresAt ?? null;
-      if (row) {
-        credit = await this.policy.creditSummary(row.StudentUserId);
-        if (staff) student = await this.studentProfile(row.StudentUserId);
-      }
-    }
+    const { evaluationKind, preapprovalExpiresAt, student, credit } = policyExtras;
 
     const parseBrief = (raw: string | null) => {
       try {
@@ -489,20 +499,9 @@ export class RequestsService {
       if (!people.length) people = await this.workflows.admins();
       const waiting = stage?.ActivatedAt ? Math.max(0, Math.floor((Date.now() - new Date(stage.ActivatedAt).getTime()) / 86_400_000)) : 0;
       for (const p of people) {
-        await this.email.sendWorkflowNotice({
-          to: p.email,
-          subject: `Reminder: ${info.StudentName} is waiting on "${stage?.StageName ?? 'review'}"`,
-          heading: 'A student is asking for an update',
-          greetingName: p.name.split(' ')[0],
-          intro: `${info.StudentName} asked for an update on their transfer credit request.`,
-          details: [
-            { label: 'Current stage', value: stage?.StageName ?? 'In review' },
-            { label: 'Waiting in this stage', value: `${waiting} day(s)` },
-          ],
-          quote: text ? { label: 'Message from the student', text } : undefined,
-          ctaLabel: 'Open request',
-          ctaPath: `/requests/${transcriptId}`,
-        });
+        await this.email.sendEmail(p.email, templates.studentAskedForUpdate(this.email.context, {
+          name: p.name, student: info.StudentName, stage: stage?.StageName ?? 'review', waitingDays: waiting, message: text, transcriptId,
+        }));
         recipients++;
       }
       await this.engine.addNote(transcriptId, stage?.Id ?? null, 'student', 'system', null, null, `You asked for an update on "${stage?.StageName ?? 'your request'}".`);
@@ -514,16 +513,13 @@ export class RequestsService {
         `SELECT TOP 1 Body FROM TranscriptNotes WHERE TranscriptId = @t AND Audience = 'student' AND Kind IN ('note','decision') ORDER BY Id DESC`,
         [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
       );
-      await this.email.sendWorkflowNotice({
-        to: info.Email,
-        subject: 'Update on your transfer credit request',
-        heading: 'Where your request stands',
-        greetingName: info.FirstName,
-        intro: `here is the latest on your transfer credit request. It is currently in "${stage?.StageName ?? 'review'}".`,
-        quote: text || latest.recordset[0]?.Body ? { label: text ? 'Message from the reviewer' : 'Latest comment', text: text ?? latest.recordset[0].Body } : undefined,
-        ctaLabel: 'View your request',
-        ctaPath: `/student/transcript/${transcriptId}`,
-      });
+      await this.email.sendEmail(info.Email, templates.statusUpdate(this.email.context, {
+        firstName: info.FirstName,
+        stage: stage?.StageName ?? 'review',
+        message: text || latest.recordset[0]?.Body || null,
+        messageLabel: text ? 'Message from the reviewer' : 'Latest comment',
+        transcriptId,
+      }));
       recipients = 1;
       await this.engine.addNote(transcriptId, stage?.Id ?? null, 'student', 'system', null, null, `A status update was emailed to you${text ? `: ${text}` : '.'}`);
     }

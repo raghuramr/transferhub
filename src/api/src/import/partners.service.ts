@@ -3,6 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import * as sql from 'mssql';
 import { DatabaseService, type QueryInput } from '../database/database.service';
 import { EmailService } from '../common/email.service';
+import { templates } from '../common/email-templates';
 
 export interface PartnerContext {
   partnerId: number;
@@ -261,17 +262,9 @@ export class PartnersService {
   }
 
   private async sendOnboardingEmail(partner: PartnerRow, key: string) {
-    return this.email.sendRichNotice({
-      to: partner.ContactEmail,
-      subject: 'Your TransferHub data submission access',
-      heading: 'You can now submit your catalogue data',
-      greetingName: partner.ContactName.split(' ')[0],
-      intro: `TransferHub has set up data submission access for ${partner.UniversityName}. Use the details below to send universities, programs and courses to us. Everything is reviewed by an administrator before it is added.`,
-      details: [
-        { label: 'University code', value: partner.UniversityCode },
-        { label: 'Endpoint', value: `${this.endpointBase}/submissions` },
-      ],
-      code: { label: 'Instructions and API key (shown only in this email - keep it secret)', text: this.instructions(partner.UniversityCode, key) },
-    });
+    return this.email.sendEmail(partner.ContactEmail, templates.partnerAccess(this.email.context, {
+      contactName: partner.ContactName, university: partner.UniversityName, code: partner.UniversityCode,
+      endpoint: `${this.endpointBase}/submissions`, instructions: this.instructions(partner.UniversityCode, key),
+    }));
   }
 }

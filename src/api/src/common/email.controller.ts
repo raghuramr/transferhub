@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, ParseIntPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { IsEmail, IsOptional } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -21,6 +21,21 @@ export class EmailController {
   @Get('status')
   status() {
     return this.email.status();
+  }
+
+  /** Every e-mail template rendered with sample data (preview gallery). */
+  @Get('templates')
+  templates() {
+    return this.email.samples();
+  }
+
+  /** Sends one sample to the caller (or `to`), to check it in a real inbox. */
+  @Post('templates/:id/send')
+  async sendSample(@Param('id', ParseIntPipe) id: number, @Body() dto: TestEmailDto, @Req() req: { user: { email: string } }) {
+    const to = dto.to || req.user.email;
+    const result = await this.email.sendSample(id, to);
+    if (!result) throw new NotFoundException('No such template');
+    return { to, ...(await result) };
   }
 
   @Post('test')

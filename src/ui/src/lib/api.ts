@@ -296,12 +296,14 @@ export const permissionsApi = {
 
 // ── Data Import endpoints (super_admin only) ──────────────────
 export interface EmailAttempt { ok: boolean; id?: string; error?: string; to: string; subject: string; at: string }
+export interface EmailTemplateSample { id: number; key: string; name: string; audience: string; subject: string; html: string }
 export interface EmailStatus {
   configured: boolean;
   fromAddress: string;
   fromName: string;
   fromDomain: string;
   fromIsDefault: boolean;
+  supportEmail: string;
   appBaseUrl: string;
   recent: EmailAttempt[];
 }
@@ -309,6 +311,8 @@ export interface EmailStatus {
 export const emailApi = {
   status: () => api.get<EmailStatus>('/email/status'),
   test: (to?: string) => api.post<EmailAttempt>('/email/test', to ? { to } : {}),
+  templates: () => api.get<EmailTemplateSample[]>('/email/templates'),
+  sendSample: (id: number, to?: string) => api.post<EmailAttempt>(`/email/templates/${id}/send`, to ? { to } : {}),
 };
 
 export const importApi = {

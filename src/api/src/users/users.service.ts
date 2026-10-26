@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import { EmailService } from '../common/email.service';
+import { templates } from '../common/email-templates';
 import * as argon2 from 'argon2';
 import * as sql from 'mssql';
 import * as crypto from 'crypto';
@@ -222,14 +223,9 @@ export class UsersService {
     await this.audit(createdBy, 'USER_CREATED', 'User', newId, null, JSON.stringify({ email: dto.email, role: dto.role }));
 
     try {
-      await this.emailService.send(
+      await this.emailService.sendEmail(
         dto.email,
-        'Your account was created',
-        `<p>Hi ${dto.firstName},</p>
-         <p>An account was created for you on the TransferHub Credit Evaluation portal.</p>
-         <p><strong>Email:</strong> ${dto.email}<br/>
-         <strong>Temporary password:</strong> ${dto.password}</p>
-         <p>Please sign in and change your password as soon as possible.</p>`,
+        templates.accountCreated(this.emailService.context, { firstName: dto.firstName, email: dto.email, password: dto.password, role: dto.role }),
       );
     } catch {
       // Best-effort only — never fail user creation because email delivery failed.

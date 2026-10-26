@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Search, ArrowUp, ArrowDown, Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, ArrowUp, ArrowDown, Download, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface DataTableColumn<T> {
   key: string;
@@ -36,7 +36,11 @@ interface DataTableProps<T extends { id: string | number }> {
   renderExpanded?: (row: T) => React.ReactNode;
   /** Expand a specific row by id as soon as the table renders it (e.g. right after creating it). */
   autoExpandId?: string | number | null;
+  /** Turns on pagination with this many rows per page (the viewer can change it). Off by default. */
+  pageSize?: number;
 }
+
+const PAGE_SIZES = [10, 25, 50, 100];
 
 function getFilterValue<T>(row: T, key: string) {
   return (row as Record<string, unknown>)[key];
@@ -60,7 +64,10 @@ export function DataTable<T extends { id: string | number }>({
   emptyMessage = 'No records found.',
   renderExpanded,
   autoExpandId,
+  pageSize,
 }: DataTableProps<T>) {
+  const [perPage, setPerPage] = useState(pageSize ?? 0);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -114,6 +121,12 @@ export function DataTable<T extends { id: string | number }>({
 
     return result;
   }, [rows, search, searchKeys, activeFilters, sortKey, sortDir, columns]);
+
+  // Back to page 1 whenever the visible set changes (search, filters, sort, data).
+  useEffect(() => setPage(1), [search, activeFilters, sortKey, sortDir, rows.length]);
+  const pageCount = perPage ? Math.max(1, Math.ceil(filtered.length / perPage)) : 1;
+  const current = Math.min(page, pageCount);
+  const visible = perPage ? filtered.slice((current - 1) * perPage, current * perPage) : filtered;
 
   const toggleSort = (key: string) => {
     if (sortKey === key) {
@@ -233,7 +246,7 @@ export function DataTable<T extends { id: string | number }>({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filtered.map((row) => (
+            {visible.map((row) => (
               <Fragment key={row.id}>
                 <tr
                   className={`hover:bg-gray-50 ${renderExpanded ? 'cursor-pointer' : ''}`}
@@ -270,6 +283,57 @@ export function DataTable<T extends { id: string | number }>({
           <div className="text-center py-12 text-gray-400">{emptyMessage}</div>
         )}
         {isLoading && <div className="text-center text-gray-400 py-16">Loading…</div>}
+      </div>
+      {perPage > 0 && filtered.length > 0 && (
+        <Pager
+          page={current}
+          pageCount={pageCount}
+          perPage={perPage}
+          total={filtered.length}
+          onPage={setPage}
+          onPerPage={(n) => { setPerPage(n); setPage(1); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function Pager({ page, pageCount, perPage, total, onPage, onPerPage }: {
+  page: number; pageCount: number; perPage: number; total: number;
+  onPage: (p: number) => void; onPerPage: (n: number) => void;
+}) {
+  const from = (page - 1) * perPage + 1;
+  const to = Math.min(total, page * perPage);
+  // First, last, and a window around the current page; gaps shown as an ellipsis.
+  const pages: (number | '…')[] = [];
+  for (let p = 1; p <= pageCount; p++) {
+    if (p === 1 || p === pageCount || Math.abs(p - page) <= 1) pages.push(p);
+    else if (pages[pages.length - 1] !== '…') pages.push('…');
+  }
+  const btn = 'min-w-8 rounded-md px-2 py-1 text-sm disabled:opacity-40';
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 text-sm text-gray-600">
+      <div className="flex items-center gap-2">
+        <span>Showing {from}–{to} of {total}</span>
+        <select value={perPage} onChange={(e) => onPerPage(Number(e.target.value))} className="rounded-md border border-gray-300 px-2 py-1 text-sm">
+          {PAGE_SIZES.map((n) => <option key={n} value={n}>{n} per page</option>)}
+        </select>
+      </div>
+      <div className="flex items-center gap-1">
+        <button type="button" className={`${btn} hover:bg-gray-100`} disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Previous page">
+          <ChevronLeft size={16} />
+        </button>
+        {pages.map((p, i) => p === '…'
+          ? <span key={`gap-${i}`} className="px-1 text-gray-400">…</span>
+          : (
+            <button key={p} type="button" onClick={() => onPage(p)} aria-current={p === page ? 'page' : undefined}
+              className={`${btn} ${p === page ? 'bg-brand-800 font-medium text-white' : 'hover:bg-gray-100'}`}>
+              {p}
+            </button>
+          ))}
+        <button type="button" className={`${btn} hover:bg-gray-100`} disabled={page >= pageCount} onClick={() => onPage(page + 1)} aria-label="Next page">
+          <ChevronRight size={16} />
+        </button>
       </div>
     </div>
   );

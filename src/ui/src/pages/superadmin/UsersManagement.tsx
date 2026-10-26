@@ -173,6 +173,7 @@ export default function UsersManagement() {
       <DataTable<UserRow>
         columns={columns}
         rows={users}
+        pageSize={25}
         isLoading={isLoading}
         emptyMessage={`No ${activeRole ? activeRole.replace('_', ' ') : ''} users found.`}
         searchKeys={['firstName', 'lastName', 'email']}

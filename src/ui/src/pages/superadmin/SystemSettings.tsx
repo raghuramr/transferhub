@@ -122,6 +122,57 @@ function GeneralTab() {
 
 // ── Email settings ────────────────────────────────────────────────
 
+function TemplateGallery({ to }: { to: string }) {
+  const list = useQuery({ queryKey: ['email-templates'], queryFn: () => emailApi.templates() });
+  const [sel, setSel] = useState(0);
+  const send = useMutation({ mutationFn: (id: number) => emailApi.sendSample(id, to.trim() || undefined) });
+  const items = list.data?.data ?? [];
+  const cur = items[sel];
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white lg:col-span-2">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">E-mail templates</h2>
+          <p className="text-xs text-gray-500">Every e-mail TransferHub sends, shown with sample data.</p>
+        </div>
+        {cur && (
+          <button type="button" onClick={() => send.mutate(cur.id)} disabled={send.isPending}
+            className="flex items-center gap-1.5 rounded-lg border border-brand-800 px-3 py-1.5 text-sm font-medium text-brand-800 hover:bg-brand-50 disabled:opacity-50">
+            <Send size={14} />{send.isPending ? 'Sending…' : `Send this sample to ${to || 'me'}`}
+          </button>
+        )}
+      </header>
+      {send.data && (
+        <p className={`mx-4 mt-3 rounded-lg p-2 text-sm ${send.data.data.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          {send.data.data.ok ? 'Sample sent.' : `Not sent: ${send.data.data.error}`}
+        </p>
+      )}
+      {list.isLoading && <p className="px-4 py-3 text-sm text-gray-400">Loading…</p>}
+      {list.isError && <p className="px-4 py-3 text-sm text-red-600">Could not load the templates.</p>}
+      {cur && (
+        <div className="grid gap-0 md:grid-cols-[16rem_1fr]">
+          <ul className="max-h-[720px] overflow-y-auto border-b border-gray-100 md:border-b-0 md:border-r">
+            {items.map((t, i) => (
+              <li key={t.id}>
+                <button type="button" onClick={() => { setSel(i); send.reset(); }}
+                  className={`w-full px-4 py-2.5 text-left text-sm ${i === sel ? 'bg-brand-50 text-brand-800' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  <span className="block font-medium">{t.name}</span>
+                  <span className="block text-xs text-gray-500">To: {t.audience}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="min-w-0 p-4">
+            <p className="mb-2 truncate text-sm text-gray-600"><span className="text-gray-400">Subject:</span> {cur.subject}</p>
+            <iframe title={cur.name} srcDoc={cur.html} sandbox="" className="h-[680px] w-full rounded-lg border border-gray-200 bg-white" />
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function EmailTab() {
   const user = useAuthStore((st) => st.user);
   const status = useQuery({ queryKey: ['email-status'], queryFn: () => emailApi.status() });
@@ -208,6 +259,7 @@ function EmailTab() {
           </ul>
         </div>
       </section>
+      <TemplateGallery to={to} />
     </div>
   );
 }

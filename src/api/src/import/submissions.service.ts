@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import * as sql from 'mssql';
 import { DatabaseService, type QueryInput } from '../database/database.service';
 import { EmailService } from '../common/email.service';
+import { templates } from '../common/email-templates';
 import { ENTITY_ORDER, ImportService, type EntityType } from './import.service';
 import type { PartnerContext } from './partners.service';
 
@@ -150,38 +151,20 @@ export class SubmissionsService {
     const total = perType.universities + perType.programs + perType.courses;
     const summary = `${perType.universities} universities, ${perType.programs} programs, ${perType.courses} courses`;
     if (partner) {
-      await this.email.sendRichNotice({
-        to: partner.contactEmail,
-        subject: `TransferHub received your submission ${ref}`,
-        heading: 'We received your data',
-        greetingName: partner.contactName.split(' ')[0],
-        intro: `thank you - submission ${ref} (${total} rows) is now waiting for review by a TransferHub administrator. Nothing is added until it is approved; we will email you a report when it has been processed.`,
-        details: [
-          { label: 'Reference', value: ref },
-          { label: 'Contents', value: summary },
-          { label: 'Automatic checks', value: `${v.valid} clean, ${v.warnings} with warnings, ${v.errors} with errors (errors need a fix before they can be imported)` },
-        ],
-      });
+      await this.email.sendEmail(partner.contactEmail, templates.submissionReceived(this.email.context, {
+        contactName: partner.contactName, reference: ref, total, summary,
+        checks: `${v.valid} clean, ${v.warnings} with warnings, ${v.errors} with errors (errors need a fix before they can be imported)`,
+      }));
     }
     const admins = await this.db.query<{ Email: string; FirstName: string }>(
       `SELECT u.Email, u.FirstName FROM Users u JOIN Roles r ON r.Id = u.RoleId WHERE r.Name = 'super_admin' AND u.IsActive = 1`,
     );
     for (const a of admins.recordset) {
-      await this.email.sendRichNotice({
-        to: a.Email,
-        subject: `New data submission ${ref}${partner ? ` from ${partner.universityName}` : ''}`,
-        heading: 'A data submission is waiting for review',
-        greetingName: a.FirstName,
-        intro: `${partner ? `${partner.universityName} (${partner.contactName}, ${partner.contactEmail}) sent` : 'A staff member staged'} ${total} rows for review.`,
-        details: [
-          { label: 'Reference', value: ref },
-          { label: 'Contents', value: summary },
-          { label: 'Checks', value: `${v.valid} clean, ${v.warnings} warnings, ${v.errors} errors` },
-        ],
-        quote: note ? { label: 'Note from sender', text: note } : undefined,
-        ctaLabel: 'Review submission',
-        ctaPath: '/superadmin/settings/import',
-      });
+      await this.email.sendEmail(a.Email, templates.submissionForReview(this.email.context, {
+        firstName: a.FirstName, reference: ref, total, summary, note,
+        sender: partner ? `${partner.universityName} (${partner.contactName}, ${partner.contactEmail})` : 'A staff member',
+        checks: `${v.valid} clean, ${v.warnings} warnings, ${v.errors} errors`,
+      }));
     }
   }
 
@@ -490,30 +473,21 @@ export class SubmissionsService {
     const shown = rows.slice(0, MAX);
     const quoteText = (note ?? b.ReviewerNote ?? '').trim();
 
-    const sent = await this.email.sendRichNotice({
-      to: b.ContactEmail,
-      subject: `TransferHub report for submission ${b.Ref}`,
-      heading: `Report for submission ${b.Ref}`,
-      greetingName: (b.ContactName ?? 'there').split(' ')[0],
-      intro: 'your data submission has been reviewed. Here is what happened to each item.',
-      details: [
-        { label: 'Reference', value: b.Ref },
-        { label: 'Added / updated', value: `${c?.created ?? 0} added, ${c?.updated ?? 0} updated` },
-        { label: 'Not imported', value: `${c?.rejected ?? 0} not accepted, ${c?.failed ?? 0} failed, ${c?.pending ?? 0} still waiting` },
-      ],
-      quote: quoteText ? { label: 'Message from the reviewer', text: quoteText } : undefined,
-      table: {
-        headers: ['#', 'Type', 'Item', 'Result', 'Details'],
-        rows: shown.map((r) => [
-          String(r.RowNo),
-          r.EntityType === 'universities' ? 'University' : r.EntityType === 'programs' ? 'Program' : 'Course',
-          this.imports.describeRow(r.EntityType, parseJson<Raw>(r.Payload, {})),
-          label[r.RowStatus] ?? r.RowStatus,
-          r.OutcomeMessage ?? parseJson<string[]>(r.Messages, []).join('; '),
-        ]),
-        footnote: rows.length > MAX ? `Showing the first ${MAX} of ${rows.length} items. Fetch the full list from the API: GET /api/public/v1/submissions/${b.Ref}` : undefined,
-      },
-    });
+    const sent = await this.email.sendEmail(b.ContactEmail, templates.submissionReport(this.email.context, {
+      contactName: b.ContactName ?? 'there',
+      reference: b.Ref,
+      added: `${c?.created ?? 0} added, ${c?.updated ?? 0} updated`,
+      notImported: `${c?.rejected ?? 0} not accepted, ${c?.failed ?? 0} failed, ${c?.pending ?? 0} still waiting`,
+      note: quoteText || null,
+      rows: shown.map((r) => [
+        String(r.RowNo),
+        r.EntityType === 'universities' ? 'University' : r.EntityType === 'programs' ? 'Program' : 'Course',
+        this.imports.describeRow(r.EntityType, parseJson<Raw>(r.Payload, {})),
+        label[r.RowStatus] ?? r.RowStatus,
+        r.OutcomeMessage ?? parseJson<string[]>(r.Messages, []).join('; '),
+      ]),
+      footnote: rows.length > MAX ? `Showing the first ${MAX} of ${rows.length} items. Fetch the full list from the API: GET /api/public/v1/submissions/${b.Ref}` : undefined,
+    }));
     if (!sent.ok) return false;
     await this.db.query(`UPDATE ImportBatches SET ReportSentAt = SYSUTCDATETIME() WHERE Id = @id`, [{ name: 'id', type: sql.Int, value: batchId }]);
     return true;

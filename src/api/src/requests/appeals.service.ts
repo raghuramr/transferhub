@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
 import { EmailService } from '../common/email.service';
+import { templates } from '../common/email-templates';
 import { UploadsService } from '../uploads/uploads.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { SchemaService } from '../policy/schema.service';
@@ -106,15 +107,7 @@ export class AppealsService {
     ).catch(() => ({ recordset: [] as { Email: string; Name: string }[] }));
     for (const f of fac.recordset) people.set(f.Email.toLowerCase(), { email: f.Email, name: f.Name });
     for (const p of people.values()) {
-      await this.email.sendWorkflowNotice({
-        to: p.email,
-        subject: `Transfer credit appeal: ${code}`,
-        heading: 'A student appealed a transfer credit decision',
-        greetingName: p.name.split(' ')[0],
-        intro: `a student asked for ${code} (${title}) to be re-evaluated. The reason, proposed BU equivalent and syllabus are attached to the appeal.`,
-        ctaLabel: 'Open appeals',
-        ctaPath: `/appeals`,
-      });
+      await this.email.sendEmail(p.email, templates.appealReceived(this.email.context, { name: p.name, code, title }));
     }
   }
 
@@ -267,18 +260,9 @@ export class AppealsService {
     );
     const u = r.recordset[0];
     if (!u) return;
-    const details = [{ label: 'Decision', value: label }, { label: 'Department', value: dto.departmentName }];
-    if (dto.satisfiesRequirement) details.push({ label: 'Satisfies', value: dto.satisfiesRequirement });
-    await this.email.sendWorkflowNotice({
-      to: u.Email,
-      subject: `Your appeal for ${code} has been decided`,
-      heading: 'Your transfer credit appeal',
-      greetingName: u.FirstName,
-      intro: `your appeal for ${code} was ${label}.`,
-      details,
-      quote: dto.denialReason || dto.comments ? { label: dto.denialReason ? 'Reason' : 'Department comments', text: (dto.denialReason || dto.comments)! } : undefined,
-      ctaLabel: 'View your request',
-      ctaPath: `/student/transcript/${transcriptId}`,
-    });
+    await this.email.sendEmail(u.Email, templates.appealDecided(this.email.context, {
+      firstName: u.FirstName, code, outcome: dto.outcome, label, department: dto.departmentName,
+      satisfies: dto.satisfiesRequirement, denialReason: dto.denialReason, comments: dto.comments, transcriptId,
+    }));
   }
 }

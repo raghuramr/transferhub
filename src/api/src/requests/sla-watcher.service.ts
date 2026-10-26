@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
 import { EmailService } from '../common/email.service';
+import { templates } from '../common/email-templates';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 
@@ -95,20 +96,9 @@ export class SlaWatcherService implements OnModuleInit, OnModuleDestroy {
       `Your request is taking a little longer than planned at "${s.StageName}". We have reminded the reviewers.`);
 
     for (const r of recipients.values()) {
-      await this.email.sendWorkflowNotice({
-        to: r.email,
-        subject: `Overdue: ${s.StageName} - ${s.Student}`,
-        heading: 'A transfer request is overdue',
-        greetingName: r.name.split(' ')[0],
-        intro: `the "${s.StageName}" decision for ${s.Student} is about ${days} day(s) past its due date. The summary is ready, so it only needs your approve or reject.`,
-        details: [
-          { label: 'Student', value: s.Student },
-          { label: 'Stage', value: s.StageName },
-          { label: 'Was due', value: new Date(s.DueAt).toLocaleDateString() },
-        ],
-        ctaLabel: 'Review request',
-        ctaPath: `/requests/${s.TranscriptId}`,
-      });
+      await this.email.sendEmail(r.email, templates.stageOverdue(this.email.context, {
+        name: r.name, student: s.Student, stage: s.StageName, days, dueAt: s.DueAt, transcriptId: s.TranscriptId,
+      }));
     }
   }
 }

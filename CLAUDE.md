@@ -436,9 +436,10 @@ stage owner only clicks approve/reject.
 - **Needs from infra**: real `ANTHROPIC_API_KEY`; `RESEND_API_KEY` (+
   `RESEND_FROM_EMAIL`) for emails (no-op otherwise); real members in the
   approver groups (Finance Office is empty by default).
-- **CI**: the DB-apply steps in `main_codecrafters.yml` are non-blocking
-  (`continue-on-error`) with a final step that fails the run after deploy if
-  they failed, so a SQL-firewall RBAC problem can't block deployments.
+- **CI**: the DB-apply steps in `main_codecrafters.yml` are switched OFF
+  (`APPLY_DB_CHANGES: 'false'` at the top of the workflow; user decision 2026-10-26) —
+  migrations/seeds are applied manually. Set it to `'true'` once the deploy identity can
+  write Azure SQL firewall rules. The old "fail the run" step was removed.
 
 ## Partner data intake + workflow automation (built; migration 014)
 **Data Import** (`/superadmin/settings/import`, `components/import/`) now has three tabs:
@@ -536,8 +537,8 @@ change plan + confirmed decisions in `13_registration_and_process_changes.md`.
   set it, remove `AI_DISABLED`, switch AI back on, then try an auto-approve stage.
 - **CI SQL-firewall permission: deliberately left for later** (user decision). The deploy
   service principal (object id `275b63a9-80e3-4ede-8867-4110cf1ed843`) still lacks
-  `Microsoft.Sql/servers/firewallRules/write`, so the workflow's DB steps fail (non-blocking;
-  deploy still succeeds and the run is marked failed on purpose). Until fixed, apply new
+  `Microsoft.Sql/servers/firewallRules/write`, so the workflow's DB steps are switched off
+  (`APPLY_DB_CHANGES: 'false'`) and the run no longer fails. Until fixed, apply new
   migrations/seeds manually with `npm run apply:all` in `tools/db-mcp-server` (set `DB_*` env
   vars, machine must be allowed by the SQL firewall). Do not nag about this; wait for the user.
 - **End-to-end trial of the partner flow (onboard partner -> key -> submit via `/partner` or
@@ -621,6 +622,15 @@ one-off fix.
   System Settings → Email (`GET /email/status`, `POST /email/test`), and the readiness card
   warns when the latest email was rejected. Typical cause: the sender domain
   (`RESEND_FROM_EMAIL`, default `support@wcubeprojects.in`) is not verified in Resend.
+- **Templates**: every e-mail is defined in `src/api/src/common/email-templates.ts` (pure
+  functions, table layout + inline CSS, modelled on the SKPTrust "message from the Trust"
+  design in TransferHub maroon): status chip, serif headline, "Hello <name>", callout,
+  "If you wish to reply ... quote your reference number", details card, dark footer, plain
+  text part, `[Ref XXXXXXXX]` subject suffix (first 8 hex of the request id, or `IMP-…`).
+  Callers use `email.sendEmail(to, templates.x(email.context, {...}))`. Preview gallery +
+  "send this sample" in System Settings → Email (`GET /email/templates`,
+  `POST /email/templates/:id/send`). Replies/questions address = `SUPPORT_EMAIL` env, else
+  the from address.
 - Failures are always non-fatal: `UsersService.create()` sends a "your
   account was created" email with the temp password after inserting the
   user, wrapped in try/catch — email delivery problems never fail user
@@ -826,10 +836,14 @@ alongside the old (harmless, vestigial) ones. No manual
 `__ScriptRunnerHistory` surgery is needed.
 
 ## Workflow reminders for this repo
-- Work directly on `main` — see "Repo identity" above for why the old
-  `claude/sleepy-maxwell-mzyijb` feature-branch-then-merge pattern ended.
+- **Branch rule changed (2026-10-26, user request):** do NOT commit to `main` any more —
+  every push to `main` deploys to Azure. Work on `claude/awesome-carson-csq78r` and let
+  the user merge to `main` when they want a deploy.
 - Always run `npx tsc --noEmit` in both `src/api` and `src/ui` before
   committing
+- `@hookform/resolvers` must be v5+ with zod 4 (v3 re-throws zod 4 errors instead of
+  returning field errors — that broke every multi-step/invalid form, e.g. /register stuck
+  on step 1). `DataTable` has an opt-in `pageSize` prop (Users uses 25).
 - SQL Server reserved keywords bite here more than once (`Schema` broke a
   `CREATE TABLE` — renamed to `SchemaJson`; a column alias `AS Open` broke the partners
   list with a 500 that the UI showed as "no partners") — double-check column names and aliases

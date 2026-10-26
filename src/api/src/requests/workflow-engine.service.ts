@@ -4,6 +4,7 @@ import { DatabaseService } from '../database/database.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { AiService } from '../ai/ai.service';
 import { EmailService } from '../common/email.service';
+import { templates } from '../common/email-templates';
 import { SchemaService } from '../policy/schema.service';
 import { TransferPolicyService, parseFlags, type PolicyFlag } from '../policy/transfer-policy.service';
 
@@ -420,19 +421,9 @@ export class WorkflowEngineService {
       [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
     );
     for (const p of people) {
-      await this.email.sendWorkflowNotice({
-        to: p.email,
-        subject: `Action needed: ${stage.StageName} — ${info.recordset[0]?.Student ?? 'transfer request'}`,
-        heading: 'A transfer request is waiting for you',
-        greetingName: p.name.split(' ')[0],
-        intro: `a transfer credit request is ready for your "${stage.StageName}" decision. The summary and AI suggestions are already prepared, so you can approve or reject directly.`,
-        details: [
-          { label: 'Student', value: info.recordset[0]?.Student ?? '' },
-          { label: 'Stage', value: stage.StageName },
-        ],
-        ctaLabel: 'Review request',
-        ctaPath: `/requests/${transcriptId}`,
-      });
+      await this.email.sendEmail(p.email, templates.approverAction(this.email.context, {
+        name: p.name, student: info.recordset[0]?.Student ?? 'a student', stage: stage.StageName, transcriptId,
+      }));
     }
   }
 
@@ -633,18 +624,9 @@ export class WorkflowEngineService {
       const u = r.recordset[0];
       if (!u) return;
       const rejected = outcome === 'rejected';
-      await this.email.sendWorkflowNotice({
-        to: u.Email,
-        subject: rejected ? 'Update on your transfer credit request' : 'Your transfer credit request is complete',
-        heading: rejected ? 'Your request needs attention' : 'Your request is complete',
-        greetingName: u.FirstName,
-        intro: rejected
-          ? `your transfer credit request was not approved at the "${stageName}" stage.`
-          : 'your transfer credit request has been approved and your credit decisions are now posted.',
-        quote: reason ? { label: rejected ? 'Reason' : 'Note', text: reason } : undefined,
-        ctaLabel: 'View your request',
-        ctaPath: `/student/transcript/${transcriptId}`,
-      });
+      await this.email.sendEmail(u.Email, templates.requestDecided(this.email.context, {
+        firstName: u.FirstName, transcriptId, rejected, stageName, reason,
+      }));
     } catch (err) {
       this.logger.warn(`Student email failed: ${(err as Error).message}`);
     }
