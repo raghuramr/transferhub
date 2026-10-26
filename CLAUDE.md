@@ -659,6 +659,15 @@ Several ways to get a student's data in; every channel ends at the same "confirm
 - **Not built yet (ideas)**: AI document upload/classification (needs the Anthropic key; plan to add reader skills in AI
   Controls), email-in, registrar feeds, advisor-initiated invites, consent log.
 
+## Session 2026-10-26 (f): merged to main + analytics bento dashboards
+- `main` now contains: student intake pipeline (migration 019 + seed 013 still NOT applied), animated dashboards, and the
+  **analytics bento** (`components/ui/analytics-bento.tsx`, from a 21st.dev prompt; theme tokens card/muted/border/etc. added
+  in `index.css`). `GET /dashboard/bento` (`dashboard/bento.service.ts`) feeds it for every role (staff scoped, faculty/student
+  own data): requests per day, activity by hour, courses by lane treemap (+ top source universities), requests per month radar
+  (two years). `DashboardView` shows the bento and falls back to the previous charts if that call fails. `?days` is ignored by
+  the bento (fixed weekly/monthly/yearly windows). Negative deltas render red with a down arrow.
+- The user also shared a 21st.dev "glass-folder-cards" link; it cannot be opened from here - ask for the component code/prompt.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group
