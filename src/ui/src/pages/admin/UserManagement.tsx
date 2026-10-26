@@ -5,14 +5,7 @@ import { Users, UserPlus, Lock, Unlock, MapPin, Upload, Download } from 'lucide-
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { UniversityInstitutionTree } from '../../components/ui/UniversityInstitutionTree';
 import { usePermissions } from '../../hooks/usePermissions';
-
-const roleColors: Record<string, string> = {
-  student:     'bg-blue-100 text-blue-700',
-  faculty:     'bg-purple-100 text-purple-700',
-  admin:       'bg-amber-100 text-amber-700',
-  agency:      'bg-teal-100 text-teal-700',
-  super_admin: 'bg-red-100 text-red-700',
-};
+import { roleColors, roleTabs, getColumnsForRole, type UserRow } from '../../components/users/userRoleViews';
 
 const roles = ['student', 'faculty', 'admin', 'agency', 'super_admin'];
 
@@ -26,25 +19,6 @@ interface ImportResult {
   created: number;
   updated: number;
   errors?: unknown[];
-}
-
-interface UserRow {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  isActive: boolean;
-  isLocked?: boolean;
-  status?: string;
-  mobile?: string;
-  addressLine1?: string;
-  addressLine2?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  country?: string;
-  countryOfOrigin?: string;
 }
 
 function downloadBlob(data: BlobPart, filename: string) {
@@ -397,8 +371,9 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
   );
 }
 
-export default function UserManagement() {
+export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?: boolean }) {
   const qc = useQueryClient();
+  const [activeRole, setActiveRole] = useState<string | null>(null);
   const { can } = usePermissions();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -463,7 +438,9 @@ export default function UserManagement() {
     setBulkRole(null);
   };
 
-  const columns: DataTableColumn<UserRow>[] = [
+  const tabbedUsers = withRoleTabs && activeRole ? users.filter((x) => x.role === activeRole) : users;
+
+  const baseColumns: DataTableColumn<UserRow>[] = [
     {
       key: 'name',
       header: 'Name',
@@ -499,12 +476,14 @@ export default function UserManagement() {
     },
   ];
 
+  const columns = withRoleTabs ? getColumnsForRole(activeRole) : baseColumns;
+
   return (
     <div className="p-4 sm:p-6 w-[95%] mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <Users className="text-brand-800" size={24} />
-          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{withRoleTabs ? 'Users' : 'User Management'}</h1>
         </div>
         <div className="flex items-center gap-2">
           {can('users', 'import') && (
@@ -646,18 +625,40 @@ export default function UserManagement() {
         </div>
       )}
 
+      {withRoleTabs && (
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg mb-6 flex-wrap">
+          {roleTabs.map((tab) => {
+            const count = tab.key === null ? users.length : users.filter((x) => x.role === tab.key).length;
+            return (
+              <button
+                key={String(tab.key)}
+                onClick={() => setActiveRole(tab.key)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  activeRole === tab.key ? 'bg-white shadow text-brand-800' : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+                <span className="bg-gray-200 text-gray-600 text-xs rounded-full px-1.5 py-0.5 leading-none">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <DataTable<UserRow>
         columns={columns}
-        rows={users}
+        rows={tabbedUsers}
+        pageSize={withRoleTabs ? 25 : undefined}
         isLoading={isLoading}
         searchPlaceholder="Search users…"
         searchKeys={['email', 'firstName', 'lastName']}
         filters={[
-          {
+          ...(withRoleTabs ? [] : [{
             key: 'role',
             label: 'Role',
             options: roles.map((r) => ({ value: r, label: r.replace('_', ' ') })),
-          },
+          }]),
           {
             key: 'status',
             label: 'Status',
