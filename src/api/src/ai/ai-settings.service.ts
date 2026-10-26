@@ -271,7 +271,8 @@ export class AiSettingsService {
   async buildSystemPrompt(): Promise<{ text: string; tokenEstimate: number; skillCount: number }> {
     let skills: AgentSkill[] = [];
     try {
-      skills = (await this.listSkills()).filter((s) => s.isActive);
+      // 'documents' skills belong to the document reader, not the course matcher.
+      skills = (await this.listSkills()).filter((s) => s.isActive && s.category !== 'documents');
     } catch (err) {
       this.logger.warn(`AgentSkills unavailable, using base prompt only: ${(err as Error).message}`);
     }

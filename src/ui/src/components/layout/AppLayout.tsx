@@ -10,7 +10,7 @@ import { Avatar } from '../shared/Avatar';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
-  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ShieldQuestion, ScanLine,
+  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ScanText, ShieldQuestion, ScanLine,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -19,6 +19,7 @@ type NavEntry = { to: string; label: string; icon: React.ReactNode; group?: stri
 const navItems: Record<Role, NavEntry[]> = {
   student: [
     { to: '/student', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { to: '/student/documents', label: 'Smart upload', icon: <ScanText size={18} /> },
     { to: '/student/upload', label: 'Upload Transcript', icon: <Upload size={18} /> },
     { to: '/profile', label: 'My Profile', icon: <UserCircle size={18} /> },
   ],

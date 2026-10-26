@@ -14,6 +14,7 @@ import AppLayout from './components/layout/AppLayout';
 // Student pages
 import StudentDashboard from './pages/student/StudentDashboard';
 import TranscriptStatus from './pages/student/TranscriptStatus';
+import SmartUpload from './pages/student/SmartUpload';
 import UploadTranscript from './pages/student/UploadTranscript';
 
 // Faculty pages
@@ -125,6 +126,7 @@ export default function App() {
         <Route path="/student" element={<RequireAuth roles={['student']}><AppLayout /></RequireAuth>}>
           <Route index element={<StudentDashboard />} />
           <Route path="upload" element={<UploadTranscript />} />
+          <Route path="documents" element={<SmartUpload />} />
           <Route path="transcript/:id" element={<TranscriptStatus />} />
         </Route>
 

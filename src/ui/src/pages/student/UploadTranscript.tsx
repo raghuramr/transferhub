@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { transcriptsApi, uploadsApi } from '../../lib/api';
+import { documentsApi, transcriptsApi, universitiesApi, uploadsApi } from '../../lib/api';
 import { Upload, Info, Paperclip, Loader2, CheckCircle2, X } from 'lucide-react';
 import { useAuthStore } from '../../store/auth';
 import {
@@ -68,8 +69,55 @@ export default function UploadTranscript() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { calendar: 'semester' } });
+
+  // ── Prefill from a document the student uploaded on the Smart upload page (?intake=<id>) ──
+  const [searchParams] = useSearchParams();
+  const intakeId = searchParams.get('intake');
+  const prefillQuery = useQuery({ queryKey: ['documents', 'prefill', intakeId], queryFn: async () => (await documentsApi.prefill(intakeId!)).data, enabled: !!intakeId, retry: false });
+  const intakeDetail = useQuery({ queryKey: ['documents', 'intake-name', intakeId], queryFn: async () => (await documentsApi.get(intakeId!)).data, enabled: !!intakeId, retry: false });
+  const universitiesQuery = useQuery({ queryKey: ['md-universities'], queryFn: () => universitiesApi.list({ isActive: true }) });
+  const prefill = prefillQuery.data;
+  const [prefillHeaderApplied, setPrefillHeaderApplied] = useState(false);
+  const [prefillCoursesApplied, setPrefillCoursesApplied] = useState(false);
+  const [unmatched, setUnmatched] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!prefill || prefillHeaderApplied || !universitiesQuery.data) return;
+    const norm = (v: string) => v.trim().toLowerCase();
+    const unis = (universitiesQuery.data.data as { id: number; code: string; name: string }[]) ?? [];
+    const match = unis.find((u) => prefill.institutionCode && norm(u.code) === norm(prefill.institutionCode)) ?? unis.find((u) => norm(u.name) === norm(prefill.institutionName));
+    if (match) setMasterData((m) => ({ ...m, universityId: match.id }));
+    if (['semester', 'quarter', 'trimester'].includes(prefill.calendar)) setValue('calendar', prefill.calendar as FormData['calendar']);
+    if (prefill.studentName) setValue('studentName', prefill.studentName);
+    if (prefill.studentId) setValue('studentId', prefill.studentId);
+    setOutsideUS(!!prefill.isOutsideUS);
+    setTranscriptFile({ id: prefill.documentUploadId, name: intakeDetail.data?.fileName ?? 'Your uploaded document' });
+    setPrefillHeaderApplied(true);
+    if (!match) {
+      setPrefillCoursesApplied(true);
+      setUnmatched(prefill.courses.map((c) => `${c.courseCode} ${c.courseTitle}`.trim()));
+    }
+  }, [prefill, prefillHeaderApplied, universitiesQuery.data, intakeDetail.data, setValue]);
+
+  useEffect(() => {
+    if (!prefill || !prefillHeaderApplied || prefillCoursesApplied || coursesLoading || rawCourses.length === 0) return;
+    const key = (v: string) => v.replace(/[\s\-_.]/g, '').toLowerCase();
+    const rows: CourseRow[] = [];
+    const missing: string[] = [];
+    for (const c of prefill.courses) {
+      const hit = rawCourses.find((rc) => key(rc.code) === key(c.courseCode));
+      if (!hit) { missing.push(`${c.courseCode} ${c.courseTitle}`.trim()); continue; }
+      const season = (c.termSeason ?? c.term?.match(/fall|spring|summer|winter/i)?.[0] ?? '').toLowerCase();
+      const year = c.termYear ?? Number(c.term?.match(/(19|20)\d{2}/)?.[0] ?? 0);
+      rows.push({ ...EMPTY_COURSE, courseId: hit.id, credits: String(c.originalCredits ?? hit.credits ?? ''), grade: c.grade ?? '', termSeason: ['fall', 'spring', 'summer', 'winter'].includes(season) ? season : '', termYear: year ? String(year) : '' });
+    }
+    if (rows.length) setCourses(rows);
+    setUnmatched(missing);
+    setPrefillCoursesApplied(true);
+  }, [prefill, prefillHeaderApplied, prefillCoursesApplied, coursesLoading, rawCourses]);
 
   const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -148,6 +196,20 @@ export default function UploadTranscript() {
     <div className="p-4 sm:p-8 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Submit Transcript</h1>
       <p className="text-gray-500 mb-8">Select your transfer institution and courses from the catalog below.</p>
+
+      {intakeId && prefill && (
+        <div className="mb-6 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
+          Filled in from your uploaded document - please check it.
+          {unmatched.length > 0 && (
+            <span className="mt-1 block text-xs text-amber-800">
+              {unmatched.length} course{unmatched.length === 1 ? '' : 's'} could not be matched to the catalogue and must be added by hand: {unmatched.slice(0, 6).join(', ')}{unmatched.length > 6 ? '…' : ''}
+            </span>
+          )}
+        </div>
+      )}
+      {intakeId && prefillQuery.isError && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">We could not load the details from that document. You can still fill in the form by hand.</div>
+      )}
 
       {error && (
         <div className="p-4 mb-6 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
