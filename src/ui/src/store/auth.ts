@@ -11,10 +11,25 @@ interface AuthState {
   initFromStorage: () => void;
 }
 
+/**
+ * Reads the saved session once, synchronously, when the store is created. Restoring it in an effect
+ * (after the first render) made every route guard see "logged out" on a page refresh and redirect to /login.
+ */
+function loadStoredSession(): Pick<AuthState, 'user' | 'accessToken' | 'isAuthenticated'> {
+  try {
+    const token = localStorage.getItem('accessToken');
+    const userStr = localStorage.getItem('user');
+    if (token && userStr) {
+      return { user: JSON.parse(userStr) as User, accessToken: token, isAuthenticated: true };
+    }
+  } catch {
+    // corrupted storage - start logged out
+  }
+  return { user: null, accessToken: null, isAuthenticated: false };
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  accessToken: null,
-  isAuthenticated: false,
+  ...loadStoredSession(),
 
   setAuth: (user, accessToken, refreshToken) => {
     localStorage.setItem('accessToken', accessToken);
