@@ -10,8 +10,8 @@ const errMsg = (e: unknown, fallback: string) => {
   return m ? [m].flat().join(' ') : fallback;
 };
 const when = (d: string | null) => (d ? new Date(d).toLocaleString() : '—');
-const TYPE_LABEL: Record<EntityType, string> = { universities: 'University', programs: 'Program', courses: 'Course' };
-const TYPE_ORDER: EntityType[] = ['universities', 'programs', 'courses'];
+const TYPE_LABEL: Record<EntityType, string> = { universities: 'University', programs: 'Program', courses: 'Course', students: 'Student' };
+const TYPE_ORDER: EntityType[] = ['universities', 'programs', 'courses', 'students'];
 const CHUNK = 500;
 
 const STATUS_STYLE: Record<string, string> = {
@@ -109,7 +109,7 @@ function StageModal({ onClose, onStaged }: { onClose: () => void; onStaged: (id:
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={onClose}>
       <div className="mt-10 w-full max-w-2xl rounded-xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="mb-1 text-lg font-semibold text-gray-900">Stage rows for review</h3>
-        <p className="mb-3 text-sm text-gray-500">Paste JSON with any of <code className="rounded bg-gray-100 px-1">universities</code>, <code className="rounded bg-gray-100 px-1">programs</code>, <code className="rounded bg-gray-100 px-1">courses</code>. Rows are checked and queued; nothing is written until you import them.</p>
+        <p className="mb-3 text-sm text-gray-500">Paste JSON with any of <code className="rounded bg-gray-100 px-1">universities</code>, <code className="rounded bg-gray-100 px-1">programs</code>, <code className="rounded bg-gray-100 px-1">courses</code>, <code className="rounded bg-gray-100 px-1">students</code> (student profiles a person can later claim). Rows are checked and queued; nothing is written until you import them.</p>
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={12} placeholder={'{\n  "courses": [ { "universityCode": "MIT", "code": "6.0001", "name": "Intro to CS", "credits": 3 } ]\n}'} className="w-full rounded-lg border border-gray-300 p-3 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-brand-500" />
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
         <div className="mt-3 flex justify-end gap-2">

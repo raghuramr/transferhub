@@ -105,8 +105,8 @@ Picked AS (
 )
 INSERT INTO StudentSourceCourses (SourceProfileId, CourseCode, CourseTitle, Credits, Grade, Term, SortOrder)
 SELECT ProfileId, Code, Title, Credits,
-       CHOOSE((Ord * 3 + N) % 7 + 1, 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'),
-       CHOOSE((Ord + N) % 4 + 1, 'Fall 2024', 'Spring 2025', 'Fall 2025', 'Spring 2024'),
+       CHOOSE(CAST((Ord * 3 + N) % 7 + 1 AS INT), 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'),
+       CHOOSE(CAST((Ord + N) % 4 + 1 AS INT), 'Fall 2024', 'Spring 2025', 'Fall 2025', 'Spring 2024'),
        Ord
 FROM Picked;
 GO
@@ -141,8 +141,8 @@ Picked AS (
 )
 INSERT INTO StudentSourceCourses (SourceProfileId, CourseCode, CourseTitle, Credits, Grade, Term, SortOrder)
 SELECT ProfileId, Code, Title, Credits,
-       CHOOSE((Ord * 3 + N) % 7 + 1, 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'),
-       CHOOSE((Ord + N) % 4 + 1, 'Fall 2024', 'Spring 2025', 'Fall 2025', 'Spring 2024'),
+       CHOOSE(CAST((Ord * 3 + N) % 7 + 1 AS INT), 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'),
+       CHOOSE(CAST((Ord + N) % 4 + 1 AS INT), 'Fall 2024', 'Spring 2025', 'Fall 2025', 'Spring 2024'),
        Ord
 FROM Picked;
 GO

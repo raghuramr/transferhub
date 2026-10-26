@@ -10,7 +10,7 @@ export interface PartnerIdentity {
 export interface SubmissionResult {
   reference: string;
   status: string;
-  received: { universities: number; programs: number; courses: number };
+  received: { universities: number; programs: number; courses: number; students?: number };
   validation: { valid: number; warnings: number; errors: number };
 }
 
@@ -37,6 +37,7 @@ export interface SubmissionBody {
   universities?: Record<string, unknown>[];
   programs?: Record<string, unknown>[];
   courses?: Record<string, unknown>[];
+  students?: Record<string, unknown>[];
 }
 
 async function call<T>(path: string, key: string | null, init?: { method?: string; body?: unknown }): Promise<T> {

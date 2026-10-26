@@ -1,4 +1,4 @@
-export type EntityType = 'universities' | 'programs' | 'courses';
+export type EntityType = 'universities' | 'programs' | 'courses' | 'students';
 export type BatchStatus = 'pending' | 'partial' | 'imported' | 'rejected';
 export type RowStatus = 'pending' | 'rejected' | 'created' | 'updated' | 'failed';
 

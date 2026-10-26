@@ -636,6 +636,29 @@ Branch `claude/dashboards-profiles-scoping` (built on `claude/superadmin-users-e
   The draft is now set from the query's data in an effect, and the cache is updated on save.
 - Admin sidebar is grouped like the super admin's (Operations, Users, Settings, Account).
 
+## Session 2026-10-26 (e): student intake pipeline (branch `claude/student-intake`, NOT merged; migration 019 + seed 013 NOT applied)
+Several ways to get a student's data in; every channel ends at the same "confirm, then create the account" step.
+- **Tables (migration 019)**: `StudentSourceProfiles` (+ `StudentSourceCourses`, `StudentSourceDocuments`) = records held by a
+  source system (registrar/agency/partner); `IntakeSessions` = one emailed claim link (sha256 token, 48h). Also lets
+  `ImportBatchRows.EntityType` be `'students'`. Seed 013 = 30 mock profiles (`IsMock=1`, `@transferdemo.edu` emails, NU/NYU
+  use real catalogue courses so equivalencies fire; six passport holders); documents are `Generated=1` and rendered to PDF
+  on demand (pdfkit) by the connector.
+- **Flow**: public `/intake` (ID/passport + email [+ university]) -> `POST /intake/lookup` always answers the same
+  (no enumeration; rate limited) and, on a match, emails `/intake/claim?token=`. Mock profiles also return the link in the
+  response (their mailboxes are fake). `/intake/claim` shows the record (details, courses, documents) and only on confirm +
+  consent + password does `POST /intake/claim` create the account (email pre-verified), profile, education row, copy the
+  documents into the student's blob folder (`entityType 'intake'`, typed) and optionally submit the courses for evaluation.
+  Account-creation steps roll back on failure; document/submit failures are reported but keep the account.
+- **Connector seam**: `SourceConnector` (`DbSourceConnector` today). Real registrar/exchange integrations = another
+  implementation, nothing else changes.
+- **Admin**: `/admin/intake` (nav "Student intake"): share link, QR code (download PNG), email template, counts, demo
+  profiles with "Try it", recent sessions, "Send invite".
+- **Partner/agency bulk**: the partner API/portal/import queue accept a `students` entity (profile fields + courses +
+  optional base64 documents + `invite`). Applying a row only upserts a source profile (never a user); `invite:true` emails
+  the claim link via `IntakeService.sendInvite`. See `docs/PARTNER_API.md`.
+- **Not built yet (ideas)**: AI document upload/classification (needs the Anthropic key; plan to add reader skills in AI
+  Controls), email-in, registrar feeds, advisor-initiated invites, consent log.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group
