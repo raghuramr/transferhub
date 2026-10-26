@@ -206,7 +206,7 @@ function GroupsTab({ groups, staff, canEdit }: { groups: ApproverGroup[]; staff:
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div className="space-y-3">
         {canEdit && (
           <button type="button" onClick={() => setEditing({ id: 0, name: '', description: '', institutionId: null, isActive: true, members: [] })}
@@ -457,7 +457,7 @@ export default function WorkflowDesigner() {
             {draft && (
               <div className="space-y-5">
                 <div className="rounded-xl border border-gray-200 bg-white p-4">
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label className="text-xs font-medium text-gray-500">Name
                       <input value={draft.name} disabled={!canEdit} onChange={(e) => change({ name: e.target.value })} maxLength={150} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900" />
                     </label>
@@ -487,7 +487,7 @@ export default function WorkflowDesigner() {
                 <div className="rounded-xl border border-gray-200 bg-white p-4">
                   <h3 className="mb-1 text-sm font-semibold text-gray-900">Documents students are asked for</h3>
                   <p className="mb-3 text-xs text-gray-500">Required documents are flagged in the reviewer's brief when missing.</p>
-                  <ul className="grid gap-2 sm:grid-cols-2">
+                  <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {draft.documents.map((d) => (
                       <li key={d.docTypeKey} className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2">
                         <Toggle checked={d.offered} disabled={!canEdit} onChange={(v) => change({ documents: draft.documents.map((x) => (x.docTypeKey === d.docTypeKey ? { ...x, offered: v, isRequired: v ? x.isRequired : false } : x)) })} label={d.label} />

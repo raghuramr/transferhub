@@ -134,7 +134,7 @@ function UsageTab({ days }: { days: number }) {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <h3 className="mb-2 text-sm font-semibold text-gray-900">By operation</h3>
           <table className="w-full text-sm">
@@ -254,7 +254,7 @@ function SettingsTab() {
             <div className="rounded-xl border border-gray-200 bg-white p-5">
               <h3 className="mb-1 font-semibold text-gray-900">Quick presets</h3>
               <p className="mb-3 text-xs text-gray-500">Fill in the model and token-saving fields in one go. Nothing changes until you press Save settings.</p>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {PRESETS.map((p) => (
                   <button key={p.key} type="button" onClick={() => set(p.values)} className="rounded-lg border border-gray-200 p-3 text-left hover:border-brand-400 hover:bg-brand-50/40">
                     <div className="text-sm font-semibold text-gray-900">{p.label}</div>
@@ -274,7 +274,7 @@ function SettingsTab() {
 
           <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="flex items-center gap-1.5 font-semibold text-gray-900"><Bot size={16} /> Models</h3>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="First-pass model" hint="Used for every match.">
                 <select disabled={!canEdit} value={draft.matchModel} onChange={(e) => set({ matchModel: e.target.value })} className={inputCls}>
                   {MODELS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
@@ -301,7 +301,7 @@ function SettingsTab() {
             <Check checked={draft.useResultCache} disabled={!canEdit} onChange={(v) => set({ useResultCache: v })} label="Reuse matches across students" hint="The same external course matched before costs zero tokens." />
             <Check checked={draft.usePromptCaching} disabled={!canEdit} onChange={(v) => set({ usePromptCaching: v })} label="Prompt caching" hint="The playbook and catalogue prefix is billed at a fraction on repeat calls." />
             <Check checked={draft.useTopics} disabled={!canEdit} onChange={(v) => set({ useTopics: v })} label="Include course topics in the comparison" hint="More precise matches, slightly more input tokens." />
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Field label="Catalogue shortlist size" hint="Candidate courses sent per match (not the whole catalogue).">
                 <input type="number" min={0} max={100} disabled={!canEdit} value={draft.prefilterTopN} onChange={(e) => set({ prefilterTopN: Number(e.target.value) })} className={inputCls} />
               </Field>
@@ -316,7 +316,7 @@ function SettingsTab() {
 
           <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="flex items-center gap-1.5 font-semibold text-gray-900"><Gauge size={16} /> Budgets</h3>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Max tokens per request" hint="Blank = unlimited. The agent stops when a request reaches this.">
                 <input type="number" min={0} disabled={!canEdit} value={draft.maxTokensPerRequest ?? ''} onChange={(e) => set({ maxTokensPerRequest: numOrNull(e.target.value) })} className={inputCls} />
               </Field>

@@ -78,7 +78,7 @@ export default function TransferRulesTab() {
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="mb-1 font-semibold text-gray-900">Eligibility</h3>
             <p className="mb-4 text-xs text-gray-500">Applied automatically to every course when a request arrives. Anything the rules cannot settle goes to a reviewer; nothing is approved by these rules alone.</p>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="text-sm font-medium text-gray-700">Minimum grade
                 <select disabled={!canEdit} value={draft.minGrade} onChange={(e) => set({ minGrade: e.target.value })} className={inputCls}>
                   {GRADES.map((g) => <option key={g}>{g}</option>)}
@@ -98,7 +98,7 @@ export default function TransferRulesTab() {
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="mb-1 font-semibold text-gray-900">Limits on outside credit</h3>
             <p className="mb-4 text-xs text-gray-500">Transfer courses plus AP, IB and A-level count together. Courses beyond the limit are flagged for review.</p>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <label className="text-sm font-medium text-gray-700">Transfer students<input disabled={!canEdit} type="number" value={draft.capTransfer} onChange={(e) => set({ capTransfer: Number(e.target.value) })} className={inputCls} /></label>
               <label className="text-sm font-medium text-gray-700">First-year / dual enrollment<input disabled={!canEdit} type="number" value={draft.capFirstYear} onChange={(e) => set({ capFirstYear: Number(e.target.value) })} className={inputCls} /></label>
               <label className="text-sm font-medium text-gray-700">Current students<input disabled={!canEdit} type="number" value={draft.capCurrentStudent} onChange={(e) => set({ capCurrentStudent: Number(e.target.value) })} className={inputCls} /></label>
@@ -106,7 +106,7 @@ export default function TransferRulesTab() {
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="mb-1 font-semibold text-gray-900">BU Hub</h3>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="text-sm font-medium text-gray-700">Hub requirements for transfer students<input disabled={!canEdit} type="number" value={draft.hubRequirementsTransfer} onChange={(e) => set({ hubRequirementsTransfer: Number(e.target.value) })} className={inputCls} /></label>
               <label className="text-sm font-medium text-gray-700">Of which may be cocurricular<input disabled={!canEdit} type="number" value={draft.hubCocurricularAllowed} onChange={(e) => set({ hubCocurricularAllowed: Number(e.target.value) })} className={inputCls} /></label>
             </div>

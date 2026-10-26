@@ -93,7 +93,7 @@ function PartnerForm({ initial, onSave, onClose, busy, error }: {
           <span className="block text-xs font-normal text-gray-500">The code their data is filed under (e.g. MIT). They can only submit data for this code.</span>
           <input className={inputCls} value={v.universityCode} onChange={(e) => set({ universityCode: e.target.value.toUpperCase() })} maxLength={20} />
         </label>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block text-sm font-medium text-gray-700">Point of contact
             <input className={inputCls} value={v.contactName} onChange={(e) => set({ contactName: e.target.value })} maxLength={150} />
           </label>
