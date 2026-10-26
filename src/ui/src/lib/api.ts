@@ -465,7 +465,7 @@ export const verificationApi = {
 };
 
 // ── Dashboards (role-aware KPIs + charts) ─────────────────────────
-export interface DashboardKpi { key: string; label: string; value: number | string; hint?: string; tone?: 'good' | 'warn' | 'bad' | 'neutral' }
+export interface DashboardKpi { key: string; label: string; value: number | string; hint?: string; tone?: 'good' | 'warn' | 'bad' | 'neutral'; gauge?: number }
 export interface DashboardChart {
   key: string;
   title: string;

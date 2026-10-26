@@ -10,6 +10,8 @@ export interface Kpi {
   value: number | string;
   hint?: string;
   tone?: 'good' | 'warn' | 'bad' | 'neutral';
+  /** 0-100: draws a small progress ring on the card (e.g. completion rate). */
+  gauge?: number;
 }
 
 export interface Chart {
@@ -113,9 +115,9 @@ export class DashboardService {
     const kpis: Kpi[] = [
       { key: 'requests', label: 'Evaluations submitted', value: Number(counts.total ?? 0) },
       { key: 'inprogress', label: 'In progress', value: Number(counts.inProgress ?? 0), tone: 'warn' },
-      { key: 'completed', label: 'Completed', value: Number(counts.completed ?? 0), tone: 'good' },
+      { key: 'completed', label: 'Completed', value: Number(counts.completed ?? 0), tone: 'good', gauge: Number(counts.total ?? 0) ? Math.round((Number(counts.completed ?? 0) / Number(counts.total)) * 100) : 0 },
       { key: 'courses', label: 'Courses submitted', value: Number(courseStats.courses ?? 0) },
-      { key: 'decided', label: 'Courses decided', value: Number(courseStats.decided ?? 0), tone: 'good' },
+      { key: 'decided', label: 'Courses decided', value: Number(courseStats.decided ?? 0), tone: 'good', gauge: Number(courseStats.courses ?? 0) ? Math.round((Number(courseStats.decided ?? 0) / Number(courseStats.courses)) * 100) : 0 },
       { key: 'awarded', label: 'Credits awarded', value: Number(courseStats.awarded ?? 0), hint: `of ${Number(courseStats.requested ?? 0)} submitted`, tone: 'good' },
     ];
 
@@ -210,7 +212,7 @@ export class DashboardService {
 
     const kpis: Kpi[] = [
       { key: 'waiting', label: 'Approvals waiting on you', value: Number(waiting.total ?? 0), tone: 'warn' },
-      { key: 'overdue', label: 'Overdue', value: Number(waiting.overdue ?? 0), tone: Number(waiting.overdue ?? 0) > 0 ? 'bad' : 'good' },
+      { key: 'overdue', label: 'Overdue', value: Number(waiting.overdue ?? 0), tone: Number(waiting.overdue ?? 0) > 0 ? 'bad' : 'good', gauge: Number(waiting.total ?? 0) ? Math.round(((Number(waiting.total) - Number(waiting.overdue ?? 0)) / Number(waiting.total)) * 100) : 100, hint: 'ring = on time' },
       { key: 'queued', label: 'Evaluations assigned to you', value: Number(mine.queued ?? 0) },
       { key: 'decided', label: `Decided (last ${days} days)`, value: Number(mine.decided ?? 0), tone: 'good' },
       { key: 'appeals', label: 'Appeals awaiting a decision', value: appeals },
@@ -290,7 +292,7 @@ export class DashboardService {
       { key: 'students', label: 'Students', value: Number(students.total ?? 0), hint: `${Number(students.fresh ?? 0)} new in ${days} days` },
       { key: 'requests', label: `Requests (last ${days} days)`, value: Number(tCounts.total ?? 0) },
       { key: 'inprogress', label: 'In progress', value: Number(tCounts.inProgress ?? 0), tone: 'warn' },
-      { key: 'completed', label: 'Completed', value: Number(tCounts.completed ?? 0), tone: 'good' },
+      { key: 'completed', label: 'Completed', value: Number(tCounts.completed ?? 0), tone: 'good', gauge: Number(tCounts.total ?? 0) ? Math.round((Number(tCounts.completed ?? 0) / Number(tCounts.total)) * 100) : 0 },
       { key: 'waiting', label: 'Approvals waiting', value: Number(stageStats.waiting ?? 0), tone: 'warn' },
       { key: 'overdue', label: 'Overdue stages', value: Number(stageStats.overdue ?? 0), tone: Number(stageStats.overdue ?? 0) > 0 ? 'bad' : 'good' },
       { key: 'turnaround', label: 'Avg turnaround', value: tCounts.avgDays == null ? '-' : `${Number(tCounts.avgDays).toFixed(1)} days` },
