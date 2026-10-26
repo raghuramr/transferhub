@@ -40,6 +40,7 @@ import AuditLog from './pages/superadmin/AuditLog';
 import SystemSettings from './pages/superadmin/SystemSettings';
 import UniversitiesManagement from './pages/superadmin/UniversitiesManagement';
 import InstitutionsManagement from './pages/superadmin/InstitutionsManagement';
+import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import ProgramsManagement from './pages/superadmin/ProgramsManagement';
 import EquivalenciesManagement from './pages/admin/EquivalenciesManagement';
 import AgenciesManagement from './pages/superadmin/AgenciesManagement';
@@ -105,6 +106,7 @@ export default function App() {
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/partner" element={<PartnerPortal />} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/unauthorized" element={<div className="p-8 text-center text-red-600 text-xl">Not authorised</div>} />

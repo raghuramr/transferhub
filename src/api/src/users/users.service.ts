@@ -8,6 +8,8 @@ import * as crypto from 'crypto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { parseCsvRows, toCsv } from '../common/csv.util';
+import { ScopeService } from '../policy/scope.service';
+import { SchemaService } from '../policy/schema.service';
 
 const EXPORT_COLUMNS = ['id', 'email', 'firstName', 'lastName', 'role', 'studentId', 'agencyName', 'departmentCode', 'mobile', 'addressLine1', 'addressLine2', 'city', 'state', 'zipCode', 'country', 'countryOfOrigin', 'isActive'];
 
@@ -55,6 +57,8 @@ interface UserRow {
   TargetProgramId?: number | null;
   TargetInstitutionName?: string | null;
   TargetProgramName?: string | null;
+  EmailVerified?: boolean | null;
+  AvatarUploadId?: string | null;
 }
 
 /** Raw auth-lookup row (PascalCase) consumed directly by AuthService — do not camelCase. */
@@ -101,6 +105,8 @@ function mapUser(row: UserRow) {
     roleDisplay: row.RoleDisplay,
     departmentName: row.DepartmentName,
     departmentCode: row.DepartmentCode,
+    emailVerified: row.EmailVerified == null ? undefined : !!row.EmailVerified,
+    hasAvatar: !!row.AvatarUploadId,
     priorInstitutionName: row.PriorInstitutionName ?? undefined,
     highestEducationLevel: row.HighestEducationLevel ?? undefined,
     fieldOfStudy: row.FieldOfStudy ?? undefined,
@@ -117,13 +123,19 @@ function mapUser(row: UserRow) {
 
 @Injectable()
 export class UsersService {
-  constructor(private db: DatabaseService, private emailService: EmailService) {}
+  constructor(
+    private db: DatabaseService,
+    private emailService: EmailService,
+    private scope: ScopeService,
+    private schema: SchemaService,
+  ) {}
 
   async findById(id: string) {
+    const extra = (await this.schema.has('Users', 'EmailVerified')) ? ', u.EmailVerified, u.AvatarUploadId' : '';
     const res = await this.db.query<UserRow>(
       `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.StudentId, u.AgencyName,
               u.Mobile, u.AddressLine1, u.AddressLine2, u.City, u.State, u.PostalCode,
-              u.Country, u.CountryOfOrigin,
+              u.Country, u.CountryOfOrigin${extra},
               u.IsActive, u.IsLocked, u.LastLoginAt, u.MustChangePass, u.DepartmentId,
               r.Name AS Role, r.DisplayName AS RoleDisplay,
               d.Name AS DepartmentName, d.Code AS DepartmentCode,
@@ -159,7 +171,7 @@ export class UsersService {
     return res.recordset[0] || null;
   }
 
-  async findAll(filters: { role?: string; isActive?: boolean } = {}) {
+  async findAll(filters: { role?: string; isActive?: boolean } = {}, viewer?: { id: string; role: string }) {
     let where = '1=1';
     const inputs: QueryInput[] = [];
     if (filters.role) {
@@ -171,16 +183,26 @@ export class UsersService {
       inputs.push({ name: 'active', type: sql.Bit, value: filters.isActive ? 1 : 0 });
     }
 
+    // Admins assigned to universities only see students registered/requesting for those universities.
+    const scope = viewer ? await this.scope.universityScope(viewer) : null;
+    if (scope) where += ` AND (r.Name <> 'student' OR ${this.scope.studentInScope(scope, 'u', inputs)})`;
+
+    const extra = (await this.schema.has('Users', 'EmailVerified')) ? ', u.EmailVerified, u.AvatarUploadId' : '';
     const res = await this.db.query<UserRow>(
       `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.StudentId, u.AgencyName,
               u.Mobile, u.AddressLine1, u.AddressLine2, u.City, u.State, u.PostalCode,
               u.Country, u.CountryOfOrigin,
-              u.IsActive, u.IsLocked, u.LastLoginAt, u.DepartmentId,
+              u.IsActive, u.IsLocked, u.LastLoginAt, u.DepartmentId${extra},
               r.Name AS Role, r.DisplayName AS RoleDisplay,
-              d.Name AS DepartmentName
+              d.Name AS DepartmentName,
+              sp.PriorInstitutionName, sp.HighestEducationLevel, sp.FieldOfStudy, sp.GPA, sp.GraduationYear,
+              ti.Name AS TargetInstitutionName, tp.Name AS TargetProgramName
        FROM Users u
        JOIN Roles r ON r.Id = u.RoleId
        LEFT JOIN Departments d ON d.Id = u.DepartmentId
+       LEFT JOIN StudentProfiles sp ON sp.UserId = u.Id
+       LEFT JOIN Institutions ti ON ti.Id = sp.TargetInstitutionId
+       LEFT JOIN Programs tp ON tp.Id = sp.TargetProgramId
        WHERE ${where}
        ORDER BY u.LastLoginAt DESC`,
       inputs,

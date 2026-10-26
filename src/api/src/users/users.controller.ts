@@ -11,21 +11,36 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Permission } from '../auth/permission.decorator';
+import { ScopeService } from '../policy/scope.service';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private scope: ScopeService,
+  ) {}
+
+  /** Admins assigned to universities may only manage students of those universities. */
+  private async assertInScope(req: AuthenticatedRequest, targetId: string) {
+    if (req.user.id === targetId) return;
+    if (!(await this.scope.canManageUser(req.user, targetId))) {
+      throw new ForbiddenException('This user belongs to a university outside your assignment.');
+    }
+  }
 
   @Get()
   @Permission('users', 'view')
-  findAll(@Query('role') role?: string, @Query('isActive') isActive?: string) {
-    return this.usersService.findAll({
-      role,
-      isActive: isActive !== undefined ? isActive === 'true' : undefined,
-    });
+  findAll(@Req() req: AuthenticatedRequest, @Query('role') role?: string, @Query('isActive') isActive?: string) {
+    return this.usersService.findAll(
+      {
+        role,
+        isActive: isActive !== undefined ? isActive === 'true' : undefined,
+      },
+      req.user,
+    );
   }
 
   @Get('export')
@@ -52,6 +67,7 @@ export class UsersController {
     if (req.user.id !== id && !['admin', 'super_admin'].includes(req.user.role)) {
       throw new ForbiddenException();
     }
+    await this.assertInScope(req, id);
     return this.usersService.findById(id);
   }
 
@@ -67,6 +83,15 @@ export class UsersController {
     if (req.user.id !== id && !['admin', 'super_admin'].includes(req.user.role)) {
       throw new ForbiddenException();
     }
+    if (req.user.id !== id) await this.assertInScope(req, id);
+    if (req.user.id === id && dto.email !== undefined) {
+      // Changing your own sign-in email needs a click on the link we send to the new address.
+      const current = await this.usersService.findById(id);
+      if (dto.email.trim().toLowerCase() !== current.email.toLowerCase()) {
+        throw new ForbiddenException('Use "Change email" on your profile - we send a confirmation link to the new address.');
+      }
+      delete dto.email;
+    }
     // Non-admins cannot set isActive
     if (dto.isActive !== undefined && !['admin', 'super_admin'].includes(req.user.role)) {
       delete dto.isActive;
@@ -76,13 +101,15 @@ export class UsersController {
 
   @Delete(':id')
   @Permission('users', 'delete')
-  deactivate(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+  async deactivate(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    await this.assertInScope(req, id);
     return this.usersService.deactivate(id, req.user.id);
   }
 
   @Post(':id/unlock')
   @Roles('admin', 'super_admin')
-  unlock(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+  async unlock(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    await this.assertInScope(req, id);
     return this.usersService.unlock(id, req.user.id);
   }
 

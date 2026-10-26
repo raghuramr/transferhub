@@ -2,9 +2,10 @@ import { ForbiddenException, HttpException, Injectable, Logger, NotFoundExceptio
 import * as sql from 'mssql';
 import { SchemaService } from '../policy/schema.service';
 import { TransferPolicyService } from '../policy/transfer-policy.service';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { UploadsService } from '../uploads/uploads.service';
+import { ScopeService } from '../policy/scope.service';
 import { EmailService } from '../common/email.service';
 import { templates } from '../common/email-templates';
 import { AiUsageService } from '../ai/ai-usage.service';
@@ -29,6 +30,7 @@ export class RequestsService {
     private aiUsage: AiUsageService,
     private schema: SchemaService,
     private policy: TransferPolicyService,
+    private scopeSvc: ScopeService,
   ) {}
 
   /** Application details a reviewer needs (migration 015): applicant type, school, term, English, history, exams. */
@@ -75,6 +77,15 @@ export class RequestsService {
     const same = (a: string) => String(a).toLowerCase() === viewer.id.toLowerCase();
     if (viewer.role === 'student' && !same(row.StudentUserId)) throw new ForbiddenException();
     if (viewer.role === 'agency' && !same(row.SubmittedById)) throw new ForbiddenException();
+    if (viewer.role === 'admin') {
+      const ids = await this.scopeSvc.universityScope(viewer);
+      if (ids) {
+        const inputs: QueryInput[] = [{ name: 'tid', type: sql.UniqueIdentifier, value: transcriptId }];
+        const pred = this.scopeSvc.transcriptInScope(ids, 't', inputs);
+        const ok = await this.db.query<{ N: number }>(`SELECT COUNT(*) AS N FROM Transcripts t WHERE t.Id = @tid AND ${pred}`, inputs);
+        if (!ok.recordset[0].N) throw new ForbiddenException('This request belongs to a university outside your assignment.');
+      }
+    }
     return row;
   }
 
@@ -314,6 +325,9 @@ export class RequestsService {
 
   async queue(viewer: Viewer, scope: 'mine' | 'all') {
     const mine = await this.myStageIds(viewer);
+    const qInputs: QueryInput[] = [];
+    const adminScope = await this.scopeSvc.universityScope(viewer);
+    const scopeSql = adminScope ? ` AND ${this.scopeSvc.transcriptInScope(adminScope, 't', qInputs)}` : '';
     const res = await this.db.query(
       `SELECT ts.Id AS stageId, ts.TranscriptId AS transcriptId, ts.WorkflowStageId, ts.StageName AS stageName, ts.ActivatedAt AS activatedAt,
               ts.DueAt AS dueAt, ts.AiRecommendation AS aiRecommendation, ts.AiBrief,
@@ -323,8 +337,9 @@ export class RequestsService {
        JOIN Transcripts t ON t.Id = ts.TranscriptId
        JOIN Users u ON u.Id = t.StudentUserId
        JOIN Institutions i ON i.Id = t.InstitutionId
-       WHERE ts.Status = 'active' AND ts.StageType <> 'system' AND t.WorkflowStatus = 'active'
+       WHERE ts.Status = 'active' AND ts.StageType <> 'system' AND t.WorkflowStatus = 'active'${scopeSql}
        ORDER BY CASE WHEN ts.DueAt IS NULL THEN 1 ELSE 0 END, ts.DueAt, ts.ActivatedAt`,
+      qInputs,
     );
     const now = Date.now();
     const rows = res.recordset.map((r) => {

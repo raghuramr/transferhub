@@ -1,14 +1,15 @@
 import { Global, Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { SchemaService } from './schema.service';
+import { ScopeService } from './scope.service';
 import { TransferPolicyService } from './transfer-policy.service';
 import { PolicyController } from './policy.controller';
 
 @Global()
 @Module({
   imports: [AuthModule],
-  providers: [SchemaService, TransferPolicyService],
+  providers: [SchemaService, ScopeService, TransferPolicyService],
   controllers: [PolicyController],
-  exports: [SchemaService, TransferPolicyService],
+  exports: [SchemaService, ScopeService, TransferPolicyService],
 })
 export class PolicyModule {}

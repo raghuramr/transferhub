@@ -264,6 +264,23 @@ export const templates = {
     });
   },
 
+  /** Someone asked to change their sign-in email; sent to the NEW address. */
+  emailChange(ctx: EmailContext, d: { firstName: string; newEmail: string; token: string }): Email {
+    return render(ctx, {
+      subject: 'Confirm your new TransferHub email address',
+      preheader: 'Click the link to confirm your new sign-in email.',
+      chip: { label: 'Confirm email', tone: 'info' },
+      headline: 'Confirm your new email address',
+      greetingName: d.firstName,
+      paragraphs: [
+        'We received a request to change the sign-in email on your TransferHub account to this address. Your email only changes after you confirm it with the button below. The link works for 24 hours.',
+        'If you did not ask for this, ignore this message and your account stays as it is.',
+      ],
+      cta: { label: 'Confirm new email', path: `/verify-email?token=${encodeURIComponent(d.token)}` },
+      card: { title: 'Requested change', rows: [{ label: 'New sign-in email', value: d.newEmail }] },
+    });
+  },
+
   /** An administrator created the account (temporary password). */
   accountCreated(ctx: EmailContext, d: { firstName: string; email: string; password: string; role?: string }): Email {
     return render(ctx, {
@@ -532,6 +549,7 @@ export function samples(ctx: EmailContext, from: string): { key: TemplateKey; na
   const tid = '1f306ab4-5c2d-4e8a-9b1c-2d3e4f506172';
   return [
     { key: 'welcome', name: 'Welcome (self-registration)', audience: 'Student', email: templates.welcome(ctx, { firstName: 'Priya', email: 'priya@example.com' }) },
+    { key: 'emailChange', name: 'Confirm a new email address', audience: 'Any user', email: templates.emailChange(ctx, { firstName: 'Priya', newEmail: 'priya.new@example.com', token: 'sample-token' }) },
     { key: 'accountCreated', name: 'Account created by an admin', audience: 'Any user', email: templates.accountCreated(ctx, { firstName: 'Priya', email: 'priya@example.com', password: 'Temp#4821', role: 'faculty' }) },
     { key: 'transcriptStatus', name: 'Evaluation status changed', audience: 'Student', email: templates.transcriptStatus(ctx, { firstName: 'Priya', transcriptId: tid, status: 'needs_info', notes: 'Please upload the syllabus for MATH 210.' }) },
     { key: 'approverAction', name: 'Stage waiting for an approver', audience: 'Approvers', email: templates.approverAction(ctx, { name: 'Alex Chen', student: 'Priya Rao', stage: 'Faculty review', transcriptId: tid }) },

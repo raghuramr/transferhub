@@ -2,23 +2,26 @@ import {
   Controller, Get, Post, Patch, Param, Body, Query, Req, Res, UseGuards, ForbiddenException, NotFoundException,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import * as fs from 'fs';
 import { TranscriptsService } from './transcripts.service';
 import { SubmitTranscriptDto } from './dto/create-transcript.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { UploadsService } from '../uploads/uploads.service';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 @Controller('transcripts')
 @UseGuards(JwtAuthGuard)
 export class TranscriptsController {
-  constructor(private transcriptsService: TranscriptsService) {}
+  constructor(
+    private transcriptsService: TranscriptsService,
+    private uploadsService: UploadsService,
+  ) {}
 
   @Get()
   findAll(@Req() req: AuthenticatedRequest, @Query('status') status?: string) {
     const { id: userId, role } = req.user;
-    const filters: { status?: string; requestingUserId: string; studentUserId?: string; submittedByUserId?: string } = { status, requestingUserId: userId };
+    const filters: { status?: string; requestingUserId: string; requestingRole: string; studentUserId?: string; submittedByUserId?: string } = { status, requestingUserId: userId, requestingRole: role };
     // Students & agencies only ever see their own submissions; staff see everything.
     if (role === 'student') {
       filters.studentUserId = userId;
@@ -35,6 +38,7 @@ export class TranscriptsController {
     if (role === 'student' && transcript.studentEmail !== email) {
       throw new ForbiddenException();
     }
+    if (role === 'admin' && !(await this.transcriptsService.adminCanSee(id, req.user))) throw new ForbiddenException();
     return transcript;
   }
 
@@ -51,9 +55,14 @@ export class TranscriptsController {
     if (role === 'student' && doc.studentEmail !== email) {
       throw new ForbiddenException();
     }
-    if (!fs.existsSync(doc.path)) throw new NotFoundException('File missing on disk');
+    if (role === 'admin' && !(await this.transcriptsService.adminCanSee(id, req.user))) throw new ForbiddenException();
+    const file = await this.uploadsService.getByStoredPath(doc.path);
+    const stream = await this.uploadsService.openStream(file);
+    if (!stream) throw new NotFoundException('File not found in storage');
+    res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.fileName)}"`);
-    res.sendFile(doc.path);
+    stream.on('error', () => res.destroy());
+    stream.pipe(res);
   }
 
   @Patch(':id/status')

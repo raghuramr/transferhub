@@ -23,6 +23,8 @@ export interface User {
   isLocked: boolean;
   mustChangePass: boolean;
   lastLoginAt?: string;
+  emailVerified?: boolean;
+  hasAvatar?: boolean;
 }
 
 export interface AuthTokens {

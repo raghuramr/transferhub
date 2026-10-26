@@ -441,3 +441,18 @@ export const equivalenciesApi = {
   update: (id: number, data: unknown) => api.patch(`/equivalencies/${id}`, data),
   deactivate: (id: number) => api.delete(`/equivalencies/${id}`),
 };
+
+// ── Account: profile photo + email change ─────────────────────────
+export const accountApi = {
+  photo: (userId: string) => api.get<Blob>(`/account/photo/${userId}`, { responseType: 'blob' }),
+  setPhoto: (blob: Blob) => {
+    const form = new FormData();
+    form.append('file', blob, 'photo.jpg');
+    return api.put('/account/photo', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  removePhoto: () => api.delete('/account/photo'),
+  generateDefaultPhotos: () => api.post<{ created: number; failed: number; total: number }>('/account/photos/generate-defaults'),
+  requestEmailChange: (newEmail: string, password: string) =>
+    api.post<{ message: string; emailSent: boolean }>('/account/email-change', { newEmail, password }),
+  confirmEmailChange: (token: string) => api.post<{ email: string }>('/account/email-change/confirm', { token }),
+};

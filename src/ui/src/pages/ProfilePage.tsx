@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { UserCircle, Lock, X, GraduationCap, BookOpen } from 'lucide-react';
-import { usersApi, api, getErrorMessage } from '../lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { UserCircle, Lock, X, GraduationCap, BookOpen, Camera, BadgeCheck, Mail, Trash2 } from 'lucide-react';
+import { usersApi, api, accountApi, getErrorMessage } from '../lib/api';
+import { Avatar } from '../components/shared/Avatar';
+import { PhotoEditor } from '../components/shared/PhotoEditor';
 import { useAuthStore } from '../store/auth';
 
 const emptyPasswordForm = { currentPassword: '', newPassword: '', confirm: '' };
@@ -23,6 +25,13 @@ export default function ProfilePage() {
   });
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [profileError, setProfileError] = useState('');
+  const qc = useQueryClient();
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoError, setPhotoError] = useState('');
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailForm, setEmailForm] = useState({ newEmail: '', password: '' });
+  const [emailMessage, setEmailMessage] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
   const [passwordError, setPasswordError] = useState('');
@@ -66,6 +75,34 @@ export default function ProfilePage() {
       setProfileError('');
     },
     onError: (err: unknown) => setProfileError(getErrorMessage(err, 'Could not update profile')),
+  });
+
+  const photoMutation = useMutation({
+    mutationFn: (blob: Blob) => accountApi.setPhoto(blob),
+    onSuccess: () => {
+      setPhotoFile(null);
+      setPhotoError('');
+      qc.invalidateQueries({ queryKey: ['avatar', user?.id] });
+      qc.invalidateQueries({ queryKey: ['profile', user?.id] });
+      updateUser({ hasAvatar: true });
+    },
+    onError: (err: unknown) => setPhotoError(getErrorMessage(err, 'Could not save your photo')),
+  });
+  const removePhotoMutation = useMutation({
+    mutationFn: () => accountApi.removePhoto(),
+    onSuccess: () => {
+      qc.removeQueries({ queryKey: ['avatar', user?.id] });
+      updateUser({ hasAvatar: false });
+    },
+  });
+  const emailMutation = useMutation({
+    mutationFn: () => accountApi.requestEmailChange(emailForm.newEmail, emailForm.password),
+    onSuccess: (res) => {
+      setEmailError('');
+      setEmailMessage(res.data.message);
+      setEmailForm({ newEmail: '', password: '' });
+    },
+    onError: (err: unknown) => setEmailError(getErrorMessage(err, 'Could not start the email change')),
   });
 
   const openPasswordModal = () => {
@@ -147,11 +184,58 @@ export default function ProfilePage() {
           </div>
         )}
 
+        <div className="flex flex-wrap items-center gap-4">
+          <Avatar userId={user?.id} firstName={form.firstName} lastName={form.lastName} size="xl" />
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Profile photo</p>
+            <p className="text-xs text-gray-500 mb-2">JPG, PNG or WebP. You can position and zoom it before saving.</p>
+            <div className="flex flex-wrap gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 px-3 py-2 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900">
+                <Camera size={15} /> {user?.hasAvatar ? 'Change photo' : 'Upload photo'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = '';
+                    if (f) { setPhotoError(''); setPhotoFile(f); }
+                  }}
+                />
+              </label>
+              {user?.hasAvatar && (
+                <button type="button" onClick={() => removePhotoMutation.mutate()} className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                  <Trash2 size={14} /> Remove
+                </button>
+              )}
+            </div>
+            {photoError && <p className="mt-1 text-xs text-red-600">{photoError}</p>}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {field('firstName', 'First Name')}
           {field('lastName', 'Last Name')}
         </div>
-        {field('email', 'Email', 'email')}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-[12rem] px-4 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-700 flex items-center justify-between gap-2">
+              <span className="truncate">{form.email}</span>
+              {(profileData?.emailVerified ?? true) && (
+                <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-green-700"><BadgeCheck size={14} /> Verified</span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => { setEmailMessage(''); setEmailError(''); setShowEmailModal(true); }}
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <Mail size={15} /> Change email
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-gray-400">Your email changes only after you click the confirmation link we send to the new address.</p>
+        </div>
 
         <div className="pt-4 border-t border-gray-100">
           <p className="text-sm font-semibold text-gray-900 mb-3">Contact &amp; Address</p>
@@ -216,6 +300,46 @@ export default function ProfilePage() {
               {readonlyField('Target University', profileData?.targetInstitutionName as string)}
               {readonlyField('Target Program', profileData?.targetProgramName as string)}
             </div>
+          </div>
+        </div>
+      )}
+
+      {photoFile && (
+        <PhotoEditor file={photoFile} saving={photoMutation.isPending} onCancel={() => setPhotoFile(null)} onSave={(b) => photoMutation.mutate(b)} />
+      )}
+
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-gray-900">Change email</h2>
+              <button onClick={() => setShowEmailModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            {emailMessage ? (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">{emailMessage}</div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-500">We will email a confirmation link to the new address. Nothing changes until you click it.</p>
+                {emailError && <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs">{emailError}</div>}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">New email address</label>
+                  <input type="email" value={emailForm.newEmail} onChange={(e) => setEmailForm((f) => ({ ...f, newEmail: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Current password</label>
+                  <input type="password" value={emailForm.password} onChange={(e) => setEmailForm((f) => ({ ...f, password: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+                </div>
+                <button
+                  onClick={() => emailMutation.mutate()}
+                  disabled={emailMutation.isPending || !emailForm.newEmail || !emailForm.password}
+                  className="w-full py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
+                >
+                  {emailMutation.isPending ? 'Sending…' : 'Send confirmation link'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

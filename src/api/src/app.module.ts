@@ -16,6 +16,7 @@ import { UniversitiesModule } from './universities/universities.module';
 import { InstitutionsModule } from './institutions/institutions.module';
 import { AgenciesModule } from './agencies/agencies.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { AccountModule } from './account/account.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ImportModule } from './import/import.module';
 import { PolicyModule } from './policy/policy.module';
@@ -51,6 +52,7 @@ const envFilePath =
     InstitutionsModule,
     AgenciesModule,
     UploadsModule,
+    AccountModule,
     PermissionsModule,
     ImportModule,
     PolicyModule,

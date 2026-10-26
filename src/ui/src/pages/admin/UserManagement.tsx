@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { usersApi, api } from '../../lib/api';
+import { usersApi, api, accountApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
 import { Users, UserPlus, Lock, Unlock, MapPin, Upload, Download } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { UniversityInstitutionTree } from '../../components/ui/UniversityInstitutionTree';
 import { usePermissions } from '../../hooks/usePermissions';
-import { roleColors, roleTabs, getColumnsForRole, type UserRow } from '../../components/users/userRoleViews';
+import { roleColors, roleTabs, getColumnsForRole, NameCell, type UserRow } from '../../components/users/userRoleViews';
 
 const roles = ['student', 'faculty', 'admin', 'agency', 'super_admin'];
 
@@ -374,6 +375,8 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
 export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?: boolean }) {
   const qc = useQueryClient();
   const [activeRole, setActiveRole] = useState<string | null>(null);
+  const isSuper = useAuthStore((st) => st.user?.role === 'super_admin');
+  const [photoNote, setPhotoNote] = useState('');
   const { can } = usePermissions();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -397,6 +400,16 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
       setShowCreate(false);
       setForm({ email: '', firstName: '', lastName: '', role: 'student', password: '' });
     },
+  });
+
+  const photosMutation = useMutation({
+    mutationFn: () => accountApi.generateDefaultPhotos(),
+    onSuccess: (res) => {
+      setPhotoNote(`Photos created for ${res.data.created} of ${res.data.total} users without one${res.data.failed ? ` (${res.data.failed} failed)` : ''}.`);
+      qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['avatar'] });
+    },
+    onError: () => setPhotoNote('Could not create the photos. Has migration 018 been applied?'),
   });
 
   const importMutation = useMutation({
@@ -445,11 +458,7 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
       key: 'name',
       header: 'Name',
       sortValue: (u) => `${u.firstName} ${u.lastName}`,
-      render: (u) => (
-        <span className="font-medium text-gray-900">
-          {u.firstName} {u.lastName}
-        </span>
-      ),
+      render: (u) => <NameCell r={u} />,
     },
     { key: 'email', header: 'Email' },
     {
@@ -485,7 +494,17 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
           <Users className="text-brand-800" size={24} />
           <h1 className="text-2xl font-bold text-gray-900">{withRoleTabs ? 'Users' : 'User Management'}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {isSuper && (
+            <button
+              onClick={() => photosMutation.mutate()}
+              disabled={photosMutation.isPending}
+              className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              title="Give every user without a photo a generated profile picture"
+            >
+              {photosMutation.isPending ? 'Creating photos…' : 'Generate default photos'}
+            </button>
+          )}
           {can('users', 'import') && (
             <>
               <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleImportFile} />
@@ -625,6 +644,8 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
         </div>
       )}
 
+      {photoNote && <div className="mb-4 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">{photoNote}</div>}
+
       {withRoleTabs && (
         <div className="flex gap-1 bg-gray-100 p-1 rounded-lg mb-6 flex-wrap">
           {roleTabs.map((tab) => {
@@ -649,7 +670,7 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
       <DataTable<UserRow>
         columns={columns}
         rows={tabbedUsers}
-        pageSize={withRoleTabs ? 25 : undefined}
+        pageSize={25}
         isLoading={isLoading}
         searchPlaceholder="Search users…"
         searchKeys={['email', 'firstName', 'lastName']}

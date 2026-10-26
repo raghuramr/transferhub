@@ -4,6 +4,7 @@ import * as sql from 'mssql';
 import { SubmitTranscriptDto } from './dto/create-transcript.dto';
 import { EmailService } from '../common/email.service';
 import { UploadsService } from '../uploads/uploads.service';
+import { ScopeService } from '../policy/scope.service';
 import { TransferPolicyService, parseFlags } from '../policy/transfer-policy.service';
 import { SchemaService } from '../policy/schema.service';
 import { WorkflowEngineService } from '../requests/workflow-engine.service';
@@ -88,6 +89,7 @@ export class TranscriptsService {
     private db: DatabaseService,
     private emailService: EmailService,
     private uploadsService: UploadsService,
+    private scopeService: ScopeService,
     private workflowEngine: WorkflowEngineService,
     private policy: TransferPolicyService,
     private schema: SchemaService,
@@ -415,7 +417,7 @@ export class TranscriptsService {
     return res.recordset.length ? res.recordset.map((r) => r.InstitutionId) : null;
   }
 
-  async findAll(filters: { studentUserId?: string; submittedByUserId?: string; status?: string; requestingUserId?: string } = {}) {
+  async findAll(filters: { studentUserId?: string; submittedByUserId?: string; status?: string; requestingUserId?: string; requestingRole?: string } = {}) {
     let where = '1=1';
     const inputs: QueryInput[] = [];
 
@@ -432,14 +434,20 @@ export class TranscriptsService {
       inputs.push({ name: 'status', type: sql.VarChar(20), value: filters.status });
     }
 
-    const scope = await this.getUniversityScope(filters.requestingUserId);
-    if (scope) {
-      const scopeParams = scope.map((instId, i) => {
-        const name = `scopeInst${i}`;
-        inputs.push({ name, type: sql.Int, value: instId });
-        return `@${name}`;
-      });
-      where += ` AND t.InstitutionId IN (${scopeParams.join(', ')})`;
+    if (filters.requestingRole === 'admin' && filters.requestingUserId) {
+      // Admins assigned to universities see only requests targeting (or registered for) those universities.
+      const adminScope = await this.scopeService.universityScope({ id: filters.requestingUserId, role: 'admin' });
+      if (adminScope) where += ` AND ${this.scopeService.transcriptInScope(adminScope, 't', inputs)}`;
+    } else {
+      const scope = await this.getUniversityScope(filters.requestingUserId);
+      if (scope) {
+        const scopeParams = scope.map((instId, i) => {
+          const name = `scopeInst${i}`;
+          inputs.push({ name, type: sql.Int, value: instId });
+          return `@${name}`;
+        });
+        where += ` AND t.InstitutionId IN (${scopeParams.join(', ')})`;
+      }
     }
 
     const res = await this.db.query<TranscriptListRow>(
@@ -506,5 +514,15 @@ export class TranscriptsService {
       );
     } catch { /* non-fatal */ }
     return transcript;
+  }
+
+  /** Can this admin see the transcript? (true for everyone but scoped admins.) */
+  async adminCanSee(transcriptId: string, viewer: { id: string; role: string }): Promise<boolean> {
+    const ids = await this.scopeService.universityScope(viewer);
+    if (!ids) return true;
+    const inputs: QueryInput[] = [{ name: 'tid', type: sql.UniqueIdentifier, value: transcriptId }];
+    const pred = this.scopeService.transcriptInScope(ids, 't', inputs);
+    const r = await this.db.query<{ N: number }>(`SELECT COUNT(*) AS N FROM Transcripts t WHERE t.Id = @tid AND ${pred}`, inputs);
+    return r.recordset[0].N > 0;
   }
 }

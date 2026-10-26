@@ -163,6 +163,20 @@ export class UploadsService {
     return this.resolve(row);
   }
 
+  /** Looks a stored file up by its blob name / path (used where only the stored path was kept). */
+  async getByStoredPath(storedPath: string) {
+    const extra = (await this.schema.has('Uploads', 'StorageProvider'))
+      ? ', StorageProvider, ContainerName, DocumentType'
+      : '';
+    const res = await this.db.query<UploadRow>(
+      `SELECT TOP 1 Id, OwnerUserId, Role, EntityType, EntityId, OriginalFileName, StoredPath, MimeType, SizeBytes, IsPublic, CreatedAt${extra}
+       FROM Uploads WHERE StoredPath = @p ORDER BY CreatedAt DESC`,
+      [{ name: 'p', type: sql.NVarChar(500), value: storedPath }],
+    );
+    if (!res.recordset[0]) throw new NotFoundException('File not found');
+    return this.resolve(res.recordset[0]);
+  }
+
   openStream(r: { provider: StorageProvider; container: string; blobName: string }) {
     return this.storage.get(r.provider, r.container, r.blobName);
   }

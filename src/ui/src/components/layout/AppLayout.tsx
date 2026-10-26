@@ -6,6 +6,7 @@ import { useAuthStore } from '../../store/auth';
 import { LogoMark } from '../shared/Logo';
 import { authApi, pagesApi } from '../../lib/api';
 import { PageTransition } from '../ui/PageTransition';
+import { Avatar } from '../shared/Avatar';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
@@ -164,9 +165,7 @@ export default function AppLayout() {
           to="/profile"
           className="flex items-center gap-3 mb-3 w-full text-left rounded-lg px-1 -mx-1 py-1 hover:bg-brand-50 transition-colors"
         >
-          <div className="w-8 h-8 rounded-full bg-brand-800 text-white flex items-center justify-center text-sm font-bold shrink-0">
-            {user?.firstName[0]}{user?.lastName[0]}
-          </div>
+          <Avatar userId={user?.id} firstName={user?.firstName} lastName={user?.lastName} hasPhoto={user?.hasAvatar} size="sm" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
               {user?.firstName} {user?.lastName}

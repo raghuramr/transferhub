@@ -1,3 +1,4 @@
+import { Avatar } from '../shared/Avatar';
 import { Users, GraduationCap, BookOpen, UserCheck, Handshake, ShieldCheck } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../ui/DataTable';
 
@@ -9,6 +10,8 @@ export interface UserRow {
   role: string;
   isActive: boolean;
   isLocked?: boolean;
+  hasAvatar?: boolean;
+  emailVerified?: boolean;
   status?: string;
   addressLine1?: string;
   addressLine2?: string;
@@ -29,6 +32,15 @@ export interface UserRow {
   highestEducationLevel?: string;
   fieldOfStudy?: string;
   graduationYear?: number;
+}
+
+export function NameCell({ r }: { r: Pick<UserRow, 'id' | 'firstName' | 'lastName'> & { hasAvatar?: boolean } }) {
+  return (
+    <span className="flex items-center gap-2.5">
+      <Avatar userId={r.id} firstName={r.firstName} lastName={r.lastName} hasPhoto={r.hasAvatar} size="sm" />
+      <span className="font-medium text-gray-900">{r.firstName} {r.lastName}</span>
+    </span>
+  );
 }
 
 export const roleColors: Record<string, string> = {
@@ -69,7 +81,7 @@ export const roleTabs: RoleTab[] = [
 ];
 
 const allColumns: DataTableColumn<UserRow>[] = [
-  { key: 'firstName', header: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
+  { key: 'firstName', header: 'Name', render: (r) => <NameCell r={r} /> },
   { key: 'email', header: 'Email' },
   { key: 'role', header: 'Role', render: (r) => <RoleBadge role={r.role} /> },
   { key: 'isActive', header: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
@@ -77,7 +89,7 @@ const allColumns: DataTableColumn<UserRow>[] = [
 ];
 
 const studentColumns: DataTableColumn<UserRow>[] = [
-  { key: 'firstName', header: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
+  { key: 'firstName', header: 'Name', render: (r) => <NameCell r={r} /> },
   { key: 'email', header: 'Email' },
   { key: 'studentId', header: 'Student ID', render: (r) => r.studentId ?? '—' },
   { key: 'priorInstitutionName', header: 'Prior Institution', render: (r) => r.priorInstitutionName ?? '—' },
@@ -89,7 +101,7 @@ const studentColumns: DataTableColumn<UserRow>[] = [
 ];
 
 const facultyColumns: DataTableColumn<UserRow>[] = [
-  { key: 'firstName', header: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
+  { key: 'firstName', header: 'Name', render: (r) => <NameCell r={r} /> },
   { key: 'email', header: 'Email' },
   { key: 'departmentName', header: 'Department', render: (r) => r.departmentName ?? '—' },
   { key: 'mobile', header: 'Mobile', render: (r) => r.mobile ?? '—' },
@@ -97,7 +109,7 @@ const facultyColumns: DataTableColumn<UserRow>[] = [
 ];
 
 const agencyColumns: DataTableColumn<UserRow>[] = [
-  { key: 'firstName', header: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
+  { key: 'firstName', header: 'Name', render: (r) => <NameCell r={r} /> },
   { key: 'email', header: 'Email' },
   { key: 'agencyName', header: 'Agency', render: (r) => r.agencyName ?? '—' },
   { key: 'mobile', header: 'Mobile', render: (r) => r.mobile ?? '—' },
@@ -105,7 +117,7 @@ const agencyColumns: DataTableColumn<UserRow>[] = [
 ];
 
 const adminColumns: DataTableColumn<UserRow>[] = [
-  { key: 'firstName', header: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
+  { key: 'firstName', header: 'Name', render: (r) => <NameCell r={r} /> },
   { key: 'email', header: 'Email' },
   { key: 'mobile', header: 'Mobile', render: (r) => r.mobile ?? '—' },
   { key: 'isActive', header: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },

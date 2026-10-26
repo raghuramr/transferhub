@@ -1,4 +1,6 @@
-/** Tiny classnames combiner — filters falsy values, no external dep needed. */
+import { twMerge } from 'tailwind-merge';
+
+/** Combines class names and resolves conflicting Tailwind utilities (the later one wins). */
 export function cn(...classes: Array<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(' ');
+  return twMerge(classes.filter(Boolean).join(' '));
 }

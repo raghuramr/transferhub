@@ -1,0 +1,81 @@
+import {
+  BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Post, Put, Req, Res,
+  UploadedFile, UseGuards, UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { IsEmail, IsString, MinLength } from 'class-validator';
+import type { Response } from 'express';
+import { AccountService } from './account.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
+import type { UploadedFileLike } from '../common/uploaded-file.interface';
+
+class RequestEmailChangeDto {
+  @IsEmail() newEmail: string;
+  @IsString() @MinLength(1) password: string;
+}
+class ConfirmEmailChangeDto {
+  @IsString() @MinLength(20) token: string;
+}
+
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+@Controller('account')
+export class AccountController {
+  constructor(private account: AccountService) {}
+
+  @Post('email-change')
+  @UseGuards(JwtAuthGuard)
+  requestEmailChange(@Body() dto: RequestEmailChangeDto, @Req() req: AuthenticatedRequest) {
+    return this.account.requestEmailChange(req.user, dto.newEmail, dto.password);
+  }
+
+  /** Public: the emailed token is the credential. */
+  @Post('email-change/confirm')
+  confirmEmailChange(@Body() dto: ConfirmEmailChangeDto) {
+    return this.account.confirmEmailChange(dto.token);
+  }
+
+  @Put('photo')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+      fileFilter: (_req, file, cb) =>
+        PHOTO_TYPES.includes(file.mimetype) ? cb(null, true) : cb(new BadRequestException('Use a JPG, PNG or WebP image.'), false),
+    }),
+  )
+  setPhoto(@UploadedFile() file: UploadedFileLike, @Req() req: AuthenticatedRequest) {
+    if (!file) throw new BadRequestException('No image uploaded');
+    return this.account.setPhoto(req.user, file);
+  }
+
+  @Delete('photo')
+  @UseGuards(JwtAuthGuard)
+  removePhoto(@Req() req: AuthenticatedRequest) {
+    return this.account.removePhoto(req.user.id);
+  }
+
+  @Post('photos/generate-defaults')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin')
+  generateDefaults() {
+    return this.account.generateDefaultPhotos();
+  }
+
+  /** Any signed-in user may view any profile photo (shown beside names across the app). */
+  @Get('photo/:userId')
+  @UseGuards(JwtAuthGuard)
+  async photo(@Param('userId') userId: string, @Res() res: Response) {
+    const photo = await this.account.openPhoto(userId);
+    if (!photo) throw new NotFoundException('No photo');
+    res.setHeader('Content-Type', photo.mimeType);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    photo.stream.on('error', () => res.destroy());
+    photo.stream.pipe(res);
+  }
+}
