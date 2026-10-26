@@ -35,9 +35,10 @@ export type ProgramForm = {
   degree: string;
   school: string;
   notes: string;
+  isActive: boolean;
 };
 
-export const emptyForm: ProgramForm = { institutionId: '', name: '', area: '', degree: '', school: '', notes: '' };
+export const emptyForm: ProgramForm = { institutionId: '', name: '', area: '', degree: '', school: '', notes: '', isActive: true };
 
 export function ProgramFields({
   form,
@@ -113,6 +114,15 @@ export function ProgramFields({
           className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
       </div>
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={form.isActive}
+          onChange={(e) => onChange({ ...form, isActive: e.target.checked })}
+          className="rounded border-gray-300"
+        />
+        Active (inactive programs are hidden from students and pickers)
+      </label>
     </div>
   );
 }
@@ -125,6 +135,7 @@ export function programToForm(program: Program): ProgramForm {
     degree: program.degree ?? '',
     school: program.school ?? '',
     notes: program.notes ?? '',
+    isActive: program.isActive !== false,
   };
 }
 

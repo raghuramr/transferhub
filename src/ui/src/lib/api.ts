@@ -190,14 +190,16 @@ export const coursesApi = {
 
 // ── Uploads (private docs + public logo/hero images) ──────────
 export const uploadsApi = {
-  upload: (file: File, opts?: { isPublic?: boolean; entityType?: string; entityId?: string }) => {
+  upload: (file: File, opts?: { isPublic?: boolean; entityType?: string; entityId?: string; documentType?: string }) => {
     const form = new FormData();
     form.append('file', file);
     if (opts?.isPublic) form.append('isPublic', 'true');
     if (opts?.entityType) form.append('entityType', opts.entityType);
     if (opts?.entityId) form.append('entityId', opts.entityId);
+    if (opts?.documentType) form.append('documentType', opts.documentType);
     return api.post('/uploads', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+  list: (params?: { userId?: string; entityType?: string }) => api.get('/uploads', { params }),
 };
 
 // ── Course Topics endpoints (reference-link detail per course) ────

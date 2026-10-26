@@ -310,13 +310,14 @@ function UniversityProgramsList({ universityId }: { universityId: number }) {
         degree: form.degree || null,
         school: form.school || null,
         notes: form.notes || null,
+        isActive: form.isActive,
       }),
     onSuccess: invalidateAll,
   });
 
   const { data, isLoading } = useQuery({
     queryKey: ['programs', { universityId }],
-    queryFn: () => coursesApi.programs(universityId),
+    queryFn: () => coursesApi.programs(universityId, true),
   });
   const programs: Program[] = (data?.data as Program[]) ?? [];
 
@@ -332,6 +333,11 @@ function UniversityProgramsList({ universityId }: { universityId: number }) {
 
   const deactivateMutation = useMutation({
     mutationFn: (id: number) => coursesApi.deactivateProgram(id),
+    onSuccess: invalidateAll,
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: (id: number) => coursesApi.updateProgram(id, { isActive: true }),
     onSuccess: invalidateAll,
   });
 
@@ -359,12 +365,13 @@ function UniversityProgramsList({ universityId }: { universityId: number }) {
                   {p.name}
                   {p.area && <span className="text-gray-400"> ({p.area})</span>}
                   {p.degree && <span className="text-gray-400"> — {p.degree}</span>}
+                  {!p.isActive && <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-700">Inactive</span>}
                 </button>
                 <button
-                  onClick={() => deactivateMutation.mutate(p.id)}
-                  disabled={deactivateMutation.isPending}
-                  title="Deactivate program"
-                  className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                  onClick={() => (p.isActive ? deactivateMutation.mutate(p.id) : activateMutation.mutate(p.id))}
+                  disabled={deactivateMutation.isPending || activateMutation.isPending}
+                  title={p.isActive ? 'Deactivate program' : 'Activate program'}
+                  className={p.isActive ? 'text-gray-400 hover:text-red-600 disabled:opacity-50' : 'text-green-600 hover:text-green-800 disabled:opacity-50'}
                 >
                   <Power size={13} />
                 </button>
@@ -579,6 +586,14 @@ export default function UniversitiesManagement() {
               className="flex items-center gap-1 text-xs text-red-500 hover:underline"
             >
               <Power size={12} /> Deactivate
+            </button>
+          )}
+          {!u.isActive && can('universities', 'edit') && (
+            <button
+              onClick={() => bulkActivateMutation.mutate([u.id])}
+              className="flex items-center gap-1 text-xs text-green-600 hover:underline"
+            >
+              <Power size={12} /> Activate
             </button>
           )}
         </div>

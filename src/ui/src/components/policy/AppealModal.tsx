@@ -25,7 +25,7 @@ export default function AppealModal({ requestId, course, onClose, onSubmitted }:
     setUploading(true);
     setError('');
     try {
-      const res = await uploadsApi.upload(file, { entityType: 'appeal' });
+      const res = await uploadsApi.upload(file, { entityType: 'appeal', documentType: 'syllabus' });
       setSyllabus({ id: (res.data as { id: string }).id, name: file.name });
     } catch {
       setError('Upload failed. Please try again.');

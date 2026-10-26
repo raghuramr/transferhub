@@ -78,7 +78,7 @@ export default function UploadTranscript() {
     setDocumentUploading(true);
     setError('');
     try {
-      const res = await uploadsApi.upload(file, { entityType: 'transcript' });
+      const res = await uploadsApi.upload(file, { entityType: 'transcript', documentType: 'transcript' });
       const { id } = res.data as { id: string };
       setTranscriptFile({ id, name: file.name });
     } catch {

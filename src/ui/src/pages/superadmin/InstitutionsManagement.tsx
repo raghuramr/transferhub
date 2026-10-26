@@ -262,6 +262,14 @@ export default function InstitutionsManagement() {
               <Power size={12} /> Deactivate
             </button>
           )}
+          {!i.isActive && can('institutions', 'edit') && (
+            <button
+              onClick={() => bulkActivateMutation.mutate([i.id])}
+              className="flex items-center gap-1 text-xs text-green-600 hover:underline"
+            >
+              <Power size={12} /> Activate
+            </button>
+          )}
         </div>
       ),
     },

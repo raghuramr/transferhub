@@ -118,7 +118,7 @@ export function DocumentsPanel({
     setBusy(true);
     setError('');
     try {
-      const up = await uploadsApi.upload(file, { entityType: 'transcript_document', entityId: requestId });
+      const up = await uploadsApi.upload(file, { entityType: 'transcript_document', entityId: requestId, documentType: docType });
       const res = await requestsApi.addDocument(requestId, {
         docTypeKey: docType,
         uploadId: (up.data as { id: string }).id,

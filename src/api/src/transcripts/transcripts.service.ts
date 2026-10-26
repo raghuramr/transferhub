@@ -168,7 +168,7 @@ export class TranscriptsService {
         id: submittedByUserId,
         role: submittedByRole,
       });
-      fileStoragePath = upload.path;
+      fileStoragePath = upload.blobName;
       originalFileName = upload.fileName;
     }
 

@@ -43,6 +43,7 @@ export default function ProgramsManagement() {
         degree: form.degree || undefined,
         school: form.school || undefined,
         notes: form.notes || undefined,
+        isActive: form.isActive,
       }),
     onSuccess: (res) => {
       invalidateAll();
@@ -62,12 +63,23 @@ export default function ProgramsManagement() {
         degree: form.degree || null,
         school: form.school || null,
         notes: form.notes || null,
+        isActive: form.isActive,
       }),
     onSuccess: invalidateAll,
   });
 
   const deactivateMutation = useMutation({
     mutationFn: (id: number) => coursesApi.deactivateProgram(id),
+    onSuccess: invalidateAll,
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: (id: number) => coursesApi.updateProgram(id, { isActive: true }),
+    onSuccess: invalidateAll,
+  });
+
+  const bulkActivateMutation = useMutation({
+    mutationFn: (ids: number[]) => Promise.all(ids.map((id) => coursesApi.updateProgram(id, { isActive: true }))),
     onSuccess: invalidateAll,
   });
 
@@ -109,6 +121,14 @@ export default function ProgramsManagement() {
               <Power size={12} /> Deactivate
             </button>
           )}
+          {!p.isActive && can('programs', 'edit') && (
+            <button
+              onClick={() => activateMutation.mutate(p.id)}
+              className="flex items-center gap-1 text-xs text-green-600 hover:underline"
+            >
+              <Power size={12} /> Activate
+            </button>
+          )}
         </div>
       ),
     },
@@ -136,7 +156,8 @@ export default function ProgramsManagement() {
 
       {showCreatePanel && (
         <div className="mb-6 bg-white border border-gray-200 rounded-xl p-5 max-w-xl">
-          <h2 className="font-semibold text-gray-900 mb-4">Add Program</h2>
+          <h2 className="font-semibold text-gray-900 mb-1">Add Program</h2>
+          <p className="text-xs text-gray-500 mb-4">After you create it, the program opens so you can attach courses and extra universities.</p>
           <ProgramFields form={createForm} onChange={setCreateForm} universities={universities} />
           <div className="flex gap-3 mt-5">
             <button
@@ -181,6 +202,9 @@ export default function ProgramsManagement() {
           },
         ]}
         bulkActions={[
+          ...(can('programs', 'edit')
+            ? [{ label: 'Activate', onClick: (selected: Program[]) => bulkActivateMutation.mutate(selected.map((p) => p.id)) }]
+            : []),
           ...(can('programs', 'delete')
             ? [{ label: 'Deactivate', onClick: (selected: Program[]) => bulkDeactivateMutation.mutate(selected.map((p) => p.id)), danger: true }]
             : []),

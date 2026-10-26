@@ -176,6 +176,14 @@ export default function AgenciesManagement() {
               <Power size={12} /> Deactivate
             </button>
           )}
+          {!a.isActive && can('agencies', 'edit') && (
+            <button
+              onClick={() => bulkActivateMutation.mutate([a.id])}
+              className="flex items-center gap-1 text-xs text-green-600 hover:underline"
+            >
+              <Power size={12} /> Activate
+            </button>
+          )}
         </div>
       ),
     },
