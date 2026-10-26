@@ -475,6 +475,33 @@ export interface DashboardChart {
   series?: { key: string; label: string }[];
 }
 export interface DashboardPayload { role: string; days: number; ranges: number[]; generatedAt: string; kpis: DashboardKpi[]; charts: DashboardChart[] }
+export interface BentoPayload {
+  currency: string;
+  revenue: { label: string; value: number; delta: string; note?: string; caption?: string; series: { label: string; value: number }[] };
+  sessions: {
+    label: string; value: number; delta: string; note?: string;
+    desktop: number[][]; mobile: number[][];
+    labels?: { desktop: string; mobile: string; prior: string; current: string };
+  };
+  categories: {
+    title: string;
+    groups: { id: string; name: string; color: string; ink?: 'dark' | 'light' }[];
+    periods: { label: string; total: number; delta: string; compare: string }[];
+    items: { name: string; group: string; values: number[] }[];
+    table?: { columns: string[]; rows: { label: string; values: string[] }[] };
+  };
+  seasonality: {
+    title: string;
+    axis?: string[];
+    years: {
+      label: string;
+      values: number[];
+      stats: { label: string; value: number; delta: string; note: string }[];
+      rows: { label: string; value: string }[];
+    }[];
+  };
+}
 export const dashboardApi = {
   get: (days?: number) => api.get<DashboardPayload>('/dashboard', { params: { days } }),
+  bento: (days?: number) => api.get<BentoPayload>('/dashboard/bento', { params: { days } }),
 };

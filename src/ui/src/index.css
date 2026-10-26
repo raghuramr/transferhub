@@ -20,6 +20,18 @@
   --color-brand-950: #3a0309;
 
   --font-sans: Inter, system-ui, -apple-system, sans-serif;
+
+  /* shadcn-style semantic tokens used by components/ui/analytics-bento.tsx, mapped to the maroon brand */
+  --color-background: #faf7f8;
+  --color-foreground: #1f1a1b;
+  --color-card: #ffffff;
+  --color-card-foreground: #1f1a1b;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1f1a1b;
+  --color-muted: #f5eced;
+  --color-muted-foreground: #6b5f61;
+  --color-border: #eadcde;
+  --color-ring: #cf3a53;
 }
 
 :root {

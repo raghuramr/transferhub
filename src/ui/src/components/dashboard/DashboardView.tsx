@@ -8,6 +8,7 @@ import { AnimatePresence, animate, motion, useMotionValue } from 'framer-motion'
 import { BarChart3, Filter, LayoutGrid, LineChart as LineIcon, PieChart as PieIcon, RefreshCw, Target } from 'lucide-react';
 import { dashboardApi, type DashboardChart, type DashboardKpi } from '../../lib/api';
 import { cn } from '../../lib/cn';
+import { AnalyticsBento } from '../ui/analytics-bento';
 
 const COLORS = ['#770816', '#c9a227', '#1e4a80', '#2f8a4c', '#7c3aed', '#0f766e', '#d97706', '#64748b', '#be185d', '#0369a1'];
 const TONE: Record<NonNullable<DashboardKpi['tone']>, { text: string; ring: string }> = {
@@ -366,6 +367,15 @@ export function DashboardView({ withRange = true }: { withRange?: boolean }) {
     placeholderData: (prev) => prev,
   });
   const d = data?.data;
+  const bentoQuery = useQuery({
+    queryKey: ['dashboard-bento', days],
+    queryFn: () => dashboardApi.bento(days),
+    refetchInterval: 120_000,
+    retry: false,
+    placeholderData: (prev) => prev,
+  });
+  const bento = bentoQuery.data?.data;
+  const bentoOk = !!bento && !!bento.revenue?.series?.length && !!bento.seasonality?.years?.length && !!bento.categories?.items?.length;
 
   return (
     <div className="space-y-5">
@@ -396,7 +406,11 @@ export function DashboardView({ withRange = true }: { withRange?: boolean }) {
       {d && (
         <>
           <KpiGrid key={`k-${d.days}`} kpis={d.kpis} />
-          {d.charts.length === 0 ? (
+          {bentoOk ? (
+            <AnalyticsBento className="w-full" {...bento} currency={bento.currency ?? ''} credit={false} fontFamily="inherit" />
+          ) : bentoQuery.isLoading ? (
+            <p className="py-8 text-center text-sm text-gray-400">Loading charts…</p>
+          ) : d.charts.length === 0 ? (
             <p className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-400">
               Charts appear here as soon as there is data to show.
             </p>
