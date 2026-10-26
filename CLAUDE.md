@@ -882,13 +882,9 @@ alongside the old (harmless, vestigial) ones. No manual
 `__ScriptRunnerHistory` surgery is needed.
 
 ## Workflow reminders for this repo
-- **Branches (2026-10-26):** every push to `main` deploys to Azure. The user later asked to
-  consolidate all branches into `main` and work on `main`. Stale `claude/upbeat-davinci-vg9kbz`
-  (an old line of work superseded by main's rewrites of import/email/users/registration) was
-  recorded as merged with `git merge -s ours` (history joined, main's content kept - a real merge
-  conflicted in 14 files and would have regressed). Cloud sessions are told to push to their
-  designated feature branch (e.g. `ccr-da95d981-um0118`), so the user merges that branch into
-  `main` when they want a deploy; if a session is allowed to push `main` directly, say so first.
+- **Branches (2026-10-26):** every push to `main` deploys to Azure. `ccr-da95d981-um0118`'s work was
+  merged into `main` at the user's explicit request. User decision: do NOT merge
+  `claude/upbeat-davinci-vg9kbz` (old, superseded line of work) - leave it unmerged.
 - Always run `npx tsc --noEmit` in both `src/api` and `src/ui` before
   committing
 - `@hookform/resolvers` must be v5+ with zod 4 (v3 re-throws zod 4 errors instead of
