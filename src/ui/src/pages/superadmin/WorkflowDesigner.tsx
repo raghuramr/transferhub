@@ -1,3 +1,4 @@
+import { useAuthStore } from '../../store/auth';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, BarChart3, Bot, GitBranch, Loader2, Plus, Save, Sparkles, Trash2, Users, X } from 'lucide-react';
@@ -24,7 +25,7 @@ const AGENT_TASKS: { value: AgentTask; label: string }[] = [
   { value: 'match', label: 'AI pre-match unmatched courses' },
   { value: 'finalize', label: 'Finalise: post credit, notify student' },
 ];
-const ROLES = [
+const ALL_ROLES = [
   { value: 'faculty', label: 'All faculty' },
   { value: 'admin', label: 'All admins' },
   { value: 'super_admin', label: 'All super admins' },
@@ -47,10 +48,12 @@ function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onCh
 function ApproverEditor({ stage, onChange, groups, staff, disabled }: {
   stage: WorkflowStageDef; onChange: (a: StageApprover[]) => void; groups: ApproverGroup[]; staff: StaffUser[]; disabled: boolean;
 }) {
+  const isSuper = useAuthStore((st) => st.user?.role === 'super_admin');
+  const roleOptions = isSuper ? ALL_ROLES : ALL_ROLES.filter((r) => r.value !== 'super_admin');
   const [kind, setKind] = useState<'role' | 'group' | 'user'>('group');
   const [value, setValue] = useState('');
   const label = (a: StageApprover) =>
-    a.approverType === 'role' ? ROLES.find((r) => r.value === a.roleName)?.label ?? a.roleName
+    a.approverType === 'role' ? ALL_ROLES.find((r) => r.value === a.roleName)?.label ?? a.roleName
       : a.approverType === 'group' ? `Group: ${groups.find((g) => g.id === a.groupId)?.name ?? a.groupName}`
         : staff.find((u) => u.id === a.userId)?.name ?? a.userName;
 
@@ -84,7 +87,7 @@ function ApproverEditor({ stage, onChange, groups, staff, disabled }: {
           </select>
           <select value={value} onChange={(e) => setValue(e.target.value)} className="min-w-[10rem] rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
             <option value="">Choose…</option>
-            {kind === 'role' && ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+            {kind === 'role' && roleOptions.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             {kind === 'group' && groups.filter((g) => g.isActive).map((g) => <option key={g.id} value={g.id}>{g.name} ({g.members.length})</option>)}
             {kind === 'user' && staff.map((u) => <option key={u.id} value={u.id}>{u.name} · {u.role}</option>)}
           </select>

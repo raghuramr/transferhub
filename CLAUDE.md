@@ -626,6 +626,16 @@ Branch `claude/dashboards-profiles-scoping` (built on `claude/superadmin-users-e
   blob storage via `UploadsService.getByStoredPath`.
 - **Next (user-stated)**: after these are done, move on to the core AI processing logic.
 
+## Session 2026-10-26 (d): admin visibility fixes (branch `claude/admin-scope-superadmin-visibility`, not merged)
+- **Super admins are invisible to plain admins**: hidden from the users list, not manageable (get/update/deactivate/
+  unlock return 403), the super_admin role cannot be assigned by an admin (create, update, bulk, CSV import), and they
+  are hidden from approver-group member lists / pickers (an admin saving a group keeps any super-admin members as they were).
+  The Workflow designer's "All super admins" approver option is hidden from admins.
+- **Scope not showing after save (root cause)**: the scope panel filled its draft inside `queryFn`, but the app caches
+  queries for 30s (`staleTime`), so re-opening a row within that window skipped `queryFn` and showed an empty selection.
+  The draft is now set from the query's data in an effect, and the cache is updated on save.
+- Admin sidebar is grouped like the super admin's (Operations, Users, Settings, Account).
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group

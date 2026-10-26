@@ -184,6 +184,7 @@ export class UsersService {
     }
 
     // Admins assigned to universities only see students registered/requesting for those universities.
+    if (viewer?.role === 'admin') where += ` AND r.Name <> 'super_admin'`;
     const scope = viewer ? await this.scope.universityScope(viewer) : null;
     if (scope) where += ` AND (r.Name <> 'student' OR ${this.scope.studentInScope(scope, 'u', inputs)})`;
 
@@ -354,7 +355,7 @@ export class UsersService {
   }
 
   /** Upserts by Email. New rows get a random temp password + "account created" email; existing rows are updated in place. */
-  async importCsv(text: string, importedBy: string) {
+  async importCsv(text: string, importedBy: string, actorRole?: string) {
     const rows = parseCsvRows(text);
     let created = 0;
     let updated = 0;
@@ -368,6 +369,13 @@ export class UsersService {
       if (!email || !firstName || !lastName || !role) {
         errors.push(`Skipped row (missing email/firstName/lastName/role): ${JSON.stringify(row)}`);
         continue;
+      }
+      if (actorRole === 'admin') {
+        const target = await this.findByEmail(email);
+        if (role === 'super_admin' || (target && target.Role === 'super_admin')) {
+          errors.push(`Skipped ${email}: only a super admin can create or change super admin accounts`);
+          continue;
+        }
       }
       try {
         const existing = await this.findByEmail(email);

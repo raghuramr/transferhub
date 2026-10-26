@@ -51,15 +51,20 @@ export class ScopeService {
        OR EXISTS (SELECT 1 FROM StudentProfiles sp_t WHERE sp_t.UserId = ${transcriptAlias}.StudentUserId AND sp_t.TargetInstitutionId IN (${p})))`;
   }
 
-  /** Can this viewer manage the given user? (admins: only students within their universities.) */
+  /**
+   * Can this viewer manage the given user? Plain admins never see or manage super admins, and (when
+   * assigned to universities) only manage students of those universities.
+   */
   async canManageUser(viewer: ScopeViewer, targetUserId: string): Promise<boolean> {
-    const ids = await this.universityScope(viewer);
-    if (!ids) return true;
+    if (viewer.role !== 'admin') return true;
     const roleRes = await this.db.query<{ Role: string }>(
       `SELECT r.Name AS Role FROM Users u JOIN Roles r ON r.Id = u.RoleId WHERE u.Id = @id`,
       [{ name: 'id', type: sql.UniqueIdentifier, value: targetUserId }],
     );
-    if (roleRes.recordset[0]?.Role !== 'student') return true;
+    const role = roleRes.recordset[0]?.Role;
+    if (role === 'super_admin') return false;
+    const ids = await this.universityScope(viewer);
+    if (!ids || role !== 'student') return true;
     const inputs: QueryInput[] = [{ name: 'id', type: sql.UniqueIdentifier, value: targetUserId }];
     const pred = this.studentInScope(ids, 'u', inputs);
     const r = await this.db.query<{ N: number }>(`SELECT COUNT(*) AS N FROM Users u WHERE u.Id = @id AND ${pred}`, inputs);

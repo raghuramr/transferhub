@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, api, accountApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
@@ -8,7 +8,13 @@ import { UniversityInstitutionTree } from '../../components/ui/UniversityInstitu
 import { usePermissions } from '../../hooks/usePermissions';
 import { roleColors, roleTabs, getColumnsForRole, NameCell, type UserRow } from '../../components/users/userRoleViews';
 
-const roles = ['student', 'faculty', 'admin', 'agency', 'super_admin'];
+const ALL_ROLES = ['student', 'faculty', 'admin', 'agency', 'super_admin'];
+
+/** Plain admins neither see nor can hand out the super admin role. */
+function useAssignableRoles() {
+  const isSuper = useAuthStore((st) => st.user?.role === 'super_admin');
+  return isSuper ? ALL_ROLES : ALL_ROLES.filter((r) => r !== 'super_admin');
+}
 
 interface UserScope {
   universityIds?: number[];
@@ -74,6 +80,7 @@ function MultiSelect({
 
 function EditAndScopePanel({ user }: { user: UserRow }) {
   const qc = useQueryClient();
+  const roles = useAssignableRoles();
   const [editForm, setEditForm] = useState({
     firstName: user.firstName,
     lastName: user.lastName,
@@ -114,21 +121,24 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
     queryFn: () => api.get('/agencies').catch(() => ({ data: [] })),
   });
 
-  useQuery({
+  // The draft is filled from whatever the query holds - including a cached copy, in which case queryFn
+  // never runs (the app caches queries for 30s). Setting state inside queryFn lost the saved selection
+  // whenever a row was re-opened within that window.
+  const scopeQuery = useQuery({
     queryKey: ['scope', user.id],
-    queryFn: async () => {
-      const { data: scopeData } = await usersApi.getScope(user.id);
-      const scope = scopeData as UserScope | undefined;
+    queryFn: async () => (await usersApi.getScope(user.id)).data as UserScope,
+    refetchOnMount: 'always',
+  });
+  useEffect(() => {
+    if (scopeQuery.data && !scopeLoaded && !scopeQuery.isFetching) {
       setScopeDraft({
-        universityIds: scope?.universityIds ?? [],
-        academicUnitIds: scope?.academicUnitIds ?? [],
-        agencyIds: scope?.agencyIds ?? [],
+        universityIds: scopeQuery.data.universityIds ?? [],
+        academicUnitIds: scopeQuery.data.academicUnitIds ?? [],
+        agencyIds: scopeQuery.data.agencyIds ?? [],
       });
       setScopeLoaded(true);
-      return scopeData;
-    },
-    enabled: !scopeLoaded,
-  });
+    }
+  }, [scopeQuery.data, scopeQuery.isFetching, scopeLoaded]);
 
   const universities: { id: number; name: string }[] = (universitiesQuery.data?.data as { id: number; name: string }[]) ?? [];
   const institutions: { id: number; name: string; universityId: number }[] =
@@ -163,7 +173,10 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
 
   const saveScopeMutation = useMutation({
     mutationFn: () => usersApi.setScope(user.id, scopeDraft),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['scope', user.id] }),
+    onSuccess: (res) => {
+      // Keep the cache in step with what was just saved so re-opening the row shows it immediately.
+      qc.setQueryData(['scope', user.id], res.data);
+    },
   });
 
   const unlockMutation = useMutation({
@@ -374,6 +387,7 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
 
 export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?: boolean }) {
   const qc = useQueryClient();
+  const roles = useAssignableRoles();
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const isSuper = useAuthStore((st) => st.user?.role === 'super_admin');
   const [photoNote, setPhotoNote] = useState('');

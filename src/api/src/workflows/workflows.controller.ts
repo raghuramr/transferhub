@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Permission } from '../auth/permission.decorator';
@@ -18,10 +19,10 @@ export class WorkflowsController {
 
   @Get('workflows/lookups')
   @Permission('workflows', 'view')
-  async lookups() {
+  async lookups(@Req() req: AuthenticatedRequest) {
     const [staff, groups, documentTypes] = await Promise.all([
-      this.workflows.staffUsers(),
-      this.workflows.listGroups(),
+      this.workflows.staffUsers(req.user.role),
+      this.workflows.listGroups(req.user.role),
       this.workflows.documentTypes(),
     ]);
     return { staff, groups, documentTypes };
@@ -59,20 +60,20 @@ export class WorkflowsController {
 
   @Get('approver-groups')
   @Permission('workflows', 'view')
-  groups() {
-    return this.workflows.listGroups();
+  groups(@Req() req: AuthenticatedRequest) {
+    return this.workflows.listGroups(req.user.role);
   }
 
   @Post('approver-groups')
   @Permission('workflows', 'create')
-  createGroup(@Body() dto: SaveGroupDto) {
-    return this.workflows.saveGroup(null, dto);
+  createGroup(@Body() dto: SaveGroupDto, @Req() req: AuthenticatedRequest) {
+    return this.workflows.saveGroup(null, dto, req.user.role);
   }
 
   @Put('approver-groups/:id')
   @Permission('workflows', 'edit')
-  updateGroup(@Param('id', ParseIntPipe) id: number, @Body() dto: SaveGroupDto) {
-    return this.workflows.saveGroup(id, dto);
+  updateGroup(@Param('id', ParseIntPipe) id: number, @Body() dto: SaveGroupDto, @Req() req: AuthenticatedRequest) {
+    return this.workflows.saveGroup(id, dto, req.user.role);
   }
 
   @Delete('approver-groups/:id')

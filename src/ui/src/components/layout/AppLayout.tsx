@@ -37,18 +37,22 @@ const navItems: Record<Role, NavEntry[]> = {
   ],
   admin: [
     { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-    { to: '/requests', label: 'Approval queue', icon: <Inbox size={18} /> },
+    // Operations
+    { to: '/requests', label: 'Approval queue', icon: <Inbox size={18} />, group: 'Operations' },
     { to: '/appeals', label: 'Appeals', icon: <Gavel size={18} /> },
     { to: '/admin/transcripts', label: 'Transcripts', icon: <FileText size={18} /> },
     { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
     { to: '/admin/equivalencies', label: 'Equivalencies', icon: <ArrowLeftRight size={18} /> },
     { to: '/admin/verification', label: 'Course verification', icon: <ShieldQuestion size={18} /> },
-    { to: '/admin/workflows', label: 'Workflows', icon: <GitBranch size={18} /> },
-    { to: '/admin/ai-controls', label: 'AI Controls', icon: <Bot size={18} /> },
-    { to: '/admin/users', label: 'Users', icon: <Users size={18} /> },
     { to: '/admin/pages', label: 'Custom Pages', icon: <FileEdit size={18} /> },
     { to: '/admin/forms', label: 'Custom Forms', icon: <ListChecks size={18} /> },
-    { to: '/profile', label: 'My Profile', icon: <UserCircle size={18} /> },
+    // Users
+    { to: '/admin/users', label: 'Users', icon: <Users size={18} />, group: 'Users' },
+    // Settings
+    { to: '/admin/workflows', label: 'Workflows', icon: <GitBranch size={18} />, group: 'Settings' },
+    { to: '/admin/ai-controls', label: 'AI Controls', icon: <Bot size={18} /> },
+    // Account
+    { to: '/profile', label: 'My Profile', icon: <UserCircle size={18} />, group: 'Account' },
   ],
   super_admin: [
     { to: '/superadmin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },

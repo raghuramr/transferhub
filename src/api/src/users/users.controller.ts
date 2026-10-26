@@ -23,6 +23,13 @@ export class UsersController {
     private scope: ScopeService,
   ) {}
 
+  /** Only super admins can hand out the super_admin role. */
+  private assertCanAssignRole(req: AuthenticatedRequest, role?: string) {
+    if (role === 'super_admin' && req.user.role !== 'super_admin') {
+      throw new ForbiddenException('Only a super admin can assign the super admin role.');
+    }
+  }
+
   /** Admins assigned to universities may only manage students of those universities. */
   private async assertInScope(req: AuthenticatedRequest, targetId: string) {
     if (req.user.id === targetId) return;
@@ -57,7 +64,7 @@ export class UsersController {
   @UseInterceptors(FileInterceptor('file'))
   async importCsv(@UploadedFile() file: UploadedFileLike, @Req() req: AuthenticatedRequest) {
     if (!file) throw new BadRequestException('No file uploaded');
-    return this.usersService.importCsv(file.buffer.toString('utf-8'), req.user.id);
+    return this.usersService.importCsv(file.buffer.toString('utf-8'), req.user.id, req.user.role);
   }
 
   @Get(':id')
@@ -74,6 +81,7 @@ export class UsersController {
   @Post()
   @Permission('users', 'create')
   create(@Body() dto: CreateUserDto, @Req() req: AuthenticatedRequest) {
+    this.assertCanAssignRole(req, dto.role);
     return this.usersService.create(dto, req.user.id);
   }
 
@@ -84,6 +92,7 @@ export class UsersController {
       throw new ForbiddenException();
     }
     if (req.user.id !== id) await this.assertInScope(req, id);
+    if (dto.role !== undefined) this.assertCanAssignRole(req, dto.role);
     if (req.user.id === id && dto.email !== undefined) {
       // Changing your own sign-in email needs a click on the link we send to the new address.
       const current = await this.usersService.findById(id);

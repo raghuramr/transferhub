@@ -424,11 +424,13 @@ export class WorkflowsService {
     return res.recordset.map((r) => ({ id: r.Id, email: r.Email, name: r.Name, role: r.Role }));
   }
 
-  async staffUsers(): Promise<StaffUser[]> {
+  /** Staff to pick as approvers. Super admins are not shown to (or pickable by) plain admins. */
+  async staffUsers(viewerRole?: string): Promise<StaffUser[]> {
+    const roles = viewerRole === 'admin' ? `'faculty','admin'` : `'faculty','admin','super_admin'`;
     const res = await this.db.query<{ Id: string; Email: string; Name: string; Role: string }>(
       `SELECT u.Id, u.Email, u.FirstName + ' ' + u.LastName AS Name, r.Name AS Role
        FROM Users u JOIN Roles r ON r.Id = u.RoleId
-       WHERE u.IsActive = 1 AND r.Name IN ('faculty','admin','super_admin') ORDER BY u.FirstName, u.LastName`,
+       WHERE u.IsActive = 1 AND r.Name IN (${roles}) ORDER BY u.FirstName, u.LastName`,
     );
     return res.recordset.map((r) => ({ id: r.Id, email: r.Email, name: r.Name, role: r.Role }));
   }
@@ -439,14 +441,15 @@ export class WorkflowsService {
 
   // ── approver groups ─────────────────────────────────────────
 
-  async listGroups() {
+  async listGroups(viewerRole?: string) {
     const groups = await this.db.query(
       `SELECT g.Id AS id, g.Name AS name, g.Description AS description, g.InstitutionId AS institutionId, g.IsActive AS isActive
        FROM ApproverGroups g ORDER BY g.Name`,
     );
     const members = await this.db.query(
       `SELECT m.GroupId, u.Id AS userId, u.FirstName + ' ' + u.LastName AS name, u.Email AS email
-       FROM ApproverGroupMembers m JOIN Users u ON u.Id = m.UserId ORDER BY u.FirstName`,
+       FROM ApproverGroupMembers m JOIN Users u ON u.Id = m.UserId JOIN Roles r ON r.Id = u.RoleId
+       ${viewerRole === 'admin' ? `WHERE r.Name <> 'super_admin'` : ''} ORDER BY u.FirstName`,
     );
     return groups.recordset.map((g) => ({
       ...g,
@@ -454,7 +457,7 @@ export class WorkflowsService {
     }));
   }
 
-  async saveGroup(id: number | null, dto: SaveGroupDto) {
+  async saveGroup(id: number | null, dto: SaveGroupDto, viewerRole?: string) {
     let groupId = id;
     const inputs = [
       { name: 'n', type: sql.NVarChar(150), value: dto.name },
@@ -475,13 +478,24 @@ export class WorkflowsService {
       );
       groupId = ins.recordset[0].Id;
     }
-    await this.db.query(`DELETE FROM ApproverGroupMembers WHERE GroupId = ${Number(groupId)}`);
-    for (const uid of dto.memberUserIds) {
+    // Plain admins cannot see super admins, so their save must neither remove nor add them.
+    const hidden = viewerRole === 'admin';
+    await this.db.query(
+      `DELETE m FROM ApproverGroupMembers m JOIN Users u ON u.Id = m.UserId JOIN Roles r ON r.Id = u.RoleId
+       WHERE m.GroupId = ${Number(groupId)}${hidden ? ` AND r.Name <> 'super_admin'` : ''}`,
+    );
+    let memberIds = dto.memberUserIds;
+    if (hidden && memberIds.length) {
+      const supers = await this.db.query<{ Id: string }>(`SELECT u.Id FROM Users u JOIN Roles r ON r.Id = u.RoleId WHERE r.Name = 'super_admin'`);
+      const blocked = new Set(supers.recordset.map((r) => String(r.Id).toLowerCase()));
+      memberIds = memberIds.filter((u) => !blocked.has(String(u).toLowerCase()));
+    }
+    for (const uid of memberIds) {
       await this.db.query(`INSERT INTO ApproverGroupMembers (GroupId, UserId) VALUES (${Number(groupId)}, @u)`, [
         { name: 'u', type: sql.UniqueIdentifier, value: uid },
       ]);
     }
-    return (await this.listGroups()).find((g) => g.id === groupId);
+    return (await this.listGroups(viewerRole)).find((g) => g.id === groupId);
   }
 
   async removeGroup(id: number) {
