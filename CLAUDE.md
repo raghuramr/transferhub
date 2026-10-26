@@ -491,6 +491,21 @@ now does too (previously new programs were invisible to `publicPrograms()`).
 - Fixed: the designer posted server-only fields (`stageKey`, approver `id`...) that the API's
   whitelist validation rejects; it now sends only editable fields.
 
+## Parked / pending items (as of 2026-10-26)
+- **Migration 014 + seeds: APPLIED** to the live DB (user ran `apply:all` via the db-mcp-server).
+- **`ANTHROPIC_API_KEY`: not obtained yet.** AI stays paused (AI Controls switch off or
+  `AI_DISABLED=true`; without a key the pipeline skips quietly). Revisit when the key exists:
+  set it, remove `AI_DISABLED`, switch AI back on, then try an auto-approve stage.
+- **CI SQL-firewall permission: deliberately left for later** (user decision). The deploy
+  service principal (object id `275b63a9-80e3-4ede-8867-4110cf1ed843`) still lacks
+  `Microsoft.Sql/servers/firewallRules/write`, so the workflow's DB steps fail (non-blocking;
+  deploy still succeeds and the run is marked failed on purpose). Until fixed, apply new
+  migrations/seeds manually with `npm run apply:all` in `tools/db-mcp-server` (set `DB_*` env
+  vars, machine must be allowed by the SQL firewall). Do not nag about this; wait for the user.
+- **End-to-end trial of the partner flow (onboard partner -> key -> submit via `/partner` or
+  API -> review/import -> report email) and of auto-approve: user will try it and report back.**
+  Resend is already configured in the App Service environment variables.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group
