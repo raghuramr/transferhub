@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/auth';
 import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner';
 import { MotionCard } from '../../components/ui/Card';
 import { Reveal } from '../../components/ui/PageTransition';
+import { DashboardView } from '../../components/dashboard/DashboardView';
 import {
   Upload, Clock, CheckCircle, AlertCircle, ChevronRight, GraduationCap
 } from 'lucide-react';
@@ -45,7 +46,7 @@ export default function StudentDashboard() {
   const transcripts: TranscriptSummary[] = data?.data ?? [];
 
   return (
-    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
@@ -94,6 +95,8 @@ export default function StudentDashboard() {
           </div>
         </MotionCard>
       </div>
+
+      <div className="mb-8"><DashboardView withRange={false} /></div>
 
       {/* Transcripts */}
       <Reveal index={3}>

@@ -456,3 +456,25 @@ export const accountApi = {
     api.post<{ message: string; emailSent: boolean }>('/account/email-change', { newEmail, password }),
   confirmEmailChange: (token: string) => api.post<{ email: string }>('/account/email-change/confirm', { token }),
 };
+
+// ── Course verification requests (faculty raise, admins resolve) ──
+export const verificationApi = {
+  list: (params?: { status?: string; mine?: boolean }) => api.get('/verification-requests', { params }),
+  raise: (courseId: number, reason: string) => api.post('/verification-requests', { courseId, reason }),
+  resolve: (id: number, status: 'verified' | 'rejected', note?: string) => api.post(`/verification-requests/${id}/resolve`, { status, note }),
+};
+
+// ── Dashboards (role-aware KPIs + charts) ─────────────────────────
+export interface DashboardKpi { key: string; label: string; value: number | string; hint?: string; tone?: 'good' | 'warn' | 'bad' | 'neutral' }
+export interface DashboardChart {
+  key: string;
+  title: string;
+  subtitle?: string;
+  type: 'bar' | 'hbar' | 'pie' | 'area' | 'line' | 'stacked';
+  data: Record<string, string | number>[];
+  series?: { key: string; label: string }[];
+}
+export interface DashboardPayload { role: string; days: number; ranges: number[]; generatedAt: string; kpis: DashboardKpi[]; charts: DashboardChart[] }
+export const dashboardApi = {
+  get: (days?: number) => api.get<DashboardPayload>('/dashboard', { params: { days } }),
+};

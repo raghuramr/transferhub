@@ -18,6 +18,8 @@ import UploadTranscript from './pages/student/UploadTranscript';
 
 // Faculty pages
 import FacultyQueue from './pages/faculty/FacultyQueue';
+import FacultyDashboard from './pages/faculty/FacultyDashboard';
+import VerificationRequests from './pages/faculty/VerificationRequests';
 import EvaluationWorkbench from './pages/faculty/EvaluationWorkbench';
 
 // Agency pages
@@ -130,7 +132,9 @@ export default function App() {
 
         {/* Faculty */}
         <Route path="/faculty" element={<RequireAuth roles={['faculty']}><AppLayout /></RequireAuth>}>
-          <Route index element={<FacultyQueue />} />
+          <Route index element={<FacultyDashboard />} />
+          <Route path="queue" element={<FacultyQueue />} />
+          <Route path="verification" element={<VerificationRequests />} />
           <Route path="evaluation/:id" element={<EvaluationWorkbench />} />
         </Route>
 
@@ -141,6 +145,7 @@ export default function App() {
           <Route path="evaluation/:id" element={<EvaluationWorkbench />} />
           <Route path="courses" element={<CourseDatabase />} />
           <Route path="equivalencies" element={<EquivalenciesManagement />} />
+          <Route path="verification" element={<VerificationRequests />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="pages" element={<PagesList />} />
           <Route path="pages/new" element={<PageEditor />} />

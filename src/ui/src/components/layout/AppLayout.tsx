@@ -10,7 +10,7 @@ import { Avatar } from '../shared/Avatar';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
-  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight,
+  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ShieldQuestion,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -28,9 +28,11 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/profile', label: 'My Profile', icon: <UserCircle size={18} /> },
   ],
   faculty: [
-    { to: '/faculty', label: 'Review Queue', icon: <ClipboardList size={18} /> },
+    { to: '/faculty', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { to: '/requests', label: 'Approval queue', icon: <Inbox size={18} /> },
+    { to: '/faculty/queue', label: 'My evaluations', icon: <ClipboardList size={18} /> },
     { to: '/appeals', label: 'Appeals', icon: <Gavel size={18} /> },
+    { to: '/faculty/verification', label: 'Course verification', icon: <ShieldQuestion size={18} /> },
     { to: '/profile', label: 'My Profile', icon: <UserCircle size={18} /> },
   ],
   admin: [
@@ -40,6 +42,7 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/admin/transcripts', label: 'Transcripts', icon: <FileText size={18} /> },
     { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
     { to: '/admin/equivalencies', label: 'Equivalencies', icon: <ArrowLeftRight size={18} /> },
+    { to: '/admin/verification', label: 'Course verification', icon: <ShieldQuestion size={18} /> },
     { to: '/admin/workflows', label: 'Workflows', icon: <GitBranch size={18} /> },
     { to: '/admin/ai-controls', label: 'AI Controls', icon: <Bot size={18} /> },
     { to: '/admin/users', label: 'Users', icon: <Users size={18} /> },
@@ -60,6 +63,7 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/admin/transcripts', label: 'Transcripts', icon: <FileText size={18} /> },
     { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
     { to: '/admin/equivalencies', label: 'Equivalencies', icon: <ArrowLeftRight size={18} /> },
+    { to: '/admin/verification', label: 'Course verification', icon: <ShieldQuestion size={18} /> },
     { to: '/admin/pages', label: 'Custom Pages', icon: <FileEdit size={18} /> },
     { to: '/admin/forms', label: 'Custom Forms', icon: <ListChecks size={18} /> },
     // Users

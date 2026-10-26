@@ -591,6 +591,41 @@ change plan + confirmed decisions in `13_registration_and_process_changes.md`.
   (AcademicUnit) belongs to exactly one University", which is already the schema (`InstitutionId`
   FK, nullable = unmapped).
 
+## Session 2026-10-26 (c): dashboards, scoping, photos, email change, verification (built; NOT merged to main yet)
+Branch `claude/dashboards-profiles-scoping` (built on `claude/superadmin-users-edit-fix`, which is also unmerged).
+- **Migration 018 + seed 012 are NEW and NOT applied** (run `npm run apply:all` in `tools/db-mcp-server`).
+  018: `Users.EmailVerified` (default 1 = every existing/new account counts as verified for now),
+  `Users.AvatarUploadId`, `EmailChangeRequests`, `CourseVerificationRequests`. Seed 012 fills every
+  student's missing profile fields (only NULLs, deterministic, re-runnable): contact/address, prior college,
+  target university/program/school, applicant type, entry term, English, GPA, emergency contact, one education row.
+  Code degrades until 018 is applied (dashboards skip those widgets; photo/verification endpoints say so).
+- **Invisible button root cause**: `cn()` just joined classes, so `bg-white` (Card) beat `bg-brand-800`. `cn()` now
+  uses `tailwind-merge`; this fixes the same class conflict everywhere, not only the student dashboard.
+- **Admin scoping**: `ScopeService` (policy module, global). An `admin` with `UserScopeUniversities` rows only sees
+  students whose `StudentProfiles.TargetInstitutionId` (or a transcript's `TargetInstitutionId`) is in scope: users
+  list/get/update/deactivate/unlock, transcripts list/get/document, approval queue + `assertCanView`, dashboard.
+  No scope rows = unrestricted; super admins and faculty are never narrowed (faculty are limited by workflow stages).
+  Note: transcripts previously scoped admins by the SOURCE institution; that was replaced by target-university scope.
+  Students with no target university are invisible to a scoped admin (seed 012 gives every student one).
+- **Dashboards**: `GET /dashboard?days=30|90|180|365` (`dashboard/`) returns role-specific `{kpis, charts}`; the UI
+  (`components/dashboard/DashboardView.tsx`, recharts) renders them generically with a time-range selector. Used by
+  student, faculty (new `/faculty` dashboard; the old queue moved to `/faculty/queue`), admin and super admin.
+  Each widget is isolated in try/catch so one bad query never blanks the page. Agency dashboard unchanged.
+- **Faculty "approvals" explained**: the default workflow's Faculty-review stage is assigned to the ROLE `faculty`, so
+  every faculty user sees every request waiting at that stage (all universities). Narrow it in Workflows (assign a
+  group or user instead of the role). Faculty can now raise a course for verification (`/faculty/verification`,
+  `verification-requests` API): raising flags `Courses.Verified='Check'`; an admin marks it verified ('Yes') or dismisses.
+- **Profile photos**: `account/` module. Photo is cropped/zoomed in the browser (`PhotoEditor`), saved as a 512px JPEG
+  in blob storage via `UploadsService` (entityType `avatar`), `Users.AvatarUploadId` points at it; any signed-in user may
+  view it (`GET /account/photo/:userId`, fetched with the session by `Avatar`). Super admin "Generate default photos"
+  (Users page) gives every user without one a generated initials avatar (SVG in blob) - real photos cannot be invented.
+- **Email change**: users can no longer PATCH their own email; `POST /account/email-change` (needs current password)
+  emails a 24h link to the NEW address, `/verify-email?token=` confirms it (`EmailChangeRequests`, hashed token).
+  Admins can still edit other users' emails directly. No verification mail is sent at registration yet.
+- Also fixed: the transcript document download still read local disk (broken since blob storage); it now streams from
+  blob storage via `UploadsService.getByStoredPath`.
+- **Next (user-stated)**: after these are done, move on to the core AI processing logic.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group

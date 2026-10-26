@@ -56,7 +56,7 @@ export default function EvaluationWorkbench() {
     mutationFn: (payload: DecidePayload) => evaluationsApi.decide(id!, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['evaluations'] });
-      navigate('/faculty');
+      navigate('/faculty/queue');
     },
   });
 
@@ -256,7 +256,7 @@ export default function EvaluationWorkbench() {
             </button>
 
             <button
-              onClick={() => navigate('/faculty')}
+              onClick={() => navigate('/faculty/queue')}
               className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors"
             >
               <XCircle size={16} />

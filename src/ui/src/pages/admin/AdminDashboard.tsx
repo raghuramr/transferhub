@@ -1,65 +1,40 @@
 import { useQuery } from '@tanstack/react-query';
-import { LayoutDashboard, FileText, Users, BookOpen, Clock, CheckCircle } from 'lucide-react';
-import { transcriptsApi, usersApi } from '../../lib/api';
+import { LayoutDashboard } from 'lucide-react';
+import { transcriptsApi } from '../../lib/api';
 import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner';
+import { DashboardView } from '../../components/dashboard/DashboardView';
 import { Link } from 'react-router-dom';
 import type { TranscriptSummary } from '../../types';
-
-function StatCard({ label, value, icon, to }: { label: string; value: string | number; icon: React.ReactNode; to: string }) {
-  return (
-    <Link to={to} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <p className="text-sm font-medium text-gray-500">{label}</p>
-        <span className="text-brand-500">{icon}</span>
-      </div>
-      <p className="text-3xl font-bold text-gray-900">{value}</p>
-    </Link>
-  );
-}
 
 export default function AdminDashboard() {
   const { data: transcripts } = useQuery({
     queryKey: ['transcripts', 'all'],
     queryFn: () => transcriptsApi.list(),
   });
-  const { data: users } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => usersApi.list(),
-  });
-
-  const allTranscripts: TranscriptSummary[] = transcripts?.data ?? [];
-  const allUsers = users?.data ?? [];
-
-  const pending = allTranscripts.filter((t) => t.status === 'received' || t.status === 'processing').length;
-  const complete = allTranscripts.filter((t) => t.status === 'complete').length;
+  const recent: TranscriptSummary[] = (transcripts?.data ?? []).slice(0, 5);
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto">
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex items-center gap-3 mb-6">
         <LayoutDashboard className="text-brand-800" size={24} />
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-500">System overview</p>
+          <p className="text-gray-500">Students and transfer requests for the universities you manage</p>
         </div>
       </div>
 
       <AnnouncementsBanner />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Transcripts" value={allTranscripts.length} icon={<FileText size={20} />} to="/admin/transcripts" />
-        <StatCard label="Pending Review" value={pending} icon={<Clock size={20} />} to="/admin/transcripts?status=processing" />
-        <StatCard label="Completed" value={complete} icon={<CheckCircle size={20} />} to="/admin/transcripts?status=complete" />
-        <StatCard label="Total Users" value={allUsers.length} icon={<Users size={20} />} to="/admin/users" />
-      </div>
+      <DashboardView />
 
-      {/* Recent transcripts */}
-      <div className="bg-white rounded-xl border border-gray-200">
+      <div className="mt-8 bg-white rounded-xl border border-gray-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="font-semibold text-gray-900">Recent Transcripts</h2>
           <Link to="/admin/transcripts" className="text-sm text-brand-800 hover:underline">View all</Link>
         </div>
         <div className="divide-y divide-gray-100">
-          {allTranscripts.slice(0, 5).map((t) => (
+          {recent.length === 0 && <p className="px-6 py-6 text-sm text-gray-400">No transcripts yet.</p>}
+          {recent.map((t) => (
             <div key={t.id} className="flex items-center justify-between px-6 py-4">
               <div>
                 <p className="font-medium text-sm text-gray-900">{t.studentName}</p>
