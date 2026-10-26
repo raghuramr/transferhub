@@ -432,3 +432,12 @@ export const appealsApi = {
     denialReason?: string; departmentName: string; comments?: string; signedName: string;
   }) => api.post<{ message: string }>(`/appeals/${id}/decide`, data),
 };
+
+// ── Course equivalencies (with effective-date windows) ────────────
+export const equivalenciesApi = {
+  list: (params?: { status?: string; search?: string; externalCourseId?: number; buCourseId?: number }) =>
+    api.get('/equivalencies', { params }),
+  create: (data: unknown) => api.post('/equivalencies', data),
+  update: (id: number, data: unknown) => api.patch(`/equivalencies/${id}`, data),
+  deactivate: (id: number) => api.delete(`/equivalencies/${id}`),
+};

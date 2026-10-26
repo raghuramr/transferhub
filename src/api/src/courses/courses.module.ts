@@ -3,12 +3,14 @@ import { CoursesService } from './courses.service';
 import { CoursesController } from './courses.controller';
 import { CourseTopicsService } from './course-topics.service';
 import { CourseTopicsController } from './course-topics.controller';
+import { EquivalenciesService } from './equivalencies.service';
+import { EquivalenciesController } from './equivalencies.controller';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [AuthModule],
-  providers: [CoursesService, CourseTopicsService],
-  controllers: [CoursesController, CourseTopicsController],
+  providers: [CoursesService, CourseTopicsService, EquivalenciesService],
+  controllers: [CoursesController, CourseTopicsController, EquivalenciesController],
   exports: [CoursesService, CourseTopicsService],
 })
 export class CoursesModule {}

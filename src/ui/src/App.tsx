@@ -41,6 +41,7 @@ import SystemSettings from './pages/superadmin/SystemSettings';
 import UniversitiesManagement from './pages/superadmin/UniversitiesManagement';
 import InstitutionsManagement from './pages/superadmin/InstitutionsManagement';
 import ProgramsManagement from './pages/superadmin/ProgramsManagement';
+import EquivalenciesManagement from './pages/admin/EquivalenciesManagement';
 import AgenciesManagement from './pages/superadmin/AgenciesManagement';
 import RolesPermissions from './pages/superadmin/RolesPermissions';
 import DataImport from './pages/superadmin/DataImport';
@@ -137,6 +138,7 @@ export default function App() {
           <Route path="transcripts" element={<TranscriptList />} />
           <Route path="evaluation/:id" element={<EvaluationWorkbench />} />
           <Route path="courses" element={<CourseDatabase />} />
+          <Route path="equivalencies" element={<EquivalenciesManagement />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="pages" element={<PagesList />} />
           <Route path="pages/new" element={<PageEditor />} />
