@@ -173,7 +173,7 @@ export class DbSourceConnector implements SourceConnector {
     );
     const documents: SourceDocument[] = [];
     for (const d of dRes.recordset) {
-      let bytes = Buffer.alloc(0);
+      let bytes: Buffer = Buffer.alloc(0);
       let mimeType = d.MimeType || 'application/pdf';
       if (withBytes) {
         if (d.Content && d.Content.length > 0) {

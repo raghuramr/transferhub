@@ -48,6 +48,7 @@ export interface SubmissionBody {
   universities?: Raw[];
   programs?: Raw[];
   courses?: Raw[];
+  students?: Raw[];
 }
 
 const parseJson = <T,>(s: string | null, fallback: T): T => {
@@ -82,7 +83,7 @@ export class SubmissionsService {
         flat.push({ type, payload: item as Raw });
       }
     }
-    if (!flat.length) throw new BadRequestException('Nothing to import: send at least one of universities, programs or courses.');
+    if (!flat.length) throw new BadRequestException('Nothing to import: send at least one of universities, programs, courses or students.');
     if (flat.length > MAX_ROWS_PER_SUBMISSION) {
       throw new BadRequestException(`At most ${MAX_ROWS_PER_SUBMISSION} rows per submission (got ${flat.length}). Split it into several submissions.`);
     }
@@ -108,7 +109,7 @@ export class SubmissionsService {
     const batchId = batch.recordset[0].Id;
     const ref = batch.recordset[0].Ref;
 
-    const perType: Record<EntityType, number> = { universities: 0, programs: 0, courses: 0 };
+    const perType: Record<EntityType, number> = { universities: 0, programs: 0, courses: 0, students: 0 };
     const CHUNK = 200;
     for (let i = 0; i < checked.length; i += CHUNK) {
       const slice = checked.slice(i, i + CHUNK);
@@ -148,8 +149,8 @@ export class SubmissionsService {
     v: { valid: number; warnings: number; errors: number },
     note?: string,
   ) {
-    const total = perType.universities + perType.programs + perType.courses;
-    const summary = `${perType.universities} universities, ${perType.programs} programs, ${perType.courses} courses`;
+    const total = perType.universities + perType.programs + perType.courses + perType.students;
+    const summary = `${perType.universities} universities, ${perType.programs} programs, ${perType.courses} courses, ${perType.students} student profiles`;
     if (partner) {
       await this.email.sendEmail(partner.contactEmail, templates.submissionReceived(this.email.context, {
         contactName: partner.contactName, reference: ref, total, summary,
@@ -247,8 +248,38 @@ export class SubmissionsService {
     return r.recordset[0];
   }
 
+  /** Reviewers see a size instead of megabytes of base64; editRow puts the stored file back on save. */
+  private redact(payload: Raw): Raw {
+    if (!Array.isArray(payload.documents)) return payload;
+    return {
+      ...payload,
+      documents: (payload.documents as Raw[]).map((d) => {
+        const b64 = typeof d?.contentBase64 === 'string' ? d.contentBase64 : '';
+        if (!b64 || b64.startsWith('(stored')) return d;
+        const kb = Math.max(1, Math.round(((b64.length * 3) / 4) / 1024));
+        return { ...d, contentBase64: `(stored: ${kb} KB)` };
+      }),
+    };
+  }
+
+  /** Re-attaches the stored base64 for documents the reviewer left untouched (matched by docType + fileName). */
+  private restoreDocs(existing: Raw, incoming: Raw): Raw {
+    if (!Array.isArray(incoming.documents) || !Array.isArray(existing.documents)) return incoming;
+    const old = new Map<string, string>();
+    for (const d of existing.documents as Raw[]) old.set(`${String(d?.docType)}|${String(d?.fileName)}`, String(d?.contentBase64 ?? ''));
+    return {
+      ...incoming,
+      documents: (incoming.documents as Raw[]).map((d) => {
+        const b64 = typeof d?.contentBase64 === 'string' ? d.contentBase64 : '';
+        if (!b64.startsWith('(stored')) return d;
+        const back = old.get(`${String(d?.docType)}|${String(d?.fileName)}`);
+        return back ? { ...d, contentBase64: back } : d;
+      }),
+    };
+  }
+
   private mapRow(r: RowRecord) {
-    const payload = parseJson<Raw>(r.Payload, {});
+    const payload = this.redact(parseJson<Raw>(r.Payload, {}));
     return {
       id: r.Id,
       rowNo: r.RowNo,
@@ -349,11 +380,12 @@ export class SubmissionsService {
   }
 
   /** Lets the reviewer fix a typo instead of bouncing the whole submission. Revalidates the row. */
-  async editRow(batchId: number, rowId: number, payload: Raw) {
+  async editRow(batchId: number, rowId: number, incoming: Raw) {
     const b = await this.loadBatch(batchId);
-    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new BadRequestException('payload must be an object');
+    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) throw new BadRequestException('payload must be an object');
     const r = (await this.selectedRows(batchId, [rowId], ['pending', 'failed', 'rejected']))[0];
     if (!r) throw new BadRequestException('Only rows that have not been imported can be edited.');
+    const payload = this.restoreDocs(parseJson<Raw>(r.Payload, {}), incoming);
     const lookups = this.imports.newLookups();
     const all = await this.db.query<RowRecord>(`SELECT EntityType, Payload FROM ImportBatchRows WHERE BatchId = @b AND Id <> @r`, [
       { name: 'b', type: sql.Int, value: batchId },
@@ -405,7 +437,7 @@ export class SubmissionsService {
           message = check.messages.join('; ');
           tally.blocked++;
         } else {
-          const res = await this.imports.applyRow(row.EntityType, payload, lookups, scope);
+          const res = await this.imports.applyRow(row.EntityType, payload, lookups, scope, { partnerId: b.PartnerId, sourceSystem: b.UniversityName ?? 'Staff import' });
           status = res.outcome;
           message = res.message;
           tally[res.outcome]++;
@@ -481,7 +513,7 @@ export class SubmissionsService {
       note: quoteText || null,
       rows: shown.map((r) => [
         String(r.RowNo),
-        r.EntityType === 'universities' ? 'University' : r.EntityType === 'programs' ? 'Program' : 'Course',
+        r.EntityType === 'universities' ? 'University' : r.EntityType === 'programs' ? 'Program' : r.EntityType === 'students' ? 'Student' : 'Course',
         this.imports.describeRow(r.EntityType, parseJson<Raw>(r.Payload, {})),
         label[r.RowStatus] ?? r.RowStatus,
         r.OutcomeMessage ?? parseJson<string[]>(r.Messages, []).join('; '),

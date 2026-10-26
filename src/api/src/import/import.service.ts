@@ -542,6 +542,7 @@ export class ImportService {
     // Documents: same docType + file name replaces the earlier copy.
     let docCount = 0;
     for (const d of Array.isArray(raw.documents) ? (raw.documents as Raw[]) : []) {
+      if (String(d.contentBase64).startsWith('(stored')) continue;
       const content = Buffer.from(String(d.contentBase64).replace(/\s+/g, ''), 'base64');
       const fileName = str(d.fileName);
       await this.db.query(
