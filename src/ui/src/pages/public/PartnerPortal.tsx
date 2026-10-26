@@ -97,7 +97,7 @@ function SendTab({ apiKey, who, onSent }: { apiKey: string; who: PartnerIdentity
   }, [who.universityCode]);
 
   const counts = parsed ? countRows(parsed.body) : null;
-  const total = counts ? counts.universities + counts.programs + counts.courses : 0;
+  const total = counts ? counts.universities + counts.programs + counts.courses + counts.students : 0;
 
   const send = async () => {
     if (!parsed) return;
@@ -119,11 +119,11 @@ function SendTab({ apiKey, who, onSent }: { apiKey: string; who: PartnerIdentity
       <div className="rounded-xl border border-green-200 bg-green-50 p-6">
         <div className="flex items-center gap-2 text-lg font-semibold text-green-800"><CheckCircle2 size={20} /> Received - reference {result.reference}</div>
         <p className="mt-2 text-sm text-green-900">
-          {result.received.universities} universities, {result.received.programs} programs and {result.received.courses} courses are waiting for review.
+          {result.received.universities} universities, {result.received.programs} programs, {result.received.courses} courses and {result.received.students ?? 0} student profiles are waiting for review.
           Automatic checks: {result.validation.valid} clean, {result.validation.warnings} with warnings, {result.validation.errors} with errors.
           {result.validation.errors > 0 && ' Rows with errors cannot be imported until they are fixed - the reviewer may edit them or ask you to resend.'}
         </p>
-        <p className="mt-2 text-sm text-green-900">Nothing is added until a TransferHub administrator approves it. You will get an email report when it has been processed; you can also follow it under "My submissions".</p>
+        <p className="mt-2 text-sm text-green-900">Nothing is added until a TransferHub administrator approves it. Approved student profiles are ready to claim: the student (or you, by marking rows with invite) opens a link and confirms the details before any account exists. You will get an email report when it has been processed; you can also follow it under "My submissions".</p>
         <button type="button" onClick={() => setResult(null)} className="mt-4 rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800">Send another file</button>
       </div>
     );
@@ -134,12 +134,12 @@ function SendTab({ apiKey, who, onSent }: { apiKey: string; who: PartnerIdentity
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="mb-1 flex items-center gap-2 font-semibold text-gray-900"><FileSpreadsheet size={17} className="text-green-700" /> Excel</div>
-          <p className="mb-3 text-sm text-gray-500">Fill in our workbook: one sheet each for Universities, Programs, Courses and Topics. Delete the example rows you do not need.</p>
+          <p className="mb-3 text-sm text-gray-500">Fill in our workbook: sheets for Universities, Programs, Courses, Topics, Students and StudentCourses. Delete the example rows you do not need.</p>
           <button type="button" onClick={() => void downloadTemplate(who.universityCode)} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"><Download size={14} /> Download Excel template</button>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="mb-1 flex items-center gap-2 font-semibold text-gray-900"><FileJson size={17} className="text-amber-600" /> JSON</div>
-          <p className="mb-3 text-sm text-gray-500">Already export data from your own systems? Send a JSON file with <code className="rounded bg-gray-100 px-1">universities</code>, <code className="rounded bg-gray-100 px-1">programs</code> and/or <code className="rounded bg-gray-100 px-1">courses</code>.</p>
+          <p className="mb-3 text-sm text-gray-500">Already export data from your own systems? Send a JSON file with <code className="rounded bg-gray-100 px-1">universities</code>, <code className="rounded bg-gray-100 px-1">programs</code> and/or <code className="rounded bg-gray-100 px-1">courses</code> and/or <code className="rounded bg-gray-100 px-1">students</code> (student profiles with courses and optional documents).</p>
           <button type="button" onClick={() => downloadJsonExample(who.universityCode)} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"><Download size={14} /> Download JSON example</button>
         </div>
       </div>
@@ -160,13 +160,20 @@ function SendTab({ apiKey, who, onSent }: { apiKey: string; who: PartnerIdentity
       {parsed && counts && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h3 className="mb-1 font-semibold text-gray-900">Check before sending</h3>
-          <p className="mb-4 text-sm text-gray-500">{counts.universities} universities, {counts.programs} programs, {counts.courses} courses found in <strong>{fileName}</strong>.</p>
+          <p className="mb-4 text-sm text-gray-500">{counts.universities} universities, {counts.programs} programs, {counts.courses} courses, {counts.students} student profiles found in <strong>{fileName}</strong>.</p>
           {parsed.warnings.length > 0 && (
             <ul className="mb-4 space-y-1 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{parsed.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
           )}
           <PreviewTable title="Universities" rows={parsed.body.universities ?? []} />
           <PreviewTable title="Programs" rows={parsed.body.programs ?? []} />
           <PreviewTable title="Courses" rows={parsed.body.courses ?? []} />
+          <PreviewTable
+            title="Student profiles"
+            rows={(parsed.body.students ?? []).map((r) => ({
+              externalId: r.externalId, firstName: r.firstName, lastName: r.lastName, email: r.email, programName: r.programName,
+              courses: Array.isArray(r.courses) ? r.courses.length : 0, documents: Array.isArray(r.documents) ? r.documents.length : 0, invite: r.invite ? 'yes' : 'no',
+            }))}
+          />
           <label className="mt-2 block text-sm font-medium text-gray-700">Note for the reviewer (optional)
             <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000} className="mt-1 w-full rounded-lg border border-gray-300 p-2 text-sm" placeholder="e.g. Fall 2027 catalogue update" />
           </label>
@@ -213,7 +220,7 @@ function MyTab({ apiKey }: { apiKey: string }) {
                   <thead className="text-left text-gray-400"><tr><th className="py-1 pr-3">#</th><th className="pr-3">Type</th><th className="pr-3">Item</th><th className="pr-3">Result</th><th>Details</th></tr></thead>
                   <tbody className="divide-y divide-gray-100">
                     {detail.data?.rows.map((r) => (
-                      <tr key={r.rowNo}><td className="py-1.5 pr-3 text-gray-400">{r.rowNo}</td><td className="pr-3">{r.type}</td><td className="max-w-[16rem] truncate pr-3 text-gray-800">{r.item}</td><td className="pr-3"><Pill s={r.status} /></td><td className="text-gray-500">{r.message}</td></tr>
+                      <tr key={r.rowNo}><td className="py-1.5 pr-3 text-gray-400">{r.rowNo}</td><td className="pr-3">{r.type === 'students' ? 'student profile' : r.type}</td><td className="max-w-[16rem] truncate pr-3 text-gray-800">{r.item}</td><td className="pr-3"><Pill s={r.status} /></td><td className="text-gray-500">{r.message}</td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -242,6 +249,7 @@ function ApiTab({ who }: { who: PartnerIdentity }) {
           <li>Check a submission: <code className="rounded bg-gray-100 px-1">GET {base}/submissions/&lt;reference&gt;</code></li>
           <li>You can only send data for your own university code (<strong>{who.universityCode}</strong>); it is filled in if you leave it out.</li>
           <li>Up to 5,000 rows per submission and 60 requests per minute.</li>
+          <li><strong>Student profiles</strong> (<code className="rounded bg-gray-100 px-1">students</code>): send each student once with their ID, email and courses. Once approved the profile is ready to claim; set <code className="rounded bg-gray-100 px-1">"invite": true</code> to email the student a link to confirm it. No account is created until the student confirms. Documents are optional base64 PDF/PNG/JPG files up to 2 MB each, so keep submissions with documents small (6 MB request limit).</li>
         </ul>
       </div>
       {fmt.data && (

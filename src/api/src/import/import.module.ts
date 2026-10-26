@@ -6,10 +6,11 @@ import { PartnersService } from './partners.service';
 import { SubmissionsService } from './submissions.service';
 import { ApiKeyGuard } from './api-key.guard';
 import { AuthModule } from '../auth/auth.module';
+import { IntakeModule } from '../intake/intake.module';
 import { EmailService } from '../common/email.service';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, IntakeModule],
   controllers: [ImportController, PublicImportController],
   providers: [ImportService, PartnersService, SubmissionsService, ApiKeyGuard, EmailService],
 })

@@ -10,7 +10,7 @@ import { Avatar } from '../shared/Avatar';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
-  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ShieldQuestion,
+  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ShieldQuestion, ScanLine,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -44,6 +44,7 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
     { to: '/admin/equivalencies', label: 'Equivalencies', icon: <ArrowLeftRight size={18} /> },
     { to: '/admin/verification', label: 'Course verification', icon: <ShieldQuestion size={18} /> },
+    { to: '/admin/intake', label: 'Student intake', icon: <ScanLine size={18} /> },
     { to: '/admin/pages', label: 'Custom Pages', icon: <FileEdit size={18} /> },
     { to: '/admin/forms', label: 'Custom Forms', icon: <ListChecks size={18} /> },
     // Users
@@ -68,6 +69,7 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
     { to: '/admin/equivalencies', label: 'Equivalencies', icon: <ArrowLeftRight size={18} /> },
     { to: '/admin/verification', label: 'Course verification', icon: <ShieldQuestion size={18} /> },
+    { to: '/admin/intake', label: 'Student intake', icon: <ScanLine size={18} /> },
     { to: '/admin/pages', label: 'Custom Pages', icon: <FileEdit size={18} /> },
     { to: '/admin/forms', label: 'Custom Forms', icon: <ListChecks size={18} /> },
     // Users

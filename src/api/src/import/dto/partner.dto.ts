@@ -33,6 +33,7 @@ export class SubmissionBodyDto {
   @IsOptional() @IsArray() universities?: Record<string, unknown>[];
   @IsOptional() @IsArray() programs?: Record<string, unknown>[];
   @IsOptional() @IsArray() courses?: Record<string, unknown>[];
+  @IsOptional() @IsArray() students?: Record<string, unknown>[];
 }
 
 export class RowIdsDto {
