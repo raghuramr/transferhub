@@ -530,7 +530,7 @@ change plan + confirmed decisions in `13_registration_and_process_changes.md`.
 
 ## Parked / pending items (as of 2026-10-26)
 - **Migration 014 + seeds: APPLIED** to the live DB (user ran `apply:all` via the db-mcp-server).
-- **Migration 015 + seed 010: NOT yet applied** (built 2026-10-26) - user must run `npm run apply:all` again.
+- **Migration 015 + seed 010: APPLIED** to the live DB (2026-10-26). User is testing the new 6-step registration and will report back.
 - **`ANTHROPIC_API_KEY`: not obtained yet.** AI stays paused (AI Controls switch off or
   `AI_DISABLED=true`; without a key the pipeline skips quietly). Revisit when the key exists:
   set it, remove `AI_DISABLED`, switch AI back on, then try an auto-approve stage.
