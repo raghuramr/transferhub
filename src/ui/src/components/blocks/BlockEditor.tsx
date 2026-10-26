@@ -146,7 +146,7 @@ function BlockFields({ block, onChange }: { block: Block; onChange: (patch: Part
             onChange={(e) => onChange({ title: e.target.value } as Partial<Block>)} />
           <input className={inputCls} value={block.subtitle ?? ''} placeholder="Subtitle (optional)"
             onChange={(e) => onChange({ subtitle: e.target.value } as Partial<Block>)} />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input className={inputCls} value={block.ctaLabel ?? ''} placeholder="Button label (optional)"
               onChange={(e) => onChange({ ctaLabel: e.target.value } as Partial<Block>)} />
             <input className={inputCls} value={block.ctaHref ?? ''} placeholder="Button link (e.g. /login)"

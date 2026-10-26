@@ -223,7 +223,7 @@ function UniversityQuickEdit({ universityId }: { universityId: number }) {
   if (!current) return <p className="text-xs text-gray-400 mt-2">Loading…</p>;
   const input = 'w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500';
   return (
-    <div className="mt-2 grid grid-cols-2 gap-2">
+    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
       <input className={input} value={current.code} onChange={(e) => setForm({ ...current, code: e.target.value })} placeholder="Code" />
       <input className={input} value={current.name} onChange={(e) => setForm({ ...current, name: e.target.value })} placeholder="Name" />
       <select className={input} value={current.calendar} onChange={(e) => setForm({ ...current, calendar: e.target.value })}>

@@ -217,7 +217,53 @@ export function DataTable<T extends { id: string | number }>({
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {/* Phones: one card per row (first column is the title) instead of a sideways-scrolling table. */}
+        <ul className="md:hidden divide-y divide-gray-100">
+          {visible.map((row) => {
+            const [first, ...rest] = columns;
+            return (
+              <li key={row.id} className="p-4">
+                <div
+                  className={`flex items-start gap-3 ${renderExpanded ? 'cursor-pointer' : ''}`}
+                  onClick={renderExpanded ? () => toggleExpanded(row.id) : undefined}
+                >
+                  {bulkActions.length > 0 && (
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={selected.has(row.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => toggleRow(row.id)}
+                    />
+                  )}
+                  <div className="min-w-0 flex-1 font-medium text-gray-900 break-words">
+                    {first.render ? first.render(row) : String((row as Record<string, unknown>)[first.key] ?? '—')}
+                  </div>
+                  {renderExpanded && (
+                    <span className="mt-0.5 text-gray-400">
+                      {expanded.has(row.id) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </span>
+                  )}
+                </div>
+                <dl className="mt-2 grid grid-cols-1 gap-y-1.5 text-sm">
+                  {rest.map((c) => (
+                    <div key={c.key} className="flex items-baseline justify-between gap-3">
+                      <dt className="shrink-0 text-xs uppercase text-gray-400">{c.header}</dt>
+                      <dd className="min-w-0 break-words text-right text-gray-700">
+                        {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '—')}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                {renderExpanded && expanded.has(row.id) && (
+                  <div className="mt-3 border-t border-gray-100 pt-3">{renderExpanded(row)}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
             <tr>
@@ -279,6 +325,7 @@ export function DataTable<T extends { id: string | number }>({
             ))}
           </tbody>
         </table>
+        </div>
         {filtered.length === 0 && !isLoading && (
           <div className="text-center py-12 text-gray-400">{emptyMessage}</div>
         )}

@@ -268,7 +268,7 @@ function UsageCard({ requestId }: { requestId: string }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-gray-800"><Coins size={14} /> AI usage for this request</h3>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
         <dt className="text-gray-500">Model calls</dt><dd className="text-right font-medium">{u.calls}</dd>
         <dt className="text-gray-500">Tokens used</dt><dd className="text-right font-medium">{total.toLocaleString()}</dd>
         <dt className="text-gray-500">Est. cost</dt><dd className="text-right font-medium">${u.costUsd.toFixed(4)}</dd>

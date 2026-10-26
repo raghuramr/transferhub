@@ -136,8 +136,8 @@ export default function RolesPermissions() {
         configuration — it is not yet wired into live access checks (see project notes).
       </p>
 
-      <div className="flex gap-6">
-        <div className="w-56 shrink-0 bg-white rounded-xl border border-gray-200 p-2">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+        <div className="md:w-56 md:shrink-0 bg-white rounded-xl border border-gray-200 p-2">
           {modules.map((m) => (
             <button
               key={m.id}
@@ -153,7 +153,7 @@ export default function RolesPermissions() {
           ))}
         </div>
 
-        <div className="flex-1 bg-white rounded-xl border border-gray-200 p-6 overflow-x-auto">
+        <div className="flex-1 min-w-0 bg-white rounded-xl border border-gray-200 p-4 sm:p-6 overflow-x-auto">
           <h2 className="font-semibold text-gray-900 mb-4">{activeModule?.label}</h2>
           {activeModule && (
             <table className="w-full text-sm">
