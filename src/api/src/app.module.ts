@@ -24,6 +24,7 @@ import { ImportModule } from './import/import.module';
 import { PolicyModule } from './policy/policy.module';
 import { WorkflowsModule } from './workflows/workflows.module';
 import { RequestsModule } from './requests/requests.module';
+import { DocumentsModule } from './documents/documents.module';
 import { AuditController } from './common/audit.controller';
 import { HealthController } from './common/health.controller';
 
@@ -62,6 +63,7 @@ const envFilePath =
     PolicyModule,
     WorkflowsModule,
     RequestsModule,
+    DocumentsModule,
   ],
   controllers: [AuditController, HealthController],
 })

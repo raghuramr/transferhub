@@ -668,6 +668,25 @@ Several ways to get a student's data in; every channel ends at the same "confirm
   the bento (fixed weekly/monthly/yearly windows). Negative deltas render red with a down arrow.
 - The user also shared a 21st.dev "glass-folder-cards" link; it cannot be opened from here - ask for the component code/prompt.
 
+## Session 2026-10-26 (g): refresh-logout fix (on main) + AI document reading (branch `claude/ai-documents`, NOT merged)
+- **Refresh logged users out (fixed, on main)**: the auth store started logged-out and restored the session in a `useEffect`
+  after first render, so every route guard redirected to `/login` on reload. `store/auth.ts` now reads localStorage when the
+  store is created (`loadStoredSession`).
+- **AI document reading** (`src/api/src/documents/`, UI `/student/documents` "Smart upload"): students drop PDFs/images ->
+  stored privately in blob (entityType `smart_upload`) -> `DocumentReader` classifies + extracts (transcript, id_document,
+  english_test, syllabus, enrollment_letter, other) -> student reviews/edits -> confirm sets `Uploads.DocumentType`, adds a
+  `StudentEducation` row (transcripts) and can prefill the existing transcript form (`/student/upload?intake=<id>`).
+  Status flow: uploaded -> reading -> read | needs_review (confidence < 0.6) -> confirmed; failed/skipped.
+  **Without `ANTHROPIC_API_KEY` / with AI off it is "paused"**: files are stored, status `skipped`, the student picks the type
+  and edits by hand. With a key it uses the cheap model first and escalates (`AiSettings`), respects the global switch,
+  `AI_DISABLED` and the monthly budget, and logs usage with operation `read`. Reading instructions are editable skills under
+  AI Controls category "Document reading" (seed 014: doc_classify, doc_transcript_extract, doc_id_extract,
+  doc_english_test, doc_syllabus, doc_output_rules); they are NOT injected into the course-matcher prompt.
+- **Needs applying**: migration 020 (also widens `CK_AgentSkills_Category` to allow `documents`) + seed 014. Until then every
+  `/documents` endpoint except `status` returns 503. Migrations 018/019 + seeds 012/013 from earlier are still pending too
+  unless the user has applied them.
+- **Not tested with a real key**: the Anthropic PDF/image request shape and JSON parsing are covered by reading only.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group
