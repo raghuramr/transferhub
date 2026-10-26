@@ -164,6 +164,9 @@ export default function LoginPage() {
             New student?{' '}
             <Link to="/register" className="text-brand-800 font-medium hover:underline">Create an account</Link>
           </p>
+          <p className="text-sm text-gray-500 text-center mt-2">
+            <Link to="/intake" className="text-brand-800 font-medium hover:underline">Find my records from my previous university</Link>
+          </p>
 
           {/* Demo hint */}
           <div className="mt-6 pt-6 border-t border-gray-100">

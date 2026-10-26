@@ -18,6 +18,7 @@ import { AgenciesModule } from './agencies/agencies.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { AccountModule } from './account/account.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { IntakeModule } from './intake/intake.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { ImportModule } from './import/import.module';
 import { PolicyModule } from './policy/policy.module';
@@ -55,6 +56,7 @@ const envFilePath =
     UploadsModule,
     AccountModule,
     DashboardModule,
+    IntakeModule,
     PermissionsModule,
     ImportModule,
     PolicyModule,

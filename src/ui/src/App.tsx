@@ -42,6 +42,9 @@ import AuditLog from './pages/superadmin/AuditLog';
 import SystemSettings from './pages/superadmin/SystemSettings';
 import UniversitiesManagement from './pages/superadmin/UniversitiesManagement';
 import InstitutionsManagement from './pages/superadmin/InstitutionsManagement';
+import IntakeLookup from './pages/public/IntakeLookup';
+import IntakeClaim from './pages/public/IntakeClaim';
+import IntakeAdmin from './pages/admin/IntakeAdmin';
 import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import ProgramsManagement from './pages/superadmin/ProgramsManagement';
 import EquivalenciesManagement from './pages/admin/EquivalenciesManagement';
@@ -109,6 +112,8 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/intake" element={<IntakeLookup />} />
+        <Route path="/intake/claim" element={<IntakeClaim />} />
         <Route path="/partner" element={<PartnerPortal />} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/unauthorized" element={<div className="p-8 text-center text-red-600 text-xl">Not authorised</div>} />
@@ -146,6 +151,7 @@ export default function App() {
           <Route path="courses" element={<CourseDatabase />} />
           <Route path="equivalencies" element={<EquivalenciesManagement />} />
           <Route path="verification" element={<VerificationRequests />} />
+          <Route path="intake" element={<IntakeAdmin />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="pages" element={<PagesList />} />
           <Route path="pages/new" element={<PageEditor />} />

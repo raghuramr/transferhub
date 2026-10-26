@@ -478,3 +478,33 @@ export interface DashboardPayload { role: string; days: number; ranges: number[]
 export const dashboardApi = {
   get: (days?: number) => api.get<DashboardPayload>('/dashboard', { params: { days } }),
 };
+
+// ── Student intake (look up records from a previous university) ──
+export interface IntakeCourse { courseCode: string; courseTitle: string; credits: number; grade: string; term?: string | null }
+export interface IntakeSession {
+  profile: {
+    firstName: string; lastName: string; email: string; idType: string; maskedId: string;
+    institutionCode: string; institutionName: string; programName?: string | null; degree?: string | null;
+    fieldOfStudy?: string | null; gpa?: number | null; graduationYear?: number | null; creditsCompleted?: number | null;
+    country?: string | null; phone?: string | null;
+  };
+  courses: IntakeCourse[];
+  documents: { docType: string; fileName: string }[];
+  universities: { id: number; code: string; name: string }[];
+  accountExists: boolean;
+}
+export interface IntakeOverview {
+  shareUrl: string;
+  counts: { profiles: number; mockProfiles: number; openSessions: number; claimed: number };
+  demoProfiles: { id: number; externalId: string; idType: string; email: string; institutionCode: string; firstName: string; lastName: string; claimed: boolean }[];
+  recentSessions: { id: string; email: string; channel: string; status: string; createdAt: string; claimedAt: string | null; institutionCode: string }[];
+}
+export const intakeApi = {
+  lookup: (data: { idNumber: string; email: string; universityCode?: string; channel?: string }) =>
+    api.post<{ message: string; demo?: { claimUrl: string } }>('/intake/lookup', data),
+  session: (token: string) => api.get<IntakeSession>('/intake/session', { params: { token } }),
+  claim: (data: { token: string; password: string; consent: true; targetInstitutionId?: number; mobile?: string; submitForEvaluation?: boolean }) =>
+    api.post<AuthTokens>('/intake/claim', data),
+  adminOverview: () => api.get<IntakeOverview>('/intake/admin/overview'),
+  adminInvite: (sourceProfileId: number) => api.post<{ sent: boolean }>('/intake/admin/invite', { sourceProfileId }),
+};

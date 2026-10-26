@@ -281,6 +281,24 @@ export const templates = {
     });
   },
 
+  /** A student asked (or a partner invited them) to import their record from their university. */
+  intakeInvite(ctx: EmailContext, d: { firstName: string; institution: string; claimUrl: string }): Email {
+    const url = d.claimUrl.startsWith(ctx.appBaseUrl) ? d.claimUrl.slice(ctx.appBaseUrl.length) : d.claimUrl;
+    return render(ctx, {
+      subject: 'Your transfer record is ready to review',
+      preheader: 'Review your record and create your TransferHub account.',
+      chip: { label: 'Review your record', tone: 'info' },
+      headline: 'We found your student record',
+      greetingName: d.firstName,
+      paragraphs: [
+        `We found your record from ${d.institution}. Review it, confirm it is correct, and choose a password to create your TransferHub account. Nothing is created until you confirm. The link works for 48 hours.`,
+        'If you did not ask for this, ignore this message and no account will be made.',
+      ],
+      cta: { label: 'Review my record', path: url },
+      card: { title: 'Your record', rows: [{ label: 'Institution', value: d.institution }] },
+    });
+  },
+
   /** An administrator created the account (temporary password). */
   accountCreated(ctx: EmailContext, d: { firstName: string; email: string; password: string; role?: string }): Email {
     return render(ctx, {
@@ -550,6 +568,7 @@ export function samples(ctx: EmailContext, from: string): { key: TemplateKey; na
   return [
     { key: 'welcome', name: 'Welcome (self-registration)', audience: 'Student', email: templates.welcome(ctx, { firstName: 'Priya', email: 'priya@example.com' }) },
     { key: 'emailChange', name: 'Confirm a new email address', audience: 'Any user', email: templates.emailChange(ctx, { firstName: 'Priya', newEmail: 'priya.new@example.com', token: 'sample-token' }) },
+    { key: 'intakeInvite', name: 'Student record found (import link)', audience: 'Student', email: templates.intakeInvite(ctx, { firstName: 'Priya', institution: 'Northeastern University', claimUrl: `${ctx.appBaseUrl}/intake/claim?token=sample-token` }) },
     { key: 'accountCreated', name: 'Account created by an admin', audience: 'Any user', email: templates.accountCreated(ctx, { firstName: 'Priya', email: 'priya@example.com', password: 'Temp#4821', role: 'faculty' }) },
     { key: 'transcriptStatus', name: 'Evaluation status changed', audience: 'Student', email: templates.transcriptStatus(ctx, { firstName: 'Priya', transcriptId: tid, status: 'needs_info', notes: 'Please upload the syllabus for MATH 210.' }) },
     { key: 'approverAction', name: 'Stage waiting for an approver', audience: 'Approvers', email: templates.approverAction(ctx, { name: 'Alex Chen', student: 'Priya Rao', stage: 'Faculty review', transcriptId: tid }) },
