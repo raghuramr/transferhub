@@ -188,7 +188,7 @@ function render(ctx: EmailContext, l: Layout): Email {
         <td width="64" valign="middle" style="width:64px;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
             <td width="58" height="58" align="center" valign="middle" bgcolor="#ffffff" style="width:58px;height:58px;line-height:58px;border-radius:32px;background-color:#ffffff;border:3px solid ${GOLD};">
-              <img src="${ctx.appBaseUrl}/logo-icon.png" width="44" height="44" alt="${BRAND_NAME}" style="display:block;width:44px;height:44px;border:0;outline:none;" />
+              <img src="${ctx.appBaseUrl}/logo-icon.png?v=2" width="44" height="44" alt="${BRAND_NAME}" style="display:block;width:44px;height:44px;border:0;outline:none;" />
             </td>
           </tr></table>
         </td>

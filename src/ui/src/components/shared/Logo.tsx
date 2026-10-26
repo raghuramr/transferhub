@@ -7,7 +7,7 @@
 export function LogoMark({ size = 36, className = '' }: { size?: number; className?: string }) {
   return (
     <img
-      src="/logo-icon.png"
+      src="/logo-icon.png?v=2"
       alt="TransferHub"
       width={size}
       height={size}
@@ -21,7 +21,7 @@ export function LogoMark({ size = 36, className = '' }: { size?: number; classNa
 export function LogoFull({ height = 40, className = '' }: { height?: number; className?: string }) {
   return (
     <img
-      src="/logo.png"
+      src="/logo.png?v=2"
       alt="TransferHub"
       height={height}
       className={className}
