@@ -127,6 +127,12 @@ export function FieldEditor({
                 placeholder="Placeholder / help text (optional)"
                 onChange={(e) => update(index, { placeholder: e.target.value })}
               />
+              <input
+                className={inputCls}
+                value={field.section ?? ''}
+                placeholder="Step / section name (registration form only, optional)"
+                onChange={(e) => update(index, { section: e.target.value })}
+              />
             </div>
           </motion.div>
         ))}

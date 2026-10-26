@@ -197,6 +197,9 @@ export class AuthService {
       if (!prog.recordset[0]) throw new BadRequestException('targetProgramId not found');
     }
 
+    const regForm = await this.registrationFormRow();
+    if (regForm) this.assertRegistrationAnswers(regForm, dto.extraAnswers ?? {});
+
     const hash = await argon2.hash(dto.password);
 
     const userRes = await this.db.query<{ Id: string }>(
@@ -227,32 +230,39 @@ export class AuthService {
     );
     const userId = userRes.recordset[0].Id;
 
-    await this.db.query(
-      `INSERT INTO StudentProfiles (
-         UserId, TargetInstitutionId, TargetProgramId,
-         PriorInstitutionName, HighestEducationLevel, FieldOfStudy, GPA, GraduationYear,
-         EmergencyContactName, EmergencyContactPhone
-       )
-       VALUES (
-         @userId, @targetInstitutionId, @targetProgramId,
-         @priorInstitutionName, @highestEducationLevel, @fieldOfStudy, @gpa, @graduationYear,
-         @emergencyContactName, @emergencyContactPhone
-       )`,
-      [
-        { name: 'userId', type: sql.UniqueIdentifier, value: userId },
-        { name: 'targetInstitutionId', type: sql.Int, value: dto.targetInstitutionId ?? null },
-        { name: 'targetProgramId', type: sql.Int, value: dto.targetProgramId ?? null },
-        { name: 'priorInstitutionName', type: sql.NVarChar(200), value: dto.priorInstitutionName || null },
-        { name: 'highestEducationLevel', type: sql.NVarChar(100), value: dto.highestEducationLevel || null },
-        { name: 'fieldOfStudy', type: sql.NVarChar(200), value: dto.fieldOfStudy || null },
-        { name: 'gpa', type: sql.Decimal(3, 2), value: dto.gpa ?? null },
-        { name: 'graduationYear', type: sql.Int, value: dto.graduationYear ?? null },
-        { name: 'emergencyContactName', type: sql.NVarChar(200), value: dto.emergencyContactName || null },
-        { name: 'emergencyContactPhone', type: sql.NVarChar(30), value: dto.emergencyContactPhone || null },
-      ] as QueryInput[],
-    );
+    try {
+      await this.db.query(
+        `INSERT INTO StudentProfiles (
+           UserId, TargetInstitutionId, TargetProgramId,
+           PriorInstitutionName, HighestEducationLevel, FieldOfStudy, GPA, GraduationYear,
+           EmergencyContactName, EmergencyContactPhone
+         )
+         VALUES (
+           @userId, @targetInstitutionId, @targetProgramId,
+           @priorInstitutionName, @highestEducationLevel, @fieldOfStudy, @gpa, @graduationYear,
+           @emergencyContactName, @emergencyContactPhone
+         )`,
+        [
+          { name: 'userId', type: sql.UniqueIdentifier, value: userId },
+          { name: 'targetInstitutionId', type: sql.Int, value: dto.targetInstitutionId ?? null },
+          { name: 'targetProgramId', type: sql.Int, value: dto.targetProgramId ?? null },
+          { name: 'priorInstitutionName', type: sql.NVarChar(200), value: dto.priorInstitutionName || null },
+          { name: 'highestEducationLevel', type: sql.NVarChar(100), value: dto.highestEducationLevel || null },
+          { name: 'fieldOfStudy', type: sql.NVarChar(200), value: dto.fieldOfStudy || null },
+          { name: 'gpa', type: sql.Decimal(3, 2), value: dto.gpa ?? null },
+          { name: 'graduationYear', type: sql.Int, value: dto.graduationYear ?? null },
+          { name: 'emergencyContactName', type: sql.NVarChar(200), value: dto.emergencyContactName || null },
+          { name: 'emergencyContactPhone', type: sql.NVarChar(30), value: dto.emergencyContactPhone || null },
+        ] as QueryInput[],
+      );
 
-    await this.saveApplication(userId, dto);
+      await this.saveApplication(userId, dto);
+      if (regForm) await this.saveRegistrationAnswers(regForm.Id, userId, dto.extraAnswers ?? {});
+    } catch (err) {
+      // A half-created student would block a retry with "Email already in use" - undo everything.
+      await this.rollbackRegistration(userId);
+      throw err;
+    }
     await this.audit(userId, dto.email, 'student', 'STUDENT_REGISTERED', 'User', userId, ip, userAgent);
 
     try {
@@ -270,6 +280,75 @@ export class AuthService {
       departmentId: null,
     };
     return this.login(user, ip, userAgent);
+  }
+
+  /** Removes a partially created student so the same email can register again. */
+  private async rollbackRegistration(userId: string) {
+    const p = [{ name: 'u', type: sql.UniqueIdentifier, value: userId }];
+    for (const stmt of [
+      `DELETE FROM FormSubmissions WHERE SubmittedByUserId = @u`,
+      `DELETE FROM StudentExamCredits WHERE UserId = @u`,
+      `DELETE FROM StudentEducation WHERE UserId = @u`,
+      `DELETE FROM StudentProfiles WHERE UserId = @u`,
+      `DELETE FROM Users WHERE Id = @u`,
+    ]) {
+      try {
+        await this.db.query(stmt, p);
+      } catch (e) {
+        this.logger.warn(`Registration rollback step failed (${stmt}): ${(e as Error).message}`);
+      }
+    }
+  }
+
+  /** The open "student-registration" custom form (super admins edit it under Custom Forms), or null. */
+  private async registrationFormRow() {
+    try {
+      const res = await this.db.query<{ Id: number; Title: string; Description: string | null; SchemaJson: string }>(
+        `SELECT Id, Title, Description, SchemaJson FROM Forms WHERE Slug = 'student-registration' AND Status = 'open'`,
+      );
+      return res.recordset[0] ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private registrationFields(form: { SchemaJson: string }) {
+    const fields = (JSON.parse(form.SchemaJson).fields ?? []) as { key: string; label?: string; type: string; required?: boolean; section?: string }[];
+    return fields.filter((f) => f.type !== 'file'); // files need a login, which a new registrant does not have yet
+  }
+
+  private assertRegistrationAnswers(form: { SchemaJson: string }, answers: Record<string, unknown>) {
+    for (const f of this.registrationFields(form)) {
+      const v = answers[f.key];
+      const empty = v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+      if (f.required && empty) throw new BadRequestException(`"${f.label ?? f.key}" is required`);
+    }
+  }
+
+  private async saveRegistrationAnswers(formId: number, userId: string, answers: Record<string, unknown>) {
+    const allowed = new Set((await this.registrationFormRowById(formId)).map((f) => f.key));
+    const clean: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(answers)) if (allowed.has(k)) clean[k] = v;
+    if (Object.keys(clean).length === 0) return;
+    await this.db.query(`INSERT INTO FormSubmissions (FormId, SubmittedByUserId, Data) VALUES (@f, @u, @d)`, [
+      { name: 'f', type: sql.Int, value: formId },
+      { name: 'u', type: sql.UniqueIdentifier, value: userId },
+      { name: 'd', type: sql.NVarChar(sql.MAX), value: JSON.stringify(clean) },
+    ]);
+  }
+
+  private async registrationFormRowById(formId: number) {
+    const res = await this.db.query<{ SchemaJson: string }>(`SELECT SchemaJson FROM Forms WHERE Id = @id`, [
+      { name: 'id', type: sql.Int, value: formId },
+    ]);
+    return res.recordset[0] ? this.registrationFields(res.recordset[0]) : [];
+  }
+
+  /** Public (no auth) - the admin-managed extra registration questions, if any. */
+  async publicRegistrationForm() {
+    const row = await this.registrationFormRow();
+    if (!row) return null;
+    return { id: row.Id, title: row.Title, description: row.Description, fields: this.registrationFields(row) };
   }
 
   /**

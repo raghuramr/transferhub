@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import {
-  ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateNested,
+  ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateNested,
 } from 'class-validator';
 
 /** One institution the student attended (BU asks for every one - doc 12, BU-AD-03). */
@@ -63,7 +63,8 @@ export class RegisterStudentDto {
   @IsOptional() @IsInt() intendedAcademicUnitId?: number;
   @IsOptional() @IsIn(['fall', 'spring', 'summer']) entryTerm?: string;
   @IsOptional() @IsInt() @Min(2000) @Max(2100) entryYear?: number;
-  @IsOptional() @Matches(/^U\d{8}$/, { message: 'BUID must look like U12345678' }) buid?: string;
+  /** The student's ID at the target university (BU calls it a BUID). Format is validated by the UI per university. */
+  @IsOptional() @IsString() @MaxLength(50) buid?: string;
   @IsOptional() @IsBoolean() isNativeEnglish?: boolean;
   @IsOptional() @IsIn(['TOEFL', 'IELTS', 'Duolingo']) englishTestType?: string;
   @IsOptional() @IsString() @MaxLength(20) englishTestScore?: string;
@@ -72,5 +73,7 @@ export class RegisterStudentDto {
   @IsOptional() @IsInt() @Min(1950) @Max(2100) highSchoolGradYear?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(400) creditsCompleted?: number;
   @IsOptional() @IsArray() @ArrayMaxSize(15) @ValidateNested({ each: true }) @Type(() => EducationEntryDto) education?: EducationEntryDto[];
+  /** Answers to the super-admin-managed "student-registration" custom form, keyed by field key. */
+  @IsOptional() @IsObject() extraAnswers?: Record<string, unknown>;
   @IsOptional() @IsArray() @ArrayMaxSize(40) @ValidateNested({ each: true }) @Type(() => ExamEntryDto) exams?: ExamEntryDto[];
 }

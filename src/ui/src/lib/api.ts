@@ -84,6 +84,8 @@ export const authApi = {
   /** Public (no auth) — student self-registration; response auto-logs in like login(). */
   register: (data: unknown) => api.post<AuthTokens>('/auth/register', data),
   /** Public (no auth) — registration-page dropdown data. */
+  publicRegistrationForm: () =>
+    api.get<{ id: number; title: string; description: string | null; fields: import('../types').FormField[] } | ''>('/auth/registration-form'),
   publicUniversities: () => api.get<{ id: number; code: string; name: string }[]>('/auth/universities'),
   publicPrograms: (institutionId: number) =>
     api.get<{ id: number; name: string; degree: string | null; area: string | null }[]>('/auth/programs', {

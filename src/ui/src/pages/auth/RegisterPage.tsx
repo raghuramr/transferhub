@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useFieldArray, useForm, type FieldPath } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,13 +12,14 @@ import { LogoMark } from '../../components/shared/Logo';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../lib/cn';
 import type { AxiosError } from 'axios';
-import type { ApiError } from '../../types';
+import type { ApiError, FormField } from '../../types';
+import { FormRenderer, type FormFieldValue } from '../../components/forms/FormRenderer';
 
-// Mirrors BU's transfer process (see _designs/understanding/12 and 13).
+// Applicant types are university-neutral; BU-specific policy copy only shows when BU is the chosen university.
 const APPLICANT_TYPES = [
-  { value: 'transfer_applicant', label: 'Applying to transfer', help: 'You are applying to BU from another college. Credit shown before admission is a preview only.' },
-  { value: 'admitted_transfer', label: 'Admitted transfer student', help: 'You have been admitted to BU and need your transfer credit officially evaluated.' },
-  { value: 'current_student', label: 'Current BU student', help: 'You want a course at another college pre-approved before you take it.' },
+  { value: 'transfer_applicant', label: 'Applying to transfer', help: 'You are applying to the university from another college. Credit shown before admission is a preview only.' },
+  { value: 'admitted_transfer', label: 'Admitted transfer student', help: 'You have been admitted and need your transfer credit officially evaluated.' },
+  { value: 'current_student', label: 'Current student', help: 'You want a course at another college pre-approved before you take it.' },
   { value: 'dual_enrollment', label: 'High school dual enrollment', help: 'You took college courses while in high school (your school sends a Dual Enrollment Form).' },
 ] as const;
 
@@ -38,7 +39,7 @@ const schema = z
     targetProgramId: z.string().optional(),
     entryTerm: z.string().optional(),
     entryYear: yearStr,
-    buid: z.string().optional().refine((v) => !v || /^U\d{8}$/.test(v), 'BUID looks like U12345678'),
+    buid: z.string().max(50).optional(),
     // 3 Contact
     mobile: z.string().optional(),
     emergencyContactName: z.string().optional(),
@@ -82,12 +83,9 @@ const schema = z
   })
   .superRefine((v, ctx) => {
     const transfer = v.applicantType === 'transfer_applicant' || v.applicantType === 'admitted_transfer';
-    if (transfer && !v.intendedAcademicUnitId) {
-      ctx.addIssue({ code: 'custom', path: ['intendedAcademicUnitId'], message: 'Transfer students must choose a school or college (no undeclared applications)' });
-    }
     if (transfer && !v.entryTerm) ctx.addIssue({ code: 'custom', path: ['entryTerm'], message: 'Choose your entry term' });
     if (transfer && !v.entryYear) ctx.addIssue({ code: 'custom', path: ['entryYear'], message: 'Required' });
-    if (v.applicantType === 'current_student' && !v.buid) ctx.addIssue({ code: 'custom', path: ['buid'], message: 'Current students need their BUID' });
+    if (v.applicantType === 'current_student' && !v.buid) ctx.addIssue({ code: 'custom', path: ['buid'], message: 'Current students need their student ID' });
     if (v.applicantType !== 'current_student' && v.education.length === 0) {
       ctx.addIssue({ code: 'custom', path: ['education'], message: 'Add every college you have attended' });
     }
@@ -97,14 +95,16 @@ const schema = z
   });
 type FormData = z.infer<typeof schema>;
 
-const STEPS: { title: string; fields: FieldPath<FormData>[] }[] = [
-  { title: 'Account', fields: ['firstName', 'lastName', 'email', 'password'] },
-  { title: 'Application', fields: ['applicantType', 'targetInstitutionId', 'intendedAcademicUnitId', 'targetProgramId', 'entryTerm', 'entryYear', 'buid'] },
-  { title: 'Contact', fields: ['mobile', 'emergencyContactName', 'emergencyContactPhone', 'addressLine1', 'city', 'country'] },
-  { title: 'Education', fields: ['education', 'gpa', 'highSchoolName', 'highSchoolGradYear', 'exams'] },
-  { title: 'Language', fields: ['isNativeEnglish', 'englishTestType', 'englishTestScore', 'hasIntlCoursework'] },
-  { title: 'Review', fields: [] },
+type StepKind = 'account' | 'application' | 'contact' | 'education' | 'language' | 'extra' | 'review';
+type StepDef = { title: string; kind: StepKind; fields: FieldPath<FormData>[]; section?: string };
+const CORE_STEPS: StepDef[] = [
+  { title: 'Account', kind: 'account', fields: ['firstName', 'lastName', 'email', 'password'] },
+  { title: 'Application', kind: 'application', fields: ['applicantType', 'targetInstitutionId', 'intendedAcademicUnitId', 'targetProgramId', 'entryTerm', 'entryYear', 'buid'] },
+  { title: 'Contact', kind: 'contact', fields: ['mobile', 'emergencyContactName', 'emergencyContactPhone', 'addressLine1', 'city', 'country'] },
+  { title: 'Education', kind: 'education', fields: ['education', 'gpa', 'highSchoolName', 'highSchoolGradYear', 'exams'] },
+  { title: 'Language', kind: 'language', fields: ['isNativeEnglish', 'englishTestType', 'englishTestScore', 'hasIntlCoursework'] },
 ];
+const REVIEW_STEP: StepDef = { title: 'Review', kind: 'review', fields: [] };
 
 function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -126,8 +126,10 @@ export default function RegisterPage() {
   const [step, setStep] = useState(0);
   const [showPass, setShowPass] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [extra, setExtra] = useState<Record<string, FormFieldValue>>({});
+  const [extraErrors, setExtraErrors] = useState<Record<string, string>>({});
 
-  const { register, handleSubmit, watch, setValue, trigger, control, getValues, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, setError, trigger, control, getValues, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { education: [], exams: [] },
     mode: 'onTouched',
@@ -156,12 +158,27 @@ export default function RegisterPage() {
   });
   const units = unitsData?.data ?? [];
 
-  // Default the target to BU once universities load.
-  useEffect(() => {
-    if (!getValues('targetInstitutionId') && universities.length) {
-      const bu = universities.find((u) => u.code === 'BU');
-      if (bu) setValue('targetInstitutionId', String(bu.id));
+  // Admin-managed extra questions (SuperAdmin > Custom Forms, slug "student-registration").
+  const { data: regFormData } = useQuery({ queryKey: ['registration-form'], queryFn: () => authApi.publicRegistrationForm() });
+  const regForm = regFormData?.data || null;
+  const extraSections = useMemo(() => {
+    const groups = new Map<string, FormField[]>();
+    for (const f of regForm?.fields ?? []) {
+      if (f.type === 'file') continue;
+      const name = f.section?.trim() || regForm?.title || 'More about you';
+      groups.set(name, [...(groups.get(name) ?? []), f]);
     }
+    return [...groups.entries()].map(([title, fields]) => ({ title, fields }));
+  }, [regForm]);
+  const STEPS = useMemo<StepDef[]>(
+    () => [...CORE_STEPS, ...extraSections.map((s) => ({ title: s.title, kind: 'extra' as const, fields: [], section: s.title })), REVIEW_STEP],
+    [extraSections],
+  );
+  const cur = STEPS[step] ?? STEPS[0];
+
+  // With a single university there is nothing to choose - preselect it.
+  useEffect(() => {
+    if (!getValues('targetInstitutionId') && universities.length === 1) setValue('targetInstitutionId', String(universities[0].id));
   }, [universities, getValues, setValue]);
 
   // An institution flagged "outside the US" implies international coursework.
@@ -170,15 +187,45 @@ export default function RegisterPage() {
     if (eduValues?.some((e) => e.isOutsideUS)) setValue('hasIntlCoursework', 'yes');
   }, [eduValues, setValue]);
 
+  const validateExtra = (section: string) => {
+    const fields = extraSections.find((s) => s.title === section)?.fields ?? [];
+    const errs: Record<string, string> = {};
+    for (const f of fields) {
+      const val = extra[f.key];
+      const empty = val === undefined || val === '' || (Array.isArray(val) && val.length === 0);
+      if (f.required && empty) errs[f.key] = 'Required';
+    }
+    setExtraErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const needsUnit = () => transfer && units.length > 0 && !getValues('intendedAcademicUnitId');
+
   const next = async () => {
-    const ok = await trigger(STEPS[step].fields);
+    let ok = await trigger(cur.fields);
+    if (cur.kind === 'application' && needsUnit()) {
+      setError('intendedAcademicUnitId', { message: 'Choose a school or college - transfer applications cannot be undeclared' });
+      ok = false;
+    }
+    if (cur.kind === 'extra' && !validateExtra(cur.section!)) ok = false;
     if (ok) setStep((s) => Math.min(s + 1, STEPS.length - 1));
   };
 
   const onSubmit = async (d: FormData) => {
     setServerError('');
+    if (needsUnit()) {
+      setStep(1);
+      setError('intendedAcademicUnitId', { message: 'Choose a school or college - transfer applications cannot be undeclared' });
+      return;
+    }
+    const badExtra = extraSections.find((sec) => !validateExtra(sec.title));
+    if (badExtra) {
+      setStep(STEPS.findIndex((st) => st.section === badExtra.title));
+      return;
+    }
     try {
       const res = await authApi.register({
+        extraAnswers: Object.keys(extra).length ? extra : undefined,
         email: d.email,
         password: d.password,
         firstName: d.firstName,
@@ -235,6 +282,7 @@ export default function RegisterPage() {
 
   const v = watch();
   const uni = universities.find((u) => String(u.id) === v.targetInstitutionId);
+  const isBU = uni?.code === 'BU';
   const unit = units.find((u) => String(u.id) === v.intendedAcademicUnitId);
   const credits = (v.education ?? []).reduce((n, e) => n + (Number(e.creditsEarned) || 0), 0);
 
@@ -278,7 +326,7 @@ export default function RegisterPage() {
             })}
             className="space-y-5"
           >
-            {step === 0 && (
+            {cur.kind === 'account' && (
               <>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field label="First name" error={errors.firstName?.message}><input {...register('firstName')} className={inputClass} /></Field>
@@ -294,7 +342,7 @@ export default function RegisterPage() {
               </>
             )}
 
-            {step === 1 && (
+            {cur.kind === 'application' && (
               <>
                 <Field label="Which describes you?" error={errors.applicantType?.message}>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -314,7 +362,7 @@ export default function RegisterPage() {
                       {universities.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select>
                   </Field>
-                  <Field label={transfer ? 'School or college' : 'School or college (optional)'} error={errors.intendedAcademicUnitId?.message} hint={transfer ? 'Required: BU does not accept undeclared transfer applications.' : undefined}>
+                  <Field label={transfer && units.length > 0 ? 'School or college' : 'School or college (optional)'} error={errors.intendedAcademicUnitId?.message} hint={transfer && units.length > 0 ? 'Required: transfer applications cannot be undeclared.' : undefined}>
                     <select {...register('intendedAcademicUnitId')} className={inputClass} disabled={!targetInstitutionId}>
                       <option value="">{units.length ? 'Select…' : 'No schools listed'}</option>
                       {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -334,17 +382,17 @@ export default function RegisterPage() {
                     </Field>
                     <Field label="Year" error={errors.entryYear?.message}><input {...register('entryYear')} inputMode="numeric" className={inputClass} placeholder="2027" /></Field>
                   </div>
-                  <Field label={applicantType === 'current_student' ? 'BUID' : 'BUID (if you have one)'} error={errors.buid?.message}>
-                    <input {...register('buid')} className={inputClass} placeholder="U12345678" />
+                  <Field label={applicantType === 'current_student' ? 'Student ID' : 'Student ID (if you have one)'} error={errors.buid?.message}>
+                    <input {...register('buid')} className={inputClass} placeholder={isBU ? 'U12345678' : ''} />
                   </Field>
                 </div>
                 {applicantType === 'transfer_applicant' && (
-                  <p className="flex gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800"><Info size={14} className="mt-0.5 shrink-0" />BU only evaluates transfer credit after admission. Until then, anything you submit gives a preview based on BU's equivalency database, not a guarantee.</p>
+                  <p className="flex gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800"><Info size={14} className="mt-0.5 shrink-0" /><span>{uni?.name ?? 'The university'} only officially evaluates transfer credit after admission. Until then, anything you submit gives a preview based on its equivalency database, not a guarantee.</span></p>
                 )}
               </>
             )}
 
-            {step === 2 && (
+            {cur.kind === 'contact' && (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Mobile number"><input {...register('mobile')} className={inputClass} /></Field>
                 <Field label="Emergency contact name"><input {...register('emergencyContactName')} className={inputClass} /></Field>
@@ -359,7 +407,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {step === 3 && (
+            {cur.kind === 'education' && (
               <>
                 <div>
                   <div className="mb-2 flex items-center justify-between">
@@ -389,7 +437,7 @@ export default function RegisterPage() {
                     ))}
                   </div>
                   <datalist id="known-colleges">{universities.map((u) => <option key={u.id} value={u.name} />)}</datalist>
-                  {credits > 0 && <p className="mt-2 text-xs text-gray-500">{credits} college credits listed. BU typically expects at least 12, completed as a full-time degree student.</p>}
+                  {credits > 0 && <p className="mt-2 text-xs text-gray-500">{credits} college credits listed. Many universities expect at least 12, completed as a full-time degree student.</p>}
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -406,7 +454,7 @@ export default function RegisterPage() {
 
                 <div>
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">AP, IB or A-level exams <span className="font-normal text-gray-400">(count toward BU's limit on outside credit)</span></span>
+                    <span className="text-sm font-medium text-gray-700">AP, IB or A-level exams <span className="font-normal text-gray-400">(count toward the limit on outside credit)</span></span>
                     <button type="button" onClick={() => exams.append({ examType: 'AP', subject: '' })} className="inline-flex items-center gap-1 text-sm font-medium text-brand-800 hover:underline"><Plus size={14} /> Add exam</button>
                   </div>
                   <div className="space-y-2">
@@ -426,7 +474,7 @@ export default function RegisterPage() {
               </>
             )}
 
-            {step === 4 && (
+            {cur.kind === 'language' && (
               <>
                 <Field label="Is English your first language?" error={errors.isNativeEnglish?.message}>
                   <div className="flex gap-4 text-sm">
@@ -452,16 +500,31 @@ export default function RegisterPage() {
                   <div className="flex gap-3 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
                     <Globe2 size={18} className="mt-0.5 shrink-0" />
                     <span>
-                      Coursework taken outside the US before you enrol is evaluated by BU's <strong>Office of International Undergraduate Admissions</strong>
-                      {' '}(<a className="underline" href="mailto:intadvis@bu.edu">intadvis@bu.edu</a>, 881 Commonwealth Ave, Boston). You can still list it here;
-                      it will be flagged for that office instead of being evaluated in TransferHub.
+                      {isBU ? (
+                        <>
+                          Coursework taken outside the US before you enrol is evaluated by BU's <strong>Office of International Undergraduate Admissions</strong>
+                          {' '}(<a className="underline" href="mailto:intadvis@bu.edu">intadvis@bu.edu</a>, 881 Commonwealth Ave, Boston). You can still list it here;
+                          it will be flagged for that office instead of being evaluated in TransferHub.
+                        </>
+                      ) : (
+                        <>Coursework taken outside the US is usually evaluated by the university's international admissions office. You can still list it here; it will be flagged for them.</>
+                      )}
                     </span>
                   </div>
                 )}
               </>
             )}
 
-            {step === 5 && (
+            {cur.kind === 'extra' && (
+              <FormRenderer
+                fields={extraSections.find((x) => x.title === cur.section)?.fields ?? []}
+                data={extra}
+                errors={extraErrors}
+                onChange={(key, value) => setExtra((prev) => ({ ...prev, [key]: value }))}
+              />
+            )}
+
+            {cur.kind === 'review' && (
               <div className="space-y-4 text-sm">
                 <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
                   <div><dt className="text-gray-500">Name</dt><dd className="font-medium text-gray-900">{v.firstName} {v.lastName} · {v.email}</dd></div>
@@ -471,11 +534,20 @@ export default function RegisterPage() {
                   <div><dt className="text-gray-500">Colleges attended</dt><dd className="font-medium text-gray-900">{(v.education ?? []).map((e) => e.institutionName).filter(Boolean).join(', ') || '—'}</dd></div>
                   <div><dt className="text-gray-500">Exams</dt><dd className="font-medium text-gray-900">{(v.exams ?? []).length ? (v.exams ?? []).map((x) => `${x.examType} ${x.subject}`).join(', ') : 'None'}</dd></div>
                 </dl>
+                {isBU && (
                 <div className="space-y-2 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
                   <p><strong>How BU counts transfer credit:</strong> courses need a grade of C or better from a regionally accredited college; Pass/Fail is not normally accepted; at most 68 outside credits count (60 for first-year entrants), including AP/IB/A-level; coursework older than five years gets extra review.</p>
                   <p><strong>BU Hub:</strong> transfer courses never count toward Hub requirements. Transfer students complete 10 Hub requirements at BU.</p>
                   {applicantType === 'transfer_applicant' && <p><strong>Before admission</strong> you see a preview only. The official evaluation happens once you are admitted.</p>}
                 </div>
+                )}
+                {STEPS.filter((st) => st.kind === 'extra').map((st) => (
+                  <dl key={st.title} className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+                    {(extraSections.find((x) => x.title === st.title)?.fields ?? []).map((f) => (
+                      <div key={f.key}><dt className="text-gray-500">{f.label}</dt><dd className="font-medium text-gray-900">{Array.isArray(extra[f.key]) ? (extra[f.key] as string[]).join(', ') : String(extra[f.key] ?? '—')}</dd></div>
+                    ))}
+                  </dl>
+                ))}
               </div>
             )}
 

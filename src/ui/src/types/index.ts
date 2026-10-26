@@ -253,6 +253,8 @@ export interface FormField {
   options?: string[];       // select | radio | checkboxes
   placeholder?: string;
   helpText?: string;
+  /** Registration form only: fields sharing a section name appear together as one step. */
+  section?: string;
 }
 
 export type FormStatus = 'draft' | 'open' | 'closed';
