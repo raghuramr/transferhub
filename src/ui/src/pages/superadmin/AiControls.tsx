@@ -24,7 +24,7 @@ const MODELS = [
 ];
 
 const CATEGORY_LABEL: Record<AgentSkill['category'], string> = {
-  matching: 'Matching', policy: 'Policy', token_saving: 'Token saving',
+  matching: 'Matching', policy: 'Policy', token_saving: 'Token saving', documents: 'Document reading',
 };
 
 const PRESETS: { key: string; label: string; blurb: string; values: Partial<AiSettings> }[] = [

@@ -535,3 +535,59 @@ export const intakeApi = {
   adminOverview: () => api.get<IntakeOverview>('/intake/admin/overview'),
   adminInvite: (sourceProfileId: number) => api.post<{ sent: boolean }>('/intake/admin/invite', { sourceProfileId }),
 };
+
+// ── AI document reading (smart upload) ────────────────────────────
+export type IntakeStatus = 'uploaded' | 'reading' | 'read' | 'needs_review' | 'confirmed' | 'failed' | 'skipped';
+export interface IntakeItem {
+  id: string;
+  fileName: string;
+  status: IntakeStatus;
+  docType: string | null;
+  confidence: number | null;
+  summary: string | null;
+  error: string | null;
+  createdAt: string;
+  aiEnabled: boolean;
+}
+export interface ExtractedDocument {
+  docType: string;
+  confidence: number;
+  summary: string;
+  fields: Record<string, unknown>;
+}
+export interface IntakeDetail extends IntakeItem {
+  extracted: ExtractedDocument | null;
+  uploadId: string;
+  mimeType: string;
+  confirmedAt: string | null;
+}
+export interface TranscriptPrefill {
+  institutionName: string;
+  institutionCode: string;
+  calendar: string;
+  studentName: string;
+  studentId: string;
+  courses: { courseCode: string; courseTitle: string; originalCredits: number; grade: string; term?: string; termSeason?: string; termYear?: number }[];
+  documentUploadId: string;
+  isOutsideUS?: boolean;
+}
+export interface DocumentsStatus {
+  aiEnabled: boolean;
+  reason?: string;
+  docTypes: { key: string; label: string }[];
+}
+export const documentsApi = {
+  status: () => api.get<DocumentsStatus>('/documents/status'),
+  upload: (files: File[]) => {
+    const form = new FormData();
+    files.forEach((f) => form.append('files', f));
+    return api.post<{ items: IntakeItem[] }>('/documents/smart-upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  list: () => api.get<IntakeItem[]>('/documents/intakes'),
+  get: (id: string) => api.get<IntakeDetail>(`/documents/intakes/${id}`),
+  update: (id: string, data: { docType?: string; extracted?: ExtractedDocument }) => api.patch<IntakeDetail>(`/documents/intakes/${id}`, data),
+  retry: (id: string) => api.post<IntakeItem>(`/documents/intakes/${id}/retry`),
+  confirm: (id: string) =>
+    api.post<{ ok: boolean; docType: string; applied: { education: boolean; profile: boolean }; prefill?: TranscriptPrefill }>(`/documents/intakes/${id}/confirm`),
+  prefill: (id: string) => api.get<TranscriptPrefill>(`/documents/intakes/${id}/prefill`),
+};

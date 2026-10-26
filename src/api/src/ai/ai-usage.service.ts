@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService, QueryInput } from '../database/database.service';
 
-export type AiOperation = 'match' | 'escalate' | 'brief' | 'summary';
+export type AiOperation = 'match' | 'escalate' | 'brief' | 'summary' | 'read';
 export type SkipReason =
   | 'ai_disabled'
   | 'cache_hit'

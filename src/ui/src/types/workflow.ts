@@ -222,7 +222,7 @@ export interface AgentSkill {
   id: number;
   skillKey: string;
   title: string;
-  category: 'matching' | 'policy' | 'token_saving';
+  category: 'matching' | 'policy' | 'token_saving' | 'documents';
   instructions: string;
   isActive: boolean;
   sortOrder: number;

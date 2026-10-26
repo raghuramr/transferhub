@@ -23,7 +23,7 @@ export class SaveAiSettingsDto {
 export class SaveSkillDto {
   @IsOptional() @IsString() @MaxLength(60) skillKey?: string;
   @IsString() @MaxLength(150) title: string;
-  @IsIn(['matching', 'policy', 'token_saving']) category: string;
+  @IsIn(['matching', 'policy', 'token_saving', 'documents']) category: string;
   @IsString() @MaxLength(2000) instructions: string;
   @IsBoolean() isActive: boolean;
   @IsOptional() @IsInt() sortOrder?: number;
