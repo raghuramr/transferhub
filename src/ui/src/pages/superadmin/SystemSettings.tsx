@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { Settings, Save, Info, Mail, ShieldCheck, Upload, Eye, CheckCircle, AlertCircle, Code2 } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Settings, Save, Info, Mail, ShieldCheck, Upload, Eye, CheckCircle, AlertCircle, Code2, Send } from 'lucide-react';
 import RolesPermissions from './RolesPermissions';
-import { api } from '../../lib/api';
+import { Link } from 'react-router-dom';
+import { api, emailApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
 
 // ── General settings ─────────────────────────────────────────────
 
@@ -53,56 +56,65 @@ const DEFAULTS: Record<string, string> = {
   refresh_token_ttl_days: '7',
 };
 
+const fieldCls = 'w-28 shrink-0 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-brand-500';
+
 function GeneralTab() {
   const [values, setValues] = useState<Record<string, string>>(DEFAULTS);
   const [saved, setSaved] = useState(false);
   const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
+  const set = (key: string, v: string) => setValues((cur) => ({ ...cur, [key]: v }));
 
   return (
-    <div className="space-y-6">
-      {GROUPS.map((group) => (
-        <div key={group.title} className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-1">{group.title}</h2>
-          <p className="text-sm text-gray-500 mb-5">{group.desc}</p>
-          <div className="space-y-4">
-            {group.fields.map((field) => (
-              <div key={field.key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{field.label}</label>
-                {field.type === 'select' ? (
-                  <select
-                    value={values[field.key]}
-                    onChange={(e) => setValues((v) => ({ ...v, [field.key]: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  >
-                    {field.options?.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                ) : (
-                  <input
-                    type={field.type}
-                    value={values[field.key]}
-                    onChange={(e) => setValues((v) => ({ ...v, [field.key]: e.target.value }))}
-                    step={field.type === 'number' ? 'any' : undefined}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                )}
-                {field.help && (
-                  <p className="flex items-start gap-1.5 text-xs text-gray-400 mt-1">
-                    <Info size={12} className="mt-0.5 shrink-0" />{field.help}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-      <div className="flex items-center gap-3">
+    <div className="space-y-4">
+      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <Info size={16} className="mt-0.5 shrink-0" />
+        <span>
+          These values are not stored yet. The settings that take effect live in{' '}
+          <Link to="/superadmin/settings/ai-controls" className="font-medium underline">AI Controls</Link> (model, thresholds, budgets) and{' '}
+          <Link to="/superadmin/settings/workflows" className="font-medium underline">Workflows → Transfer rules</Link> (minimum grade, credit caps, course age).
+        </span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {GROUPS.map((group) => (
+          <section key={group.title} className="rounded-xl border border-gray-200 bg-white">
+            <header className="border-b border-gray-100 px-4 py-3">
+              <h2 className="text-sm font-semibold text-gray-900">{group.title}</h2>
+              <p className="text-xs text-gray-500">{group.desc}</p>
+            </header>
+            <ul className="divide-y divide-gray-100">
+              {group.fields.map((field) => (
+                <li key={field.key} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <label htmlFor={field.key} className="min-w-0 text-sm text-gray-700">
+                    <span className="flex items-center gap-1">
+                      {field.label}
+                      {field.help && (
+                        <span title={field.help} className="cursor-help text-gray-400"><Info size={12} /></span>
+                      )}
+                    </span>
+                  </label>
+                  {field.type === 'select' ? (
+                    <select id={field.key} value={values[field.key]} onChange={(e) => set(field.key, e.target.value)}
+                      className="w-44 shrink-0 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                      {field.options?.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  ) : (
+                    <input id={field.key} type={field.type} value={values[field.key]} onChange={(e) => set(field.key, e.target.value)}
+                      step={field.type === 'number' ? 'any' : undefined} className={fieldCls} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+      <div className="flex items-center justify-end gap-3">
+        {saved && <p className="text-sm text-gray-500">Nothing is stored for these yet — see the note above.</p>}
         <button
           onClick={handleSave}
-          className="flex items-center gap-2 px-6 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
+          className="flex items-center gap-2 rounded-lg bg-brand-800 px-5 py-2 text-sm font-medium text-white hover:bg-brand-900"
         >
-          <Save size={16} />{saved ? 'Saved!' : 'Save Settings'}
+          <Save size={16} />Save Settings
         </button>
-        {saved && <p className="text-sm text-green-600">Settings saved successfully.</p>}
       </div>
     </div>
   );
@@ -111,51 +123,91 @@ function GeneralTab() {
 // ── Email settings ────────────────────────────────────────────────
 
 function EmailTab() {
-  const [saved, setSaved] = useState(false);
-  const [form, setForm] = useState({ fromEmail: 'support@wcubeprojects.in', fromName: 'TransferHub', apiKey: '' });
-  const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
+  const user = useAuthStore((st) => st.user);
+  const status = useQuery({ queryKey: ['email-status'], queryFn: () => emailApi.status() });
+  const [to, setTo] = useState(user?.email ?? '');
+  const test = useMutation({
+    mutationFn: () => emailApi.test(to.trim() || undefined),
+    onSettled: () => void status.refetch(),
+  });
+  const st = status.data?.data;
+  const testError = test.isError
+    ? ((test.error as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message ?? 'Request failed.')
+    : null;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-      <h2 className="font-semibold text-gray-900">Email Configuration</h2>
-      <p className="text-sm text-gray-500">Configure the email provider used for welcome emails, status notifications, and alerts.</p>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">From Name</label>
-        <input
-          value={form.fromName}
-          onChange={(e) => setForm((f) => ({ ...f, fromName: e.target.value }))}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">From Email Address</label>
-        <input
-          type="email"
-          value={form.fromEmail}
-          onChange={(e) => setForm((f) => ({ ...f, fromEmail: e.target.value }))}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Resend API Key</label>
-        <input
-          type="password"
-          value={form.apiKey}
-          onChange={(e) => setForm((f) => ({ ...f, apiKey: e.target.value }))}
-          placeholder="re_…"
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-        />
-        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Info size={11} /> Key is stored in environment variables on the server — not persisted here.</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          className="flex items-center gap-2 px-6 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900"
-        >
-          <Save size={16} />{saved ? 'Saved!' : 'Save Email Settings'}
-        </button>
-        {saved && <p className="text-sm text-green-600">Email settings saved.</p>}
-      </div>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <section className="rounded-xl border border-gray-200 bg-white">
+        <header className="border-b border-gray-100 px-4 py-3">
+          <h2 className="text-sm font-semibold text-gray-900">Email delivery (Resend)</h2>
+          <p className="text-xs text-gray-500">Read from the server&apos;s environment variables. Change them under App Service → Environment variables.</p>
+        </header>
+        {status.isLoading && <p className="px-4 py-3 text-sm text-gray-400">Loading…</p>}
+        {status.isError && <p className="px-4 py-3 text-sm text-red-600">Could not load the email status.</p>}
+        {st && (
+          <dl className="divide-y divide-gray-100 text-sm">
+            <div className="flex justify-between gap-3 px-4 py-2.5">
+              <dt className="text-gray-500">RESEND_API_KEY</dt>
+              <dd className={st.configured ? 'font-medium text-green-700' : 'font-medium text-red-600'}>{st.configured ? 'Set' : 'Not set — no emails are sent'}</dd>
+            </div>
+            <div className="flex justify-between gap-3 px-4 py-2.5">
+              <dt className="text-gray-500">Sender</dt>
+              <dd className="text-right text-gray-800">{st.fromName} &lt;{st.fromAddress}&gt;{st.fromIsDefault && <span className="block text-xs text-amber-700">built-in default — RESEND_FROM_EMAIL is not set</span>}</dd>
+            </div>
+            <div className="flex justify-between gap-3 px-4 py-2.5">
+              <dt className="text-gray-500">Links in emails point to</dt>
+              <dd className="text-right text-gray-800">{st.appBaseUrl}</dd>
+            </div>
+          </dl>
+        )}
+        {st && (
+          <p className="flex items-start gap-1.5 border-t border-gray-100 px-4 py-3 text-xs text-gray-500">
+            <Info size={12} className="mt-0.5 shrink-0" />
+            Resend only delivers from a domain verified in your Resend account (Domains). The domain here is <strong className="mx-0.5">{st.fromDomain}</strong>.
+            A key on an unverified account can only send to the account owner&apos;s own address.
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-gray-200 bg-white">
+        <header className="border-b border-gray-100 px-4 py-3">
+          <h2 className="text-sm font-semibold text-gray-900">Send a test email</h2>
+          <p className="text-xs text-gray-500">Shows Resend&apos;s exact answer, so a rejected message is no longer silent.</p>
+        </header>
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+          <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="you@example.com"
+            className="min-w-0 flex-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          <button type="button" onClick={() => test.mutate()} disabled={test.isPending}
+            className="flex items-center gap-1.5 rounded-lg bg-brand-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-900 disabled:bg-brand-400">
+            <Send size={14} />{test.isPending ? 'Sending…' : 'Send test'}
+          </button>
+        </div>
+        {test.data && (
+          <div className={`mx-4 mb-3 flex items-start gap-2 rounded-lg p-3 text-sm ${test.data.data.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            {test.data.data.ok ? <CheckCircle size={16} className="mt-0.5 shrink-0" /> : <AlertCircle size={16} className="mt-0.5 shrink-0" />}
+            {test.data.data.ok
+              ? `Accepted by Resend (id ${test.data.data.id ?? '?'}). If it doesn't arrive, check spam and the Resend dashboard's Logs.`
+              : `Not sent: ${test.data.data.error}`}
+          </div>
+        )}
+        {testError && <p className="mx-4 mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{[testError].flat().join(' ')}</p>}
+        <div className="border-t border-gray-100 px-4 py-3">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Recent attempts (since the API last restarted)</h3>
+          {!st?.recent.length && <p className="text-sm text-gray-400">None yet.</p>}
+          <ul className="space-y-1.5 text-sm">
+            {st?.recent.map((r, i) => (
+              <li key={i} className="flex items-start gap-2">
+                {r.ok ? <CheckCircle size={14} className="mt-0.5 shrink-0 text-green-600" /> : <AlertCircle size={14} className="mt-0.5 shrink-0 text-red-600" />}
+                <span className="min-w-0">
+                  <span className="text-gray-800">{r.subject}</span>
+                  <span className="text-gray-500"> → {r.to} · {new Date(r.at).toLocaleString()}</span>
+                  {!r.ok && <span className="block text-xs text-red-600">{r.error}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
     </div>
   );
 }

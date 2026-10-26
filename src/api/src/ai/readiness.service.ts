@@ -71,14 +71,24 @@ export class ReadinessService {
       }
     }
 
+    const mail = this.email.status();
+    const lastFailure = mail.recent.find((r) => !r.ok);
+    const lastOk = mail.recent.find((r) => r.ok);
+    const failing = mail.configured && !!lastFailure && (!lastOk || lastOk.at < lastFailure.at);
     items.push({
       key: 'email',
       label: 'Email delivery',
-      status: this.email.isConfigured ? 'ok' : 'warn',
-      detail: this.email.isConfigured
-        ? 'Resend is configured; reminders, approver alerts and import reports will be sent.'
-        : 'RESEND_API_KEY is not set, so no emails are sent (reminders, approver alerts, partner reports).',
-      hint: this.email.isConfigured ? undefined : 'Add RESEND_API_KEY (and RESEND_FROM_EMAIL) under App Service > Environment variables.',
+      status: !mail.configured || failing ? 'warn' : 'ok',
+      detail: !mail.configured
+        ? 'RESEND_API_KEY is not set, so no emails are sent (reminders, approver alerts, partner reports).'
+        : failing
+          ? `The last email (to ${lastFailure!.to}) was rejected by Resend: ${lastFailure!.error}`
+          : `Resend is configured; emails are sent from ${mail.fromAddress}.`,
+      hint: !mail.configured
+        ? 'Add RESEND_API_KEY (and RESEND_FROM_EMAIL) under App Service > Environment variables.'
+        : failing
+          ? `Verify the domain ${mail.fromDomain} in Resend (Domains), or set RESEND_FROM_EMAIL to an address on a verified domain. Use System Settings > Email > Send test email to check.`
+          : undefined,
     });
 
     const hasMigration014 = await this.safe(

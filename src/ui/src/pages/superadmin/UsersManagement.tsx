@@ -119,12 +119,15 @@ export default function UsersManagement() {
   const [activeRole, setActiveRole] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users-all', activeRole],
-    queryFn: () => usersApi.list(activeRole ? { role: activeRole } : {}),
+    // Always load everyone: the tab badges need counts for every role, and
+    // filtering the full list here keeps them stable whichever tab is open.
+    queryKey: ['users-all'],
+    queryFn: () => usersApi.list({}),
     staleTime: 30_000,
   });
 
-  const users = (data?.data ?? []) as UserRow[];
+  const allUsers = (data?.data ?? []) as UserRow[];
+  const users = activeRole ? allUsers.filter((u) => u.role === activeRole) : allUsers;
   const columns = getColumnsForRole(activeRole);
 
   return (
@@ -142,9 +145,9 @@ export default function UsersManagement() {
       {/* Role tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-lg mb-6 flex-wrap">
         {roleTabs.map((tab) => {
-          const count = tab.key === null
-            ? (data?.data as UserRow[] | undefined)?.length
-            : (data?.data as UserRow[] | undefined)?.filter((u: UserRow) => u.role === tab.key).length;
+          const count = !data ? undefined
+            : tab.key === null ? allUsers.length
+            : allUsers.filter((u) => u.role === tab.key).length;
           return (
             <button
               key={String(tab.key)}
@@ -157,7 +160,7 @@ export default function UsersManagement() {
             >
               {tab.icon}
               {tab.label}
-              {count != null && activeRole !== tab.key && (
+              {count != null && (
                 <span className="bg-gray-200 text-gray-600 text-xs rounded-full px-1.5 py-0.5 leading-none">
                   {count}
                 </span>

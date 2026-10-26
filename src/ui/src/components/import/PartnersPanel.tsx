@@ -198,7 +198,13 @@ export default function PartnersPanel() {
       </div>
 
       {partners.isLoading && <p className="text-gray-400">Loading…</p>}
-      {!partners.isLoading && list.length === 0 && (
+      {partners.isError && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <span>Could not load partners: {errMsg(partners.error, 'the server returned an error.')}</span>
+          <button type="button" onClick={() => void partners.refetch()} className="font-medium underline">Retry</button>
+        </div>
+      )}
+      {!partners.isLoading && !partners.isError && list.length === 0 && (
         <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-gray-500">
           <Building2 className="mx-auto mb-2 text-gray-300" size={32} />
           No partners yet. Onboard one to generate their API key.

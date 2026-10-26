@@ -94,8 +94,9 @@ export class PartnersService {
   async list() {
     const partners = await this.db.query<PartnerRow>(`SELECT * FROM DataPartners ORDER BY IsActive DESC, UniversityName`);
     const keys = await this.db.query<KeyRow>(`SELECT * FROM PartnerApiKeys ORDER BY CreatedAt DESC`);
-    const counts = await this.db.query<{ PartnerId: number; Total: number; Open: number; Last: Date | null }>(
-      `SELECT PartnerId, COUNT(*) AS Total, SUM(CASE WHEN Status IN ('pending','partial') THEN 1 ELSE 0 END) AS Open, MAX(SubmittedAt) AS Last
+    // OPEN is a reserved word in T-SQL, so the waiting count is aliased OpenCount.
+    const counts = await this.db.query<{ PartnerId: number; Total: number; OpenCount: number; Last: Date | null }>(
+      `SELECT PartnerId, COUNT(*) AS Total, SUM(CASE WHEN Status IN ('pending','partial') THEN 1 ELSE 0 END) AS OpenCount, MAX(SubmittedAt) AS Last
        FROM ImportBatches WHERE PartnerId IS NOT NULL GROUP BY PartnerId`,
     );
     return partners.recordset.map((p) => {
@@ -103,7 +104,7 @@ export class PartnersService {
       return this.mapPartner(
         p,
         keys.recordset.filter((k) => k.PartnerId === p.Id),
-        { total: c?.Total ?? 0, open: c?.Open ?? 0, last: c?.Last ?? null },
+        { total: c?.Total ?? 0, open: c?.OpenCount ?? 0, last: c?.Last ?? null },
       );
     });
   }
@@ -188,8 +189,7 @@ export class PartnersService {
     );
     let emailed = false;
     if (emailKey) {
-      await this.sendOnboardingEmail(partner, key);
-      emailed = this.email.isConfigured;
+      emailed = (await this.sendOnboardingEmail(partner, key)).ok;
     }
     return { apiKey: key, prefix, endpoint: `${this.endpointBase}/submissions`, emailed, instructions: this.instructions(partner.UniversityCode, key) };
   }
@@ -261,7 +261,7 @@ export class PartnersService {
   }
 
   private async sendOnboardingEmail(partner: PartnerRow, key: string) {
-    await this.email.sendRichNotice({
+    return this.email.sendRichNotice({
       to: partner.ContactEmail,
       subject: 'Your TransferHub data submission access',
       heading: 'You can now submit your catalogue data',

@@ -490,7 +490,7 @@ export class SubmissionsService {
     const shown = rows.slice(0, MAX);
     const quoteText = (note ?? b.ReviewerNote ?? '').trim();
 
-    await this.email.sendRichNotice({
+    const sent = await this.email.sendRichNotice({
       to: b.ContactEmail,
       subject: `TransferHub report for submission ${b.Ref}`,
       heading: `Report for submission ${b.Ref}`,
@@ -514,8 +514,9 @@ export class SubmissionsService {
         footnote: rows.length > MAX ? `Showing the first ${MAX} of ${rows.length} items. Fetch the full list from the API: GET /api/public/v1/submissions/${b.Ref}` : undefined,
       },
     });
+    if (!sent.ok) return false;
     await this.db.query(`UPDATE ImportBatches SET ReportSentAt = SYSUTCDATETIME() WHERE Id = @id`, [{ name: 'id', type: sql.Int, value: batchId }]);
-    return this.email.isConfigured;
+    return true;
   }
 
   /** Staff-created staging: same pipeline, no partner, so there is nobody to email. */

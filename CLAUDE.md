@@ -615,6 +615,12 @@ one-off fix.
   optionally `RESEND_FROM_EMAIL` to override the default sender.
 - If `RESEND_API_KEY` is unset, `EmailService.send` logs a warning and
   no-ops instead of throwing, so local dev without the key keeps working.
+- **Resend does not throw on rejection** — `emails.send()` returns `{ data, error }`.
+  `EmailService.send()` now checks `error`, logs it, returns an `EmailResult`, and keeps the
+  last 20 attempts in memory. Super admins see them, plus the sender/domain, under
+  System Settings → Email (`GET /email/status`, `POST /email/test`), and the readiness card
+  warns when the latest email was rejected. Typical cause: the sender domain
+  (`RESEND_FROM_EMAIL`, default `support@wcubeprojects.in`) is not verified in Resend.
 - Failures are always non-fatal: `UsersService.create()` sends a "your
   account was created" email with the temp password after inserting the
   user, wrapped in try/catch — email delivery problems never fail user
@@ -825,5 +831,6 @@ alongside the old (harmless, vestigial) ones. No manual
 - Always run `npx tsc --noEmit` in both `src/api` and `src/ui` before
   committing
 - SQL Server reserved keywords bite here more than once (`Schema` broke a
-  `CREATE TABLE` — renamed to `SchemaJson`) — double-check column names
+  `CREATE TABLE` — renamed to `SchemaJson`; a column alias `AS Open` broke the partners
+  list with a 500 that the UI showed as "no partners") — double-check column names and aliases
   against the T-SQL reserved word list when adding new tables

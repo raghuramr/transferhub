@@ -1,8 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
 
+export interface EmailResult {
+  ok: boolean;
+  id?: string;
+  error?: string;
+}
+
+export interface EmailAttempt extends EmailResult {
+  to: string;
+  subject: string;
+  at: string;
+}
+
 @Injectable()
 export class EmailService {
+  /** Last send attempts, shared by every instance (each module gets its own EmailService). */
+  private static recent: EmailAttempt[] = [];
+
   private readonly logger = new Logger(EmailService.name);
   private readonly resend: Resend | null;
   private readonly fromAddress: string;
@@ -186,7 +201,7 @@ export class EmailService {
     quote?: { label: string; text: string };
     ctaLabel: string;
     ctaPath: string;
-  }): Promise<void> {
+  }): Promise<EmailResult> {
     const details = (opts.details ?? [])
       .map((d) => `<div style="margin-bottom:10px;"><div class="label">${this.esc(d.label)}</div><div class="value">${this.esc(d.value)}</div></div>`)
       .join('');
@@ -200,7 +215,7 @@ export class EmailService {
       <p style="text-align:center;margin-top:32px;">
         <a href="${this.appBaseUrl}${opts.ctaPath}" class="cta-button">${this.esc(opts.ctaLabel)}</a>
       </p>`;
-    await this.send(opts.to, opts.subject, this.wrapHtml(opts.heading, content));
+    return this.send(opts.to, opts.subject, this.wrapHtml(opts.heading, content));
   }
 
   /**
@@ -219,7 +234,7 @@ export class EmailService {
     quote?: { label: string; text: string };
     ctaLabel?: string;
     ctaPath?: string;
-  }): Promise<void> {
+  }): Promise<EmailResult> {
     const details = (opts.details ?? [])
       .map((d) => `<div style="margin-bottom:10px;"><div class="label">${this.esc(d.label)}</div><div class="value">${this.esc(d.value)}</div></div>`)
       .join('');
@@ -243,25 +258,68 @@ export class EmailService {
       <p>Hi ${this.esc(opts.greetingName)}, ${this.esc(opts.intro)}</p>
       ${details || quote ? `<div class="info-card">${details}${quote}</div>` : ''}
       ${code}${table}${cta}`;
-    await this.send(opts.to, opts.subject, this.wrapHtml(opts.heading, content).replace('max-width: 600px', 'max-width: 760px'));
+    return this.send(opts.to, opts.subject, this.wrapHtml(opts.heading, content).replace('max-width: 600px', 'max-width: 760px'));
   }
 
-  async send(to: string, subject: string, html: string): Promise<void> {
+  /**
+   * Resend's SDK does not throw when it rejects a message (unverified sender
+   * domain, a test key sending to someone other than the account owner, bad
+   * address...): it returns `{ error }`. Check it, or failures vanish silently.
+   */
+  async send(to: string, subject: string, html: string): Promise<EmailResult> {
     if (!this.resend) {
       this.logger.warn(`RESEND_API_KEY not set — skipping email to ${to}: "${subject}"`);
-      return;
+      return this.remember(to, subject, { ok: false, error: 'RESEND_API_KEY is not set on the server.' });
     }
 
     try {
-      await this.resend.emails.send({
+      const { data, error } = await this.resend.emails.send({
         from: this.fromHeader,
         to,
         subject,
         html,
       });
+      if (error) {
+        this.logger.error(`Resend rejected email to ${to} ("${subject}") from ${this.fromAddress}: ${error.name}: ${error.message}`);
+        return this.remember(to, subject, { ok: false, error: `${error.message} (${error.name})` });
+      }
+      return this.remember(to, subject, { ok: true, id: data?.id });
     } catch (err) {
       this.logger.error(`Failed to send email to ${to}: ${(err as Error).message}`);
+      return this.remember(to, subject, { ok: false, error: (err as Error).message });
     }
+  }
+
+  private remember(to: string, subject: string, result: EmailResult): EmailResult {
+    EmailService.recent.unshift({ ...result, to, subject, at: new Date().toISOString() });
+    EmailService.recent.length = Math.min(EmailService.recent.length, 20);
+    return result;
+  }
+
+  /** Configuration and the most recent attempts (since the API last started), for the settings page. */
+  status() {
+    return {
+      configured: this.isConfigured,
+      fromAddress: this.fromAddress,
+      fromName: this.fromName,
+      fromDomain: this.fromAddress.split('@')[1] ?? '',
+      fromIsDefault: !process.env.RESEND_FROM_EMAIL,
+      appBaseUrl: this.appBaseUrl,
+      recent: EmailService.recent,
+    };
+  }
+
+  async sendTest(to: string): Promise<EmailResult> {
+    const content = `
+      <h2>Test email</h2>
+      <p>If you can read this, TransferHub can send email through Resend.</p>
+      <div class="info-card">
+        <div class="label">Sent from</div>
+        <div class="value">${this.esc(this.fromHeader)}</div>
+      </div>
+      <p style="font-size:13px;color:#6b7280;">Sent ${new Date().toUTCString()}</p>
+    `;
+    return this.send(to, 'TransferHub test email', this.wrapHtml('Test email', content));
   }
 
   async sendWelcome(to: string, firstName: string): Promise<void> {

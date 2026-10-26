@@ -295,6 +295,22 @@ export const permissionsApi = {
 
 
 // ── Data Import endpoints (super_admin only) ──────────────────
+export interface EmailAttempt { ok: boolean; id?: string; error?: string; to: string; subject: string; at: string }
+export interface EmailStatus {
+  configured: boolean;
+  fromAddress: string;
+  fromName: string;
+  fromDomain: string;
+  fromIsDefault: boolean;
+  appBaseUrl: string;
+  recent: EmailAttempt[];
+}
+
+export const emailApi = {
+  status: () => api.get<EmailStatus>('/email/status'),
+  test: (to?: string) => api.post<EmailAttempt>('/email/test', to ? { to } : {}),
+};
+
 export const importApi = {
   getFormat: () => api.get('/import/format'),
   endpointInfo: () => api.get<{ baseUrl: string; submitUrl: string; formatUrl: string }>('/import/endpoint-info'),

@@ -6,12 +6,13 @@ import { AiSettingsService } from './ai-settings.service';
 import { AiUsageService } from './ai-usage.service';
 import { ReadinessService } from './readiness.service';
 import { EmailService } from '../common/email.service';
+import { EmailController } from '../common/email.controller';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [AuthModule],
   providers: [AiService, AiSettingsService, AiUsageService, ReadinessService, EmailService],
-  controllers: [AiController, AiControlsController],
+  controllers: [AiController, AiControlsController, EmailController],
   exports: [AiService, AiSettingsService, AiUsageService],
 })
 export class AiModule {}
