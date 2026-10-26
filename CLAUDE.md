@@ -535,6 +535,10 @@ change plan + confirmed decisions in `13_registration_and_process_changes.md`.
 - **`ANTHROPIC_API_KEY`: not obtained yet.** AI stays paused (AI Controls switch off or
   `AI_DISABLED=true`; without a key the pipeline skips quietly). Revisit when the key exists:
   set it, remove `AI_DISABLED`, switch AI back on, then try an auto-approve stage.
+- **Decisions (user, 2026-10-26):** CI/CD stays on **GitHub Actions** (the Azure DevOps option is
+  closed for now). The Anthropic key is still being requested from the infra team. The CI
+  SQL-firewall permission and applying migrations/seeds by hand stay as they are until the user
+  says otherwise.
 - **CI SQL-firewall permission: deliberately left for later** (user decision). The deploy
   service principal (object id `275b63a9-80e3-4ede-8867-4110cf1ed843`) still lacks
   `Microsoft.Sql/servers/firewallRules/write`, so the workflow's DB steps are switched off
@@ -544,6 +548,48 @@ change plan + confirmed decisions in `13_registration_and_process_changes.md`.
 - **End-to-end trial of the partner flow (onboard partner -> key -> submit via `/partner` or
   API -> review/import -> report email) and of auto-approve: user will try it and report back.**
   Resend is already configured in the App Service environment variables.
+
+## Session 2026-10-26 (b): storage, registration form, equivalency dates, active toggles (built)
+- **Migrations 016 + 017 and seed 011 are NEW and NOT yet applied to the live DB** - run
+  `npm run apply:all` in `tools/db-mcp-server` (or the script runner) from an allowed machine.
+  Code degrades until then: uploads fall back to the legacy insert (blob mode refuses with a clear
+  503 until 016 is in), equivalency dates are rejected/ignored until 017.
+- **Uploads -> Azure Blob Storage** (`src/api/src/uploads/blob-storage.service.ts`,
+  `@azure/storage-blob`). Set `AZURE_STORAGE_CONNECTION_STRING` (+ optional
+  `AZURE_STORAGE_CONTAINER_PRIVATE` default `student-documents`, `..._PUBLIC` default
+  `public-assets`) in App Service settings; unset = local disk under `src/api/storage/` (dev only).
+  Private blobs are `{role}/{userId}/{entityType}/{entityId}/{uuid}-{filename}` (one folder per
+  user). `Uploads` gained `StorageProvider`, `ContainerName`, `DocumentType` (migration 016);
+  `StoredPath` holds the blob name (legacy rows keep their disk path). Downloads are streamed
+  through the authenticated API (owner or admin/super_admin/faculty); `GET /uploads` lists a user's
+  own docs (staff may pass `?userId=`). Multer limit 15 MB + extension allowlist; no sync disk
+  I/O any more (the old `writeFileSync` path is the likely cause of the 502s).
+- **Registration**: application step no longer defaults to or hard-codes BU - copy follows the
+  chosen university, the school/college is only required when that university lists any, the
+  student-ID format is not enforced server-side, BU policy blurbs show only for code `BU`.
+  `AuthService.register` now rolls back a half-created student (user/profile/education/exams/
+  submission) so a failure no longer leaves the email stuck as "already in use".
+- **Registration as a Custom Form**: the OPEN form with slug `student-registration` (seed 011,
+  edited under Custom Forms - fields have an optional "Step / section name") renders as extra steps
+  before Review; answers are stored as a `FormSubmission` linked to the new student
+  (`GET /auth/registration-form` public, `extraAnswers` on `POST /auth/register`; file fields are
+  ignored pre-login). The core steps (account, application, contact, education history, language)
+  stay built in because the transfer-policy engine needs them as structured data; moving more of
+  them into the form engine would need repeatable groups + field-to-column mapping.
+- **Equivalency effective dates (Phase 5, built)**: `Equivalencies.EffectiveFrom/EffectiveTo`
+  (migration 017, which also re-creates `sp_TriageCourse`/`sp_RecordDecision`; the term text
+  "Fall 2021" gives the as-of date, else today; an expired mapping no longer blocks recording a
+  new one). New `EquivalenciesController` (`/equivalencies`, gated by the `courses` permission
+  module) + UI `pages/admin/EquivalenciesManagement.tsx` at `/admin/equivalencies` (nav entry
+  "Equivalencies" for admin + super_admin) with current/upcoming/expired/inactive status.
+- **Active toggles**: Programs now have Activate (row, bulk, and an Active checkbox in the editor),
+  Universities/Institutions/Agencies got a per-row Activate beside Deactivate, and the University
+  page's program list shows inactive programs with an activate button.
+- **Responsive**: `DataTable` renders one card per row below `md` (first column = title); Roles &
+  Permissions stacks on phones; small 2-column form grids stack. Still not pixel-checked on a device.
+- Open question left for the user: "University - Institutions (One-One)" was read as "an Institution
+  (AcademicUnit) belongs to exactly one University", which is already the schema (`InstitutionId`
+  FK, nullable = unmapped).
 
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
@@ -836,9 +882,13 @@ alongside the old (harmless, vestigial) ones. No manual
 `__ScriptRunnerHistory` surgery is needed.
 
 ## Workflow reminders for this repo
-- **Branch rule changed (2026-10-26, user request):** do NOT commit to `main` any more —
-  every push to `main` deploys to Azure. Work on `claude/awesome-carson-csq78r` and let
-  the user merge to `main` when they want a deploy.
+- **Branches (2026-10-26):** every push to `main` deploys to Azure. The user later asked to
+  consolidate all branches into `main` and work on `main`. Stale `claude/upbeat-davinci-vg9kbz`
+  (an old line of work superseded by main's rewrites of import/email/users/registration) was
+  recorded as merged with `git merge -s ours` (history joined, main's content kept - a real merge
+  conflicted in 14 files and would have regressed). Cloud sessions are told to push to their
+  designated feature branch (e.g. `ccr-da95d981-um0118`), so the user merges that branch into
+  `main` when they want a deploy; if a session is allowed to push `main` directly, say so first.
 - Always run `npx tsc --noEmit` in both `src/api` and `src/ui` before
   committing
 - `@hookform/resolvers` must be v5+ with zod 4 (v3 re-throws zod 4 errors instead of
