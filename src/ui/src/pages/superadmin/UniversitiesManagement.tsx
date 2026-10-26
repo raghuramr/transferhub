@@ -5,6 +5,7 @@ import { Building2, Plus, Upload, Power, Globe2, School, GraduationCap } from 'l
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ImageSourceField } from '../../components/shared/ImageSourceField';
 import { usePermissions } from '../../hooks/usePermissions';
+import { ProgramEditForm, type University as UniOption, type ProgramForm } from '../../components/programs/ProgramEditor';
 
 interface University {
   id: number;
@@ -290,8 +291,28 @@ function UniversityProgramsList({ universityId }: { universityId: number }) {
   const qc = useQueryClient();
   const [newName, setNewName] = useState('');
   const [newArea, setNewArea] = useState('');
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const invalidateAll = () => qc.invalidateQueries({ queryKey: ['programs', { universityId }] });
+  const invalidateAll = () => qc.invalidateQueries({ queryKey: ['programs'] });
+
+  const { data: uniData } = useQuery({
+    queryKey: ['universities'],
+    queryFn: () => universitiesApi.list(),
+  });
+  const universityOptions: UniOption[] = (uniData?.data as UniOption[]) ?? [];
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, form }: { id: number; form: ProgramForm }) =>
+      coursesApi.updateProgram(id, {
+        institutionId: Number(form.institutionId),
+        name: form.name,
+        area: form.area || null,
+        degree: form.degree || null,
+        school: form.school || null,
+        notes: form.notes || null,
+      }),
+    onSuccess: invalidateAll,
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['programs', { universityId }],
@@ -328,23 +349,34 @@ function UniversityProgramsList({ universityId }: { universityId: number }) {
       ) : (
         <ul className="space-y-1 mb-3">
           {programs.map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center justify-between text-sm bg-white border border-gray-200 rounded-lg px-3 py-1.5"
-            >
-              <span className="text-gray-800">
-                {p.name}
-                {p.area && <span className="text-gray-400"> ({p.area})</span>}
-                {p.degree && <span className="text-gray-400"> — {p.degree}</span>}
-              </span>
-              <button
-                onClick={() => deactivateMutation.mutate(p.id)}
-                disabled={deactivateMutation.isPending}
-                title="Deactivate program"
-                className="text-gray-400 hover:text-red-600 disabled:opacity-50"
-              >
-                <Power size={13} />
-              </button>
+            <li key={p.id} className="bg-white border border-gray-200 rounded-lg">
+              <div className="flex items-center justify-between text-sm px-3 py-1.5">
+                <button
+                  onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
+                  className="text-left text-gray-800 hover:text-brand-800"
+                  title="Edit program, courses and topics"
+                >
+                  {p.name}
+                  {p.area && <span className="text-gray-400"> ({p.area})</span>}
+                  {p.degree && <span className="text-gray-400"> — {p.degree}</span>}
+                </button>
+                <button
+                  onClick={() => deactivateMutation.mutate(p.id)}
+                  disabled={deactivateMutation.isPending}
+                  title="Deactivate program"
+                  className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                >
+                  <Power size={13} />
+                </button>
+              </div>
+              {expandedId === p.id && (
+                <ProgramEditForm
+                  program={p as never}
+                  universities={universityOptions}
+                  isSaving={updateMutation.isPending && updateMutation.variables?.id === p.id}
+                  onSave={(form) => updateMutation.mutate({ id: p.id, form })}
+                />
+              )}
             </li>
           ))}
         </ul>

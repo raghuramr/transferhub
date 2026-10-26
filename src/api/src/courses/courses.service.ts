@@ -243,7 +243,9 @@ export class CoursesService {
     let where = '1=1';
     const inputs: QueryInput[] = [];
     if (institutionId !== undefined) {
-      where += ' AND p.InstitutionId = @instId';
+      // Owner OR any university the program is shared with (ProgramUniversities)
+      where += ` AND (p.InstitutionId = @instId OR EXISTS (
+        SELECT 1 FROM ProgramUniversities pu WHERE pu.ProgramId = p.Id AND pu.InstitutionId = @instId))`;
       inputs.push({ name: 'instId', type: sql.Int, value: institutionId });
     }
     if (!includeInactive) {

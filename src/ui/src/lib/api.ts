@@ -168,6 +168,7 @@ export const coursesApi = {
     api.get('/courses/equivalency', { params: { code, institution } }),
   search: (q: string, institution?: string) =>
     api.get('/courses/search', { params: { q, institution } }),
+  get: (id: number) => api.get(`/courses/${id}`),
   create: (data: unknown) => api.post('/courses', data),
   update: (id: number, data: unknown) => api.patch(`/courses/${id}`, data),
   deactivate: (id: number) => api.delete(`/courses/${id}`),
