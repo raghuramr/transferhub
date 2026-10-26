@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth';
+import { LogoMark } from '../shared/Logo';
 import { authApi, pagesApi } from '../../lib/api';
 import { PageTransition } from '../ui/PageTransition';
 import {
@@ -120,9 +121,7 @@ export default function AppLayout() {
     <>
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-brand-100/60">
-        <div className="w-9 h-9 rounded-xl bg-brand-800 flex items-center justify-center shrink-0">
-          <GraduationCap className="text-white" size={20} />
-        </div>
+        <LogoMark size={36} className="shrink-0" />
         <div>
           <p className="font-bold text-gray-900 text-sm leading-tight">TransferHub</p>
           <p className="text-xs text-gray-500">Credit Evaluation</p>
@@ -210,9 +209,7 @@ export default function AppLayout() {
           >
             <Menu size={22} />
           </button>
-          <div className="w-7 h-7 rounded-lg bg-brand-800 flex items-center justify-center shrink-0">
-            <GraduationCap className="text-white" size={16} />
-          </div>
+          <LogoMark size={28} className="shrink-0" />
           <p className="font-bold text-gray-900 text-sm">TransferHub</p>
         </div>
 

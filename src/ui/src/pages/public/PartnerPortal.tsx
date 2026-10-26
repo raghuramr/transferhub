@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Code2, Download, FileJson, FileSpreadsheet, GraduationCap, History, Loader2, LogOut, Send, UploadCloud } from 'lucide-react';
+import { CheckCircle2, Code2, Download, FileJson, FileSpreadsheet, History, Loader2, LogOut, Send, UploadCloud } from 'lucide-react';
 import { cn } from '../../lib/cn';
+import { LogoMark } from '../../components/shared/Logo';
 import { partnerApi, type PartnerIdentity, type SubmissionBody, type SubmissionResult } from '../../lib/partnerApi';
 import { countRows, downloadJsonExample, downloadTemplate, parseExcel, parseJsonFile, type ParsedFile } from '../../lib/importFile';
 
@@ -281,7 +282,7 @@ export default function PartnerPortal() {
     <div className="min-h-screen bg-gray-50">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-2 font-bold text-gray-900"><GraduationCap className="text-brand-800" size={22} /> TransferHub <span className="font-normal text-gray-400">Partner portal</span></div>
+          <div className="flex items-center gap-2 font-bold text-gray-900"><LogoMark size={28} /> TransferHub <span className="font-normal text-gray-400">Partner portal</span></div>
           {who && (
             <div className="flex items-center gap-3 text-sm text-gray-600">
               <span className="hidden sm:inline">{who.universityName} ({who.universityCode})</span>

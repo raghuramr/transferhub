@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { GraduationCap, Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
+import { LogoMark } from '../../components/shared/Logo';
 import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
 import { Button } from '../../components/ui/Button';
@@ -74,7 +75,7 @@ export default function LoginPage() {
           className="text-center mb-8"
         >
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-lg mb-4">
-            <GraduationCap className="text-brand-800" size={32} />
+            <LogoMark size={40} />
           </div>
           <h1 className="text-2xl font-bold text-white">TransferHub</h1>
           <p className="text-brand-200 mt-1">Transfer Credit Portal</p>
