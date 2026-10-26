@@ -491,8 +491,46 @@ now does too (previously new programs were invisible to `publicPrograms()`).
 - Fixed: the designer posted server-only fields (`stageKey`, approver `id`...) that the API's
   whitelist validation rejects; it now sends only editable fields.
 
+## BU transfer policy alignment (built; migration 015 / seed 010)
+Source of truth for BU's rules: `_designs/understanding/12_bu_transfer_policy_reference.md`
+(gathered from search extracts - bu.edu is blocked by this sandbox's network policy) and the
+change plan + confirmed decisions in `13_registration_and_process_changes.md`.
+- **Policy engine** `src/api/src/policy/` (global module): `TransferPolicyService.applyToTranscript`
+  runs after `sp_TriageCourse` and only *tightens* lanes - P/F & S/U -> review (Spring 2020 and
+  reviewer-accepted "college required P/F" are exceptions), grade below the university's minimum ->
+  not eligible, older than N years -> review, unaccredited -> not eligible / unknown -> review,
+  trimester -> review, internship/research/military/life experience -> not eligible, coursework
+  outside the US -> flagged for International Admissions (no evaluation, no AI), over the external
+  credit cap (transfer + AP/IB/A-level; 68 / 60 / 68 by applicant type) -> review. Flags are stored
+  as JSON in `TranscriptCourses.PolicyFlags` and shown to students and in the reviewer brief, which
+  also always states the Hub rule (transfer courses never count; 10 Hub requirements).
+  Thresholds are per university in `TransferPolicies` (Workflows -> Transfer rules tab).
+- **Preview vs official vs pre-approval** (`Transcripts.EvaluationKind`): applicant not yet admitted
+  -> `preview` (rules only, no workflow, status complete); admin "Mark admitted" (`POST
+  /requests/:id/make-official`) converts all of that student's previews and starts the workflow;
+  current BU students -> `preapproval` (valid one year after completion). Legacy profiles with no
+  ApplicantType stay `official`.
+- **Registration** is now a 6-step form (account, application, contact, education history with
+  every college + AP/IB/A-level, language + outside-US check, review); details saved by
+  `AuthService.saveApplication` into new StudentProfiles columns, `StudentEducation`,
+  `StudentExamCredits`. Public `GET /auth/academic-units?institutionId=` lists BU schools/colleges
+  (seed 010 adds them; transfer applicants must choose one).
+- **Submission** captures term + year, grading basis, delivery mode, course type, outside-US.
+- **Documents** are conditional (`documentChecklist`): English test only for non-native speakers,
+  dual-enrollment form only for dual enrollment, Transfer College Report / HS transcript for
+  transfers, final transcript only once official, syllabi counted per course still under review.
+- **Appeals** (`CourseAppeals`, `requests/appeals.*`, staff page `/appeals`): mirrors BU's Transfer
+  Credit Appeal Form (one course; proposed BU equivalent; mandatory reason; syllabus) -> department
+  decides equivalent / elective / no credit / denied with requirement satisfied, comments, signature
+  name; decision re-records the evaluation (posted immediately if the request is complete). Not for
+  previews or outside-US coursework.
+- Everything new checks `SchemaService.policyReady()` and degrades (defaults, skipped extras) when
+  migration 015 is not applied, so deploys before the migration do not break submissions.
+- **Not built (Phase 5):** equivalency effective-date ranges (TES-style begin/end dates).
+
 ## Parked / pending items (as of 2026-10-26)
 - **Migration 014 + seeds: APPLIED** to the live DB (user ran `apply:all` via the db-mcp-server).
+- **Migration 015 + seed 010: NOT yet applied** (built 2026-10-26) - user must run `npm run apply:all` again.
 - **`ANTHROPIC_API_KEY`: not obtained yet.** AI stays paused (AI Controls switch off or
   `AI_DISABLED=true`; without a key the pipeline skips quietly). Revisit when the key exists:
   set it, remove `AI_DISABLED`, switch AI back on, then try an auto-approve stage.

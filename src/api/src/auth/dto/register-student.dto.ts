@@ -1,4 +1,28 @@
-import { IsEmail, IsString, IsOptional, MinLength, IsInt, IsNumber, Min, Max, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateNested,
+} from 'class-validator';
+
+/** One institution the student attended (BU asks for every one - doc 12, BU-AD-03). */
+export class EducationEntryDto {
+  @IsString() @MaxLength(200) institutionName: string;
+  @IsOptional() @IsString() @MaxLength(100) city?: string;
+  @IsOptional() @IsString() @MaxLength(100) stateRegion?: string;
+  @IsOptional() @IsString() @MaxLength(100) country?: string;
+  @IsOptional() @IsBoolean() isOutsideUS?: boolean;
+  @IsOptional() @IsInt() @Min(1950) @Max(2100) fromYear?: number;
+  @IsOptional() @IsInt() @Min(1950) @Max(2100) toYear?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(400) creditsEarned?: number;
+  @IsOptional() @IsBoolean() fullTime?: boolean;
+}
+
+/** AP / IB / A-level exam (counts toward the external-credit cap - BU-CR-05). */
+export class ExamEntryDto {
+  @IsIn(['AP', 'IB', 'A-level']) examType: string;
+  @IsString() @MaxLength(150) subject: string;
+  @IsOptional() @IsString() @MaxLength(10) score?: string;
+  @IsOptional() @IsInt() @Min(1950) @Max(2100) examYear?: number;
+}
 
 /** Public student self-registration — see AuthController.register / migration 012. */
 export class RegisterStudentDto {
@@ -32,4 +56,21 @@ export class RegisterStudentDto {
   // ── Target University / Program (informational — see migration 012) ──
   @IsOptional() @IsInt() targetInstitutionId?: number;
   @IsOptional() @IsInt() targetProgramId?: number;
+
+  // ── Application (BU policy alignment - migration 015) ───────
+  @IsOptional() @IsIn(['transfer_applicant', 'admitted_transfer', 'current_student', 'dual_enrollment']) applicantType?: string;
+  /** BU school/college (an AcademicUnit of the target university). Transfers cannot apply undeclared. */
+  @IsOptional() @IsInt() intendedAcademicUnitId?: number;
+  @IsOptional() @IsIn(['fall', 'spring', 'summer']) entryTerm?: string;
+  @IsOptional() @IsInt() @Min(2000) @Max(2100) entryYear?: number;
+  @IsOptional() @Matches(/^U\d{8}$/, { message: 'BUID must look like U12345678' }) buid?: string;
+  @IsOptional() @IsBoolean() isNativeEnglish?: boolean;
+  @IsOptional() @IsIn(['TOEFL', 'IELTS', 'Duolingo']) englishTestType?: string;
+  @IsOptional() @IsString() @MaxLength(20) englishTestScore?: string;
+  @IsOptional() @IsBoolean() hasIntlCoursework?: boolean;
+  @IsOptional() @IsString() @MaxLength(200) highSchoolName?: string;
+  @IsOptional() @IsInt() @Min(1950) @Max(2100) highSchoolGradYear?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(400) creditsCompleted?: number;
+  @IsOptional() @IsArray() @ArrayMaxSize(15) @ValidateNested({ each: true }) @Type(() => EducationEntryDto) education?: EducationEntryDto[];
+  @IsOptional() @IsArray() @ArrayMaxSize(40) @ValidateNested({ each: true }) @Type(() => ExamEntryDto) exams?: ExamEntryDto[];
 }

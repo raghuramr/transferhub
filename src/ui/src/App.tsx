@@ -51,6 +51,7 @@ import AiControls from './pages/superadmin/AiControls';
 // Approval workflow (staff)
 import RequestsQueue from './pages/staff/RequestsQueue';
 import RequestReview from './pages/staff/RequestReview';
+import AppealsQueue from './pages/staff/AppealsQueue';
 
 // Custom Pages (CMS) — public-facing view, any authenticated role
 import CmsPageView from './pages/cms/CmsPageView';
@@ -168,6 +169,9 @@ export default function App() {
         <Route path="/requests" element={<RequireAuth roles={['faculty','admin','super_admin']}><AppLayout /></RequireAuth>}>
           <Route index element={<RequestsQueue />} />
           <Route path=":id" element={<RequestReview />} />
+        </Route>
+        <Route path="/appeals" element={<RequireAuth roles={['faculty','admin','super_admin']}><AppLayout /></RequireAuth>}>
+          <Route index element={<AppealsQueue />} />
         </Route>
 
         {/* Shared CMS page view (any authenticated role) */}

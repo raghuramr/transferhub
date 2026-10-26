@@ -1,5 +1,7 @@
 import { ForbiddenException, HttpException, Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import * as sql from 'mssql';
+import { SchemaService } from '../policy/schema.service';
+import { TransferPolicyService } from '../policy/transfer-policy.service';
 import { DatabaseService } from '../database/database.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { UploadsService } from '../uploads/uploads.service';
@@ -24,12 +26,45 @@ export class RequestsService {
     private uploads: UploadsService,
     private email: EmailService,
     private aiUsage: AiUsageService,
+    private schema: SchemaService,
+    private policy: TransferPolicyService,
   ) {}
+
+  /** Application details a reviewer needs (migration 015): applicant type, school, term, English, history, exams. */
+  async studentProfile(userId: string) {
+    if (!(await this.schema.policyReady())) return null;
+    const p = await this.db.query(
+      `SELECT sp.ApplicantType AS applicantType, sp.AdmissionStatus AS admissionStatus, sp.BUStudentId AS buid,
+              au.Name AS intendedSchool, ti.Name AS targetUniversity, pr.Name AS targetProgram,
+              sp.EntryTerm AS entryTerm, sp.EntryYear AS entryYear, sp.IsNativeEnglish AS isNativeEnglish,
+              sp.EnglishTestType AS englishTestType, sp.EnglishTestScore AS englishTestScore,
+              sp.HasIntlCoursework AS hasIntlCoursework, sp.HighSchoolName AS highSchoolName,
+              sp.HighSchoolGradYear AS highSchoolGradYear, sp.CreditsCompleted AS creditsCompleted
+       FROM StudentProfiles sp
+       LEFT JOIN AcademicUnits au ON au.Id = sp.IntendedAcademicUnitId
+       LEFT JOIN Institutions ti ON ti.Id = sp.TargetInstitutionId
+       LEFT JOIN Programs pr ON pr.Id = sp.TargetProgramId
+       WHERE sp.UserId = @u`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: userId }],
+    );
+    const education = await this.db.query(
+      `SELECT InstitutionName AS institutionName, City AS city, StateRegion AS stateRegion, Country AS country,
+              IsOutsideUS AS isOutsideUS, FromYear AS fromYear, ToYear AS toYear, CreditsEarned AS creditsEarned, FullTime AS fullTime
+       FROM StudentEducation WHERE UserId = @u ORDER BY SortOrder, Id`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: userId }],
+    );
+    const exams = await this.db.query(
+      `SELECT ExamType AS examType, Subject AS subject, Score AS score, ExamYear AS examYear, Credits AS credits
+       FROM StudentExamCredits WHERE UserId = @u ORDER BY ExamType, Subject`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: userId }],
+    );
+    return { ...(p.recordset[0] ?? {}), education: education.recordset, exams: exams.recordset };
+  }
 
   // ── access ──────────────────────────────────────────────────
 
   /** Students/agencies see only their own request; staff can open any. */
-  private async assertCanView(transcriptId: string, viewer: Viewer) {
+  async assertCanView(transcriptId: string, viewer: Viewer) {
     const r = await this.db.query<{ StudentUserId: string; SubmittedById: string }>(
       `SELECT StudentUserId, SubmittedById FROM Transcripts WHERE Id = @t`,
       [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
@@ -165,6 +200,25 @@ export class RequestsService {
       [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
     ).catch(() => ({ recordset: [] }));
 
+    // Preview / official / pre-approval, credit position and (for staff) the application profile.
+    let evaluationKind = 'official';
+    let preapprovalExpiresAt: Date | null = null;
+    let student: Awaited<ReturnType<RequestsService['studentProfile']>> = null;
+    let credit: Awaited<ReturnType<TransferPolicyService['creditSummary']>> | null = null;
+    if (await this.schema.policyReady()) {
+      const k = await this.db.query<{ EvaluationKind: string; PreapprovalExpiresAt: Date | null; StudentUserId: string }>(
+        `SELECT EvaluationKind, PreapprovalExpiresAt, StudentUserId FROM Transcripts WHERE Id = @t`,
+        [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+      );
+      const row = k.recordset[0];
+      evaluationKind = row?.EvaluationKind ?? 'official';
+      preapprovalExpiresAt = row?.PreapprovalExpiresAt ?? null;
+      if (row) {
+        credit = await this.policy.creditSummary(row.StudentUserId);
+        if (staff) student = await this.studentProfile(row.StudentUserId);
+      }
+    }
+
     const parseBrief = (raw: string | null) => {
       try {
         return raw ? JSON.parse(raw) : null;
@@ -186,7 +240,11 @@ export class RequestsService {
         targetInstitutionName: t.targetInstitutionName,
         documentFileName: t.documentFileName,
         workflow: t.workflowId ? { id: t.workflowId, name: t.workflowName, allowBypass: !!t.allowBypass } : null,
+        evaluationKind,
+        preapprovalExpiresAt,
       },
+      student,
+      credit,
       stages: stages.recordset.map((s) => ({
         id: s.Id,
         order: s.StageOrder,
@@ -225,7 +283,8 @@ export class RequestsService {
         isStaff: staff,
         canAct,
         canAccept: admin && workflowActive && (t.allowBypass == null || !!t.allowBypass),
-        canStartWorkflow: admin && !t.workflowId,
+        canStartWorkflow: admin && !t.workflowId && evaluationKind !== 'preview',
+        canMakeOfficial: admin && evaluationKind === 'preview',
         canNoteInternal: staff && (admin || involved),
         canNoteStudent: true,
         canSeeAiUsage: staff,

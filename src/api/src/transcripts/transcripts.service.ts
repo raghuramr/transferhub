@@ -4,6 +4,8 @@ import * as sql from 'mssql';
 import { SubmitTranscriptDto } from './dto/create-transcript.dto';
 import { EmailService } from '../common/email.service';
 import { UploadsService } from '../uploads/uploads.service';
+import { TransferPolicyService, parseFlags } from '../policy/transfer-policy.service';
+import { SchemaService } from '../policy/schema.service';
 import { WorkflowEngineService } from '../requests/workflow-engine.service';
 
 interface TranscriptCourseJoinRow {
@@ -31,6 +33,7 @@ interface TranscriptHeaderRow {
   ProcessedAt: Date | null;
   Notes: string | null;
   OriginalFileName: string | null;
+  StudentUserId: string;
   InstitutionId: number;
   InstitutionCode: string;
   InstitutionName: string;
@@ -86,6 +89,8 @@ export class TranscriptsService {
     private emailService: EmailService,
     private uploadsService: UploadsService,
     private workflowEngine: WorkflowEngineService,
+    private policy: TransferPolicyService,
+    private schema: SchemaService,
   ) {}
   private readonly logger = new Logger(TranscriptsService.name);
 
@@ -182,6 +187,16 @@ export class TranscriptsService {
     );
     const transcriptId = transcriptRes.recordset[0].Id;
 
+    // Preview (not yet admitted), official, or pre-approval (current BU student) - BU never evaluates before admission.
+    const policyReady = await this.schema.policyReady();
+    const kind = policyReady ? await this.evaluationKindFor(submittedByUserId) : 'official';
+    if (policyReady && kind !== 'official') {
+      await this.db.query(`UPDATE Transcripts SET EvaluationKind = @k WHERE Id = @id`, [
+        { name: 'k', type: sql.VarChar(12), value: kind },
+        { name: 'id', type: sql.UniqueIdentifier, value: transcriptId },
+      ]);
+    }
+
     for (const course of dto.courses) {
       const externalCourseId = await this.findOrCreateExternalCourse(
         institutionId,
@@ -206,6 +221,21 @@ export class TranscriptsService {
         ],
       );
       const transcriptCourseId = tcRes.recordset[0].Id;
+      if (policyReady) {
+        await this.db.query(
+          `UPDATE TranscriptCourses SET TermSeason = @ts, TermYear = @ty, GradingBasis = @gb, DeliveryMode = @dm, CourseType = @ct, IsOutsideUS = @os
+           WHERE Id = @id`,
+          [
+            { name: 'ts', type: sql.VarChar(10), value: course.termSeason ?? null },
+            { name: 'ty', type: sql.Int, value: course.termYear ?? null },
+            { name: 'gb', type: sql.VarChar(10), value: course.gradingBasis ?? null },
+            { name: 'dm', type: sql.VarChar(10), value: course.deliveryMode ?? null },
+            { name: 'ct', type: sql.VarChar(16), value: course.courseType ?? null },
+            { name: 'os', type: sql.Bit, value: dto.isOutsideUS || course.isOutsideUS ? 1 : 0 },
+            { name: 'id', type: sql.UniqueIdentifier, value: transcriptCourseId },
+          ],
+        );
+      }
 
       const triageRes = await this.db.execute<TriageResultRow>('sp_TriageCourse', [
         { name: 'TranscriptCourseId', type: sql.UniqueIdentifier, value: transcriptCourseId },
@@ -222,25 +252,50 @@ export class TranscriptsService {
       }
     }
 
+    // BU policy on top of the triage result (P/F, minimum grade, age, accreditation, cap, intl...).
+    try {
+      await this.policy.applyToTranscript(transcriptId);
+    } catch (err) {
+      this.logger.warn(`Request ${transcriptId}: transfer policy check failed: ${(err as Error).message}`);
+    }
+
+    // A preview is finished as soon as the rules have run; it becomes official when the student is admitted.
     await this.db.query(
-      `UPDATE Transcripts SET Status = 'processing' WHERE Id = @id`,
-      [{ name: 'id', type: sql.UniqueIdentifier, value: transcriptId }],
+      `UPDATE Transcripts SET Status = @s WHERE Id = @id`,
+      [
+        { name: 's', type: sql.VarChar(20), value: kind === 'preview' ? 'complete' : 'processing' },
+        { name: 'id', type: sql.UniqueIdentifier, value: transcriptId },
+      ],
     );
 
     // Hand the request to the intaking university's approval workflow. Never let a workflow problem
     // (e.g. migration 013 not applied yet) fail a submission that has already been saved.
-    try {
-      await this.workflowEngine.startWorkflow(transcriptId, submittedByUserId);
-    } catch (err) {
-      this.logger.warn(`Request ${transcriptId} saved but workflow did not start: ${(err as Error).message}`);
+    if (kind !== 'preview') {
+      try {
+        await this.workflowEngine.startWorkflow(transcriptId, submittedByUserId);
+      } catch (err) {
+        this.logger.warn(`Request ${transcriptId} saved but workflow did not start: ${(err as Error).message}`);
+      }
     }
 
     return this.findById(transcriptId);
   }
 
+  /** applicant (not admitted) -> preview; current BU student -> pre-approval; otherwise official. Legacy profiles stay official. */
+  private async evaluationKindFor(userId: string): Promise<'preview' | 'official' | 'preapproval'> {
+    const r = await this.db.query<{ ApplicantType: string | null; AdmissionStatus: string | null }>(
+      `SELECT ApplicantType, AdmissionStatus FROM StudentProfiles WHERE UserId = @u`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: userId }],
+    );
+    const p = r.recordset[0];
+    if (!p?.ApplicantType) return 'official';
+    if (p.ApplicantType === 'current_student') return 'preapproval';
+    return p.AdmissionStatus === 'admitted' ? 'official' : 'preview';
+  }
+
   async findById(id: string) {
     const res = await this.db.query<TranscriptHeaderRow>(
-      `SELECT t.Id, t.Status, t.ReceivedAt, t.ProcessedAt, t.Notes, t.OriginalFileName,
+      `SELECT t.Id, t.Status, t.ReceivedAt, t.ProcessedAt, t.Notes, t.OriginalFileName, t.StudentUserId,
               i.Id AS InstitutionId, i.Code AS InstitutionCode, i.Name AS InstitutionName, i.Calendar,
               u.FirstName + ' ' + u.LastName AS StudentName, u.Email AS StudentEmail
        FROM Transcripts t
@@ -265,8 +320,52 @@ export class TranscriptsService {
       [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
     );
 
+    // BU policy extras (migration 015): per-course attributes + flags, appeals, preview/official kind, credit position.
+    const extras = new Map<string, Record<string, unknown>>();
+    let evaluationKind = 'official';
+    let preapprovalExpiresAt: Date | null = null;
+    let credit: Awaited<ReturnType<TransferPolicyService['creditSummary']>> | null = null;
+    if (await this.schema.policyReady()) {
+      const k = await this.db.query<{ EvaluationKind: string; PreapprovalExpiresAt: Date | null }>(
+        `SELECT EvaluationKind, PreapprovalExpiresAt FROM Transcripts WHERE Id = @id`,
+        [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+      );
+      evaluationKind = k.recordset[0]?.EvaluationKind ?? 'official';
+      preapprovalExpiresAt = k.recordset[0]?.PreapprovalExpiresAt ?? null;
+      const x = await this.db.query<{
+        Id: string; TermSeason: string | null; TermYear: number | null; GradingBasis: string | null; DeliveryMode: string | null;
+        CourseType: string | null; IsOutsideUS: boolean; PolicyFlags: string | null;
+        AppealId: number | null; AppealStatus: string | null; AppealOutcome: string | null; AppealDenial: string | null; AppealComments: string | null;
+      }>(
+        `SELECT tc.Id, tc.TermSeason, tc.TermYear, tc.GradingBasis, tc.DeliveryMode, tc.CourseType, tc.IsOutsideUS, tc.PolicyFlags,
+                a.Id AS AppealId, a.Status AS AppealStatus, a.Outcome AS AppealOutcome, a.DenialReason AS AppealDenial, a.DepartmentComments AS AppealComments
+         FROM TranscriptCourses tc
+         OUTER APPLY (SELECT TOP 1 * FROM CourseAppeals ca WHERE ca.TranscriptCourseId = tc.Id ORDER BY ca.Id DESC) a
+         WHERE tc.TranscriptId = @id`,
+        [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+      );
+      for (const r of x.recordset) {
+        extras.set(String(r.Id).toLowerCase(), {
+          termSeason: r.TermSeason,
+          termYear: r.TermYear,
+          gradingBasis: r.GradingBasis,
+          deliveryMode: r.DeliveryMode,
+          courseType: r.CourseType,
+          isOutsideUS: !!r.IsOutsideUS,
+          policyFlags: parseFlags(r.PolicyFlags),
+          appeal: r.AppealId
+            ? { id: r.AppealId, status: r.AppealStatus, outcome: r.AppealOutcome, denialReason: r.AppealDenial, comments: r.AppealComments }
+            : null,
+        });
+      }
+      credit = await this.policy.creditSummary(t.StudentUserId);
+    }
+
     return {
       id: t.Id,
+      evaluationKind,
+      preapprovalExpiresAt,
+      credit,
       status: t.Status,
       receivedAt: t.ReceivedAt,
       processedAt: t.ProcessedAt,
@@ -280,7 +379,7 @@ export class TranscriptsService {
         name: t.InstitutionName,
         calendar: t.Calendar,
       },
-      courses: courses.recordset.map(mapCourseRow),
+      courses: courses.recordset.map((r) => ({ ...mapCourseRow(r), ...(extras.get(String(r.Id).toLowerCase()) ?? {}) })),
     };
   }
 

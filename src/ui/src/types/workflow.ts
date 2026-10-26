@@ -15,6 +15,8 @@ export interface TimelineNote {
 }
 
 export interface BriefCourse {
+  courseId?: string;
+  flags?: import('./policy').PolicyFlag[];
   evaluationId: string | null;
   code: string;
   title: string;
@@ -30,6 +32,7 @@ export interface StageBrief {
   totals: { courses: number; applied: number; likely: number; needsSyllabus: number; electiveOnly: number; notEligible: number; pending: number };
   credits: { applied: number; atStake: number };
   flags: string[];
+  notes?: string[];
   courses: BriefCourse[];
   previousStages: { stage: string; status: string; comment: string | null; at: string | null }[];
   narrative: string | null;
@@ -63,6 +66,7 @@ export interface ChecklistItem {
   perCourse: boolean;
   required: boolean;
   uploaded: number;
+  needed?: number;
 }
 
 export interface UploadedDocument {
@@ -90,7 +94,11 @@ export interface RequestTimeline {
     targetInstitutionName: string | null;
     documentFileName: string | null;
     workflow: { id: number; name: string; allowBypass: boolean } | null;
+    evaluationKind?: import('./policy').EvaluationKind;
+    preapprovalExpiresAt?: string | null;
   };
+  student?: import('./policy').StudentApplicationProfile | null;
+  credit?: import('./policy').CreditSummary | null;
   stages: TimelineStage[];
   generalNotes: TimelineNote[];
   permissions: {
@@ -98,6 +106,7 @@ export interface RequestTimeline {
     canAct: boolean;
     canAccept: boolean;
     canStartWorkflow: boolean;
+    canMakeOfficial?: boolean;
     canNoteInternal: boolean;
     canNoteStudent: boolean;
     canSeeAiUsage: boolean;

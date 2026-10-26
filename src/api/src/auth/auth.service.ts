@@ -9,6 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService, QueryInput } from '../database/database.service';
+import { SchemaService } from '../policy/schema.service';
 import { EmailService } from '../common/email.service';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
@@ -80,6 +81,7 @@ export class AuthService {
     private jwtService: JwtService,
     private config: ConfigService,
     private emailService: EmailService,
+    private schema: SchemaService,
   ) {}
 
   async validateUser(email: string, password: string, ip: string, userAgent: string): Promise<AuthenticatedUser> {
@@ -250,6 +252,7 @@ export class AuthService {
       ] as QueryInput[],
     );
 
+    await this.saveApplication(userId, dto);
     await this.audit(userId, dto.email, 'student', 'STUDENT_REGISTERED', 'User', userId, ip, userAgent);
 
     try {
@@ -267,6 +270,88 @@ export class AuthService {
       departmentId: null,
     };
     return this.login(user, ip, userAgent);
+  }
+
+  /**
+   * Application details BU's process needs (doc 13): applicant type, school/college, entry term, BUID,
+   * English, every institution attended and AP/IB/A-level exams. Written after the core account so a
+   * database without migration 015 still registers the student (the extra details are then skipped).
+   */
+  private async saveApplication(userId: string, dto: RegisterStudentDto) {
+    if (!(await this.schema.policyReady())) {
+      if (dto.applicantType) this.logger.warn('Migration 015 not applied: application details were not saved.');
+      return;
+    }
+    if (dto.intendedAcademicUnitId !== undefined) {
+      const au = await this.db.query<{ Id: number }>(`SELECT Id FROM AcademicUnits WHERE Id = @id AND IsActive = 1`, [
+        { name: 'id', type: sql.Int, value: dto.intendedAcademicUnitId },
+      ]);
+      if (!au.recordset[0]) throw new BadRequestException('intendedAcademicUnitId not found');
+    }
+    const admitted = dto.applicantType === 'admitted_transfer' || dto.applicantType === 'current_student';
+    await this.db.query(
+      `UPDATE StudentProfiles SET ApplicantType = @type, AdmissionStatus = @adm, IntendedAcademicUnitId = @unit,
+              EntryTerm = @term, EntryYear = @year, BUStudentId = COALESCE(@buid, BUStudentId),
+              IsNativeEnglish = @native, EnglishTestType = @test, EnglishTestScore = @score, HasIntlCoursework = @intl,
+              HighSchoolName = @hs, HighSchoolGradYear = @hsy, CreditsCompleted = @cred, UpdatedAt = SYSUTCDATETIME()
+       WHERE UserId = @u`,
+      [
+        { name: 'type', type: sql.VarChar(20), value: dto.applicantType ?? null },
+        { name: 'adm', type: sql.VarChar(10), value: admitted ? 'admitted' : 'applicant' },
+        { name: 'unit', type: sql.Int, value: dto.intendedAcademicUnitId ?? null },
+        { name: 'term', type: sql.VarChar(10), value: dto.entryTerm ?? null },
+        { name: 'year', type: sql.Int, value: dto.entryYear ?? null },
+        { name: 'buid', type: sql.NVarChar(50), value: dto.buid ?? null },
+        { name: 'native', type: sql.Bit, value: dto.isNativeEnglish == null ? null : dto.isNativeEnglish ? 1 : 0 },
+        { name: 'test', type: sql.VarChar(10), value: dto.isNativeEnglish === false ? dto.englishTestType ?? null : null },
+        { name: 'score', type: sql.NVarChar(20), value: dto.isNativeEnglish === false ? dto.englishTestScore ?? null : null },
+        { name: 'intl', type: sql.Bit, value: dto.hasIntlCoursework == null ? null : dto.hasIntlCoursework ? 1 : 0 },
+        { name: 'hs', type: sql.NVarChar(200), value: dto.highSchoolName || null },
+        { name: 'hsy', type: sql.Int, value: dto.highSchoolGradYear ?? null },
+        { name: 'cred', type: sql.Decimal(6, 2), value: dto.creditsCompleted ?? null },
+        { name: 'u', type: sql.UniqueIdentifier, value: userId },
+      ] as QueryInput[],
+    );
+    for (const [i, e] of (dto.education ?? []).entries()) {
+      await this.db.query(
+        `INSERT INTO StudentEducation (UserId, InstitutionName, City, StateRegion, Country, IsOutsideUS, FromYear, ToYear, CreditsEarned, FullTime, SortOrder)
+         VALUES (@u, @n, @c, @s, @co, @os, @f, @t, @cr, @ft, @o)`,
+        [
+          { name: 'u', type: sql.UniqueIdentifier, value: userId },
+          { name: 'n', type: sql.NVarChar(200), value: e.institutionName.trim() },
+          { name: 'c', type: sql.NVarChar(100), value: e.city || null },
+          { name: 's', type: sql.NVarChar(100), value: e.stateRegion || null },
+          { name: 'co', type: sql.NVarChar(100), value: e.country || null },
+          { name: 'os', type: sql.Bit, value: e.isOutsideUS ? 1 : 0 },
+          { name: 'f', type: sql.Int, value: e.fromYear ?? null },
+          { name: 't', type: sql.Int, value: e.toYear ?? null },
+          { name: 'cr', type: sql.Decimal(6, 2), value: e.creditsEarned ?? null },
+          { name: 'ft', type: sql.Bit, value: e.fullTime == null ? null : e.fullTime ? 1 : 0 },
+          { name: 'o', type: sql.Int, value: i },
+        ] as QueryInput[],
+      );
+    }
+    for (const x of dto.exams ?? []) {
+      await this.db.query(
+        `INSERT INTO StudentExamCredits (UserId, ExamType, Subject, Score, ExamYear) VALUES (@u, @t, @s, @sc, @y)`,
+        [
+          { name: 'u', type: sql.UniqueIdentifier, value: userId },
+          { name: 't', type: sql.VarChar(10), value: x.examType },
+          { name: 's', type: sql.NVarChar(150), value: x.subject.trim() },
+          { name: 'sc', type: sql.NVarChar(10), value: x.score || null },
+          { name: 'y', type: sql.Int, value: x.examYear ?? null },
+        ] as QueryInput[],
+      );
+    }
+  }
+
+  /** Public (no auth) — BU schools/colleges (AcademicUnits) of a university, for the registration page. */
+  async publicAcademicUnits(institutionId: number) {
+    const res = await this.db.query<{ Id: number; Name: string; Code: string | null }>(
+      `SELECT Id, Name, Code FROM AcademicUnits WHERE InstitutionId = @i AND IsActive = 1 ORDER BY Name`,
+      [{ name: 'i', type: sql.Int, value: institutionId }],
+    );
+    return res.recordset.map((r) => ({ id: r.Id, name: r.Name, code: r.Code }));
   }
 
   /** Public (no auth) — dropdown data for the registration page. */

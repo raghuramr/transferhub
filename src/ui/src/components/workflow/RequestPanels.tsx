@@ -105,7 +105,7 @@ export function DocumentsPanel({
   onUpdated: (t: RequestTimeline) => void;
 }) {
   const { checklist, uploaded } = timeline.documents;
-  const [docType, setDocType] = useState(checklist.find((c) => c.uploaded === 0 && c.required)?.docTypeKey ?? checklist[0]?.docTypeKey ?? 'other');
+  const [docType, setDocType] = useState(checklist.find((c) => c.required && c.uploaded < (c.needed ?? 1))?.docTypeKey ?? checklist[0]?.docTypeKey ?? 'other');
   const [courseId, setCourseId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -148,10 +148,12 @@ export function DocumentsPanel({
       <ul className="mb-3 space-y-1.5">
         {checklist.map((c) => (
           <li key={c.docTypeKey} className="flex items-center gap-2 text-sm">
-            {c.uploaded > 0 ? <CheckCircle2 size={15} className="text-emerald-600" /> : <Circle size={15} className={c.required ? 'text-red-400' : 'text-gray-300'} />}
+            {c.uploaded >= (c.needed ?? 1) && c.uploaded > 0 ? <CheckCircle2 size={15} className="text-emerald-600" /> : <Circle size={15} className={c.required ? 'text-red-400' : 'text-gray-300'} />}
             <span className={c.uploaded > 0 ? 'text-gray-700' : 'text-gray-600'}>{c.label}</span>
-            {c.required && c.uploaded === 0 && <span className="rounded-full bg-red-50 px-1.5 text-xs text-red-600">required</span>}
-            {c.uploaded > 0 && <span className="text-xs text-gray-400">{c.uploaded} added</span>}
+            {c.required && c.uploaded < (c.needed ?? 1) && (
+              <span className="rounded-full bg-red-50 px-1.5 text-xs text-red-600">{(c.needed ?? 1) > 1 ? `${c.uploaded} of ${c.needed} needed` : 'required'}</span>
+            )}
+            {c.uploaded > 0 && c.uploaded >= (c.needed ?? 1) && <span className="text-xs text-gray-400">{c.uploaded} added</span>}
           </li>
         ))}
       </ul>

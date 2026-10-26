@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { requestsApi, transcriptsApi } from '../../lib/api';
@@ -6,6 +7,16 @@ import { DocumentsPanel, NoteComposer, ReminderPanel } from '../../components/wo
 import type { RequestTimeline as TimelineData } from '../../types/workflow';
 import { CheckCircle, Clock, AlertCircle, BookOpen, Sparkles, FileDown } from 'lucide-react';
 import { TransferWorkflowStepper, TRANSCRIPT_STEPS } from '../../components/ui/TransferWorkflowStepper';
+import { CreditHubCard, EvaluationKindBanner, FlagList } from '../../components/policy/PolicyBits';
+import AppealModal from '../../components/policy/AppealModal';
+import type { TranscriptCourse } from '../../types';
+
+const APPEAL_LABEL: Record<string, string> = {
+  equivalent: 'Appeal granted: BU equivalent', elective: 'Appeal granted: elective credit', no_credit: 'Appeal decided: no credit', denied: 'Appeal denied',
+};
+const canAppeal = (c: TranscriptCourse, kind?: string) =>
+  kind !== 'preview' && !c.isOutsideUS && c.appeal?.status !== 'submitted' &&
+  (['applied', 'not_eligible', 'elective_only'].includes(c.lane) || !!c.evaluation?.outcome);
 
 function downloadDocument(id: string, fileName: string) {
   transcriptsApi.document(id).then((res) => {
@@ -46,6 +57,7 @@ export default function TranscriptStatus() {
   });
   const timeline = timelineQuery.data?.data;
   const setTimeline = (t: TimelineData) => qc.setQueryData(['request', id], { data: t });
+  const [appealing, setAppealing] = useState<TranscriptCourse | null>(null);
 
   if (isLoading) return <div className="p-8 text-center text-gray-400">Loading…</div>;
   if (error || !transcript) return <div className="p-8 text-center text-red-500">Failed to load transcript.</div>;
@@ -76,6 +88,8 @@ export default function TranscriptStatus() {
           </button>
         )}
       </div>
+
+      <EvaluationKindBanner kind={transcript.evaluationKind} expiresAt={transcript.preapprovalExpiresAt} />
 
       {/* Workflow progress: the per-university approval stages when the request has them, else the simple 3-step status */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
@@ -111,6 +125,8 @@ export default function TranscriptStatus() {
         ))}
       </div>
 
+      <CreditHubCard credit={transcript.credit} className="mb-8" />
+
       {/* Courses */}
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-100">
@@ -141,6 +157,18 @@ export default function TranscriptStatus() {
                       {course.evaluation.decidedBUCourse?.title} ({course.evaluation.awardedCredits} cr)
                     </p>
                   )}
+                  <FlagList flags={course.policyFlags} compact />
+                  {course.appeal && (
+                    <p className="mt-1 text-xs font-medium text-indigo-700">
+                      {course.appeal.status === 'submitted' ? 'Appeal under review' : APPEAL_LABEL[course.appeal.outcome ?? ''] ?? 'Appeal decided'}
+                      {course.appeal.denialReason ? `: ${course.appeal.denialReason}` : ''}
+                    </p>
+                  )}
+                  {canAppeal(course, transcript.evaluationKind) && (
+                    <button type="button" onClick={() => setAppealing(course)} className="mt-1 text-xs font-medium text-brand-800 hover:underline">
+                      Appeal this decision
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -165,6 +193,18 @@ export default function TranscriptStatus() {
             />
           </div>
         </div>
+      )}
+      {appealing && (
+        <AppealModal
+          requestId={transcript.id}
+          course={appealing}
+          onClose={() => setAppealing(null)}
+          onSubmitted={() => {
+            setAppealing(null);
+            void qc.invalidateQueries({ queryKey: ['transcript', id] });
+            void qc.invalidateQueries({ queryKey: ['request', id] });
+          }}
+        />
       )}
     </div>
   );

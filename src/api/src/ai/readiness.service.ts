@@ -83,7 +83,7 @@ export class ReadinessService {
 
     const hasMigration014 = await this.safe(
       async () =>
-        (await this.db.query<{ N: number }>(`SELECT CASE WHEN OBJECT_ID('ImportBatches') IS NOT NULL AND COL_LENGTH('WorkflowStages','AutoApprove') IS NOT NULL THEN 1 ELSE 0 END AS N`))
+        (await this.db.query<{ N: number }>(`SELECT CASE WHEN OBJECT_ID('ImportBatches') IS NOT NULL AND COL_LENGTH('WorkflowStages','AutoApprove') IS NOT NULL AND OBJECT_ID('CourseAppeals') IS NOT NULL THEN 1 ELSE 0 END AS N`))
           .recordset[0].N === 1,
       false,
     );
@@ -91,7 +91,7 @@ export class ReadinessService {
       key: 'migration',
       label: 'Database up to date',
       status: hasMigration014 ? 'ok' : 'error',
-      detail: hasMigration014 ? 'Migration 014 is applied.' : 'Migration 014 (partner data intake, auto-approve, overdue alerts) is not applied yet.',
+      detail: hasMigration014 ? 'Migrations 014 and 015 are applied.' : 'Migration 014 or 015 (partner intake, auto-approve, BU transfer policy, appeals) is not applied yet.',
       hint: hasMigration014 ? undefined : 'Run `npm run apply:all` in tools/db-mcp-server from a machine the SQL firewall allows.',
     });
 

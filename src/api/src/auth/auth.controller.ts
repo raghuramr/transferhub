@@ -45,6 +45,12 @@ export class AuthController {
     return this.authService.publicUniversities();
   }
 
+  /** Public — no auth. A university's schools/colleges (transfer applicants must pick one). */
+  @Get('academic-units')
+  publicAcademicUnits(@Query('institutionId', ParseIntPipe) institutionId: number) {
+    return this.authService.publicAcademicUnits(institutionId);
+  }
+
   /** Public — no auth. Registration-page dropdown data. */
   @Get('programs')
   publicPrograms(@Query('institutionId', ParseIntPipe) institutionId: number) {

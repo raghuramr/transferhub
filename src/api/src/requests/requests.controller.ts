@@ -6,7 +6,8 @@ import { Permission } from '../auth/permission.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import { RequestsService, Viewer } from './requests.service';
 import { WorkflowEngineService } from './workflow-engine.service';
-import { AcceptSuggestionsDto, AddDocumentDto, BulkApproveDto, DecisionDto, NoteDto, ReasonDto, RemindDto } from './dto/requests.dto';
+import { TransferPolicyService } from '../policy/transfer-policy.service';
+import { PassFailExceptionDto, AcceptSuggestionsDto, AddDocumentDto, BulkApproveDto, DecisionDto, NoteDto, ReasonDto, RemindDto } from './dto/requests.dto';
 
 const viewerOf = (req: AuthenticatedRequest): Viewer => ({
   id: req.user.id,
@@ -27,6 +28,7 @@ export class RequestsController {
   constructor(
     private requests: RequestsService,
     private engine: WorkflowEngineService,
+    private policy: TransferPolicyService,
   ) {}
 
   @Get('queue')
@@ -68,6 +70,23 @@ export class RequestsController {
   async acceptSuggestions(@Param('id') id: string, @Body() dto: AcceptSuggestionsDto, @Req() req: AuthenticatedRequest) {
     const result = await this.engine.acceptSuggestions(id, viewerOf(req), dto.minConfidence);
     return { ...result, timeline: await this.requests.getTimeline(id, viewerOf(req)) };
+  }
+
+  /** Admin: the student is admitted, so preview request(s) become official and enter the workflow. */
+  @Post(':id/make-official')
+  @Roles('admin', 'super_admin')
+  async makeOfficial(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    const result = await this.engine.makeOfficial(id, viewerOf(req));
+    return { ...result, timeline: await this.requests.getTimeline(id, viewerOf(req)) };
+  }
+
+  /** Reviewer: accept that a Pass/Fail course is an allowed exception (home college required P/F). */
+  @Post(':id/courses/:courseId/pass-fail-exception')
+  @Roles('faculty', 'admin', 'super_admin')
+  async passFail(@Param('id') id: string, @Param('courseId') courseId: string, @Body() dto: PassFailExceptionDto, @Req() req: AuthenticatedRequest) {
+    await this.requests.getTimeline(id, viewerOf(req)); // visibility check
+    await this.policy.setPassFailException(id, courseId, dto.exception);
+    return { message: dto.exception ? 'Exception recorded' : 'Exception withdrawn', timeline: await this.requests.getTimeline(id, viewerOf(req)) };
   }
 
   @Post(':id/skip-stage')

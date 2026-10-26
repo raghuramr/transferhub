@@ -4,6 +4,8 @@ import { DatabaseService } from '../database/database.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { AiService } from '../ai/ai.service';
 import { EmailService } from '../common/email.service';
+import { SchemaService } from '../policy/schema.service';
+import { TransferPolicyService, parseFlags, type PolicyFlag } from '../policy/transfer-policy.service';
 
 export interface Actor {
   id: string;
@@ -33,6 +35,8 @@ export interface ChecklistItem {
   perCourse: boolean;
   required: boolean;
   uploaded: number;
+  /** How many uploads satisfy it (per-course syllabi: one per course still under review). */
+  needed: number;
 }
 
 const STAFF_ADMIN = ['admin', 'super_admin'];
@@ -52,6 +56,8 @@ export class WorkflowEngineService {
     private workflows: WorkflowsService,
     private ai: AiService,
     private email: EmailService,
+    private schema: SchemaService,
+    private policy: TransferPolicyService,
   ) {}
 
   // ── starting ────────────────────────────────────────────────
@@ -128,6 +134,46 @@ export class WorkflowEngineService {
     await this.completeStage(stage.Id, 'approved', null);
     await this.advance(transcriptId, stage.StageOrder, actor.id);
     return { message: 'Automation resumed' };
+  }
+
+  /**
+   * Admin: the student has been admitted, so their preview request(s) become official evaluations
+   * and enter the approval workflow (BU only evaluates after admission).
+   */
+  async makeOfficial(transcriptId: string, actor: Actor) {
+    if (!isAdminRole(actor.role)) throw new ForbiddenException('Only an admin can mark a student admitted.');
+    if (!(await this.schema.policyReady())) throw new BadRequestException('Database migration 015 is not applied yet.');
+    const t = await this.db.query<{ StudentUserId: string; EvaluationKind: string }>(
+      `SELECT StudentUserId, EvaluationKind FROM Transcripts WHERE Id = @t`,
+      [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+    );
+    const row = t.recordset[0];
+    if (!row) throw new NotFoundException('Transcript not found');
+    if (row.EvaluationKind !== 'preview') throw new BadRequestException('This request is already an official evaluation.');
+
+    await this.db.query(
+      `IF EXISTS (SELECT 1 FROM StudentProfiles WHERE UserId = @u)
+         UPDATE StudentProfiles SET AdmissionStatus = 'admitted',
+                ApplicantType = CASE WHEN ApplicantType = 'transfer_applicant' THEN 'admitted_transfer' ELSE ApplicantType END,
+                UpdatedAt = SYSUTCDATETIME()
+         WHERE UserId = @u
+       ELSE INSERT INTO StudentProfiles (UserId, AdmissionStatus) VALUES (@u, 'admitted')`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: row.StudentUserId }],
+    );
+    const previews = await this.db.query<{ Id: string }>(
+      `SELECT Id FROM Transcripts WHERE StudentUserId = @u AND EvaluationKind = 'preview'`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: row.StudentUserId }],
+    );
+    for (const p of previews.recordset) {
+      await this.db.query(`UPDATE Transcripts SET EvaluationKind = 'official', Status = 'processing' WHERE Id = @t`, [
+        { name: 't', type: sql.UniqueIdentifier, value: p.Id },
+      ]);
+      await this.policy.applyToTranscript(p.Id).catch(() => undefined);
+      await this.addNote(p.Id, null, 'student', 'system', null, null,
+        'You have been admitted, so this is now an official credit evaluation. Your request has entered the review process.');
+      await this.startWorkflow(p.Id, actor.id);
+    }
+    return { message: `Student marked admitted; ${previews.recordset.length} request(s) moved to official evaluation.` };
   }
 
   // ── stage progression ───────────────────────────────────────
@@ -213,7 +259,7 @@ export class WorkflowEngineService {
   private async runAgentTask(transcriptId: string, stage: StageRow, actorUserId: string, outcome: 'approved' | 'bypassed') {
     try {
       if (stage.AgentTask === 'intake') {
-        const missing = (await this.documentChecklist(transcriptId)).filter((c) => c.required && c.uploaded === 0);
+        const missing = (await this.documentChecklist(transcriptId)).filter((c) => c.required && c.uploaded < c.needed);
         if (missing.length) {
           await this.addNote(transcriptId, stage.Id, 'internal', 'system', null, null,
             `Document check: still missing ${missing.map((m) => m.label).join(', ')}.`);
@@ -551,6 +597,13 @@ export class WorkflowEngineService {
        WHERE tc.TranscriptId = @t AND e.Status = 'posted'`,
       [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
     );
+    if (await this.schema.policyReady()) {
+      // A pre-approval (current BU student, course taken elsewhere) is valid for a year.
+      await this.db.query(
+        `UPDATE Transcripts SET PreapprovalExpiresAt = DATEADD(YEAR, 1, SYSUTCDATETIME()) WHERE Id = @t AND EvaluationKind = 'preapproval'`,
+        [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+      );
+    }
     await this.db.query(
       `UPDATE Transcripts SET WorkflowStatus = @o, Status = 'complete', ProcessedAt = SYSUTCDATETIME(), ProcessedBy = @u WHERE Id = @t`,
       [
@@ -641,24 +694,65 @@ export class WorkflowEngineService {
        WHERE t.Id = @t ORDER BY d.SortOrder`,
       [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
     );
-    return res.recordset.map((r) => ({
-      docTypeKey: r.DocTypeKey,
-      label: r.Label,
-      perCourse: !!r.PerCourse,
-      required: !!r.IsRequired,
-      uploaded: r.Uploaded + (r.DocTypeKey === 'transcript' && r.HasLegacyFile ? 1 : 0),
-    }));
+
+    // Which BU documents apply depends on who the student is (doc 12): English test only for non-native
+    // speakers, the dual-enrollment form only for dual-enrollment students, transfer reports only for
+    // transfers, and syllabi only for courses that are not an existing match (BU-EV-04).
+    let profile: { ApplicantType: string | null; IsNativeEnglish: boolean | null; EvaluationKind: string } | null = null;
+    let reviewCourses = 0;
+    if (await this.schema.policyReady()) {
+      const p = await this.db.query<{ ApplicantType: string | null; IsNativeEnglish: boolean | null; EvaluationKind: string }>(
+        `SELECT sp.ApplicantType, sp.IsNativeEnglish, t.EvaluationKind
+         FROM Transcripts t LEFT JOIN StudentProfiles sp ON sp.UserId = t.StudentUserId WHERE t.Id = @t`,
+        [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+      );
+      profile = p.recordset[0] ?? null;
+      const rc = await this.db.query<{ N: number }>(
+        `SELECT COUNT(*) AS N FROM TranscriptCourses
+         WHERE TranscriptId = @t AND Lane IN ('pending','needs_syllabus','likely') AND IsOutsideUS = 0`,
+        [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+      );
+      reviewCourses = rc.recordset[0]?.N ?? 0;
+    }
+    const type = profile?.ApplicantType ?? null;
+    const transfer = type === 'transfer_applicant' || type === 'admitted_transfer';
+    const applies = (key: string): boolean => {
+      switch (key) {
+        case 'english_test': return profile?.IsNativeEnglish === false;
+        case 'dual_enrollment_form': return type === 'dual_enrollment';
+        case 'transfer_college_report':
+        case 'hs_transcript': return transfer;
+        case 'final_transcript': return transfer && profile?.EvaluationKind !== 'preview';
+        default: return true;
+      }
+    };
+
+    return res.recordset
+      .filter((r) => applies(r.DocTypeKey))
+      .map((r) => {
+        const uploaded = r.Uploaded + (r.DocTypeKey === 'transcript' && r.HasLegacyFile ? 1 : 0);
+        const isSyllabus = r.DocTypeKey === 'syllabus' && profile !== null;
+        const needed = isSyllabus ? reviewCourses : 1;
+        return {
+          docTypeKey: r.DocTypeKey,
+          label: r.Label,
+          perCourse: !!r.PerCourse,
+          required: !!r.IsRequired && needed > 0,
+          uploaded,
+          needed,
+        };
+      });
   }
 
   // ── the brief (zero tokens unless AI Controls turns the narrative on) ──
 
   async buildBrief(transcriptId: string) {
     const rows = await this.db.query<{
-      EvalId: string | null; CourseCode: string; CourseTitle: string; Grade: string; Lane: string; OriginalCredits: number; NormalisedCredits: number | null;
+      TcId: string; EvalId: string | null; CourseCode: string; CourseTitle: string; Grade: string; Lane: string; OriginalCredits: number; NormalisedCredits: number | null;
       EvalStatus: string | null; Outcome: string | null; AwardedCredits: number | null; AIConfidence: number | null;
       SugCode: string | null; SugTitle: string | null; DecCode: string | null; DecTitle: string | null;
     }>(
-      `SELECT e.Id AS EvalId, tc.CourseCode, tc.CourseTitle, tc.Grade, tc.Lane, tc.OriginalCredits, tc.NormalisedCredits,
+      `SELECT tc.Id AS TcId, e.Id AS EvalId, tc.CourseCode, tc.CourseTitle, tc.Grade, tc.Lane, tc.OriginalCredits, tc.NormalisedCredits,
               e.Status AS EvalStatus, e.Outcome, e.AwardedCredits, e.AIConfidence,
               sc.Code AS SugCode, sc.Title AS SugTitle, dc.Code AS DecCode, dc.Title AS DecTitle
        FROM TranscriptCourses tc
@@ -678,7 +772,9 @@ export class WorkflowEngineService {
     const atStake = courses.filter((c) => ['likely', 'needs_syllabus', 'pending'].includes(c.Lane) && c.AwardedCredits == null)
       .reduce((n, c) => n + credit(c), 0);
 
-    const missingDocs = (await this.documentChecklist(transcriptId)).filter((d) => d.required && d.uploaded === 0).map((d) => d.label);
+    const missingDocs = (await this.documentChecklist(transcriptId))
+      .filter((d) => d.required && d.uploaded < d.needed)
+      .map((d) => (d.needed > 1 ? `${d.label} (${d.uploaded} of ${d.needed})` : d.label));
     const lowConfidence = courses.filter((c) => c.AIConfidence != null && Number(c.AIConfidence) < 0.6 && c.Outcome == null);
 
     const flags: string[] = [];
@@ -687,6 +783,40 @@ export class WorkflowEngineService {
     if (openEvals) flags.push(`${openEvals} course evaluation(s) not yet decided`);
     if (lowConfidence.length) flags.push(`Low AI confidence on ${lowConfidence.map((c) => c.CourseCode).join(', ')}`);
     if (missingDocs.length) flags.push(`Missing document(s): ${missingDocs.join(', ')}`);
+
+    // BU transfer policy (migration 015): per-course flags, plus the notes every reviewer should see.
+    const courseFlags = new Map<string, PolicyFlag[]>();
+    const notes: string[] = [];
+    if (await this.schema.policyReady()) {
+      const pf = await this.db.query<{ Id: string; PolicyFlags: string | null; StudentUserId: string }>(
+        `SELECT tc.Id, tc.PolicyFlags, t.StudentUserId FROM TranscriptCourses tc JOIN Transcripts t ON t.Id = tc.TranscriptId WHERE tc.TranscriptId = @t`,
+        [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+      );
+      const grouped = new Map<string, { message: string; codes: string[]; severity: string }>();
+      for (const r of pf.recordset) {
+        const f = parseFlags(r.PolicyFlags);
+        courseFlags.set(String(r.Id).toLowerCase(), f);
+        const code = courses.find((c) => String(c.TcId).toLowerCase() === String(r.Id).toLowerCase())?.CourseCode ?? '';
+        for (const x of f) {
+          if (x.severity === 'info' && x.code !== 'international') continue;
+          const g = grouped.get(x.code) ?? { message: x.message, codes: [], severity: x.severity };
+          g.codes.push(code);
+          grouped.set(x.code, g);
+        }
+      }
+      for (const [code, g] of grouped) {
+        const line = `${g.codes.join(', ')}: ${g.message}`;
+        if (code === 'international') notes.push(line);
+        else if (code !== 'below_min_grade' && code !== 'no_credit_type' && code !== 'unaccredited') flags.push(line);
+        else notes.push(line); // already counted as "not eligible" above
+      }
+      const studentId = pf.recordset[0]?.StudentUserId;
+      if (studentId) {
+        const cs = await this.policy.creditSummary(studentId);
+        notes.push(`External credit: ${cs.used} of ${cs.cap} allowed credits counted so far (transfer, AP, IB and A-level combined).`);
+        notes.push(`BU Hub: transfer courses never satisfy Hub requirements; this student still owes ${cs.hubRequirements} Hub requirements (up to ${cs.hubCocurricularAllowed} via a cocurricular).`);
+      }
+    }
 
     const prior = await this.db.query<{ StageName: string; Status: string; Body: string | null; CompletedAt: Date | null }>(
       `SELECT ts.StageName, ts.Status, ts.CompletedAt,
@@ -717,7 +847,10 @@ export class WorkflowEngineService {
       totals,
       credits: { applied: appliedCredits, atStake },
       flags,
+      notes,
       courses: courses.map((c) => ({
+        courseId: c.TcId,
+        flags: courseFlags.get(String(c.TcId).toLowerCase()) ?? [],
         evaluationId: c.EvalId,
         code: c.CourseCode,
         title: c.CourseTitle,

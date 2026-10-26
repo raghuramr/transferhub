@@ -7,6 +7,8 @@ import { useAuthStore } from '../../store/auth';
 import { cn } from '../../lib/cn';
 import { GeneralNotes, RequestTimeline, formatDateTime } from '../../components/workflow/RequestTimeline';
 import { DocumentsPanel, NoteComposer, ReminderPanel } from '../../components/workflow/RequestPanels';
+import { CreditHubCard, EvaluationKindBanner, FlagList } from '../../components/policy/PolicyBits';
+import StudentProfileCard from '../../components/policy/StudentProfileCard';
 import type { RequestTimeline as TimelineData, StageBrief, TimelineStage } from '../../types/workflow';
 
 const errMsg = (e: unknown, fallback: string) => {
@@ -87,6 +89,11 @@ function Brief({ brief, evalBase, requestId, canAct, onDone }: { brief: StageBri
           ))}
         </ul>
       )}
+      {!!brief.notes?.length && (
+        <ul className="mb-3 space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+          {brief.notes.map((n) => <li key={n}>{n}</li>)}
+        </ul>
+      )}
       {brief.previousStages.some((p) => p.comment) && (
         <div className="mb-3 space-y-1 text-sm text-gray-600">
           {brief.previousStages.filter((p) => p.comment).map((p) => (
@@ -103,7 +110,16 @@ function Brief({ brief, evalBase, requestId, canAct, onDone }: { brief: StageBri
           <tbody className="divide-y divide-gray-100">
             {brief.courses.map((c) => (
               <tr key={c.code + c.title}>
-                <td className="py-2 pr-3"><div className="font-medium text-gray-800">{c.code}</div><div className="text-xs text-gray-500">{c.title}</div></td>
+                <td className="py-2 pr-3">
+                  <div className="font-medium text-gray-800">{c.code}</div><div className="text-xs text-gray-500">{c.title}</div>
+                  <FlagList flags={c.flags} compact />
+                  {canAct && c.courseId && c.flags?.some((f) => f.code === 'pass_fail') && (
+                    <button type="button" onClick={() => void requestsApi.passFailException(requestId, c.courseId!, true).then((r) => onDone(r.data.timeline))}
+                      className="mt-1 text-xs font-medium text-brand-800 hover:underline">
+                      Accept P/F (college required it)
+                    </button>
+                  )}
+                </td>
                 <td className="pr-3">{c.grade}</td>
                 <td className="pr-3">{c.credits}</td>
                 <td className="pr-3">
@@ -301,7 +317,23 @@ export default function RequestReview() {
         )}
       </div>
 
-      {!tl.transcript.workflow && (
+      <EvaluationKindBanner
+        kind={tl.transcript.evaluationKind}
+        expiresAt={tl.transcript.preapprovalExpiresAt}
+        action={tl.permissions.canMakeOfficial ? (
+          <button type="button" disabled={startBusy}
+            onClick={async () => {
+              if (!window.confirm('Mark this student as admitted? Their preview request(s) become official evaluations and enter the approval workflow.')) return;
+              setStartBusy(true);
+              try { set((await requestsApi.makeOfficial(id!)).data.timeline); } finally { setStartBusy(false); }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 font-medium text-white hover:bg-amber-700 disabled:opacity-50">
+            {startBusy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Mark admitted and start official evaluation
+          </button>
+        ) : undefined}
+      />
+
+      {!tl.transcript.workflow && tl.transcript.evaluationKind !== 'preview' && (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           This request was submitted before approval workflows existed, so it has no stages yet.
           {tl.permissions.canStartWorkflow && (
@@ -316,6 +348,7 @@ export default function RequestReview() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          <CreditHubCard credit={tl.credit} />
           {active?.aiBrief && <Brief brief={active.aiBrief} evalBase={evalBase} requestId={id!} canAct={tl.permissions.canAct} onDone={set} />}
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="mb-4 text-base font-semibold text-gray-900">Progress</h2>
@@ -327,6 +360,7 @@ export default function RequestReview() {
           </div>
         </div>
         <div className="space-y-4">
+          <StudentProfileCard p={tl.student} />
           <NoteComposer requestId={id!} timeline={tl} onUpdated={set} />
           <DocumentsPanel requestId={id!} timeline={tl} onUpdated={set} />
           <ReminderPanel requestId={id!} timeline={tl} onSent={() => void qc.invalidateQueries({ queryKey: ['request', id] })} />

@@ -8,11 +8,13 @@ import { RequestsController } from './requests.controller';
 import { RequestsService } from './requests.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { SlaWatcherService } from './sla-watcher.service';
+import { AppealsService } from './appeals.service';
+import { AppealsController } from './appeals.controller';
 
 @Module({
   imports: [AuthModule, AiModule, UploadsModule, WorkflowsModule],
-  providers: [RequestsService, WorkflowEngineService, SlaWatcherService, EmailService],
-  controllers: [RequestsController],
+  providers: [RequestsService, WorkflowEngineService, SlaWatcherService, AppealsService, EmailService],
+  controllers: [RequestsController, AppealsController],
   exports: [WorkflowEngineService, RequestsService],
 })
 export class RequestsModule {}

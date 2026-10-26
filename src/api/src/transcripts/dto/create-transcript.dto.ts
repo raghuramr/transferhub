@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsArray, ValidateNested, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray, ValidateNested, IsIn, IsInt, IsBoolean, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class TranscriptCourseInputDto {
@@ -7,6 +7,13 @@ export class TranscriptCourseInputDto {
   @IsNumber() originalCredits: number;
   @IsString() grade: string;
   @IsOptional() @IsString() term?: string;
+  // BU policy inputs (doc 12): age check, P/F rule, no credit for experience, online limits, intl coursework.
+  @IsOptional() @IsIn(['fall', 'spring', 'summer', 'winter', 'other']) termSeason?: string;
+  @IsOptional() @IsInt() @Min(1950) @Max(2100) termYear?: number;
+  @IsOptional() @IsIn(['graded', 'pass_fail', 'sat_unsat']) gradingBasis?: string;
+  @IsOptional() @IsIn(['in_person', 'online', 'hybrid']) deliveryMode?: string;
+  @IsOptional() @IsIn(['lecture', 'lab', 'seminar', 'internship', 'research', 'military', 'life_experience', 'other']) courseType?: string;
+  @IsOptional() @IsBoolean() isOutsideUS?: boolean;
 }
 
 /**
@@ -22,6 +29,8 @@ export class SubmitTranscriptDto {
   @IsOptional() @IsString() notes?: string;
   /** Id of an Upload (entityType 'transcript') the student attached — see UploadsService. */
   @IsOptional() @IsString() documentUploadId?: string;
+  /** The sending institution is outside the US: every course is routed to International Admissions. */
+  @IsOptional() @IsBoolean() isOutsideUS?: boolean;
 
   @IsArray()
   @ValidateNested({ each: true })

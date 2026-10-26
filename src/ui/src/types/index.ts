@@ -82,6 +82,15 @@ export interface TranscriptCourse {
   status: CourseStatus;
   externalCourse?: Course;
   evaluation?: Evaluation;
+  // BU policy alignment (migration 015)
+  termSeason?: string | null;
+  termYear?: number | null;
+  gradingBasis?: string | null;
+  deliveryMode?: string | null;
+  courseType?: string | null;
+  isOutsideUS?: boolean;
+  policyFlags?: import('./policy').PolicyFlag[];
+  appeal?: import('./policy').CourseAppealSummary | null;
 }
 
 /**
@@ -111,6 +120,9 @@ export interface Transcript {
   processedAt?: string;
   documentFileName?: string | null;
   courses: TranscriptCourse[];
+  evaluationKind?: import('./policy').EvaluationKind;
+  preapprovalExpiresAt?: string | null;
+  credit?: import('./policy').CreditSummary | null;
 }
 
 // ─── Evaluations ─────────────────────────────────────────────

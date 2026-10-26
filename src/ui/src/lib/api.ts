@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import type { Appeal, CreditSummary, TransferPolicy } from '../types/policy';
 import type { Partner, PartnerInput, IssuedKey, BatchSummary, BatchDetail, ImportRunResult } from '../types/import';
 import type { AuthTokens, ApiError, CourseTopic, TranscriptSummary, Transcript, User } from '../types';
 import type {
@@ -88,6 +89,9 @@ export const authApi = {
     api.get<{ id: number; name: string; degree: string | null; area: string | null }[]>('/auth/programs', {
       params: { institutionId },
     }),
+  /** Public (no auth) — a university's schools/colleges (transfer applicants must choose one). */
+  publicAcademicUnits: (institutionId: number) =>
+    api.get<{ id: number; name: string; code: string | null }[]>('/auth/academic-units', { params: { institutionId } }),
 };
 
 // ── Users endpoints ───────────────────────────────────────────
@@ -327,6 +331,9 @@ export const requestsApi = {
     api.post<{ message: string; timeline: RequestTimeline }>(`/requests/${id}/decision`, data),
   acceptSuggestions: (id: string, minConfidence: number) =>
     api.post<{ accepted: number; belowThreshold: number; timeline: RequestTimeline }>(`/requests/${id}/accept-suggestions`, { minConfidence }),
+  makeOfficial: (id: string) => api.post<{ message: string; timeline: RequestTimeline }>(`/requests/${id}/make-official`),
+  passFailException: (id: string, courseId: string, exception: boolean) =>
+    api.post<{ message: string; timeline: RequestTimeline }>(`/requests/${id}/courses/${courseId}/pass-fail-exception`, { exception }),
   bulkApprove: (ids: string[], comment?: string) => api.post<BulkApproveResult>('/requests/bulk-approve', { ids, comment }),
   skipStage: (id: string, reason: string) => api.post<{ timeline: RequestTimeline }>(`/requests/${id}/skip-stage`, { reason }),
   accept: (id: string, reason: string) => api.post<{ timeline: RequestTimeline }>(`/requests/${id}/accept`, { reason }),
@@ -379,4 +386,24 @@ export const aiControlsApi = {
   summary: (days: number) => api.get<UsageSummary>('/ai-controls/usage/summary', { params: { days } }),
   byRequest: (days: number) => api.get<RequestUsageRow[]>('/ai-controls/usage/requests', { params: { days } }),
   clearCache: () => api.post<{ cleared: number }>('/ai-controls/cache/clear'),
+};
+
+// ── Transfer policy (per-university rules) ──
+export const policiesApi = {
+  list: () => api.get<TransferPolicy[]>('/policies'),
+  save: (data: Partial<TransferPolicy> & { institutionId?: number | null }) => api.put<TransferPolicy>('/policies', data),
+  removeOverride: (institutionId: number) => api.delete(`/policies/${institutionId}`),
+  myCredit: () => api.get<CreditSummary>('/policies/my-credit'),
+};
+
+// ── Transfer credit appeals (BU Transfer Credit Appeal Form) ──
+export const appealsApi = {
+  create: (requestId: string, courseId: string, data: { proposedBUCourseId?: number; proposedEquivalent?: string; reason: string; syllabusUploadId?: string }) =>
+    api.post<{ id: number; message: string }>(`/requests/${requestId}/courses/${courseId}/appeal`, data),
+  forRequest: (requestId: string) => api.get<Appeal[]>(`/requests/${requestId}/appeals`),
+  list: (status: 'open' | 'decided' | 'all') => api.get<Appeal[]>('/appeals', { params: { status } }),
+  decide: (id: number, data: {
+    outcome: 'equivalent' | 'elective' | 'no_credit' | 'denied'; buCourseId?: number; awardedCredits?: number; satisfiesRequirement?: string;
+    denialReason?: string; departmentName: string; comments?: string; signedName: string;
+  }) => api.post<{ message: string }>(`/appeals/${id}/decide`, data),
 };

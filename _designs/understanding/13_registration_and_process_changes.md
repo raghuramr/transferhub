@@ -3,7 +3,7 @@
 [← Back to Understanding](../UNDERSTANDING.md) · Facts: [12 · BU Transfer Policy Reference](12_bu_transfer_policy_reference.md)
 
 Compares what TransferHub captures and enforces today with BU's published rules, and lists the
-changes to make. **Status: proposed, not built.** IDs (`BU-…`) refer to doc 12.
+changes to make. **Status: Phases 1–4 built (2026-10-26); Phase 5 not built.** IDs (`BU-…`) refer to doc 12.
 
 ---
 
@@ -84,9 +84,18 @@ Restructure `/register` into steps:
 
 ---
 
-## 3. Decisions needed before building
-1. Which **applicant types** to support in v1 (all four, or transfer applicant + current student only)?
-2. Should **pre-admission previews** exist at all, or only post-admission evaluations?
-3. **Cap default**: 68 for all, or per BU school (60 / 68 / 80)?
-4. Is **Appeals** in scope now, or after Phases 1–3?
-5. **International coursework**: hard stop with a message, or capture it but flag it "handled by International Admissions"?
+## 3. Decisions (confirmed by the user)
+1. **Applicant types:** all four — transfer applicant, admitted transfer, current BU student (pre-approval), dual enrollment.
+2. **Pre-admission:** *preview, then official.* A not-yet-admitted student's request runs the rules and existing equivalencies only (no stages); an admin's "Mark admitted" turns every preview into an official evaluation and starts the workflow.
+3. **Caps:** configurable per university (Workflows → Transfer rules); defaults 68 transfer / 60 first-year & dual enrollment / 68 current student.
+4. **Scope:** Phases 1–4 built now; Phase 5 (equivalency effective dates) later.
+5. **International coursework:** captured and flagged "handled by International Admissions (intadvis@bu.edu)", kept out of evaluation and AI matching, and not appealable here.
+
+## 4. Where it lives in the code
+- Schema: `database/migrations/015_bu_policy_alignment.sql`, defaults `database/seed/010_bu_policy_defaults.sql`.
+- Rules engine: `src/api/src/policy/transfer-policy.service.ts` (runs after `sp_TriageCourse`; only tightens lanes; writes `TranscriptCourses.PolicyFlags`).
+- Preview/official/pre-approval: `TranscriptsService.submit` + `WorkflowEngineService.makeOfficial` / `finalize`.
+- Conditional documents: `WorkflowEngineService.documentChecklist`.
+- Registration: `pages/auth/RegisterPage.tsx` (6 steps) + `AuthService.saveApplication`.
+- Appeals: `src/api/src/requests/appeals.*`, `pages/staff/AppealsQueue.tsx`, `components/policy/AppealModal.tsx`.
+- Per-university rules UI: `components/policy/TransferRulesTab.tsx` (Workflows → Transfer rules).

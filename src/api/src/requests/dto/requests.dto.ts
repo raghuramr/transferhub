@@ -1,4 +1,4 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, IsInt } from 'class-validator';
+import { IsBoolean, ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, IsInt } from 'class-validator';
 
 export class DecisionDto {
   @IsIn(['approve', 'reject', 'return']) decision: 'approve' | 'reject' | 'return';
@@ -37,4 +37,8 @@ export class AcceptSuggestionsDto {
 export class BulkApproveDto {
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @IsUUID('all', { each: true }) ids: string[];
   @IsOptional() @IsString() @MaxLength(4000) comment?: string;
+}
+
+export class PassFailExceptionDto {
+  @IsBoolean() exception: boolean;
 }

@@ -29,12 +29,18 @@ type CourseRow = {
   topicId: number | null;
   credits: string;
   grade: string;
-  term: string;
+  termSeason: string;
+  termYear: string;
+  gradingBasis: string;
+  deliveryMode: string;
+  courseType: string;
 };
 
 type ValidCourseRow = CourseRow & { course: RawExternalCourse };
 
-const EMPTY_COURSE: CourseRow = { courseId: null, topicId: null, credits: '', grade: '', term: '' };
+const EMPTY_COURSE: CourseRow = {
+  courseId: null, topicId: null, credits: '', grade: '', termSeason: '', termYear: '', gradingBasis: 'graded', deliveryMode: 'in_person', courseType: 'lecture',
+};
 
 export default function UploadTranscript() {
   const navigate = useNavigate();
@@ -57,6 +63,7 @@ export default function UploadTranscript() {
   const [error, setError] = useState('');
   const [transcriptFile, setTranscriptFile] = useState<{ id: string; name: string } | null>(null);
   const [documentUploading, setDocumentUploading] = useState(false);
+  const [outsideUS, setOutsideUS] = useState(false);
 
   const {
     register,
@@ -116,12 +123,18 @@ export default function UploadTranscript() {
         studentId: data.studentId,
         notes: data.notes,
         documentUploadId: transcriptFile?.id,
+        isOutsideUS: outsideUS || undefined,
         courses: validCourses.map((c) => ({
           courseCode: c.course.code,
           courseTitle: c.course.title,
           originalCredits: parseFloat(c.credits) || c.course.credits || 3,
-          grade: c.grade || 'B',
-          term: c.term,
+          grade: (c.grade || 'B').trim().toUpperCase(),
+          term: c.termSeason ? `${c.termSeason[0].toUpperCase()}${c.termSeason.slice(1)} ${c.termYear}`.trim() : undefined,
+          termSeason: c.termSeason || undefined,
+          termYear: c.termYear ? Number(c.termYear) : undefined,
+          gradingBasis: c.gradingBasis || undefined,
+          deliveryMode: c.deliveryMode || undefined,
+          courseType: c.courseType || undefined,
         })),
       });
       navigate(`${basePath}/transcript/${(res.data as { id: string }).id}`);
@@ -161,15 +174,28 @@ export default function UploadTranscript() {
               className="w-full md:w-1/2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="semester">Semester</option>
-              <option value="quarter">Quarter (credits ÷ 1.5)</option>
+              <option value="quarter">Quarter (credits × 2/3)</option>
               <option value="trimester">Trimester</option>
             </select>
           </div>
 
           <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
             <Info size={16} className="shrink-0 mt-0.5" />
-            Quarter-system credits are automatically converted to semester credits (÷ 1.5, rounded to nearest 0.5).
+            Quarter credits are converted at two-thirds (BU policy, e.g. 4 quarter credits = 2.66). Trimester credits are set by a reviewer.
           </div>
+
+          <label className="mt-4 flex items-start gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={outsideUS} onChange={(e) => setOutsideUS(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300" />
+            <span>
+              This college is outside the United States
+              {outsideUS && (
+                <span className="mt-1 block rounded-lg bg-sky-50 p-2 text-xs text-sky-900">
+                  Coursework from outside the US is evaluated by BU's Office of International Undergraduate Admissions
+                  (<a className="underline" href="mailto:intadvis@bu.edu">intadvis@bu.edu</a>). We will record it and flag it for that office.
+                </span>
+              )}
+            </span>
+          </label>
 
           <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -263,6 +289,8 @@ export default function UploadTranscript() {
   );
 }
 
+const fieldCls = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500';
+
 function CourseRowFields({
   row,
   courseOptions,
@@ -308,47 +336,56 @@ function CourseRowFields({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Credits taken</label>
-          <input
-            value={row.credits}
-            onChange={(e) => onChange({ credits: e.target.value })}
-            placeholder="4"
-            type="number"
-            step="0.5"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          />
+          <label className="mb-1 block text-xs font-medium text-gray-500">Credits taken</label>
+          <input value={row.credits} onChange={(e) => onChange({ credits: e.target.value })} placeholder="4" type="number" step="0.5" className={fieldCls} />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Grade</label>
-          <input
-            value={row.grade}
-            onChange={(e) => onChange({ grade: e.target.value })}
-            placeholder="A"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          />
+          <label className="mb-1 block text-xs font-medium text-gray-500">Grade</label>
+          <input value={row.grade} onChange={(e) => onChange({ grade: e.target.value })} placeholder="A, B+, C, P…" className={fieldCls} />
         </div>
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Term</label>
-            <input
-              value={row.term}
-              onChange={(e) => onChange({ term: e.target.value })}
-              placeholder="F23"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={onRemove}
-            disabled={!removable}
-            className="text-gray-400 hover:text-red-500 disabled:opacity-30 pb-2"
-          >
-            ×
-          </button>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-500">Term</label>
+          <select value={row.termSeason} onChange={(e) => onChange({ termSeason: e.target.value })} className={fieldCls}>
+            <option value="">Select…</option><option value="fall">Fall</option><option value="spring">Spring</option><option value="summer">Summer</option><option value="winter">Winter</option><option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-500">Year</label>
+          <input value={row.termYear} onChange={(e) => onChange({ termYear: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="2024" inputMode="numeric" className={fieldCls} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-500">Graded as</label>
+          <select value={row.gradingBasis} onChange={(e) => onChange({ gradingBasis: e.target.value })} className={fieldCls}>
+            <option value="graded">Letter grade</option><option value="pass_fail">Pass / Fail</option><option value="sat_unsat">Satisfactory / Unsatisfactory</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-500">Taken</label>
+          <select value={row.deliveryMode} onChange={(e) => onChange({ deliveryMode: e.target.value })} className={fieldCls}>
+            <option value="in_person">In person</option><option value="online">Online</option><option value="hybrid">Hybrid</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-500">Type</label>
+          <select value={row.courseType} onChange={(e) => onChange({ courseType: e.target.value })} className={fieldCls}>
+            <option value="lecture">Lecture</option><option value="lab">Lab</option><option value="seminar">Seminar</option>
+            <option value="internship">Internship</option><option value="research">Research</option><option value="military">Military training</option>
+            <option value="life_experience">Life / work experience</option><option value="other">Other</option>
+          </select>
+        </div>
+        <div className="flex items-end justify-end">
+          <button type="button" onClick={onRemove} disabled={!removable} className="pb-2 text-sm text-gray-400 hover:text-red-500 disabled:opacity-30">Remove</button>
         </div>
       </div>
+      {(row.gradingBasis !== 'graded' || ['internship', 'research', 'military', 'life_experience'].includes(row.courseType)) && (
+        <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
+          {row.gradingBasis !== 'graded'
+            ? 'BU does not normally accept Pass/Fail credit (exceptions: Spring 2020, or when your college required P/F). A reviewer will check it.'
+            : 'BU does not award transfer credit for internships, research, military or life experience.'}
+        </p>
+      )}
     </div>
   );
 }
