@@ -19,6 +19,9 @@ This is the single-page summary of what we understand. Each topic is expanded in
 | 08 | [Synthetic data plan](understanding/08_synthetic_data_plan.md) | What we must generate and how |
 | 09 | [Demo scenario](understanding/09_demo_scenario.md) | The six-course walkthrough the brief asks for |
 | 10 | [Glossary](understanding/10_glossary.md) | Terms used across the documents |
+| 11 | [Process Research & Gaps](understanding/11_process_research_and_gaps.md) | Typical transfer-credit stages, forms and gaps |
+| 12 | [BU Transfer Policy Reference](understanding/12_bu_transfer_policy_reference.md) | BU's published rules: credit caps, grades, evaluation, admission, Hub, appeal form |
+| 13 | [Registration & Process Changes](understanding/13_registration_and_process_changes.md) | Gap analysis vs. doc 12 and the phased change plan |
 
 ---
 

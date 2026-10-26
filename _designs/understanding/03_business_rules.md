@@ -38,7 +38,10 @@ Each rule has an ID so it can be referenced from code and tests. **Source** = wh
 |---|---|---|---|
 | GR-01 | Many BU schools require **C or higher** for transfer credit. Threshold is school-specific. | Brief | Stated (school variance to confirm) |
 | GR-02 | External grades **do not count** toward BU GPA. | Brief | Stated |
-| GR-03 | Whether C- qualifies, and how Pass/Fail, W, I or AP/IB are handled, is not stated. | — | To confirm |
+| GR-03 | **Resolved by BU policy (doc 12):** C- does **not** qualify (C or better). Pass/Fail and S/U are not normally transferable (exceptions: Spring 2020, home-institution-mandated P/F). AP/IB/A-level count against the external-credit cap. | BU-EL-01/04, BU-CR-05 | Stated (BU) |
+| GR-04 | Credit cap: max **68** external credits for transfer students (60 first-year, 80 MET); 128 to graduate, 60 in residence. | BU-CR-01..04 | Stated (BU) |
+| GR-05 | Coursework older than **5 years** needs extra review; only **regionally accredited** institutions; no credit for internships, research, military or life experience. | BU-EL-02/05/06 | Stated (BU) |
+| GR-06 | Transfer courses **never satisfy BU Hub** requirements; transfer students owe **10 Hub requirements**. | BU-HUB-01/02 | Stated (BU) |
 
 ## Program / degree rules
 
