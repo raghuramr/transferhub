@@ -7,7 +7,7 @@ import { PartnersService } from './partners.service';
 import { SubmissionsService } from './submissions.service';
 import { ImportPayloadDto } from './dto/import-payload.dto';
 import {
-  CreatePartnerDto, EditRowDto, ImportRowsDto, IssueKeyDto, RejectBatchDto, RowIdsDto,
+  BulkPartnersDto, CreatePartnerDto, EditRowDto, ImportRowsDto, IssueKeyDto, RejectBatchDto, RowIdsDto,
   SendReportDto, SubmissionBodyDto, UpdatePartnerDto,
 } from './dto/partner.dto';
 
@@ -62,13 +62,25 @@ export class ImportController {
   }
 
   @Post('partners/:id/deactivate')
-  deactivate(@Param('id', ParseIntPipe) id: number) {
-    return this.partners.setActive(id, false);
+  deactivate(@Param('id', ParseIntPipe) id: number, @Req() req: { user: { id: string } }) {
+    return this.partners.setActive(id, false, req.user.id);
   }
 
   @Post('partners/:id/activate')
-  activate(@Param('id', ParseIntPipe) id: number) {
-    return this.partners.setActive(id, true);
+  activate(@Param('id', ParseIntPipe) id: number, @Req() req: { user: { id: string } }) {
+    return this.partners.setActive(id, true, req.user.id);
+  }
+
+  /** Delete a partner (refused if it has submissions on record). */
+  @Delete('partners/:id')
+  deletePartner(@Param('id', ParseIntPipe) id: number, @Req() req: { user: { id: string } }) {
+    return this.partners.remove(id, req.user.id);
+  }
+
+  /** Activate / deactivate / delete several partners at once; returns per-partner outcomes. */
+  @Post('partners/bulk')
+  bulkPartners(@Body() dto: BulkPartnersDto, @Req() req: { user: { id: string } }) {
+    return this.partners.bulk(dto.ids, dto.action, req.user.id);
   }
 
   @Post('partners/:id/keys')
@@ -77,8 +89,8 @@ export class ImportController {
   }
 
   @Delete('partners/:id/keys/:keyId')
-  revokeKey(@Param('id', ParseIntPipe) id: number, @Param('keyId', ParseIntPipe) keyId: number) {
-    return this.partners.revokeKey(id, keyId);
+  revokeKey(@Param('id', ParseIntPipe) id: number, @Param('keyId', ParseIntPipe) keyId: number, @Req() req: { user: { id: string } }) {
+    return this.partners.revokeKey(id, keyId, req.user.id);
   }
 
   // ── submissions (staging) ─────────────────────────────────────

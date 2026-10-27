@@ -372,6 +372,9 @@ export const importApi = {
   setPartnerActive: (id: number, active: boolean) => api.post(`/import/partners/${id}/${active ? 'activate' : 'deactivate'}`),
   issueKey: (id: number, data: { label?: string; expiresInDays?: number; emailKey?: boolean }) =>
     api.post<IssuedKey>(`/import/partners/${id}/keys`, data),
+  deletePartner: (id: number) => api.delete(`/import/partners/${id}`),
+  bulkPartners: (ids: number[], action: 'activate' | 'deactivate' | 'delete') =>
+    api.post<{ ok: number; failed: number; results: { id: number; ok: boolean; message: string }[] }>('/import/partners/bulk', { ids, action }),
   revokeKey: (id: number, keyId: number) => api.delete(`/import/partners/${id}/keys/${keyId}`),
   // submissions (staging + review)
   batches: (params?: { status?: string; partnerId?: number }) => api.get<BatchSummary[]>('/import/batches', { params }),

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, Check, Copy, Globe, KeyRound, Loader2, Mail, Phone, Plus, ShieldOff, X } from 'lucide-react';
+import { Building2, Check, Copy, KeyRound, Loader2, Plus, ShieldOff, Trash2, X } from 'lucide-react';
+import { DataTable, type DataTableColumn } from '../ui/DataTable';
 import { importApi } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import type { IssuedKey, Partner, PartnerInput } from '../../types/import';
@@ -67,8 +68,8 @@ function KeyReveal({ issued, partner, onClose }: { issued: IssuedKey; partner: s
   );
 }
 
-function PartnerForm({ initial, onSave, onClose, busy, error }: {
-  initial?: Partner; onSave: (v: PartnerInput) => void; onClose: () => void; busy: boolean; error: string;
+function PartnerForm({ initial, onSave, onClose, busy, error, inline }: {
+  initial?: Partner; onSave: (v: PartnerInput) => void; onClose: () => void; busy: boolean; error: string; inline?: boolean;
 }) {
   const [v, setV] = useState<PartnerInput>({
     universityName: initial?.universityName ?? '',
@@ -82,8 +83,8 @@ function PartnerForm({ initial, onSave, onClose, busy, error }: {
   });
   const set = (patch: Partial<PartnerInput>) => setV((x) => ({ ...x, ...patch }));
   const valid = v.universityName.trim() && v.universityCode.trim() && v.contactName.trim() && /\S+@\S+\.\S+/.test(v.contactEmail);
-  return (
-    <Modal title={initial ? 'Edit partner' : 'Onboard a partner'} onClose={onClose}>
+  const body = (
+    <>
       {!initial && <p className="mb-4 text-sm text-gray-500">Record who is sending data. An API key is generated for them when you save.</p>}
       <div className="space-y-3">
         <label className="block text-sm font-medium text-gray-700">University / organisation name
@@ -124,8 +125,9 @@ function PartnerForm({ initial, onSave, onClose, busy, error }: {
           </button>
         </div>
       </div>
-    </Modal>
+    </>
   );
+  return inline ? <div>{body}</div> : <Modal title={initial ? 'Edit partner' : 'Onboard a partner'} onClose={onClose}>{body}</Modal>;
 }
 
 export default function PartnersPanel() {
@@ -136,6 +138,7 @@ export default function PartnersPanel() {
   const [formError, setFormError] = useState('');
   const [revealed, setRevealed] = useState<{ issued: IssuedKey; partner: string } | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const refresh = () => void qc.invalidateQueries({ queryKey: ['import-partners'] });
 
   const create = useMutation({
@@ -148,17 +151,48 @@ export default function PartnersPanel() {
       const { emailKey: _e, ...rest } = v;
       return importApi.updatePartner(id, rest);
     },
-    onSuccess: () => { setForm(null); setFormError(''); refresh(); },
+    onSuccess: () => { setForm(null); setFormError(''); setNotice({ ok: true, text: 'Partner saved.' }); refresh(); },
     onError: (e) => setFormError(errMsg(e, 'Could not save the partner.')),
   });
-  const toggle = useMutation({ mutationFn: ({ id, active }: { id: number; active: boolean }) => importApi.setPartnerActive(id, active), onSuccess: refresh });
+  const toggle = useMutation({ mutationFn: ({ id, active }: { id: number; active: boolean }) => importApi.setPartnerActive(id, active), onSuccess: refresh, onError: (e) => setNotice({ ok: false, text: errMsg(e, 'Could not change the status.') }) });
   const newKey = useMutation({
     mutationFn: ({ p, email }: { p: Partner; email: boolean }) => importApi.issueKey(p.id, { label: `Key ${p.keys.length + 1}`, emailKey: email }),
     onSuccess: (res, vars) => { setRevealed({ issued: res.data, partner: vars.p.universityName }); refresh(); },
   });
   const revoke = useMutation({ mutationFn: ({ id, keyId }: { id: number; keyId: number }) => importApi.revokeKey(id, keyId), onSuccess: refresh });
 
+  const remove = useMutation({
+    mutationFn: (id: number) => importApi.deletePartner(id),
+    onSuccess: () => { setNotice({ ok: true, text: 'Partner deleted.' }); refresh(); },
+    onError: (e) => setNotice({ ok: false, text: errMsg(e, 'Could not delete the partner.') }),
+  });
+  const bulk = useMutation({
+    mutationFn: ({ ids, action }: { ids: number[]; action: 'activate' | 'deactivate' | 'delete' }) => importApi.bulkPartners(ids, action),
+    onSuccess: (res) => {
+      const { ok, failed, results } = res.data;
+      const why = results.filter((r) => !r.ok).map((r) => r.message).join(' ');
+      setNotice({ ok: failed === 0, text: `${ok} partner(s) updated${failed ? `, ${failed} skipped: ${why}` : '.'}` });
+      refresh();
+    },
+    onError: (e) => setNotice({ ok: false, text: errMsg(e, 'Bulk action failed.') }),
+  });
+
   const list = partners.data?.data ?? [];
+  const columns: DataTableColumn<Partner>[] = [
+    { key: 'universityName', header: 'University' },
+    { key: 'universityCode', header: 'Code' },
+    { key: 'contactName', header: 'Contact' },
+    { key: 'contactEmail', header: 'Email' },
+    {
+      key: 'isActive',
+      header: 'Active',
+      render: (p) => (p.isActive
+        ? <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">Active</span>
+        : <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">Inactive</span>),
+    },
+    { key: 'keys', header: 'Keys', sortValue: (p) => p.keys.filter((k) => k.isActive).length, render: (p) => `${p.keys.filter((k) => k.isActive).length} active / ${p.keys.length}` },
+    { key: 'createdAt', header: 'Created', sortValue: (p) => p.createdAt, render: (p) => new Date(p.createdAt).toLocaleDateString() },
+  ];
   const submitUrl = info.data?.data.submitUrl ?? '/api/public/v1/submissions';
 
   return (
@@ -197,57 +231,59 @@ export default function PartnersPanel() {
         )}
       </div>
 
-      {partners.isLoading && <p className="text-gray-400">Loading…</p>}
       {partners.isError && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           <span>Could not load partners: {errMsg(partners.error, 'the server returned an error.')}</span>
           <button type="button" onClick={() => void partners.refetch()} className="font-medium underline">Retry</button>
         </div>
       )}
-      {!partners.isLoading && !partners.isError && list.length === 0 && (
-        <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-gray-500">
-          <Building2 className="mx-auto mb-2 text-gray-300" size={32} />
-          No partners yet. Onboard one to generate their API key.
+      {notice && (
+        <div className={cn('mb-4 flex items-start justify-between gap-2 rounded-lg border p-3 text-sm', notice.ok ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-300 bg-amber-50 text-amber-900')}>
+          <span>{notice.text}</span>
+          <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss"><X size={14} /></button>
         </div>
       )}
 
-      <div className="space-y-4">
-        {list.map((p) => (
-          <div key={p.id} className={cn('rounded-xl border bg-white p-5', p.isActive ? 'border-gray-200' : 'border-dashed border-gray-300 opacity-70')}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-gray-900">{p.universityName}</h3>
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{p.universityCode}</span>
-                  {!p.isActive && <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">deactivated</span>}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-gray-600">
-                  <span>{p.contactName}</span>
-                  <a href={`mailto:${p.contactEmail}`} className="inline-flex items-center gap-1 hover:text-brand-800"><Mail size={13} /> {p.contactEmail}</a>
-                  {p.contactPhone && <span className="inline-flex items-center gap-1"><Phone size={13} /> {p.contactPhone}</span>}
-                  {p.website && <a href={p.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-brand-800"><Globe size={13} /> {p.website.replace(/^https?:\/\//, '')}</a>}
-                </div>
-                <div className="mt-1 text-xs text-gray-400">
-                  {p.submissions} submission(s){p.openSubmissions > 0 && <span className="font-medium text-amber-600"> · {p.openSubmissions} waiting for review</span>} · last {when(p.lastSubmissionAt)}
-                </div>
-                {p.notes && <p className="mt-2 text-sm text-gray-500">{p.notes}</p>}
-              </div>
-              <div className="flex flex-wrap gap-2 text-sm">
-                <button type="button" onClick={() => { setFormError(''); setForm({ partner: p }); }} className="rounded-lg border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50">Edit</button>
+      <DataTable<Partner>
+        columns={columns}
+        rows={list}
+        isLoading={partners.isLoading}
+        searchPlaceholder="Search partners…"
+        searchKeys={['universityName', 'universityCode', 'contactName', 'contactEmail']}
+        filters={[{ key: 'isActive', label: 'Status', options: [{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }] }]}
+        bulkActions={[
+          { label: 'Activate', onClick: (sel) => bulk.mutate({ ids: sel.map((p) => p.id), action: 'activate' }) },
+          { label: 'Deactivate', onClick: (sel) => window.confirm(`Deactivate ${sel.length} partner(s)? Their API keys stop working until reactivated.`) && bulk.mutate({ ids: sel.map((p) => p.id), action: 'deactivate' }), danger: true },
+          { label: 'Delete', onClick: (sel) => window.confirm(`Permanently delete ${sel.length} partner(s) and their API keys? Partners that already have submissions are skipped (deactivate those instead).`) && bulk.mutate({ ids: sel.map((p) => p.id), action: 'delete' }), danger: true },
+        ]}
+        showExport={false}
+        emptyMessage="No partners yet. Onboard one to generate their API key."
+        pageSize={25}
+        renderExpanded={(p) => (
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div>
+              <h4 className="mb-3 text-sm font-semibold text-gray-800">Details</h4>
+              <PartnerForm inline initial={p} busy={update.isPending} error={formError} onClose={() => setFormError('')} onSave={(v) => update.mutate({ id: p.id, v })} />
+              <p className="mt-3 text-xs text-gray-400">
+                {p.submissions} submission(s){p.openSubmissions > 0 && <span className="font-medium text-amber-600"> · {p.openSubmissions} waiting for review</span>} · last {when(p.lastSubmissionAt)}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2 text-sm">
+                <button type="button" onClick={() => toggle.mutate({ id: p.id, active: !p.isActive })} className="rounded-lg border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50">
+                  {p.isActive ? 'Deactivate' : 'Activate'}
+                </button>
                 <button
                   type="button"
-                  onClick={() => toggle.mutate({ id: p.id, active: !p.isActive })}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50"
+                  onClick={() => window.confirm(`Permanently delete ${p.universityName} and its API keys? This cannot be undone.`) && remove.mutate(p.id)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-red-600 hover:bg-red-50"
                 >
-                  {p.isActive ? 'Deactivate' : 'Reactivate'}
+                  <Trash2 size={13} /> Delete
                 </button>
               </div>
             </div>
-
-            <div className="mt-4 border-t border-gray-100 pt-3">
+            <div>
               <div className="mb-2 flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500"><KeyRound size={13} /> API keys</span>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <button type="button" disabled={newKey.isPending || !p.isActive} onClick={() => newKey.mutate({ p, email: false })} className="text-xs font-medium text-brand-800 hover:underline disabled:opacity-40">+ New key</button>
                   <button
                     type="button"
@@ -280,8 +316,8 @@ export default function PartnersPanel() {
               </ul>
             </div>
           </div>
-        ))}
-      </div>
+        )}
+      />
 
       {form && (
         <PartnerForm
