@@ -104,10 +104,13 @@ export default function AppLayout() {
   });
   const navPages = (navPagesData?.data as CmsPage[]) ?? [];
 
-  const handleLogout = async () => {
-    try { await authApi.logout(); } catch { /* ignore */ }
+  // Sign out immediately; revoking the refresh token on the server happens in the background.
+  const handleLogout = () => {
+    const refreshToken = localStorage.getItem('refreshToken') ?? undefined;
+    const accessToken = localStorage.getItem('accessToken') ?? undefined;
     clearAuth();
     navigate('/login');
+    void authApi.logout(refreshToken, accessToken).catch(() => undefined);
   };
 
   const items = user ? navItems[user.role] ?? [] : [];

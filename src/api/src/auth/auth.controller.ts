@@ -5,7 +5,7 @@ import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import type { AuthenticatedRequest } from './authenticated-request.interface';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
 import { RegisterStudentDto } from './dto/register-student.dto';
 
 class LoginDto {
@@ -18,7 +18,7 @@ class RefreshDto {
 }
 
 class LogoutDto {
-  @IsString() refreshToken: string;
+  @IsOptional() @IsString() refreshToken?: string;
 }
 
 class ChangePasswordDto {

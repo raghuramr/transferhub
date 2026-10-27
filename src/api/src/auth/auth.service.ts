@@ -495,7 +495,8 @@ export class AuthService {
     return { accessToken: this.generateAccessToken(user), user };
   }
 
-  async logout(userId: string, token: string) {
+  async logout(userId: string, token?: string) {
+    if (!token) return; // nothing to revoke (the client may sign out without a refresh token)
     const hash = crypto.createHash('sha256').update(token).digest('hex');
     await this.db.query(
       `UPDATE RefreshTokens SET IsRevoked = 1 WHERE UserId = @uid AND Token = @hash`,

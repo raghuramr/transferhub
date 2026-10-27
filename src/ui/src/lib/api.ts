@@ -79,7 +79,10 @@ export const authApi = {
     api.post<AuthTokens>('/auth/login', { email, password }),
   refresh: (refreshToken: string) =>
     api.post<AuthTokens>('/auth/refresh', { refreshToken }),
-  logout: () => api.post('/auth/logout'),
+  /** Fire-and-forget on sign-out: the session is already cleared locally, so the tokens are passed explicitly. */
+  logout: (refreshToken?: string, accessToken?: string) =>
+    // Plain axios (no refresh interceptor): a 401 here must never wipe a session that is signed in again right after.
+    axios.post(`${BASE}/auth/logout`, { refreshToken }, accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined),
   me: () => api.get<AuthTokens['user']>('/auth/me'),
   /** Public (no auth) — student self-registration; response auto-logs in like login(). */
   register: (data: unknown) => api.post<AuthTokens>('/auth/register', data),

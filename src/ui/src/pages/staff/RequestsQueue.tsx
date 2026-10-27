@@ -18,7 +18,8 @@ const REC: Record<Recommendation, { label: string; cls: string }> = {
 export default function RequestsQueue() {
   const role = useAuthStore((s) => s.user?.role);
   const isAdmin = role === 'admin' || role === 'super_admin';
-  const [scope, setScope] = useState<'mine' | 'all'>('mine');
+  // Admins act on any request, so they start on "All active"; approvers start on what is waiting for them.
+  const [scope, setScope] = useState<'mine' | 'all'>(isAdmin ? 'all' : 'mine');
   const [dlFilter, setDlFilter] = useState<'all' | 'soon' | 'overdue'>('all');
   const [sortBy, setSortBy] = useState<'due' | 'deadline'>('due');
   const { data, isLoading, error } = useQuery({
