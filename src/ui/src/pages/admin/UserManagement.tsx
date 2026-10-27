@@ -417,13 +417,13 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
   });
 
   const photosMutation = useMutation({
-    mutationFn: () => accountApi.generateDefaultPhotos(),
+    mutationFn: () => accountApi.resetDefaultPhotos(),
     onSuccess: (res) => {
-      setPhotoNote(`Photos created for ${res.data.created} of ${res.data.total} users without one${res.data.failed ? ` (${res.data.failed} failed)` : ''}.`);
+      setPhotoNote(`The TransferHub logo is now the default picture (${res.data.cleared} generated avatar${res.data.cleared === 1 ? '' : 's'} cleared).`);
       qc.invalidateQueries({ queryKey: ['users'] });
       qc.invalidateQueries({ queryKey: ['avatar'] });
     },
-    onError: () => setPhotoNote('Could not create the photos. Has migration 018 been applied?'),
+    onError: () => setPhotoNote('Could not reset the default photos. Has migration 018 been applied?'),
   });
 
   const importMutation = useMutation({
@@ -520,9 +520,9 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
               onClick={() => photosMutation.mutate()}
               disabled={photosMutation.isPending}
               className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-              title="Give every user without a photo a generated profile picture"
+              title="Use the TransferHub logo as the picture for everyone without an uploaded photo"
             >
-              {photosMutation.isPending ? 'Creating photos…' : 'Generate default photos'}
+              {photosMutation.isPending ? 'Updating…' : 'Use logo as default photo'}
             </button>
           )}
           {can('users', 'import') && (

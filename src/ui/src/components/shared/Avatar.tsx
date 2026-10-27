@@ -6,7 +6,7 @@ const SIZES = { xs: 'h-6 w-6 text-[10px]', sm: 'h-8 w-8 text-xs', md: 'h-10 w-10
 
 /**
  * A user's profile photo (kept in blob storage, fetched with the user's session),
- * falling back to their initials. Pass hasPhoto={false} to skip the request for
+ * falling back to the TransferHub logo. Pass hasPhoto={false} to skip the request for
  * users known to have no photo.
  */
 export function Avatar({
@@ -38,12 +38,16 @@ export function Avatar({
       }
     },
   });
-  const initials = `${firstName?.[0] ?? '?'}${lastName?.[0] ?? ''}`.toUpperCase();
+  const label = `${firstName ?? ''} ${lastName ?? ''}`.trim();
   return url ? (
     <img src={url} alt="" className={cn('shrink-0 rounded-full object-cover', SIZES[size], className)} />
   ) : (
-    <span className={cn('flex shrink-0 items-center justify-center rounded-full bg-brand-800 font-bold text-white', SIZES[size], className)}>
-      {initials}
+    // Default picture: the TransferHub logo mark on white.
+    <span
+      className={cn('flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-brand-200', SIZES[size], className)}
+      title={label || undefined}
+    >
+      <img src="/logo-mark.png" alt={label ? `${label} (default picture)` : ''} className="h-[78%] w-[78%] object-contain" />
     </span>
   );
 }
