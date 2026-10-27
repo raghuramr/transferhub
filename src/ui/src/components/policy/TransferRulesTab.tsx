@@ -5,6 +5,7 @@ import { policiesApi, universitiesApi } from '../../lib/api';
 import { usePermissions } from '../../hooks/usePermissions';
 import { cn } from '../../lib/cn';
 import type { TransferPolicy } from '../../types/policy';
+import ExamCreditRulesCard from './ExamCreditRulesCard';
 
 const GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-'];
 const inputCls = 'mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-50';
@@ -111,6 +112,7 @@ export default function TransferRulesTab() {
               <input disabled={!canEdit} type="number" min={1} max={120} value={draft.creditDeadlineMonths ?? 12} onChange={(e) => set({ creditDeadlineMonths: Number(e.target.value) })} className={inputCls} />
             </label>
           </div>
+          <ExamCreditRulesCard institutionId={scope} canEdit={canEdit} />
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="mb-1 font-semibold text-gray-900">BU Hub</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

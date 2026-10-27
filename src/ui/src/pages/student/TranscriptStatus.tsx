@@ -5,7 +5,7 @@ import { requestsApi, transcriptsApi } from '../../lib/api';
 import { GeneralNotes, RequestTimeline } from '../../components/workflow/RequestTimeline';
 import { DocumentsPanel, NoteComposer, ReminderPanel } from '../../components/workflow/RequestPanels';
 import type { RequestTimeline as TimelineData } from '../../types/workflow';
-import { CheckCircle, Clock, AlertCircle, BookOpen, Sparkles, FileDown } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, BookOpen, Sparkles, FileDown, FileCheck2 } from 'lucide-react';
 import { TransferWorkflowStepper, TRANSCRIPT_STEPS } from '../../components/ui/TransferWorkflowStepper';
 import { CreditHubCard, EvaluationKindBanner, FlagList } from '../../components/policy/PolicyBits';
 import AppealModal from '../../components/policy/AppealModal';
@@ -160,6 +160,16 @@ export default function TranscriptStatus() {
                     </p>
                   )}
                   <FlagList flags={course.policyFlags} compact />
+                  {course.syllabus?.attached && (
+                    <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-700" data-testid="syllabus-attached">
+                      <FileCheck2 size={12} /> Syllabus attached{course.syllabus.fileName ? ` (${course.syllabus.fileName})` : course.syllabus.hasCatalogUrl ? ' (catalogue link)' : ''}
+                    </p>
+                  )}
+                  {course.lane === 'needs_syllabus' && !course.syllabus?.attached && (
+                    <p className="mt-1 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800" data-testid="why-we-ask">
+                      <span className="font-semibold">Why we ask:</span> we have no existing match for this course, so a reviewer compares your syllabus (topics, outcomes, workload) with the receiving course. Add one under Documents below.
+                    </p>
+                  )}
                   {course.appeal && (
                     <p className="mt-1 text-xs font-medium text-indigo-700">
                       {course.appeal.status === 'submitted' ? 'Appeal under review' : APPEAL_LABEL[course.appeal.outcome ?? ''] ?? 'Appeal decided'}

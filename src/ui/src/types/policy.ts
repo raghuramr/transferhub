@@ -5,6 +5,28 @@ export interface PolicyFlag {
   message: string;
 }
 
+export type ExamState = 'counts' | 'below_minimum' | 'review';
+export interface ExamResult {
+  examType: string;
+  subject: string;
+  score: string | null;
+  state: ExamState;
+  minScore: string | null;
+  countedCredits: number;
+  message: string;
+}
+export interface ExamCreditRule {
+  id: number | null;
+  institutionId: number | null;
+  institutionName?: string | null;
+  examType: 'AP' | 'IB' | 'A-level' | 'CLEP';
+  subjectPattern: string | null;
+  minScore: string;
+  creditsAwarded: number | null;
+  isActive: boolean;
+  notes?: string | null;
+}
+
 export type EvaluationKind = 'preview' | 'official' | 'preapproval';
 
 export interface CreditSummary {

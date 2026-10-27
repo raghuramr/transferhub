@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarClock, ChevronDown, GraduationCap, Info, Upload } from 'lucide-react';
 import { DEADLINE_TONE, daysText, formatDeadlineDate } from '../policy/DeadlineBadge';
-import type { CreditDeadline } from '../../types/policy';
+import type { CreditDeadline, ExamResult } from '../../types/policy';
 import { api } from '../../lib/api';
 import { cn } from '../../lib/cn';
 
@@ -25,6 +25,7 @@ export interface ProgressResult {
   hub: { requirements: number; cocurricularAllowed: number; note: string };
   requests: RequestProgress[];
   isProvisional: boolean;
+  exams?: ExamResult[];
   deadline?: (CreditDeadline & { pendingCourses: number }) | null;
 }
 
@@ -220,6 +221,16 @@ export function DegreeProgressCard({ studentUserId, className }: Props) {
         </dl>
 
         {data.deadline && data.deadline.state !== 'unknown' && data.deadline.deadlineOn && <DeadlineBlock d={data.deadline} />}
+
+        {(data.exams ?? []).some((x) => x.state !== 'counts') && (
+          <ul data-testid="exam-notes" className="mt-3 space-y-1.5">
+            {(data.exams ?? []).filter((x) => x.state !== 'counts').map((x, i) => (
+              <li key={i} className={cn('flex gap-2 rounded-lg px-3 py-2 text-xs', x.state === 'below_minimum' ? 'bg-gray-100 text-gray-700' : 'bg-amber-50 text-amber-800')}>
+                <Info size={13} className="mt-0.5 shrink-0" />{x.message}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {exam > 0 && <p className="mt-3 text-xs text-gray-500">Includes {fmt(exam)} AP / IB / A-level credits counted toward the same limit.</p>}
 

@@ -145,12 +145,14 @@ export class ProgressService {
     const pol = await this.policy.getEffective(target);
     let applicantType: string | null = null;
     let examCredits = 0;
+    let examSummary: Awaited<ReturnType<TransferPolicyService['examSummary']>> | null = null;
     if (policyReady) {
       try {
         const p = await this.db.query<{ A: string | null }>(`SELECT ApplicantType AS A FROM StudentProfiles WHERE UserId = @u`, u);
         applicantType = p.recordset[0]?.A ?? null;
-        const e = await this.db.query<{ N: number | null }>(`SELECT SUM(Credits) AS N FROM StudentExamCredits WHERE UserId = @u`, u);
-        examCredits = Number(e.recordset[0]?.N ?? 0);
+        // Only exams at or above the university's minimum score count toward the cap (ExamCreditService).
+        examSummary = await this.policy.examSummary(studentUserId);
+        examCredits = examSummary.countedCredits;
       } catch (err) {
         this.logger.warn(`progress: profile/exam lookup failed: ${(err as Error).message}`);
       }
@@ -165,6 +167,7 @@ export class ProgressService {
     return buildProgress(requests, {
       cap: this.policy.capFor(pol, applicantType),
       examCredits,
+      exams: examSummary?.results ?? [],
       likelyThreshold,
       hubRequirements: pol.hubRequirementsTransfer,
       hubCocurricularAllowed: pol.hubCocurricularAllowed,

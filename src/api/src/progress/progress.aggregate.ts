@@ -5,6 +5,7 @@
  */
 
 import type { CreditDeadline } from '../policy/credit-deadline';
+import type { ExamResult } from '../policy/exam-credit';
 
 export type Bucket = 'secure' | 'likely' | 'pending' | 'not_counted';
 
@@ -51,6 +52,8 @@ export interface ProgressRequestRow {
 export interface ProgressOptions {
   cap: number;
   examCredits: number;
+  /** Each exam with its state against the minimum score (ExamCreditService); optional. */
+  exams?: ExamResult[];
   likelyThreshold: number;
   hubRequirements: number;
   hubCocurricularAllowed: number;
@@ -101,6 +104,8 @@ export interface ProgressResult {
   hub: { requirements: number; cocurricularAllowed: number; note: string };
   requests: RequestProgress[];
   isProvisional: boolean;
+  /** AP / IB / CLEP / A-level exams and whether each counts toward the cap. */
+  exams: ExamResult[];
   /** PRG-02: when everything must be transferred by, plus how many courses still wait on a decision. */
   deadline: (CreditDeadline & { pendingCourses: number }) | null;
 }
@@ -251,6 +256,7 @@ export function buildProgress(requests: ProgressRequestRow[], o: ProgressOptions
     },
     hub: { requirements: o.hubRequirements, cocurricularAllowed: o.hubCocurricularAllowed, note: hubNote },
     requests: reqs,
+    exams: o.exams ?? [],
     deadline: o.deadline ? { ...o.deadline, pendingCourses } : null,
     isProvisional: totals.likelyHigh > 0 || totals.pending > 0 || reqs.some((r) => r.kind === 'preview'),
   };

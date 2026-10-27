@@ -93,6 +93,8 @@ export interface TranscriptCourse {
   isOutsideUS?: boolean;
   policyFlags?: import('./policy').PolicyFlag[];
   appeal?: import('./policy').CourseAppealSummary | null;
+  /** Optional per-course syllabus (file and/or catalogue link). */
+  syllabus?: { attached: boolean; fileName: string | null; hasCatalogUrl: boolean };
 }
 
 /**

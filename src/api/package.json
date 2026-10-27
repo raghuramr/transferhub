@@ -6,6 +6,8 @@
   "scripts": {
     "setup:env": "tsx scripts/setup-env.ts",
     "seed:users": "tsx scripts/seed-users.ts",
+    "test:unit": "tsx scripts/run-all-tests.ts",
+    "smoke": "tsx scripts/smoke/run.ts",
     "seed:users:test": "cross-env NODE_ENV=test tsx scripts/seed-users.ts",
     "seed:users:prod": "cross-env NODE_ENV=production tsx scripts/seed-users.ts",
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",

@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import type { Appeal, CreditSummary, TransferPolicy } from '../types/policy';
+import type { Appeal, CreditSummary, ExamCreditRule, TransferPolicy } from '../types/policy';
 import type { Partner, PartnerInput, IssuedKey, BatchSummary, BatchDetail, ImportRunResult } from '../types/import';
 import type { AuthTokens, ApiError, CourseTopic, TranscriptSummary, Transcript, User } from '../types';
 import type {
@@ -439,6 +439,9 @@ export const policiesApi = {
   save: (data: Partial<TransferPolicy> & { institutionId?: number | null }) => api.put<TransferPolicy>('/policies', data),
   removeOverride: (institutionId: number) => api.delete(`/policies/${institutionId}`),
   myCredit: () => api.get<CreditSummary>('/policies/my-credit'),
+  examRules: (institutionId?: number | null) => api.get<ExamCreditRule[]>('/policies/exam-rules', { params: institutionId ? { institutionId } : {} }),
+  saveExamRule: (rule: Partial<ExamCreditRule>) => api.put<ExamCreditRule>('/policies/exam-rules', rule),
+  removeExamRule: (id: number) => api.delete(`/policies/exam-rules/${id}`),
 };
 
 // ── Transfer credit appeals (BU Transfer Credit Appeal Form) ──

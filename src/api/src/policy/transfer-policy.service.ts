@@ -3,6 +3,8 @@ import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
 import { SchemaService } from './schema.service';
 import { CreditDeadlineService } from './credit-deadline.service';
+import { ExamCreditService } from './exam-credit.service';
+import { PolicyExtensionsService } from './policy-extensions.service';
 
 export interface TransferPolicy {
   id: number | null;
@@ -103,7 +105,7 @@ export const parseFlags = (json: string | null | undefined): PolicyFlag[] => {
 export class TransferPolicyService {
   private readonly logger = new Logger(TransferPolicyService.name);
 
-  constructor(private db: DatabaseService, private schema: SchemaService, private deadlines: CreditDeadlineService) {}
+  constructor(private db: DatabaseService, private schema: SchemaService, private deadlines: CreditDeadlineService, private exams: ExamCreditService, private extensions: PolicyExtensionsService) {}
 
   // ── settings ──────────────────────────────────────────────────
 
@@ -193,15 +195,14 @@ export class TransferPolicyService {
     const policy = await this.getEffective(target);
     let applicantType: string | null = null;
     let examCredits = 0;
+    let examSummary: Awaited<ReturnType<ExamCreditService['summaryFor']>> | null = null;
     if (await this.schema.policyReady()) {
       const p = await this.db.query<{ ApplicantType: string | null }>(`SELECT ApplicantType FROM StudentProfiles WHERE UserId = @u`, [
         { name: 'u', type: sql.UniqueIdentifier, value: studentUserId },
       ]);
       applicantType = p.recordset[0]?.ApplicantType ?? null;
-      const e = await this.db.query<{ N: number | null }>(`SELECT SUM(Credits) AS N FROM StudentExamCredits WHERE UserId = @u`, [
-        { name: 'u', type: sql.UniqueIdentifier, value: studentUserId },
-      ]);
-      examCredits = Number(e.recordset[0]?.N ?? 0);
+      examSummary = await this.exams.summaryFor(studentUserId, target); // only exams at or above the minimum count
+      examCredits = examSummary.countedCredits;
     }
     const used = await this.usedCredits(studentUserId, null);
     const cap = this.capFor(policy, applicantType);
@@ -209,6 +210,7 @@ export class TransferPolicyService {
       cap,
       transferCredits: used,
       examCredits,
+      exams: examSummary?.results ?? [],
       used: used + examCredits,
       remaining: Math.max(0, cap - used - examCredits),
       hubRequirements: policy.hubRequirementsTransfer,
@@ -354,14 +356,22 @@ export class TransferPolicyService {
         ]);
       }
     }
+    // OUT-06 multi-course mappings + PRG-03..08 programme rules (flags only; never fails the policy check).
+    try {
+      await this.extensions.afterPolicy(transcriptId);
+    } catch (err) {
+      this.logger.warn(`Request ${transcriptId}: programme rules / mappings skipped: ${(err as Error).message}`);
+    }
     return { flagged };
   }
 
   private async examCredits(studentUserId: string): Promise<number> {
-    const e = await this.db.query<{ N: number | null }>(`SELECT SUM(Credits) AS N FROM StudentExamCredits WHERE UserId = @u`, [
-      { name: 'u', type: sql.UniqueIdentifier, value: studentUserId },
-    ]);
-    return Number(e.recordset[0]?.N ?? 0);
+    return (await this.examSummary(studentUserId)).countedCredits;
+  }
+
+  /** The student's AP / IB / CLEP / A-level exams checked against their target university's minimum scores. */
+  async examSummary(studentUserId: string) {
+    return this.exams.summaryFor(studentUserId, await this.targetFor(studentUserId));
   }
 
   /** Reviewer: accept (or withdraw) a Pass/Fail exception for one course, then re-run the rules. */

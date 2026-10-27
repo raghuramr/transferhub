@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsArray, ValidateNested, IsIn, IsInt, IsBoolean, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray, ValidateNested, IsIn, IsInt, IsBoolean, IsUUID, Matches, MaxLength, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class TranscriptCourseInputDto {
@@ -14,6 +14,10 @@ export class TranscriptCourseInputDto {
   @IsOptional() @IsIn(['in_person', 'online', 'hybrid']) deliveryMode?: string;
   @IsOptional() @IsIn(['lecture', 'lab', 'seminar', 'internship', 'research', 'military', 'life_experience', 'other']) courseType?: string;
   @IsOptional() @IsBoolean() isOutsideUS?: boolean;
+  /** Optional per-course syllabus: id of an Upload (entityType 'syllabus') the submitter owns. */
+  @IsOptional() @IsUUID() syllabusUploadId?: string;
+  /** Optional link to the course's public catalogue / syllabus page (http or https). */
+  @IsOptional() @IsString() @MaxLength(500) @Matches(/^https?:\/\/\S+$/i, { message: 'catalogUrl must start with http:// or https://' }) catalogUrl?: string;
 }
 
 /**

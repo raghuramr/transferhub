@@ -8,6 +8,8 @@ import { templates } from '../common/email-templates';
 import { SchemaService } from '../policy/schema.service';
 import { TransferPolicyService, parseFlags, type PolicyFlag } from '../policy/transfer-policy.service';
 import { CreditDeadlineService } from '../policy/credit-deadline.service';
+import { ExamCreditService } from '../policy/exam-credit.service';
+import { conditionalDocApplies, type DocConditionContext } from '../policy/exam-credit';
 
 export interface Actor {
   id: string;
@@ -61,6 +63,7 @@ export class WorkflowEngineService {
     private schema: SchemaService,
     private policy: TransferPolicyService,
     private deadlines: CreditDeadlineService,
+    private examCredit: ExamCreditService,
   ) {}
 
   // ── starting ────────────────────────────────────────────────
@@ -684,7 +687,9 @@ export class WorkflowEngineService {
     // transfers, and syllabi only for courses that are not an existing match (BU-EV-04).
     let profile: { ApplicantType: string | null; IsNativeEnglish: boolean | null; EvaluationKind: string } | null = null;
     let reviewCourses = 0;
+    let docCtx: DocConditionContext | null = null;
     if (await this.schema.policyReady()) {
+      docCtx = await this.examCredit.documentContext(transcriptId).catch(() => null);
       const p = await this.db.query<{ ApplicantType: string | null; IsNativeEnglish: boolean | null; EvaluationKind: string }>(
         `SELECT sp.ApplicantType, sp.IsNativeEnglish, t.EvaluationKind
          FROM Transcripts t LEFT JOIN StudentProfiles sp ON sp.UserId = t.StudentUserId WHERE t.Id = @t`,
@@ -707,6 +712,9 @@ export class WorkflowEngineService {
         case 'transfer_college_report':
         case 'hs_transcript': return transfer;
         case 'final_transcript': return transfer && profile?.EvaluationKind !== 'preview';
+        case 'credential_evaluation':
+        case 'certified_translation':
+        case 'exam_score_report': return docCtx ? conditionalDocApplies(key, docCtx) === true : false; // informational: International Admissions / exam score reports
         default: return true;
       }
     };
@@ -803,6 +811,7 @@ export class WorkflowEngineService {
           const when = dl.daysLeft! < 0 ? `passed ${-dl.daysLeft!} day(s) ago` : `${dl.daysLeft} day(s) left`;
           notes.push(`Credit deadline (${dl.months} months from start${dl.isEstimate ? ', estimated from the first request: no entry term on file' : ''}): ${dl.deadlineOn}, ${when}.`);
         }
+        for (const x of cs.exams) if (x.state !== 'counts') notes.push(x.message);
         notes.push(`External credit: ${cs.used} of ${cs.cap} allowed credits counted so far (transfer, AP, IB and A-level combined).`);
         notes.push(`BU Hub: transfer courses never satisfy Hub requirements; this student still owes ${cs.hubRequirements} Hub requirements (up to ${cs.hubCocurricularAllowed} via a cocurricular).`);
       }
