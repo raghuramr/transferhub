@@ -15,6 +15,8 @@ interface CourseProgress {
   id: string; courseCode: string; courseTitle: string; lane: string; bucket: Bucket; grade: string | null;
   originalCredits: number; convertedCredits: number; awardedCredits: number | null; low: number; high: number;
   buCourse: string | null; nextStep: string;
+  /** One course counting as several BU courses (OUT-06). */
+  mappings?: { code: string; title?: string; credits: number | null }[];
 }
 interface RequestProgress {
   id: string; institutionName: string; kind: string; status: string; receivedAt: string | null; totals: Totals; courses: CourseProgress[];
@@ -277,6 +279,13 @@ export function DegreeProgressCard({ studentUserId, className }: Props) {
                                 <span className="font-normal text-gray-500"> {c.courseTitle}</span>
                               </p>
                               <p className="mt-0.5 text-xs text-gray-600 break-words">{c.nextStep}</p>
+                              {(c.mappings?.length ?? 0) > 1 && (
+                                <ul className="mt-1 space-y-0.5 text-xs text-gray-500" data-testid="multi-mapping">
+                                  {c.mappings!.map((m) => (
+                                    <li key={m.code}>{m.code}{m.title ? ` ${m.title}` : ''}{m.credits != null ? ` (${m.credits} cr)` : ''}</li>
+                                  ))}
+                                </ul>
+                              )}
                             </div>
                             <div className="text-right shrink-0">
                               <span className={cn('inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset', BUCKETS[c.bucket].pill)}>

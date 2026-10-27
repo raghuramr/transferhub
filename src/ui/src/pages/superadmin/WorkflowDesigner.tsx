@@ -7,6 +7,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { cn } from '../../lib/cn';
 import ReadinessCard from '../../components/workflow/ReadinessCard';
 import TransferRulesTab from '../../components/policy/TransferRulesTab';
+import ProgrammeRulesTab from '../../components/policy/ProgrammeRulesTab';
 import type { AgentTask, ApproverGroup, StageApprover, StageType, StaffUser, WorkflowDetail, WorkflowStageDef } from '../../types/workflow';
 
 const errMsg = (e: unknown, fallback: string) => {
@@ -334,7 +335,7 @@ export default function WorkflowDesigner() {
   const { can } = usePermissions();
   const canEdit = can('workflows', 'edit');
   const canCreate = can('workflows', 'create');
-  const [tab, setTab] = useState<'workflows' | 'groups' | 'rules' | 'insights'>('workflows');
+  const [tab, setTab] = useState<'workflows' | 'groups' | 'rules' | 'programme' | 'insights'>('workflows');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draft, setDraft] = useState<WorkflowDetail | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -411,11 +412,11 @@ export default function WorkflowDesigner() {
         <p className="mt-1 text-gray-500">Define the stages a transfer request goes through for each intaking university, and who approves each one. A university without its own workflow uses the global default.</p>
       </div>
 
-      <div className="mb-6 inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-sm">
-        {(['workflows', 'groups', 'rules', 'insights'] as const).map((t) => (
+      <div className="mb-6 inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-white p-0.5 text-sm">
+        {(['workflows', 'groups', 'rules', 'programme', 'insights'] as const).map((t) => (
           <button key={t} type="button" onClick={() => setTab(t)} className={cn('inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 font-medium', tab === t ? 'bg-brand-800 text-white' : 'text-gray-600 hover:bg-gray-50')}>
             {t === 'insights' && <BarChart3 size={14} />}
-            {t === 'workflows' ? 'Workflows' : t === 'groups' ? 'Approver groups' : t === 'rules' ? 'Transfer rules' : 'Insights'}
+            {t === 'workflows' ? 'Workflows' : t === 'groups' ? 'Approver groups' : t === 'rules' ? 'Transfer rules' : t === 'programme' ? 'Programme rules' : 'Insights'}
           </button>
         ))}
       </div>
@@ -426,6 +427,8 @@ export default function WorkflowDesigner() {
         <InsightsTab />
       ) : tab === 'rules' ? (
         <TransferRulesTab />
+      ) : tab === 'programme' ? (
+        <ProgrammeRulesTab />
       ) : tab === 'groups' ? (
         <GroupsTab groups={groups} staff={staff} canEdit={canEdit} />
       ) : (

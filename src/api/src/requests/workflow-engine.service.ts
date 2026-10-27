@@ -1,3 +1,4 @@
+import { CourseMappingsService } from '../policy/course-mappings.service';
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
@@ -64,6 +65,7 @@ export class WorkflowEngineService {
     private policy: TransferPolicyService,
     private deadlines: CreditDeadlineService,
     private examCredit: ExamCreditService,
+    private courseMappings: CourseMappingsService,
   ) {}
 
   // ── starting ────────────────────────────────────────────────
@@ -841,6 +843,7 @@ export class WorkflowEngineService {
           ? 'review'
           : 'approve';
 
+    const multiMapped = await this.courseMappings.forTranscript(transcriptId); // OUT-06: one course counting as several BU courses
     const brief = {
       generatedAt: new Date().toISOString(),
       totals,
@@ -857,7 +860,7 @@ export class WorkflowEngineService {
         lane: c.Lane,
         credits: credit(c),
         suggested: c.SugCode ? { code: c.SugCode, title: c.SugTitle, confidence: c.AIConfidence == null ? null : Number(c.AIConfidence) } : null,
-        decided: c.DecCode ? { code: c.DecCode, title: c.DecTitle, outcome: c.Outcome, awardedCredits: c.AwardedCredits } : c.Outcome ? { code: null, title: null, outcome: c.Outcome, awardedCredits: c.AwardedCredits } : null,
+        decided: c.DecCode ? { code: (multiMapped.get(String(c.TcId).toLowerCase())?.length ?? 0) > 1 ? multiMapped.get(String(c.TcId).toLowerCase())!.map((m) => `${m.code}${m.credits != null ? ` (${m.credits} cr)` : ''}`).join(' + ') : c.DecCode, title: c.DecTitle, outcome: c.Outcome, awardedCredits: c.AwardedCredits } : c.Outcome ? { code: null, title: null, outcome: c.Outcome, awardedCredits: c.AwardedCredits } : null,
       })),
       previousStages: prior.recordset.map((p) => ({ stage: p.StageName, status: p.Status, comment: p.Body, at: p.CompletedAt })),
       narrative: null as string | null,

@@ -92,6 +92,8 @@ export interface TranscriptCourse {
   courseType?: string | null;
   isOutsideUS?: boolean;
   policyFlags?: import('./policy').PolicyFlag[];
+  /** OUT-06: the BU courses this course counts as, when more than one. */
+  mappedBuCourses?: { buCourseId: number; code: string; title: string; credits: number | null }[];
   appeal?: import('./policy').CourseAppealSummary | null;
   /** Optional per-course syllabus (file and/or catalogue link). */
   syllabus?: { attached: boolean; fileName: string | null; hasCatalogUrl: boolean };

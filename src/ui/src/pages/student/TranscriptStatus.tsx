@@ -159,6 +159,13 @@ export default function TranscriptStatus() {
                       {course.evaluation.decidedBUCourse?.title} ({course.evaluation.awardedCredits} cr)
                     </p>
                   )}
+                  {(course.mappedBuCourses?.length ?? 0) > 1 && (
+                    <ul className="mt-1 text-xs text-green-700" data-testid="multi-mapping">
+                      {course.mappedBuCourses!.map((m) => (
+                        <li key={m.buCourseId}>Counts as {m.code} — {m.title}{m.credits != null ? ` (${m.credits} cr)` : ''}</li>
+                      ))}
+                    </ul>
+                  )}
                   <FlagList flags={course.policyFlags} compact />
                   {course.syllabus?.attached && (
                     <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-700" data-testid="syllabus-attached">
