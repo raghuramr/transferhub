@@ -485,6 +485,12 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
       ),
     },
     {
+      key: 'university',
+      header: 'University',
+      sortValue: (u) => u.targetInstitutionName ?? '',
+      render: (u) => (u.role === 'student' ? u.targetInstitutionName ?? '—' : '—'),
+    },
+    {
       key: 'status',
       header: 'Status',
       sortValue: (u) => (u.isLocked ? 'locked' : u.isActive ? 'active' : 'inactive'),
