@@ -304,8 +304,17 @@ export const permissionsApi = {
 
 
 // ── Data Import endpoints (super_admin only) ──────────────────
-export interface EmailAttempt { ok: boolean; id?: string; error?: string; to: string; subject: string; at: string }
+export interface EmailAttempt { ok: boolean; id?: string; error?: string; skipped?: boolean; to: string; subject: string; at: string }
 export interface EmailTemplateSample { id: number; key: string; name: string; audience: string; subject: string; html: string }
+export interface EmailTemplateOverride { subject?: string; headline?: string; paragraphs?: string[]; ctaLabel?: string; enabled?: boolean; cc?: string[] }
+export interface EmailTemplateItem {
+  key: string;
+  name: string;
+  audience: string;
+  canDisable: boolean;
+  defaults: { subject: string; headline: string; paragraphs: string[]; ctaLabel: string; hasCta: boolean; placeholders: string[] };
+  override: EmailTemplateOverride | null;
+}
 export interface EmailStatus {
   configured: boolean;
   fromAddress: string;
@@ -343,6 +352,12 @@ export const emailApi = {
   test: (to?: string) => api.post<EmailAttempt>('/email/test', to ? { to } : {}),
   templates: () => api.get<EmailTemplateSample[]>('/email/templates'),
   sendSample: (id: number, to?: string) => api.post<EmailAttempt>(`/email/templates/${id}/send`, to ? { to } : {}),
+  // editable template text + CC recipients
+  overrides: () => api.get<{ ready: boolean; items: EmailTemplateItem[] }>('/email/overrides'),
+  saveOverride: (key: string, o: EmailTemplateOverride) => api.put<{ override: EmailTemplateOverride }>(`/email/overrides/${key}`, o),
+  resetOverride: (key: string) => api.delete(`/email/overrides/${key}`),
+  previewOverride: (key: string, draft: EmailTemplateOverride) => api.post<{ subject: string; html: string }>(`/email/overrides/${key}/preview`, { draft }),
+  testOverride: (key: string, draft: EmailTemplateOverride, to?: string) => api.post<EmailAttempt>(`/email/overrides/${key}/test`, { draft, ...(to ? { to } : {}) }),
 };
 
 export const importApi = {
@@ -357,6 +372,9 @@ export const importApi = {
   setPartnerActive: (id: number, active: boolean) => api.post(`/import/partners/${id}/${active ? 'activate' : 'deactivate'}`),
   issueKey: (id: number, data: { label?: string; expiresInDays?: number; emailKey?: boolean }) =>
     api.post<IssuedKey>(`/import/partners/${id}/keys`, data),
+  deletePartner: (id: number) => api.delete(`/import/partners/${id}`),
+  bulkPartners: (ids: number[], action: 'activate' | 'deactivate' | 'delete') =>
+    api.post<{ ok: number; failed: number; results: { id: number; ok: boolean; message: string }[] }>('/import/partners/bulk', { ids, action }),
   revokeKey: (id: number, keyId: number) => api.delete(`/import/partners/${id}/keys/${keyId}`),
   // submissions (staging + review)
   batches: (params?: { status?: string; partnerId?: number }) => api.get<BatchSummary[]>('/import/batches', { params }),
@@ -436,10 +454,19 @@ export const aiControlsApi = {
   summary: (days: number) => api.get<UsageSummary>('/ai-controls/usage/summary', { params: { days } }),
   byRequest: (days: number) => api.get<RequestUsageRow[]>('/ai-controls/usage/requests', { params: { days } }),
   clearCache: () => api.post<{ cleared: number }>('/ai-controls/cache/clear'),
+  learnedSkills: (min = 2) => api.get<LearnedSkills>('/ai-controls/learned-skills', { params: { min } }),
   providers: () => api.get<AiProviderPublic>('/ai-controls/providers'),
   saveProviders: (data: Partial<AiProviderSave>) => api.put<AiProviderPublic>('/ai-controls/providers', data),
 };
 
+export interface LearnedSuggestion {
+  key: string; kind: 'override' | 'elective' | 'no_credit'; title: string; instructions: string;
+  count: number; evidence: string; alreadyInPlaybook: boolean;
+}
+export interface LearnedSkills {
+  stats: { decided: number; withAiPick: number; agreed: number; overridden: number; agreementRate: number | null };
+  suggestions: LearnedSuggestion[];
+}
 export interface AiProviderPublic {
   ready: boolean;
   chatProvider: 'anthropic' | 'azure_openai';
@@ -626,6 +653,7 @@ export interface IntakeItem {
   error: string | null;
   createdAt: string;
   aiEnabled: boolean;
+  extracted?: ExtractedDocument | null;
 }
 export interface ExtractedDocument {
   docType: string;
@@ -670,6 +698,10 @@ export const documentsApi = {
   get: (id: string) => api.get<IntakeDetail>(`/documents/intakes/${id}`),
   update: (id: string, data: { docType?: string; extracted?: ExtractedDocument }) => api.patch<IntakeDetail>(`/documents/intakes/${id}`, data),
   retry: (id: string) => api.post<IntakeItem>(`/documents/intakes/${id}/retry`),
+  reprocess: (id: string) => api.post<IntakeItem>(`/documents/${id}/reprocess`),
+  remove: (id: string) => api.delete<{ ok: boolean; fileDeleted: boolean; message: string }>(`/documents/${id}`),
+  attach: (id: string, data: { transcriptId: string; docTypeKey?: string }) =>
+    api.post<{ ok: boolean; transcriptId: string; docTypeKey: string }>(`/documents/${id}/attach`, data),
   confirm: (id: string) =>
     api.post<{ ok: boolean; docType: string; applied: { education: boolean; profile: boolean }; prefill?: TranscriptPrefill }>(`/documents/intakes/${id}/confirm`),
   prefill: (id: string) => api.get<TranscriptPrefill>(`/documents/intakes/${id}/prefill`),

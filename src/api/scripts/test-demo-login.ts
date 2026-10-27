@@ -1,19 +1,19 @@
 import assert from 'node:assert/strict';
-import { buildPublicDemoLogin, parseFlag } from '../src/settings/demo-login.logic';
+import { DEMO_LOGIN_DEFAULTS, DEMO_FALLBACK_EMAILS, parseFlag, parseUsers } from '../src/settings/demo-login.logic';
 import { DEMO_ACCOUNTS } from '../src/settings/demo-accounts';
 
-const off = buildPublicDemoLogin({ enabled: false, showCredentials: true });
-assert.deepEqual(off, { enabled: false });
-assert.equal(JSON.stringify(off).includes('@'), false);
+// Secure default: off, nothing configured.
+assert.equal(DEMO_LOGIN_DEFAULTS.enabled, false);
+assert.deepEqual(DEMO_LOGIN_DEFAULTS.users, {});
 
-const names = buildPublicDemoLogin({ enabled: true, showCredentials: false });
-assert.equal(names.enabled, true); assert.equal(names.namesOnly, true); assert.equal(names.showCredentials, false);
-assert.equal(names.accounts?.length, DEMO_ACCOUNTS.length);
-assert.ok(names.accounts?.every((a) => a.password && a.email));
-
-const creds = buildPublicDemoLogin({ enabled: true, showCredentials: true });
-assert.equal(creds.namesOnly, false); assert.equal(creds.showCredentials, true);
-
+// Flags and the stored role -> userId map are parsed tolerantly.
 assert.equal(parseFlag('1'), true); assert.equal(parseFlag('0'), false); assert.equal(parseFlag(null), false);
+assert.deepEqual(parseUsers(null), {});
+assert.deepEqual(parseUsers('not json'), {});
+assert.deepEqual(parseUsers('[1,2]'), {});
+assert.deepEqual(parseUsers('{"student":" abc ","faculty":"","admin":5}'), { student: 'abc' });
+
+// Fallback accounts exist for every role, and the logic file never carries a password.
 assert.equal(DEMO_ACCOUNTS.length, 5);
+assert.deepEqual([...DEMO_FALLBACK_EMAILS], DEMO_ACCOUNTS.map((a) => a.email));
 console.log('demo-login logic OK');
