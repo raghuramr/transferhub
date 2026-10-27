@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { DatabaseService } from '../database/database.service';
 import * as sql from 'mssql';
 import { AiSettings, AiSettingsService } from './ai-settings.service';
+import { AiProvidersService } from './ai-providers.service';
 import { AiUsageService, SkipReason } from './ai-usage.service';
 import { estimateCostUsd, estimateTokens, TokenUsage } from './ai-pricing';
 import { CatalogCourse, normalizeKey, shortlist } from './course-prefilter';
@@ -66,29 +67,39 @@ export interface PipelineMatchResult {
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private client: Anthropic;
 
   constructor(
     private config: ConfigService,
     private db: DatabaseService,
     private settingsService: AiSettingsService,
     private usage: AiUsageService,
-  ) {
-    this.client = new Anthropic({
-      apiKey: this.config.get<string>('ANTHROPIC_API_KEY'),
-    });
-  }
+    private providers: AiProvidersService,
+  ) {}
 
-  private hasApiKey(): boolean {
-    const key = this.config.get<string>('ANTHROPIC_API_KEY');
-    return !!key && !key.startsWith('REPLACE_WITH');
-  }
-
-  private assertApiKey() {
-    const key = this.config.get<string>('ANTHROPIC_API_KEY');
-    if (!key || key.startsWith('REPLACE_WITH')) {
-      throw new BadRequestException('ANTHROPIC_API_KEY is not configured on the server.');
+  /** Is a usable chat provider configured right now (Anthropic key, or a complete Azure OpenAI setup)? */
+  private async hasApiKey(): Promise<boolean> {
+    const c = await this.providers.getConfig();
+    if (c.chatProvider === 'azure_openai') {
+      return !!(c.azureOpenAiEndpoint && c.azureOpenAiKey && c.azureOpenAiDeployment);
     }
+    return !!c.anthropicKey && !c.anthropicKey.startsWith('REPLACE_WITH');
+  }
+
+  private async assertApiKey() {
+    if (!(await this.hasApiKey())) {
+      throw new BadRequestException('No AI provider is configured. Set an Anthropic key or an Azure OpenAI deployment in AI Controls > Providers.');
+    }
+  }
+
+  /** Public: is a chat provider (Anthropic or Azure OpenAI) usable right now? */
+  async hasChatProvider(): Promise<boolean> {
+    return this.hasApiKey();
+  }
+
+  /** Public: run a one-shot text completion through the configured chat provider. Used by the document reader. */
+  async completeText(systemText: string, userText: string, maxTokens = 2000) {
+    const settings = await this.settingsService.getEffective(null);
+    return this.callModel(settings.matchModel, systemText, userText, settings, maxTokens);
   }
 
   private async resolveTargetInstitutionId(transcriptId: string): Promise<number | null> {
@@ -112,8 +123,13 @@ export class AiService {
     settings: AiSettings,
     maxTokens: number,
   ) {
+    const cfg = await this.providers.getConfig();
+    if (cfg.chatProvider === 'azure_openai') {
+      return this.callAzureOpenAi(cfg, systemText, userText, maxTokens);
+    }
     const started = Date.now();
-    const message = await this.client.messages.create({
+    const client = new Anthropic({ apiKey: cfg.anthropicKey ?? '' });
+    const message = await client.messages.create({
       model,
       max_tokens: maxTokens,
       system: settings.usePromptCaching
@@ -133,6 +149,50 @@ export class AiService {
       text: block && block.type === 'text' ? block.text : '',
       usage: tokenUsage,
       costUsd: estimateCostUsd(model, tokenUsage),
+      ms: Date.now() - started,
+    };
+  }
+
+  /** Azure OpenAI chat completion via REST (no extra SDK). Same {text, usage, cost, ms} shape as the Anthropic path. */
+  private async callAzureOpenAi(
+    cfg: { azureOpenAiEndpoint: string | null; azureOpenAiKey: string | null; azureOpenAiDeployment: string | null; azureOpenAiApiVersion: string },
+    systemText: string,
+    userText: string,
+    maxTokens: number,
+  ) {
+    const started = Date.now();
+    const base = (cfg.azureOpenAiEndpoint ?? '').replace(/\/+$/, '');
+    const url = `${base}/openai/deployments/${cfg.azureOpenAiDeployment}/chat/completions?api-version=${cfg.azureOpenAiApiVersion}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': cfg.azureOpenAiKey ?? '' },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: systemText },
+          { role: 'user', content: userText },
+        ],
+        max_tokens: maxTokens,
+        temperature: 0,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Azure OpenAI ${res.status}: ${body.slice(0, 300)}`);
+    }
+    const data = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
+    };
+    const tokenUsage: TokenUsage = {
+      input: data.usage?.prompt_tokens ?? 0,
+      output: data.usage?.completion_tokens ?? 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+    };
+    return {
+      text: data.choices?.[0]?.message?.content ?? '',
+      usage: tokenUsage,
+      costUsd: estimateCostUsd(cfg.azureOpenAiDeployment ?? 'azure-openai', tokenUsage),
       ms: Date.now() - started,
     };
   }
@@ -213,7 +273,7 @@ export class AiService {
     // Why the model cannot be used right now (if it cannot). With the rules fallback on we match without it instead of stopping.
     let aiBlock: { reason: SkipReason; message: string } | null = null;
     if (!settings.isEnabled) aiBlock = { reason: 'ai_disabled', message: 'AI matching is switched off in AI Controls.' };
-    else if (!this.hasApiKey()) aiBlock = { reason: 'error', message: 'ANTHROPIC_API_KEY is not configured on the server.' };
+    else if (!(await this.hasApiKey())) aiBlock = { reason: 'error', message: 'No AI provider is configured (set Anthropic or Azure OpenAI in AI Controls > Providers).' };
     else if (settings.monthlyTokenBudget != null && (await this.usage.tokensThisMonth()) >= settings.monthlyTokenBudget) {
       aiBlock = { reason: 'budget_exceeded', message: 'The monthly AI token budget has been used up.' };
     } else if (
@@ -447,7 +507,7 @@ export class AiService {
     const out: PipelineMatchResult = { matched: 0, fromCache: 0, skipped: 0, failed: 0, reasons: [] };
     const targetId = await this.resolveTargetInstitutionId(transcriptId);
     const settings = await this.settingsService.getEffective(targetId);
-    const aiUsable = settings.isEnabled && this.hasApiKey();
+    const aiUsable = settings.isEnabled && (await this.hasApiKey());
     if (!settings.autoRunOnIntake || (!aiUsable && !settings.rulesFallbackEnabled)) {
       out.skipped = 1;
       out.reasons.push(
@@ -487,7 +547,7 @@ export class AiService {
     if (settings.monthlyTokenBudget != null && (await this.usage.tokensThisMonth()) >= settings.monthlyTokenBudget) return null;
     if (settings.maxTokensPerRequest != null && (await this.usage.tokensForTranscript(transcriptId)) >= settings.maxTokensPerRequest) return null;
     try {
-      this.assertApiKey();
+      await this.assertApiKey();
       const call = await this.callModel(
         settings.matchModel,
         'You write a 2-3 sentence factual summary for an approver reviewing a transfer-credit request. Never decide; only describe.',

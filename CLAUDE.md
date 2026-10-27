@@ -740,7 +740,7 @@ Several ways to get a student's data in; every channel ends at the same "confirm
   (4+4+3), not 12. Reset does not clear `AiMatchCache`.
 
 ## PENDING (parked by the user 2026-10-27; to be worked on together "tonight", do not start unprompted)
-**Medium-sized gaps** (items 1-6 below were BUILT on 2026-10-27, see the 'medium gaps built' session note; item 7 deck refresh remains):
+**Medium-sized gaps** (items 1-6 below were BUILT on 2026-10-27, see the 'medium gaps built' session note; item 7 deck refresh DONE 2026-10-27: scorecard 20 built / 2 partial / 0 open, backtest slide 63 cases top-1 88.9% top-3 96.8%, live smoke 39/0/1):
 1. Side-by-side course comparison with highlighted overlapping topics/outcomes + credit math in the evaluator workbench (RequestReview).
 2. OUT-06 one external course -> several BU courses (split/combine, e.g. NU CHEM 1161), currently one BU course per decision.
 3. Programme rules PRG-04..08 (Econ max 4 courses at 200+, Biology 5 BI at BU, Psych/Math rules, substitutions like MA 242 <-> CS 132) as a rules table.
@@ -774,6 +774,16 @@ backtest (AI Controls > Usage) for a real number; click through the Demo scenari
   -> Authorize. See `docs/SWAGGER.md`. No request-body schemas (plain `tsc`, no CLI plugin).
 - **Bug found via Swagger**: `TransfersModule` was imported in `app.module.ts` but missing from the `imports` array, so every `/transfers/*` endpoint 404'd in production
   (the smoke suite caught it). Fixed. Check for this class of bug by comparing module imports vs the array.
+
+## Session 2026-10-27 (g): student journey (branch `claude/student-journey`; apply seed 020; SQL UNTESTED)
+- **Profile bug root cause**: `GET /users/:id` had `@Roles('admin','super_admin')`, so students got 403 and the profile page showed "Not provided" everywhere. Role guard removed; the
+  controller's own self-or-admin + scope check still applies. Profile page now shows an error banner on failure and a "University & program" card.
+- **Student target**: `GET /account/targets`, `PUT /account/target {institutionId, programId?}` (student only; receiving universities only, program must be offered there; audit
+  `STUDENT_TARGET_CHANGED`; never touches existing transcripts/workflows), `GET /account/student-overview`. Profile page has "Change target university".
+- **Seed 020** completes every student's profile consistently (prior institution = latest transcript source, education rows, credits, target program; Maya = Bay State CC -> BU CS).
+- **Where I am now + Explore**: `src/api/src/student-journey/` (`GET /student/overview`, `/student/universities`, `/student/compare?ids=a,b,c` max 3), UI `CurrentStatusCard` on the
+  student dashboard and `/student/explore` (compare up to 3 universities: known equivalencies first, then built-in rules matcher, programs ranked by transferable credits, capped
+  by the external-credit cap; preview only; "Make this my target" button).
 
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
@@ -1078,3 +1088,45 @@ alongside the old (harmless, vestigial) ones. No manual
   `CREATE TABLE` — renamed to `SchemaJson`; a column alias `AS Open` broke the partners
   list with a 500 that the UI showed as "no partners") — double-check column names and aliases
   against the T-SQL reserved word list when adding new tables
+
+## Session 2026-10-28: student flow, demo login, AI providers, roadmap (read before continuing)
+**Branch state:** on `main`: submit-transcript redesign, target-on-submit, From->To credits, per-course suggestions, source-notify,
+one-click demo login, admin photo upload, course edit, AI providers + Document Intelligence reader. On branch
+`claude/roadmap-student-superadmin-ai` (NOT merged - merge only when the user says so; every push to main deploys): provider cards UI,
+DI reader follows document skills, learned-skills panel, Explore wizard, Smart Upload actions, editable emails, (Partners table pending).
+Agent worktrees live under `.claude/worktrees/` (gitignored - never `git add` them; use `git add src/` not `-A` while agents run).
+No migrations were added this session. Still to apply by the user: seed 020 (and anything earlier still pending).
+- **Submit Transcript** (`UploadTranscript.tsx`): free-text source college (searchable; known universities unlock a catalogue pick), free-text
+  courses, required "Transferring to" selector (students) saved as `Transcripts.TargetInstitutionId`; `WorkflowEngine.startWorkflow` prefers the
+  request's own target over the profile target. Source college prefills from profile "current institution". Sticky bar uses `md:left-64`.
+- **Profile**: "Current institution/program" are editable free text (`PUT /account/student-profile` -> `StudentProfiles.PriorInstitutionName/FieldOfStudy`).
+- **Status page**: From->To card (`fromCredits`/`toCredits`/`targetInstitutionName` on `GET /transcripts/:id`), top-3 matcher candidates per undecided course
+  (`suggestions`), and on completion `notifySourceInstitution` emails the sending university's `DataPartners` contact (template `sourceDecisionNotice`);
+  an internal note records when no contact exists.
+- **Dashboard "Where I am now"**: pending courses editable inline -> `PATCH /transcripts/courses/:courseId` (student-owned, re-runs sp_TriageCourse + policy,
+  blocked once posted).
+- **Demo login (replaces the older autofill design)**: super admin picks one user per role (AppSettings `demo_login.users` JSON role->userId; none picked = seed
+  accounts). Login page buttons call public `POST /auth/demo-login {userId}` which issues a real session server-side - NO password ever reaches the browser.
+  Gated by `demo_login.enabled`, rate-limited. The earlier "show credentials" option no longer exists. Still enabled on production - turn it off before real launch.
+- **Photos**: admins can set/remove any user's photo (`PUT/DELETE /account/photo/:userId`, Users edit panel). Generated initials avatars come from the old
+  "Generate default photos"; real uploads replace them.
+- **AI providers** (AI Controls > Providers, `ai-providers.service.ts`, AppSettings keys `ai.*`; secrets server-side, never returned): chat provider
+  Anthropic or Azure OpenAI (REST: `{endpoint}/openai/deployments/{deployment}/chat/completions`, base endpoint WITHOUT `/openai/v1`), document provider
+  rules or Azure Document Intelligence (`prebuilt-read`, api-version 2024-11-30). Card-per-provider UI; clicking a card makes it active. `AiService.callModel`
+  routes by provider; `hasChatProvider()`/`completeText()` are public for the document reader. Readiness card reflects the active provider. Live Azure calls
+  have NOT been tested. Needs outbound 443 to `*.openai.azure.com` and `*.cognitiveservices.azure.com`.
+- **Skills**: the matcher's playbook (`buildSystemPrompt`) goes to whichever provider is active; 'documents'-category skills go to the document readers
+  (Anthropic and DI). The rules matcher/reader do NOT read skills (open idea: let rules honour no-credit/elective skills). **Learned skills**:
+  `GET /ai-controls/learned-skills` (`ai-learning.service.ts`) mines faculty decisions (overrides of the top pick, repeated elective/no-credit) into suggested
+  rules; admin adds one with a click - nothing is automatic. Backtest/agreement stats shown there.
+- **Explore wizard** (`pages/student/Explore.tsx`): 4 steps (courses, documents, compare with my-credits vs would-transfer, apply). `POST /student/apply
+  {institutionIds}` creates one request per university via `TranscriptsService.submit` (skips ones with an active non-preview request).
+- **Smart Upload** (`SmartUpload.tsx`): `POST /documents/:id/reprocess`, `DELETE /documents/:id` (file deleted only if no FK/request/public use),
+  `POST /documents/:id/attach {transcriptId}`, confirmed docs re-editable. New SQL untested.
+- **Emails**: coded templates remain the default; super admin edits subject/headline/body/button text, CC list and on/off per template
+  (AppSettings `email.template.<key>`, chunked 900 chars, refreshed every 60s; endpoints `/email/overrides*`). Account/email-change/intake/partner-access/test emails
+  cannot be disabled. Placeholders `{{firstName}}` etc. are listed per template in the editor. SQL/Resend path untested.
+- **Gotchas learned**: AppSettings.SettingValue is NVARCHAR(1000); `tsx` must be installed locally for scripts; do not use `git add -A` while agent worktrees exist;
+  `SchemaService.has(table, column)` guards pre-migration deployments.
+- **Remaining roadmap**: SuperAdmin Partners table (search, expandable rows, bulk deactivate/delete - agent was in progress), improve the rules fallback (honour
+  playbook), Document Intelligence/Azure OpenAI live verification, per-university AI settings UI, seed 020 apply, disable demo login before launch.

@@ -29,7 +29,9 @@ import { TransfersModule } from './transfers/transfers.module';
 import { ProgressModule } from './progress/progress.module';
 import { ComparisonModule } from './comparison/comparison.module';
 import { SettingsModule } from './settings/settings.module';
+import { EmailTemplatesModule } from './common/email-templates.module';
 import { DemoModule } from './demo/demo.module';
+import { StudentJourneyModule } from './student-journey/student-journey.module';
 import { AuditController } from './common/audit.controller';
 import { HealthController } from './common/health.controller';
 
@@ -73,7 +75,9 @@ const envFilePath =
     ProgressModule,
     ComparisonModule,
     SettingsModule,
+    EmailTemplatesModule,
     DemoModule,
+    StudentJourneyModule,
   ],
   controllers: [AuditController, HealthController],
 })

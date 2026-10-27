@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserCircle, Lock, X, GraduationCap, BookOpen, Camera, BadgeCheck, Mail, Trash2 } from 'lucide-react';
+import { UserCircle, Lock, X, GraduationCap, Landmark, BookOpen, Camera, BadgeCheck, Mail, Trash2 } from 'lucide-react';
 import { usersApi, api, accountApi, getErrorMessage } from '../lib/api';
 import { Avatar } from '../components/shared/Avatar';
 import { PhotoEditor } from '../components/shared/PhotoEditor';
@@ -67,6 +67,61 @@ export default function ProfilePage() {
   // Student profile fields (read-only display from fresh fetch)
   const profileData = profileQuery.data?.data as Record<string, unknown> | undefined;
   const isStudent = user?.role === 'student';
+
+  // Student "University & program" overview + target picker
+  const overviewQuery = useQuery({
+    queryKey: ['account-overview', user?.id],
+    queryFn: () => accountApi.studentOverview(),
+    enabled: !!user?.id && isStudent,
+  });
+  const targetsQuery = useQuery({
+    queryKey: ['account-targets'],
+    queryFn: () => accountApi.targets(),
+    enabled: !!user?.id && isStudent,
+  });
+  const overview = overviewQuery.data?.data;
+  const targets = targetsQuery.data?.data ?? [];
+  const [pickUni, setPickUni] = useState<string>('');
+  const [pickProg, setPickProg] = useState<string>('');
+  const [targetMsg, setTargetMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  useEffect(() => {
+    if (overview) {
+      setPickUni(overview.targetInstitutionId ? String(overview.targetInstitutionId) : '');
+      setPickProg(overview.targetProgramId ? String(overview.targetProgramId) : '');
+    }
+  }, [overview]);
+  const pickedPrograms = targets.find((t) => String(t.id) === pickUni)?.programs ?? [];
+
+  // Student-editable "current" school details (free text — the college need not be in our list).
+  const [currentInst, setCurrentInst] = useState('');
+  const [currentProg, setCurrentProg] = useState('');
+  const [schoolLoaded, setSchoolLoaded] = useState(false);
+  const [schoolMsg, setSchoolMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  useEffect(() => {
+    if (overview && !schoolLoaded) {
+      setCurrentInst(overview.currentInstitution ?? '');
+      setCurrentProg(overview.currentProgram ?? '');
+      setSchoolLoaded(true);
+    }
+  }, [overview, schoolLoaded]);
+  const schoolMutation = useMutation({
+    mutationFn: () => accountApi.updateStudentProfile({ currentInstitution: currentInst, currentProgram: currentProg }),
+    onSuccess: () => {
+      setSchoolMsg({ kind: 'ok', text: 'Your current school details were saved.' });
+      qc.invalidateQueries({ queryKey: ['account-overview', user?.id] });
+      qc.invalidateQueries({ queryKey: ['profile', user?.id] });
+    },
+    onError: (err: unknown) => setSchoolMsg({ kind: 'err', text: getErrorMessage(err, 'Could not save your school details') }),
+  });
+  const targetMutation = useMutation({
+    mutationFn: () => accountApi.setTarget(Number(pickUni), pickProg ? Number(pickProg) : undefined),
+    onSuccess: (res) => {
+      setTargetMsg({ kind: 'ok', text: res.data.warning ? `Target updated. ${res.data.warning}` : 'Your target university and program were updated.' });
+      qc.invalidateQueries({ queryKey: ['account-overview', user?.id] });
+      qc.invalidateQueries({ queryKey: ['profile', user?.id] });
+    },
+    onError: (err: unknown) => setTargetMsg({ kind: 'err', text: getErrorMessage(err, 'Could not change your target') }),
+  });
 
   const profileMutation = useMutation({
     mutationFn: () => usersApi.update(user!.id, form),
@@ -170,6 +225,11 @@ export default function ProfilePage() {
         </button>
       </div>
 
+      {profileQuery.isError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {getErrorMessage(profileQuery.error, 'Could not load your profile details.')}
+        </div>
+      )}
       {profileQuery.isLoading && (
         <div className="text-center py-8 text-gray-400 text-sm">Loading profile…</div>
       )}
@@ -264,6 +324,92 @@ export default function ProfilePage() {
         </button>
       </div>
 
+      {/* Student-only: where they are and where they are going */}
+      {isStudent && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5 mt-6" data-testid="university-program">
+          <div className="flex items-center gap-2">
+            <Landmark className="text-brand-800" size={20} />
+            <h2 className="text-lg font-semibold text-gray-900">University &amp; program</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Current institution</label>
+              <input
+                value={currentInst}
+                onChange={(e) => { setCurrentInst(e.target.value); setSchoolMsg(null); }}
+                placeholder="e.g. Miami Dade College"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Current program / major</label>
+              <input
+                value={currentProg}
+                onChange={(e) => { setCurrentProg(e.target.value); setSchoolMsg(null); }}
+                placeholder="e.g. Business Administration"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+            {readonlyField('Target university', overview?.targetInstitutionName ?? (profileData?.targetInstitutionName as string | undefined))}
+            {readonlyField('Target program',
+              overview?.targetProgramName
+                ? `${overview.targetProgramName}${overview.targetProgramDegree ? ` (${overview.targetProgramDegree})` : ''}`
+                : (profileData?.targetProgramName as string | undefined))}
+            {readonlyField('Credits completed', overview?.creditsCompleted != null ? Number(overview.creditsCompleted) : undefined)}
+            {readonlyField('Courses submitted for evaluation', overview ? overview.submittedCourses : undefined)}
+          </div>
+          {schoolMsg && (
+            <div className={`p-3 rounded-lg text-sm border ${schoolMsg.kind === 'ok' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+              {schoolMsg.text}
+            </div>
+          )}
+          <button
+            onClick={() => { setSchoolMsg(null); schoolMutation.mutate(); }}
+            disabled={schoolMutation.isPending}
+            className="px-5 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
+          >
+            {schoolMutation.isPending ? 'Saving…' : 'Save current school'}
+          </button>
+
+          <div className="pt-4 border-t border-gray-100">
+            <p className="text-sm font-semibold text-gray-900 mb-1">Change target university</p>
+            <p className="text-xs text-gray-400 mb-3">Applies to new requests and previews. Requests you already submitted keep their original target.</p>
+            {targetMsg && (
+              <div className={`mb-3 p-3 rounded-lg text-sm border ${targetMsg.kind === 'ok' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                {targetMsg.text}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="target-uni">University</label>
+                <select id="target-uni" value={pickUni}
+                  onChange={(e) => { setPickUni(e.target.value); setPickProg(''); setTargetMsg(null); }}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                  <option value="">Select a university…</option>
+                  {targets.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="target-prog">Program</label>
+                <select id="target-prog" value={pickProg} disabled={!pickUni}
+                  onChange={(e) => { setPickProg(e.target.value); setTargetMsg(null); }}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-white disabled:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                  <option value="">{pickedPrograms.length ? 'Select a program (optional)…' : 'No programs listed'}</option>
+                  {pickedPrograms.map((p) => <option key={p.id} value={p.id}>{p.name}{p.degree ? ` (${p.degree})` : ''}</option>)}
+                </select>
+              </div>
+            </div>
+            <button
+              onClick={() => { setTargetMsg(null); targetMutation.mutate(); }}
+              disabled={!pickUni || targetMutation.isPending}
+              className="mt-4 px-5 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
+            >
+              {targetMutation.isPending ? 'Saving…' : 'Save target'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Student-only education & emergency contact section */}
       {isStudent && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5 mt-6">
@@ -288,17 +434,6 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {readonlyField('Emergency Contact Name', profileData?.emergencyContactName as string)}
               {readonlyField('Emergency Contact Phone', profileData?.emergencyContactPhone as string)}
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-gray-100">
-            <div className="flex items-center gap-2 mb-3">
-              <BookOpen className="text-brand-600" size={16} />
-              <p className="text-sm font-semibold text-gray-900">Transfer Target</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {readonlyField('Target University', profileData?.targetInstitutionName as string)}
-              {readonlyField('Target Program', profileData?.targetProgramName as string)}
             </div>
           </div>
         </div>

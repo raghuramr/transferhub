@@ -11,7 +11,7 @@ import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
   Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ScanText, ShieldQuestion, ScanLine, ArrowRightLeft,
-  Presentation,
+  Presentation, Compass,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -22,6 +22,7 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/student', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { to: '/student/documents', label: 'Smart upload', icon: <ScanText size={18} /> },
     { to: '/student/upload', label: 'Upload Transcript', icon: <Upload size={18} /> },
+    { to: '/student/explore', label: 'Explore universities', icon: <Compass size={18} /> },
     { to: '/profile', label: 'My Profile', icon: <UserCircle size={18} /> },
   ],
   agency: [
@@ -104,10 +105,13 @@ export default function AppLayout() {
   });
   const navPages = (navPagesData?.data as CmsPage[]) ?? [];
 
-  const handleLogout = async () => {
-    try { await authApi.logout(); } catch { /* ignore */ }
+  // Sign out immediately; revoking the refresh token on the server happens in the background.
+  const handleLogout = () => {
+    const refreshToken = localStorage.getItem('refreshToken') ?? undefined;
+    const accessToken = localStorage.getItem('accessToken') ?? undefined;
     clearAuth();
     navigate('/login');
+    void authApi.logout(refreshToken, accessToken).catch(() => undefined);
   };
 
   const items = user ? navItems[user.role] ?? [] : [];

@@ -79,7 +79,10 @@ export const authApi = {
     api.post<AuthTokens>('/auth/login', { email, password }),
   refresh: (refreshToken: string) =>
     api.post<AuthTokens>('/auth/refresh', { refreshToken }),
-  logout: () => api.post('/auth/logout'),
+  /** Fire-and-forget on sign-out: the session is already cleared locally, so the tokens are passed explicitly. */
+  logout: (refreshToken?: string, accessToken?: string) =>
+    // Plain axios (no refresh interceptor): a 401 here must never wipe a session that is signed in again right after.
+    axios.post(`${BASE}/auth/logout`, { refreshToken }, accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined),
   me: () => api.get<AuthTokens['user']>('/auth/me'),
   /** Public (no auth) — student self-registration; response auto-logs in like login(). */
   register: (data: unknown) => api.post<AuthTokens>('/auth/register', data),
@@ -237,6 +240,7 @@ export const transcriptsApi = {
   get: (id: string) => api.get<Transcript>(`/transcripts/${id}`),
   status: (id: string) => api.get(`/transcripts/${id}/status`),
   submit: (data: unknown) => api.post('/transcripts', data),
+  updateCourse: (courseId: string, data: Record<string, unknown>) => api.patch(`/transcripts/courses/${courseId}`, data),
   document: (id: string) => api.get(`/transcripts/${id}/document`, { responseType: 'blob' }),
 };
 
@@ -300,8 +304,17 @@ export const permissionsApi = {
 
 
 // ── Data Import endpoints (super_admin only) ──────────────────
-export interface EmailAttempt { ok: boolean; id?: string; error?: string; to: string; subject: string; at: string }
+export interface EmailAttempt { ok: boolean; id?: string; error?: string; skipped?: boolean; to: string; subject: string; at: string }
 export interface EmailTemplateSample { id: number; key: string; name: string; audience: string; subject: string; html: string }
+export interface EmailTemplateOverride { subject?: string; headline?: string; paragraphs?: string[]; ctaLabel?: string; enabled?: boolean; cc?: string[] }
+export interface EmailTemplateItem {
+  key: string;
+  name: string;
+  audience: string;
+  canDisable: boolean;
+  defaults: { subject: string; headline: string; paragraphs: string[]; ctaLabel: string; hasCta: boolean; placeholders: string[] };
+  override: EmailTemplateOverride | null;
+}
 export interface EmailStatus {
   configured: boolean;
   fromAddress: string;
@@ -313,24 +326,25 @@ export interface EmailStatus {
   recent: EmailAttempt[];
 }
 
+export interface DemoLoginUser { userId: string; label: string; role: string; }
 export interface DemoLoginPublic {
   enabled: boolean;
-  namesOnly?: boolean;
-  showCredentials?: boolean;
-  accounts?: { label: string; role: string; email: string; password: string }[];
+  users?: DemoLoginUser[];
 }
 export interface DemoLoginAdmin {
   enabled: boolean;
-  showCredentials: boolean;
+  users: Record<string, string>;
+  resolved: DemoLoginUser[];
   ready: boolean;
-  accounts: NonNullable<DemoLoginPublic['accounts']>;
 }
 
 export const demoLoginApi = {
-  /** Public (no auth) - what the login page may show. */
+  /** Public (no auth) - the accounts the login page may offer. */
   publicGet: () => api.get<DemoLoginPublic>('/auth/demo-login'),
+  /** Public (no auth) - one-click sign-in as a configured demo user; returns a normal session. */
+  loginAs: (userId: string) => api.post<AuthTokens>('/auth/demo-login', { userId }),
   get: () => api.get<DemoLoginAdmin>('/settings/demo-login'),
-  save: (data: { enabled: boolean; showCredentials: boolean }) => api.put<DemoLoginAdmin>('/settings/demo-login', data),
+  save: (data: { enabled: boolean; users: Record<string, string> }) => api.put<DemoLoginAdmin>('/settings/demo-login', data),
 };
 
 export const emailApi = {
@@ -338,6 +352,12 @@ export const emailApi = {
   test: (to?: string) => api.post<EmailAttempt>('/email/test', to ? { to } : {}),
   templates: () => api.get<EmailTemplateSample[]>('/email/templates'),
   sendSample: (id: number, to?: string) => api.post<EmailAttempt>(`/email/templates/${id}/send`, to ? { to } : {}),
+  // editable template text + CC recipients
+  overrides: () => api.get<{ ready: boolean; items: EmailTemplateItem[] }>('/email/overrides'),
+  saveOverride: (key: string, o: EmailTemplateOverride) => api.put<{ override: EmailTemplateOverride }>(`/email/overrides/${key}`, o),
+  resetOverride: (key: string) => api.delete(`/email/overrides/${key}`),
+  previewOverride: (key: string, draft: EmailTemplateOverride) => api.post<{ subject: string; html: string }>(`/email/overrides/${key}/preview`, { draft }),
+  testOverride: (key: string, draft: EmailTemplateOverride, to?: string) => api.post<EmailAttempt>(`/email/overrides/${key}/test`, { draft, ...(to ? { to } : {}) }),
 };
 
 export const importApi = {
@@ -352,6 +372,9 @@ export const importApi = {
   setPartnerActive: (id: number, active: boolean) => api.post(`/import/partners/${id}/${active ? 'activate' : 'deactivate'}`),
   issueKey: (id: number, data: { label?: string; expiresInDays?: number; emailKey?: boolean }) =>
     api.post<IssuedKey>(`/import/partners/${id}/keys`, data),
+  deletePartner: (id: number) => api.delete(`/import/partners/${id}`),
+  bulkPartners: (ids: number[], action: 'activate' | 'deactivate' | 'delete') =>
+    api.post<{ ok: number; failed: number; results: { id: number; ok: boolean; message: string }[] }>('/import/partners/bulk', { ids, action }),
   revokeKey: (id: number, keyId: number) => api.delete(`/import/partners/${id}/keys/${keyId}`),
   // submissions (staging + review)
   batches: (params?: { status?: string; partnerId?: number }) => api.get<BatchSummary[]>('/import/batches', { params }),
@@ -431,7 +454,42 @@ export const aiControlsApi = {
   summary: (days: number) => api.get<UsageSummary>('/ai-controls/usage/summary', { params: { days } }),
   byRequest: (days: number) => api.get<RequestUsageRow[]>('/ai-controls/usage/requests', { params: { days } }),
   clearCache: () => api.post<{ cleared: number }>('/ai-controls/cache/clear'),
+  learnedSkills: (min = 2) => api.get<LearnedSkills>('/ai-controls/learned-skills', { params: { min } }),
+  providers: () => api.get<AiProviderPublic>('/ai-controls/providers'),
+  saveProviders: (data: Partial<AiProviderSave>) => api.put<AiProviderPublic>('/ai-controls/providers', data),
 };
+
+export interface LearnedSuggestion {
+  key: string; kind: 'override' | 'elective' | 'no_credit'; title: string; instructions: string;
+  count: number; evidence: string; alreadyInPlaybook: boolean;
+}
+export interface LearnedSkills {
+  stats: { decided: number; withAiPick: number; agreed: number; overridden: number; agreementRate: number | null };
+  suggestions: LearnedSuggestion[];
+}
+export interface AiProviderPublic {
+  ready: boolean;
+  chatProvider: 'anthropic' | 'azure_openai';
+  anthropicKeySet: boolean;
+  azureOpenAiEndpoint: string | null;
+  azureOpenAiKeySet: boolean;
+  azureOpenAiDeployment: string | null;
+  azureOpenAiApiVersion: string;
+  docProvider: 'none' | 'azure_document_intelligence';
+  azureDocEndpoint: string | null;
+  azureDocKeySet: boolean;
+}
+export interface AiProviderSave {
+  chatProvider: 'anthropic' | 'azure_openai';
+  anthropicKey: string;
+  azureOpenAiEndpoint: string;
+  azureOpenAiKey: string;
+  azureOpenAiDeployment: string;
+  azureOpenAiApiVersion: string;
+  docProvider: 'none' | 'azure_document_intelligence';
+  azureDocEndpoint: string;
+  azureDocKey: string;
+}
 
 // ── Transfer policy (per-university rules) ──
 export const policiesApi = {
@@ -474,11 +532,35 @@ export const accountApi = {
     return api.put('/account/photo', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   removePhoto: () => api.delete('/account/photo'),
-  generateDefaultPhotos: () => api.post<{ created: number; failed: number; total: number }>('/account/photos/generate-defaults'),
+  setUserPhoto: (userId: string, blob: Blob) => {
+    const form = new FormData();
+    form.append('file', blob, 'photo.jpg');
+    return api.put(`/account/photo/${userId}`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  removeUserPhoto: (userId: string) => api.delete(`/account/photo/${userId}`),
+  resetDefaultPhotos: () => api.post<{ cleared: number }>('/account/photos/reset-defaults'),
   requestEmailChange: (newEmail: string, password: string) =>
     api.post<{ message: string; emailSent: boolean }>('/account/email-change', { newEmail, password }),
   confirmEmailChange: (token: string) => api.post<{ email: string }>('/account/email-change/confirm', { token }),
+  // Student target university / program
+  targets: () => api.get<TargetUniversityOption[]>('/account/targets'),
+  setTarget: (institutionId: number, programId?: number) =>
+    api.put<{ ok: boolean; warning: string | null }>('/account/target', { institutionId, ...(programId ? { programId } : {}) }),
+  studentOverview: () => api.get<StudentOverview>('/account/student-overview'),
+  updateStudentProfile: (patch: { currentInstitution?: string | null; currentProgram?: string | null }) =>
+    api.put<{ ok: boolean }>('/account/student-profile', patch),
 };
+
+export interface TargetUniversityOption {
+  id: number; code: string; name: string;
+  programs: { id: number; name: string; degree: string | null }[];
+}
+export interface StudentOverview {
+  currentInstitution: string | null; currentProgram: string | null; highestEducationLevel: string | null;
+  targetInstitutionId: number | null; targetInstitutionName: string | null; targetInstitutionCode: string | null;
+  targetProgramId: number | null; targetProgramName: string | null; targetProgramDegree: string | null;
+  creditsCompleted: number | null; submittedCourses: number; submittedCredits: number | null;
+}
 
 // ── Course verification requests (faculty raise, admins resolve) ──
 export const verificationApi = {
@@ -571,6 +653,7 @@ export interface IntakeItem {
   error: string | null;
   createdAt: string;
   aiEnabled: boolean;
+  extracted?: ExtractedDocument | null;
 }
 export interface ExtractedDocument {
   docType: string;
@@ -615,6 +698,10 @@ export const documentsApi = {
   get: (id: string) => api.get<IntakeDetail>(`/documents/intakes/${id}`),
   update: (id: string, data: { docType?: string; extracted?: ExtractedDocument }) => api.patch<IntakeDetail>(`/documents/intakes/${id}`, data),
   retry: (id: string) => api.post<IntakeItem>(`/documents/intakes/${id}/retry`),
+  reprocess: (id: string) => api.post<IntakeItem>(`/documents/${id}/reprocess`),
+  remove: (id: string) => api.delete<{ ok: boolean; fileDeleted: boolean; message: string }>(`/documents/${id}`),
+  attach: (id: string, data: { transcriptId: string; docTypeKey?: string }) =>
+    api.post<{ ok: boolean; transcriptId: string; docTypeKey: string }>(`/documents/${id}/attach`, data),
   confirm: (id: string) =>
     api.post<{ ok: boolean; docType: string; applied: { education: boolean; profile: boolean }; prefill?: TranscriptPrefill }>(`/documents/intakes/${id}/confirm`),
   prefill: (id: string) => api.get<TranscriptPrefill>(`/documents/intakes/${id}/prefill`),

@@ -17,3 +17,6 @@ tools/db-mcp-server/.env
 # storage only, never committed. See CLAUDE.md "Uploads subsystem".
 src/api/storage/
 *.tsbuildinfo
+
+# Claude Code agent worktrees (never commit)
+.claude/worktrees/

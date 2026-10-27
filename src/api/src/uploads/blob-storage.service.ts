@@ -68,4 +68,15 @@ export class BlobStorageService {
     const full = path.isAbsolute(blobName) ? blobName : path.join(LOCAL_ROOT, container, blobName);
     return fs.existsSync(full) ? fs.createReadStream(full) : null;
   }
+
+  /** Best-effort delete of a stored object. Missing objects are not an error. */
+  async remove(provider: StorageProvider, container: string, blobName: string): Promise<void> {
+    if (provider === 'blob') {
+      if (!this.service) return;
+      await (await this.container(container)).getBlobClient(blobName).deleteIfExists();
+      return;
+    }
+    const full = path.isAbsolute(blobName) ? blobName : path.join(LOCAL_ROOT, container, blobName);
+    await fs.promises.rm(full, { force: true });
+  }
 }

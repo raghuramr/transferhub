@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
 import { EmailService } from '../common/email.service';
 import { AiSettingsService } from './ai-settings.service';
+import { AiProvidersService } from './ai-providers.service';
 import { AiUsageService } from './ai-usage.service';
 
 export interface ReadinessItem {
@@ -26,6 +27,7 @@ export class ReadinessService {
     private email: EmailService,
     private settings: AiSettingsService,
     private usage: AiUsageService,
+    private providers: AiProvidersService,
   ) {}
 
   private async safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -39,14 +41,19 @@ export class ReadinessService {
   async check(): Promise<{ ready: boolean; items: ReadinessItem[] }> {
     const items: ReadinessItem[] = [];
 
-    const key = this.config.get<string>('ANTHROPIC_API_KEY');
-    const keyOk = !!key && !key.startsWith('REPLACE_WITH');
+    const prov = await this.safe(() => this.providers.getConfig(), null);
+    const anthropicOk = !!prov?.anthropicKey && !prov.anthropicKey.startsWith('REPLACE_WITH');
+    const azureOk = !!(prov?.azureOpenAiEndpoint && prov?.azureOpenAiKey && prov?.azureOpenAiDeployment);
+    const keyOk = prov?.chatProvider === 'azure_openai' ? azureOk : anthropicOk;
+    const providerLabel = prov?.chatProvider === 'azure_openai' ? 'Azure OpenAI' : 'Anthropic';
     items.push({
       key: 'anthropic',
-      label: 'AI provider key',
+      label: 'AI provider',
       status: keyOk ? 'ok' : 'warn',
-      detail: keyOk ? 'ANTHROPIC_API_KEY is set.' : 'ANTHROPIC_API_KEY is missing, so AI cannot run; the built-in rules engine is used instead (if enabled in AI Controls).',
-      hint: keyOk ? undefined : 'Add ANTHROPIC_API_KEY under App Service > Environment variables, then restart the app.',
+      detail: keyOk
+        ? `${providerLabel} is configured.`
+        : `${providerLabel} is not fully configured, so AI cannot run; the built-in rules engine is used instead (if enabled).`,
+      hint: keyOk ? undefined : 'Set your provider and keys in AI Controls > Providers.',
     });
 
     const global = await this.safe(() => this.settings.getEffective(null), null);

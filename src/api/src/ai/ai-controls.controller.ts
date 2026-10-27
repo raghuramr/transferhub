@@ -4,6 +4,8 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Permission } from '../auth/permission.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import { AiSettingsService, AiSettingsInput } from './ai-settings.service';
+import { AiProvidersService, SaveAiProvidersInput } from './ai-providers.service';
+import { AiLearningService } from './ai-learning.service';
 import { AiUsageService } from './ai-usage.service';
 import { ReadinessService } from './readiness.service';
 import { BacktestService } from './backtest.service';
@@ -18,7 +20,29 @@ export class AiControlsController {
     private usage: AiUsageService,
     private readiness: ReadinessService,
     private backtest: BacktestService,
+    private providers: AiProvidersService,
+    private learning: AiLearningService,
   ) {}
+
+  /** Playbook rules suggested by patterns in faculty decisions (nothing is saved until an admin adds one). */
+  @Get('learned-skills')
+  @Permission('ai_controls', 'view')
+  learnedSkills(@Query('min') min?: string) {
+    return this.learning.learn(min ? Number(min) : 2);
+  }
+
+  /** AI provider configuration (Anthropic + Azure OpenAI/Document Intelligence). Secrets are masked. */
+  @Get('providers')
+  @Permission('ai_controls', 'view')
+  getProviders() {
+    return this.providers.getPublic();
+  }
+
+  @Put('providers')
+  @Permission('ai_controls', 'edit')
+  saveProviders(@Body() dto: SaveAiProvidersInput, @Req() req: AuthenticatedRequest) {
+    return this.providers.save(dto, req.user.email);
+  }
 
   /** Is the installation ready to run requests end to end? (keys, migrations, approvers, stalled automation) */
   @Get('readiness')

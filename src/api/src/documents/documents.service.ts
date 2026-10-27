@@ -15,6 +15,8 @@ import { ScopeService } from '../policy/scope.service';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import { AnthropicDocumentReader, DocumentReader, PAUSED_REASON, PausedDocumentReader } from './document-reader';
 import { RulesDocumentReader, RULES_REASON } from './rules-document-reader';
+import { AzureDocumentIntelligenceReader } from './azure-document-reader';
+import { RequestsService } from '../requests/requests.service';
 import { AiSettingsService } from '../ai/ai-settings.service';
 import { DOC_TYPES, DOC_TYPE_KEYS, ExtractedData, needsReview, normalizeExtraction, toPrefill } from './document-types';
 
@@ -72,14 +74,23 @@ export class DocumentsService {
     private paused: PausedDocumentReader,
     private rules: RulesDocumentReader,
     private aiSettings: AiSettingsService,
+    private azureDoc: AzureDocumentIntelligenceReader,
+    private requests: RequestsService,
   ) {}
 
+  /** True for any reader that uses a real model/OCR service (vs the built-in rules or paused readers). */
+  private isAiReader(r: DocumentReader): boolean {
+    return r === this.anthropic || r === this.azureDoc;
+  }
+
   /**
-   * Anthropic when a key exists, AI is on and budget remains; else the built-in rules reader when the
+   * Azure Document Intelligence when it is the selected document provider and configured; else Anthropic
+   * when a key exists, AI is on and budget remains; else the built-in rules reader when the
    * `rulesFallbackEnabled` setting allows (missing = on); else the paused reader.
-   * `available` = a reader will actually run; `aiAvailable` (status) = only true for anthropic.
    */
   private async pickReader(): Promise<{ reader: DocumentReader; available: boolean; fallback: boolean; reason?: string }> {
+    const di = await this.azureDoc.isAvailable();
+    if (di.available) return { reader: this.azureDoc, available: true, fallback: false };
     const a = await this.anthropic.isAvailable();
     if (a.available) return { reader: this.anthropic, available: true, fallback: false };
     let rulesOn = true;
@@ -99,7 +110,7 @@ export class DocumentsService {
   async status() {
     const [pick, ready] = await Promise.all([this.pickReader(), this.ready()]);
     return {
-      aiAvailable: pick.reader === this.anthropic,
+      aiAvailable: this.isAiReader(pick.reader),
       reader: pick.reader.name,
       fallback: pick.fallback,
       reason: pick.reason ?? null,
@@ -199,7 +210,7 @@ export class DocumentsService {
         });
       }
     }
-    return { aiAvailable: pick.reader === this.anthropic, reader: pick.reader.name, fallback: pick.fallback, reason: pick.reason ?? null, intakes: out };
+    return { aiAvailable: this.isAiReader(pick.reader), reader: pick.reader.name, fallback: pick.fallback, reason: pick.reason ?? null, intakes: out };
   }
 
   private async readBytes(uploadId: string, userId: string): Promise<{ bytes: Buffer; mimeType: string; fileName: string }> {
@@ -291,8 +302,8 @@ export class DocumentsService {
   async patch(id: string, viewer: Viewer, dto: { docType?: string; extracted?: Record<string, unknown> }) {
     const row = await this.load(id);
     this.assertOwner(row, viewer);
-    if (row.Status === 'confirmed') throw new ConflictException('This document is already confirmed');
     if (row.Status === 'reading') throw new ConflictException('This document is still being read');
+    const wasConfirmed = row.Status === 'confirmed';
     if (dto.docType !== undefined && !DOC_TYPE_KEYS.includes(dto.docType)) {
       throw new BadRequestException(`docType must be one of: ${DOC_TYPE_KEYS.join(', ')}`);
     }
@@ -313,15 +324,22 @@ export class DocumentsService {
     );
     if (!merged) throw new BadRequestException('Could not understand the edited data');
     await this.db.query(
-      `UPDATE DocumentIntakes SET Status = 'read', DocType = @t, Confidence = @c, Summary = @sum, ExtractedJson = @j, Error = NULL WHERE Id = @id`,
+      `UPDATE DocumentIntakes SET Status = @st, DocType = @t, Confidence = @c, Summary = @sum, ExtractedJson = @j, Error = NULL WHERE Id = @id`,
       [
         { name: 'id', type: sql.UniqueIdentifier, value: id },
+        { name: 'st', type: sql.VarChar(14), value: wasConfirmed ? 'confirmed' : 'read' },
         { name: 't', type: sql.VarChar(40), value: merged.docType },
         { name: 'c', type: sql.Decimal(4, 3), value: merged.confidence },
         { name: 'sum', type: sql.NVarChar(500), value: merged.summary },
         { name: 'j', type: sql.NVarChar(sql.MAX), value: JSON.stringify(merged) },
       ],
     );
+    if (wasConfirmed && (await this.schema.has('Uploads', 'DocumentType'))) {
+      await this.db.query(`UPDATE Uploads SET DocumentType = @t WHERE Id = @id`, [
+        { name: 'id', type: sql.UniqueIdentifier, value: row.UploadId },
+        { name: 't', type: sql.NVarChar(50), value: merged.docType },
+      ]);
+    }
     return this.get(id, viewer);
   }
 
@@ -340,6 +358,83 @@ export class DocumentsService {
       this.process(id).catch((err) => this.logger.error(`Reading ${id} crashed: ${shortError(err)}`));
     });
     return this.get(id, viewer);
+  }
+
+  /** Re-reads a document with the current reader. Allowed for any state except "being read"; clears confirmation. */
+  async reprocess(id: string, viewer: Viewer) {
+    const row = await this.load(id);
+    this.assertOwner(row, viewer);
+    if (row.Status === 'reading') throw new ConflictException('This document is already being read');
+    const pick = await this.pickReader();
+    if (!pick.available) {
+      // Keep whatever was extracted before; just say why nothing ran.
+      await this.setStatus(id, row.Status === 'confirmed' ? 'confirmed' : 'skipped', null, pick.reason ?? PAUSED_REASON);
+      return this.get(id, viewer);
+    }
+    await this.db.query(`UPDATE DocumentIntakes SET Status = 'uploaded', Error = NULL, ConfirmedAt = NULL WHERE Id = @id`, [
+      { name: 'id', type: sql.UniqueIdentifier, value: id },
+    ]);
+    setImmediate(() => {
+      this.process(id).catch((err) => this.logger.error(`Reading ${id} crashed: ${shortError(err)}`));
+    });
+    return this.get(id, viewer);
+  }
+
+  /**
+   * Removes the intake row and, when nothing else uses the file (submitted request, syllabus, appeal,
+   * exchange upload, ...), the stored file too. Otherwise only the intake goes and the file is kept.
+   */
+  async remove(id: string, viewer: Viewer) {
+    const row = await this.load(id);
+    this.assertOwner(row, viewer);
+    if (row.Status === 'reading') throw new ConflictException('This document is still being read - try again in a moment');
+    await this.db.query(`DELETE FROM DocumentIntakes WHERE Id = @id`, [{ name: 'id', type: sql.UniqueIdentifier, value: id }]);
+    let fileDeleted = false;
+    try {
+      fileDeleted = await this.uploads.deleteIfUnreferenced(row.UploadId, viewer.id, ['DocumentIntakes']);
+    } catch (err) {
+      this.logger.warn(`Could not delete the file for ${id}: ${shortError(err)}`);
+    }
+    return {
+      ok: true,
+      fileDeleted,
+      message: fileDeleted ? 'Document deleted.' : 'Removed from your documents. The file itself is kept because it is attached to a request.',
+    };
+  }
+
+  private static readonly ATTACH_TYPE: Record<string, string> = {
+    transcript: 'transcript',
+    syllabus: 'syllabus',
+    english_test: 'english_test',
+    id_document: 'other',
+    enrollment_letter: 'other',
+    other: 'other',
+  };
+
+  /** Attaches a processed document to one of the student's own requests as a request document. */
+  async attach(id: string, viewer: Viewer & Record<string, any>, dto: { transcriptId: string; docTypeKey?: string }) {
+    const row = await this.load(id);
+    this.assertOwner(row, viewer);
+    if (viewer.role !== 'student') throw new ForbiddenException('Only students can attach their own documents');
+    if (row.Status === 'uploaded' || row.Status === 'reading') throw new ConflictException('This document is still being read');
+    if (!(await this.schema.has('TranscriptDocuments'))) throw new ServiceUnavailableException('Request documents are not available yet');
+    const own = await this.db.query<{ N: number }>(`SELECT COUNT(*) AS N FROM Transcripts WHERE Id = @t AND StudentUserId = @u`, [
+      { name: 't', type: sql.UniqueIdentifier, value: dto.transcriptId },
+      { name: 'u', type: sql.UniqueIdentifier, value: viewer.id },
+    ]);
+    if (!own.recordset[0]?.N) throw new ForbiddenException('You can only attach documents to your own requests');
+    const key = dto.docTypeKey || DocumentsService.ATTACH_TYPE[row.DocType ?? 'other'] || 'other';
+    const known = await this.db.query<{ N: number }>(`SELECT COUNT(*) AS N FROM DocumentTypes WHERE DocTypeKey = @k`, [
+      { name: 'k', type: sql.VarChar(40), value: key },
+    ]);
+    if (!known.recordset[0]?.N) throw new BadRequestException('Unknown request document type');
+    const dup = await this.db.query<{ N: number }>(`SELECT COUNT(*) AS N FROM TranscriptDocuments WHERE TranscriptId = @t AND UploadId = @up`, [
+      { name: 't', type: sql.UniqueIdentifier, value: dto.transcriptId },
+      { name: 'up', type: sql.UniqueIdentifier, value: row.UploadId },
+    ]);
+    if (dup.recordset[0]?.N) throw new ConflictException('This document is already attached to that request');
+    await this.requests.addDocument(dto.transcriptId, viewer as any, { docTypeKey: key, uploadId: row.UploadId });
+    return { ok: true, transcriptId: dto.transcriptId, docTypeKey: key };
   }
 
   // ── confirm ─────────────────────────────────────────────

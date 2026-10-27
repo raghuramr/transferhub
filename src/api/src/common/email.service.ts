@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
-import { samples, templates, type Email, type EmailContext } from './email-templates';
+import { previewWithDraft, samples, templateCatalogue, templates, type Email, type EmailContext, type TemplateOverride } from './email-templates';
 
 export interface EmailResult {
   ok: boolean;
   id?: string;
   error?: string;
+  /** True when the e-mail was deliberately not sent (switched off under System Settings > Email). */
+  skipped?: boolean;
 }
 
 export interface EmailAttempt extends EmailResult {
@@ -53,8 +55,12 @@ export class EmailService {
   }
 
   /** Sends one rendered template (see email-templates.ts). */
-  sendEmail(to: string, email: Email): Promise<EmailResult> {
-    return this.send(to, email.subject, email.html, email.text);
+  async sendEmail(to: string, email: Email): Promise<EmailResult> {
+    if (email.suppressed) {
+      this.logger.log(`Email "${email.key}" is switched off in System Settings — not sending to ${to}`);
+      return this.remember(to, email.subject, { ok: true, skipped: true, error: 'Switched off in System Settings > Email' });
+    }
+    return this.send(to, email.subject, email.html, email.text, email.cc);
   }
 
   /**
@@ -62,7 +68,8 @@ export class EmailService {
    * domain, a test key sending to someone other than the account owner, bad
    * address...): it returns `{ error }`. Check it, or failures vanish silently.
    */
-  async send(to: string, subject: string, html: string, text?: string): Promise<EmailResult> {
+  async send(to: string, subject: string, html: string, text?: string, cc?: string[]): Promise<EmailResult> {
+    const copy = (cc ?? []).filter((a) => a.toLowerCase() !== to.toLowerCase());
     if (!this.resend) {
       this.logger.warn(`RESEND_API_KEY not set — skipping email to ${to}: "${subject}"`);
       return this.remember(to, subject, { ok: false, error: 'RESEND_API_KEY is not set on the server.' });
@@ -72,6 +79,7 @@ export class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: this.fromHeader,
         to,
+        ...(copy.length ? { cc: copy } : {}),
         subject,
         html,
         ...(text ? { text } : {}),
@@ -115,7 +123,23 @@ export class EmailService {
   /** Sends sample number `id` from samples() to `to`, so an admin can see it in a real inbox. */
   sendSample(id: number, to: string): Promise<EmailResult> | null {
     const s = samples(this.context, this.fromHeader)[id];
-    return s ? this.sendEmail(to, { ...s.email, subject: `[Sample] ${s.email.subject}` }) : null;
+    return s ? this.send(to, `[Sample] ${s.email.subject}`, s.email.html, s.email.text) : null;
+  }
+
+  /** Every template's coded text, sample name/audience and available placeholders (for the editor). */
+  catalogue() {
+    return templateCatalogue(this.context, this.fromHeader);
+  }
+
+  /** A template's sample rendered with a draft override (or the coded text when `draft` is null). */
+  previewDraft(key: string, draft: TemplateOverride | null): Email | null {
+    return previewWithDraft(this.context, this.fromHeader, key, draft);
+  }
+
+  /** Sends the draft preview of a template to `to` (always sent, even if the template is switched off). */
+  sendDraftTest(key: string, to: string, draft: TemplateOverride | null): Promise<EmailResult> | null {
+    const e = this.previewDraft(key, draft);
+    return e ? this.send(to, `[Test] ${e.subject}`, e.html, e.text) : null;
   }
 
   sendTest(to: string): Promise<EmailResult> {

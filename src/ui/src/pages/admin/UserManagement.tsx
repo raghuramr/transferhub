@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, api, accountApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
-import { Users, UserPlus, Lock, Unlock, MapPin, Upload, Download } from 'lucide-react';
+import { Users, UserPlus, Lock, Unlock, MapPin, Upload, Download, Camera, Trash2 } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { UniversityInstitutionTree } from '../../components/ui/UniversityInstitutionTree';
+import { Avatar } from '../../components/shared/Avatar';
+import { PhotoEditor } from '../../components/shared/PhotoEditor';
 import { usePermissions } from '../../hooks/usePermissions';
 import { roleColors, roleTabs, getColumnsForRole, NameCell, type UserRow } from '../../components/users/userRoleViews';
 
@@ -184,11 +186,51 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   });
 
+  // Admin-managed profile photo for this user (replaces any generated initials avatar).
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoVersion, setPhotoVersion] = useState(0);
+  const [photoError, setPhotoError] = useState('');
+  const photoMutation = useMutation({
+    mutationFn: (blob: Blob) => accountApi.setUserPhoto(user.id, blob),
+    onSuccess: () => {
+      setPhotoFile(null);
+      setPhotoError('');
+      setPhotoVersion((v) => v + 1);
+      qc.invalidateQueries({ queryKey: ['avatar', user.id] });
+    },
+    onError: () => setPhotoError('Could not save the photo.'),
+  });
+  const removePhotoMutation = useMutation({
+    mutationFn: () => accountApi.removeUserPhoto(user.id),
+    onSuccess: () => { setPhotoVersion((v) => v + 1); qc.invalidateQueries({ queryKey: ['avatar', user.id] }); },
+  });
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {photoFile && (
+        <PhotoEditor file={photoFile} saving={photoMutation.isPending} onCancel={() => setPhotoFile(null)} onSave={(b) => photoMutation.mutate(b)} />
+      )}
       {/* Edit section */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <h3 className="font-semibold text-gray-900 mb-3 text-sm">Edit User</h3>
+        <div className="mb-4 flex items-center gap-3 border-b border-gray-100 pb-4">
+          <Avatar key={photoVersion} userId={user.id} firstName={user.firstName} lastName={user.lastName} size="lg" />
+          <div>
+            <p className="text-xs font-medium text-gray-700 mb-1">Profile photo</p>
+            <div className="flex flex-wrap gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-900">
+                <Camera size={13} /> Upload photo
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) { setPhotoError(''); setPhotoFile(f); } }} />
+              </label>
+              <button type="button" onClick={() => removePhotoMutation.mutate()} disabled={removePhotoMutation.isPending}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
+                <Trash2 size={12} /> Remove
+              </button>
+            </div>
+            {photoError && <p className="mt-1 text-xs text-red-600">{photoError}</p>}
+          </div>
+        </div>
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -417,13 +459,13 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
   });
 
   const photosMutation = useMutation({
-    mutationFn: () => accountApi.generateDefaultPhotos(),
+    mutationFn: () => accountApi.resetDefaultPhotos(),
     onSuccess: (res) => {
-      setPhotoNote(`Photos created for ${res.data.created} of ${res.data.total} users without one${res.data.failed ? ` (${res.data.failed} failed)` : ''}.`);
+      setPhotoNote(`The TransferHub logo is now the default picture (${res.data.cleared} generated avatar${res.data.cleared === 1 ? '' : 's'} cleared).`);
       qc.invalidateQueries({ queryKey: ['users'] });
       qc.invalidateQueries({ queryKey: ['avatar'] });
     },
-    onError: () => setPhotoNote('Could not create the photos. Has migration 018 been applied?'),
+    onError: () => setPhotoNote('Could not reset the default photos. Has migration 018 been applied?'),
   });
 
   const importMutation = useMutation({
@@ -485,6 +527,12 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
       ),
     },
     {
+      key: 'university',
+      header: 'University',
+      sortValue: (u) => u.targetInstitutionName ?? '',
+      render: (u) => (u.role === 'student' ? u.targetInstitutionName ?? '—' : '—'),
+    },
+    {
       key: 'status',
       header: 'Status',
       sortValue: (u) => (u.isLocked ? 'locked' : u.isActive ? 'active' : 'inactive'),
@@ -514,9 +562,9 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
               onClick={() => photosMutation.mutate()}
               disabled={photosMutation.isPending}
               className="flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-              title="Give every user without a photo a generated profile picture"
+              title="Use the TransferHub logo as the picture for everyone without an uploaded photo"
             >
-              {photosMutation.isPending ? 'Creating photos…' : 'Generate default photos'}
+              {photosMutation.isPending ? 'Updating…' : 'Use logo as default photo'}
             </button>
           )}
           {can('users', 'import') && (

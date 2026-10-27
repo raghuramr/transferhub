@@ -2,13 +2,37 @@ import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, ChevronDown, FileText, Info, Lock, Pause, RefreshCw, UploadCloud } from 'lucide-react';
-import { documentsApi, getErrorMessage, type ExtractedDocument, type IntakeItem } from '../../lib/api';
+import { Check, ChevronDown, FileText, Info, Link2, Lock, Pause, RefreshCw, Trash2, UploadCloud } from 'lucide-react';
+import { documentsApi, getErrorMessage, transcriptsApi, type ExtractedDocument, type IntakeItem } from '../../lib/api';
 import { DocumentEditor } from '../../components/documents/DocumentEditor';
 import { ConfidenceBar, StatusChip } from '../../components/documents/StatusChip';
 import { cn } from '../../lib/cn';
 
 const MAX_BYTES = 15 * 1024 * 1024;
+
+/** A few headline facts from what was extracted, for the collapsed card. */
+function keyFacts(x: ExtractedDocument | null | undefined): string[] {
+  if (!x || !x.fields) return [];
+  const f = x.fields as Record<string, unknown>;
+  const obj = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+  const out: string[] = [];
+  if (x.docType === 'transcript') {
+    const inst = obj(f.institution);
+    const student = obj(f.student);
+    const courses = Array.isArray(f.courses) ? f.courses.length : 0;
+    if (inst.name) out.push(String(inst.name));
+    if (student.name) out.push(String(student.name));
+    out.push(`${courses} course${courses === 1 ? '' : 's'}`);
+    return out;
+  }
+  for (const [k, v] of Object.entries(f)) {
+    if (out.length >= 4) break;
+    if (typeof v === 'string' && v.trim()) out.push(`${k.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())}: ${v}`);
+    else if (typeof v === 'number') out.push(`${k.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())}: ${v}`);
+  }
+  return out;
+}
+
 const ALLOWED = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 
 function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; docTypes: { key: string; label: string }[]; aiEnabled: boolean; rules: boolean }) {
@@ -18,6 +42,7 @@ function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; 
   const [msg, setMsg] = useState('');
   const confirmed = item.status === 'confirmed';
   const busy = item.status === 'uploaded' || item.status === 'reading';
+  const [attachTo, setAttachTo] = useState('');
   const refresh = () => qc.invalidateQueries({ queryKey: ['documents', 'intakes'] });
 
   const detail = useQuery({
@@ -37,6 +62,26 @@ function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; 
     onError: (e) => setMsg(getErrorMessage(e, 'Could not save your changes')),
   });
   const retryMut = useMutation({ mutationFn: () => documentsApi.retry(item.id), onSuccess: refresh, onError: (e) => setMsg(getErrorMessage(e, 'Could not retry')) });
+  const reprocessMut = useMutation({
+    mutationFn: () => documentsApi.reprocess(item.id),
+    onSuccess: () => { setMsg('Reading again with the current reader…'); refresh(); },
+    onError: (e) => setMsg(getErrorMessage(e, 'Could not re-read this document')),
+  });
+  const deleteMut = useMutation({
+    mutationFn: async () => (await documentsApi.remove(item.id)).data,
+    onSuccess: refresh,
+    onError: (e) => setMsg(getErrorMessage(e, 'Could not delete this document')),
+  });
+  const requests = useQuery({
+    queryKey: ['transcripts', 'mine-for-attach'],
+    queryFn: async () => (await transcriptsApi.list()).data,
+    enabled: open && !busy,
+  });
+  const attachMut = useMutation({
+    mutationFn: async () => (await documentsApi.attach(item.id, { transcriptId: attachTo })).data,
+    onSuccess: () => { setMsg('Attached to your request.'); setAttachTo(''); },
+    onError: (e) => setMsg(getErrorMessage(e, 'Could not attach this document')),
+  });
   const confirmMut = useMutation({
     mutationFn: async () => (await documentsApi.confirm(item.id)).data,
     onSuccess: (res) => {
@@ -47,6 +92,7 @@ function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; 
   });
 
   const label = docTypes.find((d) => d.key === item.docType)?.label ?? item.docType;
+  const facts = keyFacts(item.extracted);
   const canPickType = !confirmed && !busy && (!aiEnabled || rules || item.status === 'skipped' || item.status === 'failed' || item.status === 'needs_review');
 
   return (
@@ -61,6 +107,11 @@ function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; 
             <ConfidenceBar value={item.confidence} />
           </div>
           {item.summary && <p className="mt-1 text-sm text-gray-500">{item.summary}</p>}
+          {facts.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {facts.map((f, i) => <span key={i} className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{f}</span>)}
+            </div>
+          )}
           {item.error && <p className="mt-1 text-sm text-red-600">{item.error}</p>}
         </div>
         <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
@@ -75,9 +126,20 @@ function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; 
               {docTypes.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
             </select>
           )}
-          {item.status === 'failed' && aiEnabled && (
-            <button type="button" onClick={() => retryMut.mutate()} disabled={retryMut.isPending} className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
-              <RefreshCw size={13} className={retryMut.isPending ? 'animate-spin' : ''} /> Retry
+          {!busy && (
+            <button type="button" onClick={() => reprocessMut.mutate()} disabled={reprocessMut.isPending || retryMut.isPending} className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50" title="Read this document again with the current reader">
+              <RefreshCw size={13} className={reprocessMut.isPending ? 'animate-spin' : ''} /> Reprocess
+            </button>
+          )}
+          {!busy && (
+            <button
+              type="button"
+              onClick={() => { if (window.confirm('Delete this document? This cannot be undone.')) deleteMut.mutate(); }}
+              disabled={deleteMut.isPending}
+              className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+              aria-label="Delete document"
+            >
+              <Trash2 size={13} /> <span className="hidden sm:inline">Delete</span>
             </button>
           )}
           {!busy && (
@@ -94,13 +156,30 @@ function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; 
             <div className="space-y-4 p-4">
               {detail.isLoading && <p className="text-sm text-gray-400">Loading details…</p>}
               {detail.data && (
-                <DocumentEditor detail={detail.data} readOnly={confirmed} saving={saveMut.isPending} onSave={(x) => saveMut.mutate(x)} />
+                <DocumentEditor detail={detail.data} readOnly={busy} saving={saveMut.isPending} onSave={(x) => saveMut.mutate(x)} />
               )}
               {msg && <p className="text-sm text-gray-600">{msg}</p>}
               {!confirmed && item.docType && (
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => confirmMut.mutate()} disabled={confirmMut.isPending} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:bg-brand-400">
                     <Check size={15} /> {confirmMut.isPending ? 'Confirming…' : 'Confirm document'}
+                  </button>
+                </div>
+              )}
+              {!busy && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-3">
+                  <Link2 size={15} className="text-brand-800" />
+                  <span className="text-sm text-gray-700">Attach to a request</span>
+                  <select value={attachTo} onChange={(e) => setAttachTo(e.target.value)} className="min-w-[12rem] flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" aria-label="Request to attach to">
+                    <option value="">{requests.isLoading ? 'Loading requests…' : (requests.data ?? []).length === 0 ? 'No requests yet' : 'Choose a request…'}</option>
+                    {(requests.data ?? []).map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {(t.institution?.name ?? 'Request')} - {t.receivedAt ? new Date(t.receivedAt).toLocaleDateString() : t.id.slice(0, 8)}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={() => attachMut.mutate()} disabled={!attachTo || attachMut.isPending} className="rounded-lg bg-brand-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-900 disabled:bg-brand-400">
+                    {attachMut.isPending ? 'Attaching…' : 'Attach'}
                   </button>
                 </div>
               )}

@@ -76,22 +76,25 @@ export class WorkflowEngineService {
    * stage. Safe to call twice: a request already in a workflow is left alone.
    */
   async startWorkflow(transcriptId: string, actorUserId: string): Promise<boolean> {
-    const t = await this.db.query<{ StudentUserId: string; WorkflowId: number | null }>(
-      `SELECT StudentUserId, WorkflowId FROM Transcripts WHERE Id = @id`,
+    const t = await this.db.query<{ StudentUserId: string; WorkflowId: number | null; TargetInstitutionId: number | null }>(
+      `SELECT StudentUserId, WorkflowId, TargetInstitutionId FROM Transcripts WHERE Id = @id`,
       [{ name: 'id', type: sql.UniqueIdentifier, value: transcriptId }],
     );
     if (!t.recordset[0]) throw new NotFoundException('Transcript not found');
     if (t.recordset[0].WorkflowId) return false;
 
-    let target: number | null = null;
-    try {
-      const sp = await this.db.query<{ T: number | null }>(
-        `SELECT TargetInstitutionId AS T FROM StudentProfiles WHERE UserId = @u`,
-        [{ name: 'u', type: sql.UniqueIdentifier, value: t.recordset[0].StudentUserId }],
-      );
-      target = sp.recordset[0]?.T ?? null;
-    } catch {
-      // StudentProfiles.TargetInstitutionId predates nothing important — fall back to BU below.
+    // Prefer the target chosen for this request at submit time; else the student's profile target; else BU.
+    let target: number | null = t.recordset[0].TargetInstitutionId ?? null;
+    if (!target) {
+      try {
+        const sp = await this.db.query<{ T: number | null }>(
+          `SELECT TargetInstitutionId AS T FROM StudentProfiles WHERE UserId = @u`,
+          [{ name: 'u', type: sql.UniqueIdentifier, value: t.recordset[0].StudentUserId }],
+        );
+        target = sp.recordset[0]?.T ?? null;
+      } catch {
+        // StudentProfiles.TargetInstitutionId predates nothing important — fall back to BU below.
+      }
     }
     if (!target) {
       const bu = await this.db.query<{ Id: number }>(`SELECT TOP 1 Id FROM Institutions WHERE Code = 'BU'`);
@@ -620,6 +623,66 @@ export class WorkflowEngineService {
         `${undecided.recordset[0].N} course(s) had no decision when the request was completed, so no credit was posted for them.`);
     }
     await this.emailStudent(transcriptId, outcome, '', 'Completed');
+    await this.notifySourceInstitution(transcriptId);
+  }
+
+  /**
+   * On completion, notify the sending (source) institution for its records. We can only reach a
+   * source that is onboarded as a data partner (it has a contact email); otherwise we record an
+   * internal note so staff can see no source contact was on file. Never fails the finalize.
+   */
+  private async notifySourceInstitution(transcriptId: string) {
+    try {
+      const info = await this.db.query<{
+        SourceName: string; SourceCode: string; TargetName: string | null; StudentName: string;
+        PostedCourses: number; PostedCredits: number | null;
+      }>(
+        `SELECT src.Name AS SourceName, src.Code AS SourceCode, tgt.Name AS TargetName,
+                u.FirstName + ' ' + u.LastName AS StudentName,
+                (SELECT COUNT(*) FROM TranscriptCourses tc JOIN Evaluations e ON e.TranscriptCourseId = tc.Id
+                   WHERE tc.TranscriptId = t.Id AND e.Status = 'posted') AS PostedCourses,
+                (SELECT SUM(CASE WHEN e.AwardedCredits IS NOT NULL THEN e.AwardedCredits
+                                 ELSE ISNULL(tc.NormalisedCredits, tc.OriginalCredits) END)
+                   FROM TranscriptCourses tc JOIN Evaluations e ON e.TranscriptCourseId = tc.Id
+                   WHERE tc.TranscriptId = t.Id AND e.Status = 'posted') AS PostedCredits
+         FROM Transcripts t
+         JOIN Institutions src ON src.Id = t.InstitutionId
+         JOIN Users u ON u.Id = t.StudentUserId
+         LEFT JOIN Institutions tgt ON tgt.Id = t.TargetInstitutionId
+         WHERE t.Id = @t`,
+        [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+      );
+      const row = info.recordset[0];
+      if (!row) return;
+
+      let contact: { ContactName: string; ContactEmail: string } | undefined;
+      try {
+        const p = await this.db.query<{ ContactName: string; ContactEmail: string }>(
+          `SELECT TOP 1 ContactName, ContactEmail FROM DataPartners WHERE UniversityCode = @c AND IsActive = 1 ORDER BY Id`,
+          [{ name: 'c', type: sql.VarChar(20), value: row.SourceCode }],
+        );
+        contact = p.recordset[0];
+      } catch { /* DataPartners may not exist yet */ }
+
+      if (contact?.ContactEmail) {
+        await this.email.sendEmail(contact.ContactEmail, templates.sourceDecisionNotice(this.email.context, {
+          contactName: contact.ContactName || 'Colleague',
+          studentName: row.StudentName,
+          sourceName: row.SourceName,
+          targetName: row.TargetName ?? 'the receiving university',
+          postedCredits: Number(row.PostedCredits ?? 0),
+          postedCourses: Number(row.PostedCourses ?? 0),
+          transcriptId,
+        }));
+        await this.addNote(transcriptId, null, 'internal', 'system', null, null,
+          `Completion notice sent to the sending institution (${row.SourceName}) at ${contact.ContactEmail}.`);
+      } else {
+        await this.addNote(transcriptId, null, 'internal', 'system', null, null,
+          `No contact on file for the sending institution (${row.SourceName}); completion notice not sent. Onboard it as a data partner to enable this.`);
+      }
+    } catch (err) {
+      this.logger.warn(`Source completion notice failed: ${(err as Error).message}`);
+    }
   }
 
   private async emailStudent(transcriptId: string, outcome: string, reason: string, stageName: string) {

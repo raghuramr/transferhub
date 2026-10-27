@@ -465,6 +465,27 @@ export class AuthService {
     return { accessToken, refreshToken, user };
   }
 
+  /**
+   * Issue a session for a user without a password — used ONLY by the gated public demo-login endpoint,
+   * which first verifies the id is one of the super-admin-configured demo accounts and that demo mode
+   * is on. Loads the user fresh so an inactive/deleted account can never be signed into.
+   */
+  async demoLoginAs(userId: string, ip: string, userAgent: string) {
+    const r = await this.db.query<{
+      Id: string; Email: string; FirstName: string; LastName: string; IsActive: boolean; DepartmentId: number | null; Role: string;
+    }>(
+      `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.IsActive, u.DepartmentId, r.Name AS Role
+       FROM Users u JOIN Roles r ON r.Id = u.RoleId WHERE u.Id = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
+    );
+    const row = r.recordset[0];
+    if (!row || !row.IsActive) throw new UnauthorizedException('Demo account is not available.');
+    const user: AuthenticatedUser = {
+      id: row.Id, email: row.Email, firstName: row.FirstName, lastName: row.LastName, role: row.Role, departmentId: row.DepartmentId,
+    };
+    return this.login(user, ip, userAgent);
+  }
+
   async refresh(token: string) {
     const hash = crypto.createHash('sha256').update(token).digest('hex');
     const result = await this.db.query<RefreshTokenRow>(
@@ -495,7 +516,8 @@ export class AuthService {
     return { accessToken: this.generateAccessToken(user), user };
   }
 
-  async logout(userId: string, token: string) {
+  async logout(userId: string, token?: string) {
+    if (!token) return; // nothing to revoke (the client may sign out without a refresh token)
     const hash = crypto.createHash('sha256').update(token).digest('hex');
     await this.db.query(
       `UPDATE RefreshTokens SET IsRevoked = 1 WHERE UserId = @uid AND Token = @hash`,

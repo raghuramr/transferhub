@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsEmail, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, ArrayMaxSize, ArrayNotEmpty, Max, MaxLength, Min } from 'class-validator';
 
 export class CreatePartnerDto {
   @IsString() @IsNotEmpty() @MaxLength(200) universityName: string;
@@ -58,4 +58,9 @@ export class RejectBatchDto {
 
 export class SendReportDto {
   @IsOptional() @IsString() @MaxLength(1000) note?: string;
+}
+
+export class BulkPartnersDto {
+  @IsArray() @ArrayNotEmpty() @ArrayMaxSize(200) @IsInt({ each: true }) ids: number[];
+  @IsIn(['activate', 'deactivate', 'delete']) action: 'activate' | 'deactivate' | 'delete';
 }

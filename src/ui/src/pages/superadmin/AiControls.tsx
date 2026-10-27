@@ -9,7 +9,7 @@ import ReadinessCard from '../../components/workflow/ReadinessCard';
 import MatcherAccuracyCard from '../../components/workflow/MatcherAccuracyCard';
 import type { AgentSkill, AiSettings } from '../../types/workflow';
 
-type Tab = 'usage' | 'settings' | 'playbook' | 'requests';
+type Tab = 'usage' | 'settings' | 'providers' | 'playbook' | 'requests';
 
 const errMsg = (e: unknown, fallback: string) => {
   const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
@@ -370,9 +370,53 @@ function PlaybookTab() {
     onSuccess: refresh,
   });
 
+  const learned = useQuery({ queryKey: ['ai-learned-skills'], queryFn: () => aiControlsApi.learnedSkills(2) });
+  const addLearned = useMutation({
+    mutationFn: (sg: { title: string; instructions: string }) =>
+      aiControlsApi.saveSkill(null, { title: sg.title, category: 'matching', instructions: sg.instructions, isActive: true, sortOrder: 100 }),
+    onSuccess: () => { refresh(); void qc.invalidateQueries({ queryKey: ['ai-learned-skills'] }); },
+    onError: (e) => setError(errMsg(e, 'Could not add the skill.')),
+  });
+  const learnedData = learned.data?.data;
+  const pending = (learnedData?.suggestions ?? []).filter((x) => !x.alreadyInPlaybook);
+
   const list = skills.data?.data ?? [];
   return (
     <div className="space-y-5">
+      <div className="rounded-xl border border-gray-200 bg-white p-4" data-testid="learned-skills">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Sparkles size={15} /> Learned from faculty decisions</h3>
+        <p className="mt-1 text-xs text-gray-500">
+          Patterns that repeat in what faculty decide — a course mapped somewhere other than the agent's top pick, or repeatedly elective / no credit.
+          Review each one and add it to the playbook; nothing is added automatically. Works with every provider because the playbook is sent with each call.
+        </p>
+        {learnedData && (
+          <p className="mt-2 text-xs text-gray-600">
+            {learnedData.stats.decided} equivalency decisions
+            {learnedData.stats.agreementRate != null && <> · the agent's top pick matched faculty <strong>{learnedData.stats.agreementRate}%</strong> of the time ({learnedData.stats.overridden} overridden)</>}
+          </p>
+        )}
+        {learned.isLoading && <p className="mt-2 text-xs text-gray-400">Looking for patterns…</p>}
+        {learnedData && pending.length === 0 && (
+          <p className="mt-2 text-xs text-gray-500">No new repeating patterns yet. Suggestions appear once the same decision has been made at least twice.</p>
+        )}
+        <ul className="mt-3 space-y-2">
+          {pending.map((sg) => (
+            <li key={sg.key} className="flex flex-wrap items-start gap-3 rounded-lg border border-gray-200 p-3">
+              <div className="min-w-0 flex-1 basis-64">
+                <p className="text-sm font-medium text-gray-900">{sg.title}</p>
+                <p className="mt-0.5 text-xs text-gray-600">{sg.instructions}</p>
+                <p className="mt-1 text-[11px] text-brand-700">{sg.evidence}</p>
+              </div>
+              {canEdit && (
+                <button type="button" disabled={addLearned.isPending} onClick={() => addLearned.mutate({ title: sg.title, instructions: sg.instructions })}
+                  className="inline-flex items-center gap-1 rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-900 disabled:opacity-60">
+                  <Plus size={13} /> Add to playbook
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
       <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-gray-700">
         <p><strong>The playbook teaches the agent how your team matches courses.</strong> Each active skill is added to the agent's instructions on every call, so keep them short and specific: every token here is paid on every match (cached when prompt caching is on).</p>
         <p className="mt-2 text-gray-600">
@@ -469,12 +513,141 @@ function RequestsTab({ days }: { days: number }) {
   );
 }
 
+// ── Providers (Anthropic + Azure OpenAI / Document Intelligence) ──
+function ProvidersTab() {
+  const qc = useQueryClient();
+  const { can } = usePermissions();
+  const canEdit = can('ai_controls', 'edit');
+  const q = useQuery({ queryKey: ['ai-providers'], queryFn: () => aiControlsApi.providers() });
+  const d = q.data?.data;
+  const [chatProvider, setChatProvider] = useState<'anthropic' | 'azure_openai'>('anthropic');
+  const [docProvider, setDocProvider] = useState<'none' | 'azure_document_intelligence'>('none');
+  const [endpoints, setEndpoints] = useState({ azureOpenAiEndpoint: '', azureOpenAiDeployment: '', azureOpenAiApiVersion: '2024-06-01', azureDocEndpoint: '' });
+  const [keys, setKeys] = useState({ anthropicKey: '', azureOpenAiKey: '', azureDocKey: '' });
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    if (d) {
+      setChatProvider(d.chatProvider);
+      setDocProvider(d.docProvider);
+      setEndpoints({
+        azureOpenAiEndpoint: d.azureOpenAiEndpoint ?? '',
+        azureOpenAiDeployment: d.azureOpenAiDeployment ?? '',
+        azureOpenAiApiVersion: d.azureOpenAiApiVersion ?? '2024-06-01',
+        azureDocEndpoint: d.azureDocEndpoint ?? '',
+      });
+      setKeys({ anthropicKey: '', azureOpenAiKey: '', azureDocKey: '' });
+    }
+  }, [d]);
+
+  const save = useMutation({
+    mutationFn: () => {
+      const payload: Record<string, string> = { chatProvider, docProvider, ...endpoints };
+      if (keys.anthropicKey) payload.anthropicKey = keys.anthropicKey;
+      if (keys.azureOpenAiKey) payload.azureOpenAiKey = keys.azureOpenAiKey;
+      if (keys.azureDocKey) payload.azureDocKey = keys.azureDocKey;
+      return aiControlsApi.saveProviders(payload);
+    },
+    onSuccess: () => { setMsg({ ok: true, text: 'Saved. New calls use this provider within ~15 seconds.' }); void qc.invalidateQueries({ queryKey: ['ai-providers'] }); void qc.invalidateQueries({ queryKey: ['ai-readiness'] }); },
+    onError: (e) => { const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message; setMsg({ ok: false, text: (Array.isArray(m) ? m.join(', ') : m) ?? 'Could not save.' }); },
+  });
+
+  if (q.isLoading) return <p className="text-sm text-gray-400">Loading…</p>;
+  const keyField = (label: string, isSet: boolean, value: string, onChange: (v: string) => void) => (
+    <Field label={label} hint={isSet ? 'A value is saved — leave blank to keep it, or type a new one to replace.' : 'Not set yet.'}>
+      <input type="password" value={value} onChange={(e) => { onChange(e.target.value); setMsg(null); }} placeholder={isSet ? '•••••••• (saved)' : 'Paste the key'}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" disabled={!canEdit} />
+    </Field>
+  );
+  const txt = (label: string, val: string, onChange: (v: string) => void, placeholder = '') => (
+    <Field label={label}>
+      <input value={val} onChange={(e) => { onChange(e.target.value); setMsg(null); }} placeholder={placeholder}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" disabled={!canEdit} />
+    </Field>
+  );
+
+  // One selectable provider card: click to make it active; its own fields live inside and stay editable.
+  const Card = ({ active, onActivate, icon, title, blurb, configured, disabled, children }: {
+    active: boolean; onActivate: () => void; icon: React.ReactNode; title: string; blurb?: string;
+    configured?: boolean; disabled?: boolean; children?: React.ReactNode;
+  }) => (
+    <div className={cn('rounded-xl border bg-white p-4 transition', active ? 'border-brand-400 ring-2 ring-brand-500/40' : 'border-gray-200')}>
+      <button type="button" onClick={() => { if (!disabled) { onActivate(); setMsg(null); } }} disabled={disabled}
+        className="flex w-full items-start gap-3 text-left">
+        <span className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', active ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-500')}>{icon}</span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="font-semibold text-gray-900">{title}</span>
+            {active ? <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-800">Active</span>
+              : <span className="text-[11px] text-brand-700">Click to use</span>}
+            {configured != null && (
+              <span className={cn('ml-auto text-[11px]', configured ? 'text-green-600' : 'text-gray-400')}>{configured ? 'Configured' : 'Not configured'}</span>
+            )}
+          </span>
+          {blurb && <span className="mt-0.5 block text-xs text-gray-500">{blurb}</span>}
+        </span>
+      </button>
+      {children && <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">{children}</div>}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {!d?.ready && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Migration 023 (AppSettings) is not applied yet, so provider settings cannot be saved.</div>
+      )}
+
+      <div>
+        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Sparkles size={15} /> Course matching &amp; chat</h3>
+        <p className="mb-3 text-xs text-gray-500">Configure any provider; the one you pick as Active is used. The built-in rules engine still covers everything when none is available.</p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Card active={chatProvider === 'anthropic'} onActivate={() => setChatProvider('anthropic')} disabled={!canEdit}
+            icon={<Bot size={16} />} title="Anthropic (Claude)" blurb="Claude models via the Anthropic API." configured={!!d?.anthropicKeySet || !!keys.anthropicKey}>
+            {keyField('API key', !!d?.anthropicKeySet, keys.anthropicKey, (v) => setKeys((k) => ({ ...k, anthropicKey: v })))}
+          </Card>
+          <Card active={chatProvider === 'azure_openai'} onActivate={() => setChatProvider('azure_openai')} disabled={!canEdit}
+            icon={<Zap size={16} />} title="Azure OpenAI" blurb="GPT models via your Azure Foundry deployment." configured={!!d?.azureOpenAiKeySet && !!endpoints.azureOpenAiEndpoint && !!endpoints.azureOpenAiDeployment}>
+            {txt('Endpoint', endpoints.azureOpenAiEndpoint, (v) => setEndpoints((s) => ({ ...s, azureOpenAiEndpoint: v })), 'https://my-resource.openai.azure.com')}
+            {keyField('API key', !!d?.azureOpenAiKeySet, keys.azureOpenAiKey, (v) => setKeys((k) => ({ ...k, azureOpenAiKey: v })))}
+            <div className="grid grid-cols-2 gap-3">
+              {txt('Chat deployment', endpoints.azureOpenAiDeployment, (v) => setEndpoints((s) => ({ ...s, azureOpenAiDeployment: v })), 'e.g. gpt-4o')}
+              {txt('API version', endpoints.azureOpenAiApiVersion, (v) => setEndpoints((s) => ({ ...s, azureOpenAiApiVersion: v })), '2024-06-01')}
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Database size={15} /> Document reading</h3>
+        <p className="mb-3 text-xs text-gray-500">Reads transcripts, IDs and score reports in Smart Upload. The built-in rules reader needs no cloud service.</p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Card active={docProvider === 'none'} onActivate={() => setDocProvider('none')} disabled={!canEdit}
+            icon={<Database size={16} />} title="Built-in rules reader" blurb="No cloud service; works without a key (no OCR on scans)." />
+          <Card active={docProvider === 'azure_document_intelligence'} onActivate={() => setDocProvider('azure_document_intelligence')} disabled={!canEdit}
+            icon={<Sparkles size={16} />} title="Azure AI Document Intelligence" blurb="OCR + layout; reads scans and photos." configured={!!d?.azureDocKeySet && !!endpoints.azureDocEndpoint}>
+            {txt('Endpoint', endpoints.azureDocEndpoint, (v) => setEndpoints((s) => ({ ...s, azureDocEndpoint: v })), 'https://my-di.cognitiveservices.azure.com')}
+            {keyField('API key', !!d?.azureDocKeySet, keys.azureDocKey, (v) => setKeys((k) => ({ ...k, azureDocKey: v })))}
+          </Card>
+        </div>
+      </div>
+
+      {msg && <p className={cn('rounded-lg p-2 text-sm', msg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')}>{msg.text}</p>}
+      {canEdit && (
+        <button type="button" onClick={() => { setMsg(null); save.mutate(); }} disabled={save.isPending || !d?.ready}
+          className="flex items-center gap-2 rounded-lg bg-brand-800 px-5 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50">
+          <Save size={16} /> {save.isPending ? 'Saving…' : 'Save providers'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function AiControls() {
   const [tab, setTab] = useState<Tab>('usage');
   const [days, setDays] = useState(30);
   const tabs: { key: Tab; label: string }[] = [
     { key: 'usage', label: 'Usage' }, { key: 'requests', label: 'By request' },
-    { key: 'settings', label: 'Settings' }, { key: 'playbook', label: 'Agent playbook' },
+    { key: 'settings', label: 'Settings' }, { key: 'providers', label: 'Providers' }, { key: 'playbook', label: 'Agent playbook' },
   ];
   return (
     <div className="mx-auto w-[95%] max-w-6xl p-4 sm:p-6">
@@ -498,6 +671,7 @@ export default function AiControls() {
       {tab === 'usage' && <UsageTab days={days} />}
       {tab === 'requests' && <RequestsTab days={days} />}
       {tab === 'settings' && <SettingsTab />}
+      {tab === 'providers' && <ProvidersTab />}
       {tab === 'playbook' && <PlaybookTab />}
     </div>
   );

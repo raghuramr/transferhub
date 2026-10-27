@@ -24,7 +24,14 @@ async function bootstrap() {
   const config = app.get(ConfigService);
 
   // Swagger UI needs inline scripts/styles, so the docs routes get a relaxed CSP; everything else keeps helmet's defaults.
-  const strictHelmet = helmet();
+  // The UI shows user photos/previews from blob: URLs (avatars fetched with the session, the photo cropper), which helmet's
+  // default img-src ('self' data:) blocks - that is what left avatars broken and the cropper blank.
+  const strictHelmet = helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: { 'img-src': ["'self'", 'data:', 'blob:', 'https:'] },
+    },
+  });
   const docsHelmet = helmet({ contentSecurityPolicy: false });
   app.use((req: any, res: any, next: any) => (req.path.startsWith(`/${SWAGGER_PATH}`) ? docsHelmet(req, res, next) : strictHelmet(req, res, next)));
   // Partner data submissions can carry thousands of rows; Express' 100kb default would reject them.
