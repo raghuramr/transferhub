@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import { AlertCircle, ArrowLeft, ArrowRight, Check, Eye, EyeOff, Globe2, Info, Plus, Trash2 } from 'lucide-react';
 import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
-import { LogoMark } from '../../components/shared/Logo';
+import { LogoTile } from '../../components/shared/Logo';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../lib/cn';
 import type { AxiosError } from 'axios';
@@ -293,9 +293,9 @@ export default function RegisterPage() {
 
       <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative w-full max-w-3xl">
         <div className="mb-6 text-center">
-          <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-lg"><LogoMark size={36} /></div>
-          <h1 className="text-2xl font-bold text-white">TransferHub</h1>
-          <p className="mt-1 text-brand-200">Create your student account</p>
+          <LogoTile width={220} className="mb-3" />
+          <h1 className="sr-only">TransferHub</h1>
+          <p className="mt-1 text-lg text-brand-200">Create your student account</p>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-2xl shadow-black/20 sm:p-8">

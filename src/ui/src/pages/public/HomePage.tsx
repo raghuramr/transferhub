@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import { LogoMark } from '../../components/shared/Logo';
+import { LogoFull } from '../../components/shared/Logo';
 import { pagesApi } from '../../lib/api';
 import { BlockRenderer } from '../../components/blocks/BlockRenderer';
 import { Button } from '../../components/ui/Button';
@@ -32,11 +32,7 @@ export default function HomePage() {
           always an obvious way to sign in. */}
       <header className="flex items-center justify-between px-6 md:px-10 py-5 max-w-6xl mx-auto">
         <div className="flex items-center gap-3">
-          <LogoMark size={36} />
-          <div>
-            <p className="font-bold text-gray-900 text-sm leading-tight">TransferHub</p>
-            <p className="text-xs text-gray-500">Credit Evaluation</p>
-          </div>
+          <LogoFull height={72} />
         </div>
         <Link to="/login">
           <Button size="sm" icon={<ArrowRight size={14} />}>Log in</Button>

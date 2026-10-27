@@ -216,6 +216,7 @@ export interface AiSettings {
   maxTokensPerRequest: number | null;
   monthlyTokenBudget: number | null;
   narrativeBriefEnabled: boolean;
+  rulesFallbackEnabled: boolean;
 }
 
 export interface AgentSkill {

@@ -7,6 +7,7 @@ import { AiSettings, AiSettingsService } from './ai-settings.service';
 import { AiUsageService, SkipReason } from './ai-usage.service';
 import { estimateCostUsd, estimateTokens, TokenUsage } from './ai-pricing';
 import { CatalogCourse, normalizeKey, shortlist } from './course-prefilter';
+import { rulesMatch } from './rules-matcher';
 
 export interface CourseMatchResult {
   buCourseId: number;
@@ -76,6 +77,11 @@ export class AiService {
     this.client = new Anthropic({
       apiKey: this.config.get<string>('ANTHROPIC_API_KEY'),
     });
+  }
+
+  private hasApiKey(): boolean {
+    const key = this.config.get<string>('ANTHROPIC_API_KEY');
+    return !!key && !key.startsWith('REPLACE_WITH');
   }
 
   private assertApiKey() {
@@ -204,16 +210,19 @@ export class AiService {
       throw new BadRequestException(message);
     };
 
-    if (!settings.isEnabled) await skip('ai_disabled', 'AI matching is switched off in AI Controls.');
-    if (settings.monthlyTokenBudget != null && (await this.usage.tokensThisMonth()) >= settings.monthlyTokenBudget) {
-      await skip('budget_exceeded', 'The monthly AI token budget has been used up.');
-    }
-    if (
+    // Why the model cannot be used right now (if it cannot). With the rules fallback on we match without it instead of stopping.
+    let aiBlock: { reason: SkipReason; message: string } | null = null;
+    if (!settings.isEnabled) aiBlock = { reason: 'ai_disabled', message: 'AI matching is switched off in AI Controls.' };
+    else if (!this.hasApiKey()) aiBlock = { reason: 'error', message: 'ANTHROPIC_API_KEY is not configured on the server.' };
+    else if (settings.monthlyTokenBudget != null && (await this.usage.tokensThisMonth()) >= settings.monthlyTokenBudget) {
+      aiBlock = { reason: 'budget_exceeded', message: 'The monthly AI token budget has been used up.' };
+    } else if (
       settings.maxTokensPerRequest != null &&
       (await this.usage.tokensForTranscript(ctx.TranscriptId)) >= settings.maxTokensPerRequest
     ) {
-      await skip('request_cap', 'This transfer request has reached its AI token cap.');
+      aiBlock = { reason: 'request_cap', message: 'This transfer request has reached its AI token cap.' };
     }
+    if (aiBlock && !settings.rulesFallbackEnabled) await skip(aiBlock.reason, aiBlock.message);
 
     // 1) Cross-student cache: the same external course against the same target needs one model call, ever.
     const cacheKey = [
@@ -222,7 +231,7 @@ export class AiService {
       { name: 'code', type: sql.NVarChar(50), value: normalizeKey(ctx.CourseCode) },
       { name: 'title', type: sql.NVarChar(300), value: normalizeKey(ctx.CourseTitle).slice(0, 300) },
     ];
-    if (settings.useResultCache && targetId) {
+    if (!aiBlock && settings.useResultCache && targetId) {
       try {
         const hit = await this.db.query<{ Id: number; CandidatesJson: string }>(
           `SELECT Id, CandidatesJson FROM AiMatchCache
@@ -248,8 +257,6 @@ export class AiService {
         this.logger.warn(`Match cache unavailable: ${(err as Error).message}`);
       }
     }
-
-    this.assertApiKey();
 
     // 2) Catalogue + topics, then a zero-token lexical shortlist.
     const catRes = await this.db.query<CatalogRow>(
@@ -287,6 +294,22 @@ export class AiService {
     }));
     const credits = ctx.NormalisedCredits ?? ctx.OriginalCredits;
     const extTopics = ctx.ExternalCourseId ? topicsByCourse.get(ctx.ExternalCourseId) ?? [] : [];
+    const extFacts = {
+      code: ctx.CourseCode,
+      title: ctx.CourseTitle,
+      credits: credits == null ? null : Number(credits),
+      text: `${ctx.ExtDescription ?? ''} ${extTopics.join(' ')}`,
+    };
+    const byRules = async () => {
+      const found = rulesMatch(extFacts, catalog, 3).map((c) => ({
+        buCourseId: c.courseId, buCode: c.code, buTitle: c.title, rank: c.rank, confidenceScore: c.confidence, rationale: c.rationale,
+      }));
+      await this.usage.log({ ...baseLog, operation: 'match', model: 'built-in rules', catalogSize: catalog.length, candidatesSent: found.length });
+      if (found.length) await this.persist(evaluationId, ctx.TcId, found, settings.autoLikelyThreshold);
+      return { candidates: found, fromCache: false };
+    };
+    if (aiBlock) return byRules();
+
     const picked = shortlist(
       {
         code: ctx.CourseCode,
@@ -344,6 +367,7 @@ export class AiService {
       if (err instanceof BadRequestException) throw err;
       this.logger.error(`AI match failed for ${ctx.CourseCode}: ${(err as Error).message}`);
       await this.usage.log({ ...baseLog, ...sentInfo, operation: 'match', model, skipped: true, skipReason: 'error' });
+      if (settings.rulesFallbackEnabled) return byRules();
       throw new BadRequestException(`AI matching failed: ${(err as Error).message}`);
     }
 
@@ -423,18 +447,15 @@ export class AiService {
     const out: PipelineMatchResult = { matched: 0, fromCache: 0, skipped: 0, failed: 0, reasons: [] };
     const targetId = await this.resolveTargetInstitutionId(transcriptId);
     const settings = await this.settingsService.getEffective(targetId);
-    if (!settings.isEnabled || !settings.autoRunOnIntake) {
+    const aiUsable = settings.isEnabled && this.hasApiKey();
+    if (!settings.autoRunOnIntake || (!aiUsable && !settings.rulesFallbackEnabled)) {
       out.skipped = 1;
-      out.reasons.push(!settings.isEnabled ? 'AI is switched off' : 'Auto-run on intake is off');
+      out.reasons.push(
+        !settings.autoRunOnIntake ? 'Auto-run on intake is off' : !settings.isEnabled ? 'AI is switched off' : 'AI key not configured',
+      );
       return out;
     }
-    const key = this.config.get<string>('ANTHROPIC_API_KEY');
-    if (!key || key.startsWith('REPLACE_WITH')) {
-      // No key yet: skip quietly (reviewers match by hand) instead of failing course by course.
-      out.skipped = 1;
-      out.reasons.push('AI key not configured');
-      return out;
-    }
+    if (!aiUsable) out.reasons.push('Matched with the built-in rules (AI unavailable)');
     const evals = await this.db.query<{ Id: string }>(
       `SELECT e.Id FROM Evaluations e JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId
        WHERE tc.TranscriptId = @t AND e.Status = 'queued' AND e.AISuggestedCourseId IS NULL`,

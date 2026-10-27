@@ -22,6 +22,8 @@ export interface AiSettings {
   maxTokensPerRequest: number | null;
   monthlyTokenBudget: number | null;
   narrativeBriefEnabled: boolean;
+  /** Built-in rules engine takes over document reading / course matching when AI is off or unavailable. */
+  rulesFallbackEnabled: boolean;
 }
 
 /** Used when migration 013 hasn't been applied yet, so nothing breaks before the tables exist. */
@@ -43,6 +45,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   maxTokensPerRequest: null,
   monthlyTokenBudget: null,
   narrativeBriefEnabled: false,
+  rulesFallbackEnabled: true,
 };
 
 interface SettingsRow {
@@ -64,6 +67,7 @@ interface SettingsRow {
   MaxTokensPerRequest: number | null;
   MonthlyTokenBudget: number | string | null;
   NarrativeBriefEnabled: boolean;
+  RulesFallbackEnabled?: boolean | null; // absent until migration 021
 }
 
 function mapSettings(r: SettingsRow): AiSettings {
@@ -86,6 +90,7 @@ function mapSettings(r: SettingsRow): AiSettings {
     maxTokensPerRequest: r.MaxTokensPerRequest,
     monthlyTokenBudget: r.MonthlyTokenBudget == null ? null : Number(r.MonthlyTokenBudget),
     narrativeBriefEnabled: !!r.NarrativeBriefEnabled,
+    rulesFallbackEnabled: r.RulesFallbackEnabled == null ? true : !!r.RulesFallbackEnabled,
   };
 }
 
@@ -214,6 +219,18 @@ export class AiSettingsService {
            @maxOut, @perReq, @monthly, @narr, @by)`,
         inputs,
       );
+    }
+    if (input.rulesFallbackEnabled !== undefined || !cur.recordset[0]) {
+      // Separate statement: the column only exists once migration 021 is applied, and that must not break saving the rest.
+      await this.db
+        .query(
+          `UPDATE AiSettings SET RulesFallbackEnabled = @rf WHERE (@inst IS NULL AND InstitutionId IS NULL) OR InstitutionId = @inst`,
+          [
+            { name: 'inst', type: sql.Int, value: institutionId },
+            { name: 'rf', type: sql.Bit, value: m.rulesFallbackEnabled ? 1 : 0 },
+          ],
+        )
+        .catch((err: Error) => this.logger.warn(`Rules fallback setting not saved (apply migration 021): ${err.message}`));
     }
     return this.getEffective(institutionId);
   }

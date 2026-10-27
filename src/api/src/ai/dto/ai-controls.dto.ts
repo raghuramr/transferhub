@@ -18,6 +18,7 @@ export class SaveAiSettingsDto {
   @IsOptional() @IsInt() @Min(0) maxTokensPerRequest?: number | null;
   @IsOptional() @IsInt() @Min(0) monthlyTokenBudget?: number | null;
   @IsOptional() @IsBoolean() narrativeBriefEnabled?: boolean;
+  @IsOptional() @IsBoolean() rulesFallbackEnabled?: boolean;
 }
 
 export class SaveSkillDto {

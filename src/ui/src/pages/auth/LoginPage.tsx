@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
-import { LogoMark } from '../../components/shared/Logo';
+import { LogoTile } from '../../components/shared/Logo';
 import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
 import { Button } from '../../components/ui/Button';
@@ -74,11 +74,9 @@ export default function LoginPage() {
           transition={{ delay: 0.1, duration: 0.4 }}
           className="text-center mb-8"
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-lg mb-4">
-            <LogoMark size={40} />
-          </div>
-          <h1 className="text-2xl font-bold text-white">TransferHub</h1>
-          <p className="text-brand-200 mt-1">Transfer Credit Portal</p>
+          <LogoTile width={240} className="mb-4" />
+          <h1 className="sr-only">TransferHub</h1>
+          <p className="text-brand-200 mt-1 text-lg">Transfer Credit Portal</p>
         </motion.div>
 
         {/* Card */}
