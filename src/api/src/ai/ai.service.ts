@@ -91,6 +91,17 @@ export class AiService {
     }
   }
 
+  /** Public: is a chat provider (Anthropic or Azure OpenAI) usable right now? */
+  async hasChatProvider(): Promise<boolean> {
+    return this.hasApiKey();
+  }
+
+  /** Public: run a one-shot text completion through the configured chat provider. Used by the document reader. */
+  async completeText(systemText: string, userText: string, maxTokens = 2000) {
+    const settings = await this.settingsService.getEffective(null);
+    return this.callModel(settings.matchModel, systemText, userText, settings, maxTokens);
+  }
+
   private async resolveTargetInstitutionId(transcriptId: string): Promise<number | null> {
     try {
       const res = await this.db.query<{ Target: number | null }>(
