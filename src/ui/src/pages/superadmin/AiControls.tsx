@@ -522,46 +522,68 @@ function ProvidersTab() {
     </Field>
   );
 
+  // One selectable provider card: click to make it active; its own fields live inside and stay editable.
+  const Card = ({ active, onActivate, icon, title, blurb, configured, disabled, children }: {
+    active: boolean; onActivate: () => void; icon: React.ReactNode; title: string; blurb?: string;
+    configured?: boolean; disabled?: boolean; children?: React.ReactNode;
+  }) => (
+    <div className={cn('rounded-xl border bg-white p-4 transition', active ? 'border-brand-400 ring-2 ring-brand-500/40' : 'border-gray-200')}>
+      <button type="button" onClick={() => { if (!disabled) { onActivate(); setMsg(null); } }} disabled={disabled}
+        className="flex w-full items-start gap-3 text-left">
+        <span className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', active ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-500')}>{icon}</span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="font-semibold text-gray-900">{title}</span>
+            {active ? <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-800">Active</span>
+              : <span className="text-[11px] text-brand-700">Click to use</span>}
+            {configured != null && (
+              <span className={cn('ml-auto text-[11px]', configured ? 'text-green-600' : 'text-gray-400')}>{configured ? 'Configured' : 'Not configured'}</span>
+            )}
+          </span>
+          {blurb && <span className="mt-0.5 block text-xs text-gray-500">{blurb}</span>}
+        </span>
+      </button>
+      {children && <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">{children}</div>}
+    </div>
+  );
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {!d?.ready && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Migration 023 (AppSettings) is not applied yet, so provider settings cannot be saved.</div>
       )}
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Sparkles size={15} /> Course matching &amp; chat provider</h3>
-        <p className="mb-4 text-xs text-gray-500">Switch between Anthropic and Azure OpenAI. Either can be configured; only the selected one is used, and the built-in rules engine still covers everything when neither is available.</p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Active chat provider">
-            <select value={chatProvider} onChange={(e) => { setChatProvider(e.target.value as 'anthropic' | 'azure_openai'); setMsg(null); }} disabled={!canEdit}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-              <option value="anthropic">Anthropic (Claude)</option>
-              <option value="azure_openai">Azure OpenAI</option>
-            </select>
-          </Field>
-          <div />
-          {keyField('Anthropic API key', !!d?.anthropicKeySet, keys.anthropicKey, (v) => setKeys((k) => ({ ...k, anthropicKey: v })))}
-          <div />
-          {txt('Azure OpenAI endpoint', endpoints.azureOpenAiEndpoint, (v) => setEndpoints((s) => ({ ...s, azureOpenAiEndpoint: v })), 'https://my-resource.openai.azure.com')}
-          {keyField('Azure OpenAI API key', !!d?.azureOpenAiKeySet, keys.azureOpenAiKey, (v) => setKeys((k) => ({ ...k, azureOpenAiKey: v })))}
-          {txt('Chat deployment name', endpoints.azureOpenAiDeployment, (v) => setEndpoints((s) => ({ ...s, azureOpenAiDeployment: v })), 'e.g. gpt-4o')}
-          {txt('API version', endpoints.azureOpenAiApiVersion, (v) => setEndpoints((s) => ({ ...s, azureOpenAiApiVersion: v })), '2024-06-01')}
+
+      <div>
+        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Sparkles size={15} /> Course matching &amp; chat</h3>
+        <p className="mb-3 text-xs text-gray-500">Configure any provider; the one you pick as Active is used. The built-in rules engine still covers everything when none is available.</p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Card active={chatProvider === 'anthropic'} onActivate={() => setChatProvider('anthropic')} disabled={!canEdit}
+            icon={<Bot size={16} />} title="Anthropic (Claude)" blurb="Claude models via the Anthropic API." configured={!!d?.anthropicKeySet || !!keys.anthropicKey}>
+            {keyField('API key', !!d?.anthropicKeySet, keys.anthropicKey, (v) => setKeys((k) => ({ ...k, anthropicKey: v })))}
+          </Card>
+          <Card active={chatProvider === 'azure_openai'} onActivate={() => setChatProvider('azure_openai')} disabled={!canEdit}
+            icon={<Zap size={16} />} title="Azure OpenAI" blurb="GPT models via your Azure Foundry deployment." configured={!!d?.azureOpenAiKeySet && !!endpoints.azureOpenAiEndpoint && !!endpoints.azureOpenAiDeployment}>
+            {txt('Endpoint', endpoints.azureOpenAiEndpoint, (v) => setEndpoints((s) => ({ ...s, azureOpenAiEndpoint: v })), 'https://my-resource.openai.azure.com')}
+            {keyField('API key', !!d?.azureOpenAiKeySet, keys.azureOpenAiKey, (v) => setKeys((k) => ({ ...k, azureOpenAiKey: v })))}
+            <div className="grid grid-cols-2 gap-3">
+              {txt('Chat deployment', endpoints.azureOpenAiDeployment, (v) => setEndpoints((s) => ({ ...s, azureOpenAiDeployment: v })), 'e.g. gpt-4o')}
+              {txt('API version', endpoints.azureOpenAiApiVersion, (v) => setEndpoints((s) => ({ ...s, azureOpenAiApiVersion: v })), '2024-06-01')}
+            </div>
+          </Card>
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Database size={15} /> Document reading provider</h3>
-        <p className="mb-4 text-xs text-gray-500">Azure AI Document Intelligence reads transcripts, IDs and score reports in Smart Upload. Leave as None to use the built-in rules reader.</p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Document provider">
-            <select value={docProvider} onChange={(e) => { setDocProvider(e.target.value as 'none' | 'azure_document_intelligence'); setMsg(null); }} disabled={!canEdit}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-              <option value="none">None (built-in rules reader)</option>
-              <option value="azure_document_intelligence">Azure AI Document Intelligence</option>
-            </select>
-          </Field>
-          <div />
-          {txt('Document Intelligence endpoint', endpoints.azureDocEndpoint, (v) => setEndpoints((s) => ({ ...s, azureDocEndpoint: v })), 'https://my-di.cognitiveservices.azure.com')}
-          {keyField('Document Intelligence API key', !!d?.azureDocKeySet, keys.azureDocKey, (v) => setKeys((k) => ({ ...k, azureDocKey: v })))}
+      <div>
+        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Database size={15} /> Document reading</h3>
+        <p className="mb-3 text-xs text-gray-500">Reads transcripts, IDs and score reports in Smart Upload. The built-in rules reader needs no cloud service.</p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Card active={docProvider === 'none'} onActivate={() => setDocProvider('none')} disabled={!canEdit}
+            icon={<Database size={16} />} title="Built-in rules reader" blurb="No cloud service; works without a key (no OCR on scans)." />
+          <Card active={docProvider === 'azure_document_intelligence'} onActivate={() => setDocProvider('azure_document_intelligence')} disabled={!canEdit}
+            icon={<Sparkles size={16} />} title="Azure AI Document Intelligence" blurb="OCR + layout; reads scans and photos." configured={!!d?.azureDocKeySet && !!endpoints.azureDocEndpoint}>
+            {txt('Endpoint', endpoints.azureDocEndpoint, (v) => setEndpoints((s) => ({ ...s, azureDocEndpoint: v })), 'https://my-di.cognitiveservices.azure.com')}
+            {keyField('API key', !!d?.azureDocKeySet, keys.azureDocKey, (v) => setKeys((k) => ({ ...k, azureDocKey: v })))}
+          </Card>
         </div>
       </div>
 
