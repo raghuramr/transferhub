@@ -36,6 +36,11 @@ export class SchemaService {
     return ok;
   }
 
+  /** Migration 022 (transfer exchange: document requests, party reminders, transfer uploads). */
+  exchangeReady(): Promise<boolean> {
+    return this.has('DocumentRequests');
+  }
+
   /** Migration 015 (BU policy alignment). */
   policyReady(): Promise<boolean> {
     return this.has('CourseAppeals');

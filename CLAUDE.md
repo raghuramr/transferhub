@@ -701,6 +701,27 @@ Several ways to get a student's data in; every channel ends at the same "confirm
 - **Logo**: `LogoFull`/`LogoTile`/`LogoMark` in `components/shared/Logo.tsx`, `public/logo-mark.png` (tight crop); bigger in
   sidebar, auth, home, partner, intake pages; emails use `${APP_BASE_URL}/logo.png?v=3` (210x110) in a white box.
 
+## Session 2026-10-27 (c): university exchange, Maya demo seed, backtest, degree progress (branch `claude/university-exchange`, NOT merged)
+- **Apply**: migration 022 (`DocumentRequests`, `PartyReminders`, new `Uploads` columns StudentUserId/TranscriptId/UploadedByParty/
+  UploadedByInstitutionId/Note/DocumentRequestId), seed 015 (Maya six-course demo: BSCC/PVTC catalogue, 3 known equivalencies,
+  two transcripts BSCC 5 courses + PVTC 1) and seed 016 (`transfers` permission module). Code degrades until applied. SQL untested.
+- **Exchange** (`src/api/src/transfers/`, UI `/transfers`, `/transfers/:id`, `components/.../ExchangePanel`, docs/TRANSFER_EXCHANGE.md):
+  both source (U1) and target (U2) universities see a request; incoming/outgoing counts; document requests between student,
+  U1 and U2; uploads by either university land in the student's folder `student/{id}/transfer/{transcriptId}/{party}/...` with
+  party/institution metadata; party-to-party reminders (12h rate limit, emailed). `ScopeService`: scoped admin sees incoming
+  (full) + outgoing (read-only, no decisions, no receiving-side internal notes/brief). Student does not see U1<->U2 traffic.
+- **Backtest**: `GET /ai-controls/backtest` (rules matcher top-1/top-3 hit rate on held-out equivalencies) + MatcherAccuracyCard on
+  the AI Controls Usage tab; the AI matcher plugs into the `Matcher` type later.
+- **Degree progress**: `GET /progress/me` + `/progress/student/:id`, `DegreeProgressCard` on the student dashboard (secure / likely
+  range / pending / not counted vs the external-credit cap).
+- Script tests: `npx tsx scripts/test-{rules-reader,backtest,progress,exchange-logic}.ts` in src/api.
+## Session 2026-10-27 (b): hackathon gap analysis + deck (branch `claude/hackathon-deck`, NOT merged)
+- `_designs/GAP_ANALYSIS.md`: ask-vs-built check. Main open gaps: top-3 hit-rate backtest (the brief's measurable outcome),
+  one-year deadline tracker (PRG-02), programme rules PRG-04..08, degree-progress view, side-by-side course diff, scripted
+  six-course "Maya" demo transcript + BSCC/PVTC catalogues (only the institutions are seeded), no API tests.
+- `_designs/deck/`: `TransferHub-Hackathon.pptx` (16 slides) built by `build-deck.js` (needs pptxgenjs, react-icons, sharp via
+  NODE_PATH); `screens/` are mocked-API screenshots (synthetic numbers, not real data).
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group

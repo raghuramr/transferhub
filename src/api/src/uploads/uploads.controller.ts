@@ -21,10 +21,21 @@ import { extname } from 'path';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
-const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set([
   '.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.txt', '.svg',
 ]);
+
+/** Shared by every endpoint that accepts one multipart `file`: size cap + extension allowlist. */
+export function uploadInterceptorOptions() {
+  return {
+    limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 },
+    fileFilter: (_req: unknown, file: { originalname?: string }, cb: (e: Error | null, ok: boolean) => void) =>
+      ALLOWED_EXTENSIONS.has(extname(file.originalname || '').toLowerCase())
+        ? cb(null, true)
+        : cb(new BadRequestException('Unsupported file type. Allowed: PDF, images, Word, Excel, CSV, text.'), false),
+  };
+}
 
 @Controller('uploads')
 export class UploadsController {
@@ -32,15 +43,7 @@ export class UploadsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(
-    FileInterceptor('file', {
-      limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 },
-      fileFilter: (_req, file, cb) =>
-        ALLOWED_EXTENSIONS.has(extname(file.originalname || '').toLowerCase())
-          ? cb(null, true)
-          : cb(new BadRequestException('Unsupported file type. Allowed: PDF, images, Word, Excel, CSV, text.'), false),
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', uploadInterceptorOptions()))
   async upload(
     @UploadedFile() file: UploadedFileLike,
     @Body() body: { entityType?: string; entityId?: string; isPublic?: string; documentType?: string },

@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import { BlobStorageService, type StorageProvider } from './blob-storage.service';
 import { SchemaService } from '../policy/schema.service';
+import { ScopeService } from '../policy/scope.service';
 
 const STAFF_ROLES = ['admin', 'super_admin', 'faculty'];
 
@@ -24,6 +25,28 @@ interface UploadRow {
   StorageProvider?: string | null;
   ContainerName?: string | null;
   DocumentType?: string | null;
+  /** Migration 022: set when the file was uploaded for a transfer request (it then lives in the student's folder). */
+  StudentUserId?: string | null;
+  TranscriptId?: string | null;
+  UploadedByParty?: string | null;
+  UploadedByInstitutionId?: number | null;
+  Note?: string | null;
+  DocumentRequestId?: number | null;
+}
+
+/** Context of an upload made for a transfer request, by the student or by either university. */
+export interface TransferUploadContext {
+  studentUserId: string;
+  transcriptId: string;
+  party: 'student' | 'source_university' | 'target_university';
+  institutionId: number | null;
+  note?: string | null;
+  documentRequestId?: number | null;
+}
+
+/** The storage folder of a transfer upload: inside the STUDENT's own folder, never the uploader's. */
+export function transferBlobName(studentUserId: string, transcriptId: string, party: string, id: string, originalFileName: string): string {
+  return ['student', safeFileName(studentUserId), 'transfer', safeFileName(transcriptId), safeFileName(party), `${id}-${safeFileName(originalFileName)}`].join('/');
 }
 
 function mapUpload(row: UploadRow) {
@@ -54,6 +77,7 @@ export class UploadsService {
     private db: DatabaseService,
     private storage: BlobStorageService,
     private schema: SchemaService,
+    private scope: ScopeService,
   ) {}
 
   /**
@@ -65,8 +89,11 @@ export class UploadsService {
    */
   async save(
     file: UploadedFileLike,
-    opts: { ownerUserId: string; role: string; entityType: string; entityId?: string; isPublic: boolean; documentType?: string },
+    opts: { ownerUserId: string; role: string; entityType: string; entityId?: string; isPublic: boolean; documentType?: string; transfer?: TransferUploadContext },
   ) {
+    const tr = opts.transfer;
+    const hasTransferColumns = tr ? await this.schema.has('Uploads', 'TranscriptId') : false;
+    if (tr && !hasTransferColumns) throw new ServiceUnavailableException('Transfer exchange migration (022) has not been applied yet');
     const id = uuidv4();
     const originalFileName = safeFileName(file.originalname);
     const provider: StorageProvider = this.storage.provider;
@@ -78,6 +105,8 @@ export class UploadsService {
     const container = opts.isPublic ? this.storage.publicContainer : this.storage.privateContainer;
     const blobName = opts.isPublic
       ? `${id}-${originalFileName}`
+      : tr
+      ? transferBlobName(tr.studentUserId, tr.transcriptId, tr.party, id, originalFileName)
       : [
           safeFileName(opts.role),
           safeFileName(opts.ownerUserId),
@@ -101,7 +130,26 @@ export class UploadsService {
       { name: 'sizeBytes', type: sql.BigInt, value: file.size ?? file.buffer.length },
       { name: 'isPublic', type: sql.Bit, value: opts.isPublic ? 1 : 0 },
     ];
-    if (hasNewColumns) {
+    if (hasNewColumns && tr) {
+      await this.db.query(
+        `INSERT INTO Uploads (Id, OwnerUserId, Role, EntityType, EntityId, OriginalFileName, StoredPath, MimeType, SizeBytes, IsPublic, StorageProvider, ContainerName, DocumentType,
+                              StudentUserId, TranscriptId, UploadedByParty, UploadedByInstitutionId, Note, DocumentRequestId)
+         VALUES (@id, @ownerUserId, @role, @entityType, @entityId, @originalFileName, @storedPath, @mimeType, @sizeBytes, @isPublic, @provider, @container, @documentType,
+                 @studentUserId, @transcriptId, @party, @institutionId, @note, @documentRequestId)`,
+        [
+          ...inputs,
+          { name: 'provider', type: sql.NVarChar(10), value: provider },
+          { name: 'container', type: sql.NVarChar(100), value: container },
+          { name: 'documentType', type: sql.NVarChar(50), value: documentType },
+          { name: 'studentUserId', type: sql.UniqueIdentifier, value: tr.studentUserId },
+          { name: 'transcriptId', type: sql.UniqueIdentifier, value: tr.transcriptId },
+          { name: 'party', type: sql.VarChar(20), value: tr.party },
+          { name: 'institutionId', type: sql.Int, value: tr.institutionId },
+          { name: 'note', type: sql.NVarChar(500), value: tr.note?.slice(0, 500) ?? null },
+          { name: 'documentRequestId', type: sql.Int, value: tr.documentRequestId ?? null },
+        ],
+      );
+    } else if (hasNewColumns) {
       await this.db.query(
         `INSERT INTO Uploads (Id, OwnerUserId, Role, EntityType, EntityId, OriginalFileName, StoredPath, MimeType, SizeBytes, IsPublic, StorageProvider, ContainerName, DocumentType)
          VALUES (@id, @ownerUserId, @role, @entityType, @entityId, @originalFileName, @storedPath, @mimeType, @sizeBytes, @isPublic, @provider, @container, @documentType)`,
@@ -124,9 +172,10 @@ export class UploadsService {
   }
 
   private async findById(id: string) {
-    const extra = (await this.schema.has('Uploads', 'StorageProvider'))
+    let extra = (await this.schema.has('Uploads', 'StorageProvider'))
       ? ', StorageProvider, ContainerName, DocumentType'
       : '';
+    if (await this.schema.has('Uploads', 'TranscriptId')) extra += ', StudentUserId, TranscriptId, UploadedByParty, UploadedByInstitutionId, Note, DocumentRequestId';
     const res = await this.db.query<UploadRow>(
       `SELECT Id, OwnerUserId, Role, EntityType, EntityId, OriginalFileName, StoredPath, MimeType, SizeBytes, IsPublic, CreatedAt${extra}
        FROM Uploads WHERE Id = @id`,
@@ -147,11 +196,29 @@ export class UploadsService {
     };
   }
 
-  /** Authenticated fetch - owner or admin/super_admin/faculty only. */
+  /**
+   * Authenticated fetch - owner or admin/super_admin/faculty (legacy rows). Files uploaded for a
+   * transfer request additionally open to the student whose folder they are in, and a scoped admin
+   * must belong to one of the two universities on that transfer.
+   */
   async getForAuthenticatedUser(id: string, requester: { id: string; role: string }) {
     const row = await this.findById(id);
-    const isOwner = String(row.OwnerUserId) === String(requester.id);
+    const same = (a?: string | null) => !!a && String(a).toLowerCase() === String(requester.id).toLowerCase();
+    const isOwner = same(row.OwnerUserId);
     const isStaff = STAFF_ROLES.includes(requester.role);
+    if (row.TranscriptId) {
+      let ok = isOwner || same(row.StudentUserId) || requester.role === 'super_admin' || requester.role === 'faculty';
+      if (!ok && requester.role === 'admin') ok = await this.scope.canViewTranscript(requester, row.TranscriptId);
+      if (!ok && requester.role === 'agency') {
+        const r = await this.db.query<{ N: number }>(
+          `SELECT COUNT(*) AS N FROM Transcripts WHERE Id = @t AND SubmittedById = @u`,
+          [{ name: 't', type: sql.UniqueIdentifier, value: row.TranscriptId }, { name: 'u', type: sql.UniqueIdentifier, value: requester.id }],
+        );
+        ok = r.recordset[0].N > 0;
+      }
+      if (!ok) throw new ForbiddenException('You do not have access to this file');
+      return this.resolve(row);
+    }
     if (!isOwner && !isStaff) throw new ForbiddenException('You do not have access to this file');
     return this.resolve(row);
   }

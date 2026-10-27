@@ -546,6 +546,64 @@ export const templates = {
     });
   },
 
+  /** One side of a transfer asked another for a document. `path` differs for the student and for staff. */
+  documentRequested(ctx: EmailContext, d: { name: string; fromName: string; student: string; title: string; message?: string | null; dueDate?: string | null; path: string; transcriptId: string; source: string; target: string }): Email {
+    return render(ctx, {
+      subject: `Document requested: ${d.title}`,
+      preheader: `${d.fromName} asked for "${d.title}".`,
+      chip: { label: 'Document requested', tone: 'warning' },
+      headline: 'A document is needed for a transfer request',
+      greetingName: d.name,
+      paragraphs: [`${d.fromName} asked for a document on the transfer credit request for ${d.student}.`],
+      callout: d.message ? { label: `Message from ${d.fromName}`, text: d.message, tone: 'warning' } : undefined,
+      cta: { label: 'Open the request and respond', path: d.path },
+      reference: refOf(d.transcriptId),
+      card: { title: 'What is needed', rows: [
+        { label: 'Document', value: d.title },
+        { label: 'Asked by', value: d.fromName },
+        { label: 'Student', value: d.student },
+        { label: 'Transfer', value: `${d.source} to ${d.target}` },
+        ...(d.dueDate ? [{ label: 'Please send by', value: d.dueDate }] : []),
+      ] },
+    });
+  },
+
+  /** A requested document arrived (or was declined / cancelled). */
+  documentResolved(ctx: EmailContext, d: { name: string; byName: string; student: string; title: string; outcome: 'fulfilled' | 'declined' | 'cancelled'; note?: string | null; path: string; transcriptId: string }): Email {
+    const verb = { fulfilled: 'sent', declined: 'declined to send', cancelled: 'withdrew the request for' }[d.outcome];
+    return render(ctx, {
+      subject: `Document ${d.outcome}: ${d.title}`,
+      preheader: `${d.byName} ${verb} "${d.title}".`,
+      chip: { label: d.outcome === 'fulfilled' ? 'Document received' : d.outcome === 'declined' ? 'Request declined' : 'Request withdrawn', tone: d.outcome === 'fulfilled' ? 'success' : 'neutral' },
+      headline: d.outcome === 'fulfilled' ? 'A requested document has arrived' : 'A document request was closed',
+      greetingName: d.name,
+      paragraphs: [`${d.byName} ${verb} "${d.title}" on the transfer credit request for ${d.student}.`],
+      callout: d.note ? { label: 'Note', text: d.note, tone: 'neutral' } : undefined,
+      cta: { label: 'Open the request', path: d.path },
+      reference: refOf(d.transcriptId),
+    });
+  },
+
+  /** Party-to-party reminder (student, sending university, receiving university). */
+  partyReminder(ctx: EmailContext, d: { name: string; fromName: string; student: string; subjectLine: string; message?: string | null; path: string; transcriptId: string; source: string; target: string }): Email {
+    return render(ctx, {
+      subject: `Reminder from ${d.fromName}: ${d.subjectLine}`,
+      preheader: `${d.fromName} sent a reminder about a transfer request.`,
+      chip: { label: 'Reminder', tone: 'info' },
+      headline: 'A reminder about a transfer request',
+      greetingName: d.name,
+      paragraphs: [`${d.fromName} sent you a reminder about the transfer credit request for ${d.student}: ${d.subjectLine}.`],
+      callout: d.message ? { label: `Message from ${d.fromName}`, text: d.message, tone: 'info' } : undefined,
+      cta: { label: 'Open the request', path: d.path },
+      reference: refOf(d.transcriptId),
+      card: { title: 'The transfer', rows: [
+        { label: 'Student', value: d.student },
+        { label: 'From', value: d.source },
+        { label: 'To', value: d.target },
+      ] },
+    });
+  },
+
   /** System Settings > Email > Send test. */
   test(ctx: EmailContext, d: { from: string }): Email {
     return render(ctx, {
@@ -582,6 +640,9 @@ export function samples(ctx: EmailContext, from: string): { key: TemplateKey; na
     { key: 'submissionReceived', name: 'Submission received', audience: 'Partner contact', email: templates.submissionReceived(ctx, { contactName: 'Jordan Lee', reference: 'IMP-000012', total: 42, summary: '1 universities, 3 programs, 38 courses', checks: '40 clean, 2 with warnings, 0 with errors' }) },
     { key: 'submissionForReview', name: 'Submission waiting for review', audience: 'Super admins', email: templates.submissionForReview(ctx, { firstName: 'Sam', reference: 'IMP-000012', sender: 'Northeastern University (Jordan Lee)', total: 42, summary: '1 universities, 3 programs, 38 courses', checks: '40 clean, 2 warnings, 0 errors' }) },
     { key: 'submissionReport', name: 'Submission report', audience: 'Partner contact', email: templates.submissionReport(ctx, { contactName: 'Jordan Lee', reference: 'IMP-000012', added: '38 added, 2 updated', notImported: '2 not accepted, 0 failed, 0 still waiting', note: 'Two courses were missing credit values.', rows: [['1', 'University', 'NEU - Northeastern University', 'Updated', ''], ['2', 'Course', 'CS 2000 Discrete Structures', 'Added', ''], ['3', 'Course', 'CS 9999 Draft', 'Not accepted', 'Missing credits']] }) },
+    { key: 'documentRequested', name: 'Document requested (transfer exchange)', audience: 'Student or university staff', email: templates.documentRequested(ctx, { name: 'Priya', fromName: 'Northeastern University', student: 'Priya Rao', title: 'Official transcript (final term)', message: 'Please send the Spring 2026 grades once posted.', dueDate: '2026-12-01', path: `/student/transcript/${tid}`, transcriptId: tid, source: 'Northeastern University', target: 'Boston University' }) },
+    { key: 'documentResolved', name: 'Document request answered', audience: 'The requesting side', email: templates.documentResolved(ctx, { name: 'Alex Chen', byName: 'Northeastern University', student: 'Priya Rao', title: 'Official transcript (final term)', outcome: 'fulfilled', path: `/transfers/${tid}`, transcriptId: tid }) },
+    { key: 'partyReminder', name: 'Reminder between parties', audience: 'Student or university staff', email: templates.partyReminder(ctx, { name: 'Alex Chen', fromName: 'Priya Rao (student)', student: 'Priya Rao', subjectLine: 'still waiting on the official transcript', message: 'Registration opens next week.', path: `/transfers/${tid}`, transcriptId: tid, source: 'Northeastern University', target: 'Boston University' }) },
     { key: 'test', name: 'Test e-mail', audience: 'Super admin', email: templates.test(ctx, { from }) },
   ];
 }

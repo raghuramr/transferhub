@@ -10,6 +10,7 @@ import { TransferWorkflowStepper, TRANSCRIPT_STEPS } from '../../components/ui/T
 import { CreditHubCard, EvaluationKindBanner, FlagList } from '../../components/policy/PolicyBits';
 import AppealModal from '../../components/policy/AppealModal';
 import type { TranscriptCourse } from '../../types';
+import ExchangePanel, { OpenRequestsBanner } from '../../components/transfers/ExchangePanel';
 
 const APPEAL_LABEL: Record<string, string> = {
   equivalent: 'Appeal granted: BU equivalent', elective: 'Appeal granted: elective credit', no_credit: 'Appeal decided: no credit', denied: 'Appeal denied',
@@ -90,6 +91,7 @@ export default function TranscriptStatus() {
       </div>
 
       <EvaluationKindBanner kind={transcript.evaluationKind} expiresAt={transcript.preapprovalExpiresAt} />
+      <OpenRequestsBanner transcriptId={transcript.id} />
 
       {/* Workflow progress: the per-university approval stages when the request has them, else the simple 3-step status */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
@@ -175,6 +177,8 @@ export default function TranscriptStatus() {
           })}
         </div>
       </div>
+
+      <ExchangePanel transcriptId={transcript.id} className="mt-8" />
 
       {timeline && timeline.transcript.workflow && (
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">

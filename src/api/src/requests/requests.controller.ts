@@ -44,6 +44,7 @@ export class RequestsController {
     const results: { id: string; ok: boolean; message: string }[] = [];
     for (const id of dto.ids) {
       try {
+        await this.requests.assertCanWork(id, viewerOf(req));
         const r = await this.engine.decide(id, viewerOf(req), { decision: 'approve', comment: dto.comment });
         results.push({ id, ok: true, message: r.message });
       } catch (e) {
@@ -61,6 +62,7 @@ export class RequestsController {
   @Post(':id/decision')
   @Roles('faculty', 'admin', 'super_admin')
   async decide(@Param('id') id: string, @Body() dto: DecisionDto, @Req() req: AuthenticatedRequest) {
+    await this.requests.assertCanWork(id, viewerOf(req));
     const result = await this.engine.decide(id, viewerOf(req), dto);
     return { ...result, timeline: await this.requests.getTimeline(id, viewerOf(req)) };
   }
@@ -68,6 +70,7 @@ export class RequestsController {
   @Post(':id/accept-suggestions')
   @Roles('faculty', 'admin', 'super_admin')
   async acceptSuggestions(@Param('id') id: string, @Body() dto: AcceptSuggestionsDto, @Req() req: AuthenticatedRequest) {
+    await this.requests.assertCanWork(id, viewerOf(req));
     const result = await this.engine.acceptSuggestions(id, viewerOf(req), dto.minConfidence);
     return { ...result, timeline: await this.requests.getTimeline(id, viewerOf(req)) };
   }
@@ -76,6 +79,7 @@ export class RequestsController {
   @Post(':id/make-official')
   @Roles('admin', 'super_admin')
   async makeOfficial(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    await this.requests.assertCanWork(id, viewerOf(req));
     const result = await this.engine.makeOfficial(id, viewerOf(req));
     return { ...result, timeline: await this.requests.getTimeline(id, viewerOf(req)) };
   }
@@ -84,7 +88,7 @@ export class RequestsController {
   @Post(':id/courses/:courseId/pass-fail-exception')
   @Roles('faculty', 'admin', 'super_admin')
   async passFail(@Param('id') id: string, @Param('courseId') courseId: string, @Body() dto: PassFailExceptionDto, @Req() req: AuthenticatedRequest) {
-    await this.requests.getTimeline(id, viewerOf(req)); // visibility check
+    await this.requests.assertCanWork(id, viewerOf(req));
     await this.policy.setPassFailException(id, courseId, dto.exception);
     return { message: dto.exception ? 'Exception recorded' : 'Exception withdrawn', timeline: await this.requests.getTimeline(id, viewerOf(req)) };
   }
@@ -92,6 +96,7 @@ export class RequestsController {
   @Post(':id/skip-stage')
   @Permission('requests', 'bulk_action')
   async skip(@Param('id') id: string, @Body() dto: ReasonDto, @Req() req: AuthenticatedRequest) {
+    await this.requests.assertCanWork(id, viewerOf(req));
     const result = await this.engine.skipStage(id, viewerOf(req), dto.reason);
     return { ...result, timeline: await this.requests.getTimeline(id, viewerOf(req)) };
   }
@@ -99,6 +104,7 @@ export class RequestsController {
   @Post(':id/accept')
   @Permission('requests', 'bulk_action')
   async accept(@Param('id') id: string, @Body() dto: ReasonDto, @Req() req: AuthenticatedRequest) {
+    await this.requests.assertCanWork(id, viewerOf(req));
     const result = await this.engine.acceptRequest(id, viewerOf(req), dto.reason);
     return { ...result, timeline: await this.requests.getTimeline(id, viewerOf(req)) };
   }
@@ -106,6 +112,7 @@ export class RequestsController {
   @Post(':id/start-workflow')
   @Permission('requests', 'bulk_action')
   async start(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    await this.requests.assertCanWork(id, viewerOf(req));
     const started = await this.engine.startWorkflow(id, req.user.id);
     return { started, timeline: await this.requests.getTimeline(id, viewerOf(req)) };
   }
@@ -113,6 +120,7 @@ export class RequestsController {
   @Post(':id/resume')
   @Permission('requests', 'bulk_action')
   async resume(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    await this.requests.assertCanWork(id, viewerOf(req));
     const result = await this.engine.resume(id, viewerOf(req));
     return { ...result, timeline: await this.requests.getTimeline(id, viewerOf(req)) };
   }

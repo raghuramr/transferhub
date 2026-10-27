@@ -6,6 +6,7 @@ import type { AuthenticatedRequest } from '../auth/authenticated-request.interfa
 import { AiSettingsService, AiSettingsInput } from './ai-settings.service';
 import { AiUsageService } from './ai-usage.service';
 import { ReadinessService } from './readiness.service';
+import { BacktestService } from './backtest.service';
 import { SaveAiSettingsDto, SaveSkillDto } from './dto/ai-controls.dto';
 
 /** Everything the "AI Controls" admin page needs: spend switches, the agent playbook, and token accounting. */
@@ -16,6 +17,7 @@ export class AiControlsController {
     private settings: AiSettingsService,
     private usage: AiUsageService,
     private readiness: ReadinessService,
+    private backtest: BacktestService,
   ) {}
 
   /** Is the installation ready to run requests end to end? (keys, migrations, approvers, stalled automation) */
@@ -23,6 +25,13 @@ export class AiControlsController {
   @Permission('ai_controls', 'view')
   checkReadiness() {
     return this.readiness.check();
+  }
+
+  /** Hold-out accuracy of the matcher over past decisions (top-1 / top-3 hit rate). Read-only; cached for 60s. */
+  @Get('backtest')
+  @Permission('ai_controls', 'view')
+  runBacktest(@Query('refresh') refresh?: string) {
+    return this.backtest.run(refresh === 'true' || refresh === '1');
   }
 
   @Get('settings')

@@ -7,6 +7,19 @@ export interface ScopeViewer {
   role: string;
 }
 
+/** The three sides of a transfer: the student, the university they come from, the one they go to. */
+export type Party = 'student' | 'source_university' | 'target_university';
+export const PARTIES: Party[] = ['student', 'source_university', 'target_university'];
+
+export interface TransferSides {
+  studentUserId: string;
+  submittedById: string;
+  /** Transcripts.InstitutionId - the university the student is leaving (University 1). */
+  sourceId: number | null;
+  /** Transcripts.TargetInstitutionId, else the student's registered target (University 2). */
+  targetId: number | null;
+}
+
 /**
  * Admins are assigned to one or more universities (UserScopeUniversities) and
  * should only see students who registered for - or submitted transfer requests
@@ -49,6 +62,78 @@ export class ScopeService {
     const p = this.list(ids, prefix, inputs);
     return `(${transcriptAlias}.TargetInstitutionId IN (${p})
        OR EXISTS (SELECT 1 FROM StudentProfiles sp_t WHERE sp_t.UserId = ${transcriptAlias}.StudentUserId AND sp_t.TargetInstitutionId IN (${p})))`;
+  }
+
+  /**
+   * SQL predicate on a Transcripts alias: the request is OUTGOING from a scoped university
+   * (its source institution is in scope). Outgoing access is read + documents + reminders only.
+   */
+  transcriptOutgoingInScope(ids: number[], transcriptAlias: string, inputs: QueryInput[], prefix = 'so'): string {
+    const p = this.list(ids, prefix, inputs);
+    return `(${transcriptAlias}.InstitutionId IN (${p}))`;
+  }
+
+  /** Incoming OR outgoing: everything a scoped admin may at least read. */
+  transcriptVisibleInScope(ids: number[], transcriptAlias: string, inputs: QueryInput[]): string {
+    return `(${this.transcriptInScope(ids, transcriptAlias, inputs, 'sc')} OR ${this.transcriptOutgoingInScope(ids, transcriptAlias, inputs, 'so')})`;
+  }
+
+  /**
+   * University scope of ANY staff member who works for a university (admin or faculty), unlike
+   * universityScope() which only narrows admins. null = unrestricted (no rows, or super admin).
+   * Used by the transfer exchange, where "staff of University X" means scope rows naming X.
+   */
+  async staffUniversityScope(viewer: ScopeViewer): Promise<number[] | null> {
+    if (viewer.role !== 'admin' && viewer.role !== 'faculty') return null;
+    const res = await this.db.query<{ InstitutionId: number }>(
+      `SELECT InstitutionId FROM UserScopeUniversities WHERE UserId = @uid`,
+      [{ name: 'uid', type: sql.UniqueIdentifier, value: viewer.id }],
+    );
+    return res.recordset.length ? res.recordset.map((r) => r.InstitutionId) : null;
+  }
+
+  /**
+   * Which sides of this transfer the viewer may speak for. A student (or the agency that submitted
+   * for them) is the student side; super admins and unscoped admin/faculty may act for either
+   * university; scoped admin/faculty only for the universities they are assigned to.
+   */
+  async partiesFor(viewer: ScopeViewer, t: TransferSides): Promise<Party[]> {
+    const same = (a: string | null) => !!a && String(a).toLowerCase() === viewer.id.toLowerCase();
+    if (viewer.role === 'student') return same(t.studentUserId) ? ['student'] : [];
+    if (viewer.role === 'agency') return same(t.submittedById) ? ['student'] : [];
+    if (viewer.role === 'super_admin') return ['source_university', 'target_university'];
+    if (viewer.role !== 'admin' && viewer.role !== 'faculty') return [];
+    const ids = await this.staffUniversityScope(viewer);
+    if (!ids) return ['source_university', 'target_university'];
+    const out: Party[] = [];
+    if (t.sourceId != null && ids.includes(t.sourceId)) out.push('source_university');
+    if (t.targetId != null && ids.includes(t.targetId)) out.push('target_university');
+    return out;
+  }
+
+  /**
+   * False only for a scoped admin looking at an OUTGOING request: they may read it, upload documents
+   * and send reminders, but not approve/decide stages. Everyone else keeps today's behaviour.
+   */
+  async canWorkRequest(viewer: ScopeViewer, transcriptId: string): Promise<boolean> {
+    if (viewer.role !== 'admin') return true;
+    const ids = await this.universityScope(viewer);
+    if (!ids) return true;
+    const inputs: QueryInput[] = [{ name: 'tid', type: sql.UniqueIdentifier, value: transcriptId }];
+    const pred = this.transcriptInScope(ids, 't', inputs);
+    const r = await this.db.query<{ N: number }>(`SELECT COUNT(*) AS N FROM Transcripts t WHERE t.Id = @tid AND ${pred}`, inputs);
+    return r.recordset[0].N > 0;
+  }
+
+  /** Read access to a request: everyone but a scoped admin sees it; a scoped admin needs it incoming OR outgoing. */
+  async canViewTranscript(viewer: ScopeViewer, transcriptId: string): Promise<boolean> {
+    if (viewer.role !== 'admin') return true;
+    const ids = await this.universityScope(viewer);
+    if (!ids) return true;
+    const inputs: QueryInput[] = [{ name: 'tid', type: sql.UniqueIdentifier, value: transcriptId }];
+    const pred = this.transcriptVisibleInScope(ids, 't', inputs);
+    const r = await this.db.query<{ N: number }>(`SELECT COUNT(*) AS N FROM Transcripts t WHERE t.Id = @tid AND ${pred}`, inputs);
+    return r.recordset[0].N > 0;
   }
 
   /**
