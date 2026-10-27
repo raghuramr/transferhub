@@ -28,6 +28,7 @@ import { DocumentsModule } from './documents/documents.module';
 import { TransfersModule } from './transfers/transfers.module';
 import { ProgressModule } from './progress/progress.module';
 import { ComparisonModule } from './comparison/comparison.module';
+import { PurgeModule } from './purge/purge.module';
 import { SettingsModule } from './settings/settings.module';
 import { EmailTemplatesModule } from './common/email-templates.module';
 import { DemoModule } from './demo/demo.module';
@@ -74,6 +75,7 @@ const envFilePath =
     TransfersModule,
     ProgressModule,
     ComparisonModule,
+    PurgeModule,
     SettingsModule,
     EmailTemplatesModule,
     DemoModule,
