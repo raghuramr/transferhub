@@ -2,6 +2,7 @@ import { ForbiddenException, HttpException, Injectable, Logger, NotFoundExceptio
 import * as sql from 'mssql';
 import { SchemaService } from '../policy/schema.service';
 import { TransferPolicyService } from '../policy/transfer-policy.service';
+import { CreditDeadlineService } from '../policy/credit-deadline.service';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { UploadsService } from '../uploads/uploads.service';
@@ -31,6 +32,7 @@ export class RequestsService {
     private schema: SchemaService,
     private policy: TransferPolicyService,
     private scopeSvc: ScopeService,
+    private deadlines: CreditDeadlineService,
   ) {}
 
   /** Application details a reviewer needs (migration 015): applicant type, school, term, English, history, exams. */
@@ -230,7 +232,7 @@ export class RequestsService {
     const now = Date.now();
 
     // These lookups are independent: run them together instead of one round trip after another.
-    const [reminders, checklist, docs, policyExtras] = await Promise.all([
+    const [reminders, checklist, docs, policyExtras, deadlineMap] = await Promise.all([
       this.db.query<{ Direction: string; Last: Date }>(
         `SELECT Direction, MAX(CreatedAt) AS Last FROM StatusReminders WHERE TranscriptId = @t AND RequestedByUserId = @u GROUP BY Direction`,
         [
@@ -248,6 +250,7 @@ export class RequestsService {
         [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
       ).catch(() => ({ recordset: [] })),
       this.policyExtras(transcriptId, staff),
+      this.deadlines.forTranscripts([transcriptId]).catch(() => new Map()),
     ]);
     const lastOf = (d: string) => reminders.recordset.find((r) => r.Direction === d)?.Last ?? null;
     const within = (d: Date | null, hours: number) => !!d && now - new Date(d).getTime() < hours * 3_600_000;
@@ -276,6 +279,7 @@ export class RequestsService {
         workflow: t.workflowId ? { id: t.workflowId, name: t.workflowName, allowBypass: !!t.allowBypass } : null,
         evaluationKind,
         preapprovalExpiresAt,
+        deadline: deadlineMap.get(String(transcriptId).toLowerCase()) ?? null,
       },
       student,
       credit,
@@ -356,7 +360,7 @@ export class RequestsService {
       qInputs,
     );
     const now = Date.now();
-    const rows = res.recordset.map((r) => {
+    const allRows = res.recordset.map((r) => {
       let flags = 0;
       try {
         flags = r.AiBrief ? (JSON.parse(r.AiBrief).flags?.length ?? 0) : 0;
@@ -380,6 +384,11 @@ export class RequestsService {
         canAct,
         assignedToMe: explicit,
       };
+    });
+    const dl = await this.deadlines.forTranscripts(allRows.map((r) => String(r.transcriptId))).catch(() => new Map());
+    const rows = allRows.map((r) => {
+      const d = dl.get(String(r.transcriptId).toLowerCase());
+      return { ...r, deadline: d ? { state: d.state, daysLeft: d.daysLeft, deadlineOn: d.deadlineOn, isEstimate: d.isEstimate } : null };
     });
     const visible = scope === 'all' && isAdminRole(viewer.role) ? rows : rows.filter((r) => r.canAct);
     return {

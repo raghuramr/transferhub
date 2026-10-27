@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Settings, Save, Info, Mail, ShieldCheck, Upload, Eye, CheckCircle, AlertCircle, Code2, Send } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Settings, Save, Info, Mail, ShieldCheck, Upload, Eye, CheckCircle, AlertCircle, Code2, Send, KeyRound } from 'lucide-react';
 import RolesPermissions from './RolesPermissions';
 import { Link } from 'react-router-dom';
-import { api, emailApi } from '../../lib/api';
+import { api, emailApi, demoLoginApi } from '../../lib/api';
+import { DemoLoginBox } from '../../components/auth/DemoLoginBox';
 import { useAuthStore } from '../../store/auth';
 
 // ── General settings ─────────────────────────────────────────────
@@ -116,6 +117,132 @@ function GeneralTab() {
           <Save size={16} />Save Settings
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Demo login (login-page demo accounts) ─────────────────────────
+
+function DemoLoginTab() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['demo-login-settings'], queryFn: () => demoLoginApi.get() });
+  const [enabled, setEnabled] = useState(false);
+  const [showCreds, setShowCreds] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    if (q.data) { setEnabled(q.data.data.enabled); setShowCreds(q.data.data.showCredentials); }
+  }, [q.data]);
+
+  const save = useMutation({
+    mutationFn: () => demoLoginApi.save({ enabled, showCredentials: enabled && showCreds }),
+    onSuccess: () => {
+      setMsg({ ok: true, text: 'Saved. The login page picks this up within a few seconds.' });
+      void qc.invalidateQueries({ queryKey: ['demo-login-settings'] });
+    },
+    onError: (e) => {
+      const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+      setMsg({ ok: false, text: (Array.isArray(m) ? m.join(', ') : m) ?? 'Could not save the setting.' });
+    },
+  });
+
+  const data = q.data?.data;
+  const dirty = !!data && (enabled !== data.enabled || (enabled && showCreds) !== data.showCredentials);
+  const effectiveCreds = enabled && showCreds;
+  const preview = enabled && data
+    ? { enabled: true, namesOnly: !effectiveCreds, showCredentials: effectiveCreds, accounts: data.accounts }
+    : { enabled: false };
+
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <section className="rounded-xl border border-gray-200 bg-white">
+        <header className="border-b border-gray-100 px-4 py-3">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900"><KeyRound size={15} />Demo login</h2>
+          <p className="text-xs text-gray-500">Controls the demo-account box on the public sign-in page.</p>
+        </header>
+        {q.isLoading && <p className="px-4 py-3 text-sm text-gray-400">Loading…</p>}
+        {q.isError && <p className="px-4 py-3 text-sm text-red-600">Could not load the setting.</p>}
+        {data && (
+          <div className="space-y-4 p-4 text-sm">
+            {!data.ready && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800">
+                <Info size={16} className="mt-0.5 shrink-0" />
+                <span>Migration 023 has not been applied, so this cannot be saved yet. The demo box stays hidden.</span>
+              </div>
+            )}
+            <label className="flex items-start gap-3">
+              <input type="checkbox" checked={enabled} onChange={(e) => { setEnabled(e.target.checked); if (!e.target.checked) setShowCreds(false); setMsg(null); }}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-brand-800" />
+              <span>
+                <span className="block font-medium text-gray-900">Show demo accounts on the login page</span>
+                <span className="block text-xs text-gray-500">Off by default. When off, nothing about the demo accounts is sent to the browser.</span>
+              </span>
+            </label>
+
+            <fieldset disabled={!enabled} className={`space-y-3 border-l-2 pl-4 ${enabled ? 'border-brand-200' : 'border-gray-100 opacity-50'}`}>
+              <legend className="sr-only">What to show</legend>
+              <label className="flex items-start gap-3">
+                <input type="radio" name="demo-mode" checked={!showCreds} onChange={() => { setShowCreds(false); setMsg(null); }}
+                  className="mt-0.5 h-4 w-4 accent-brand-800" />
+                <span>
+                  <span className="block font-medium text-gray-900">Show only the user names as buttons</span>
+                  <span className="block text-xs text-gray-500">One button per account (name and role). Clicking fills in the email and password; the presenter just clicks Sign in. The password is not displayed.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3">
+                <input type="radio" name="demo-mode" checked={showCreds} onChange={() => { setShowCreds(true); setMsg(null); }}
+                  className="mt-0.5 h-4 w-4 accent-brand-800" />
+                <span>
+                  <span className="block font-medium text-gray-900">Also show the credentials</span>
+                  <span className="block text-xs text-gray-500">Buttons plus the visible email and password. Still click-to-fill.</span>
+                </span>
+              </label>
+            </fieldset>
+
+            <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+              Even with names only, the password is sent to the visitor&apos;s browser so the button can fill it in. Anyone who opens the login page
+              can read it, so turn this off outside demos and never enable it for a real deployment.
+            </p>
+
+            {msg && (
+              <p role="status" className={`flex items-start gap-2 rounded-lg p-2 ${msg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                {msg.ok ? <CheckCircle size={16} className="mt-0.5 shrink-0" /> : <AlertCircle size={16} className="mt-0.5 shrink-0" />}
+                {msg.text}
+              </p>
+            )}
+            <div className="flex justify-end">
+              <button type="button" onClick={() => { setMsg(null); save.mutate(); }} disabled={!dirty || save.isPending || !data.ready}
+                className="flex items-center gap-2 rounded-lg bg-brand-800 px-5 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50">
+                <Save size={16} />{save.isPending ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-gray-200 bg-white">
+        <header className="border-b border-gray-100 px-4 py-3">
+          <h2 className="text-sm font-semibold text-gray-900">Preview of the login page</h2>
+          <p className="text-xs text-gray-500">Updates as you change the options (not saved until you press Save).</p>
+        </header>
+        <div className="p-4">
+          <div className="mx-auto max-w-md rounded-2xl bg-brand-950 p-4">
+            <div className="rounded-xl bg-white p-5">
+              <p className="mb-3 text-sm font-semibold text-gray-900">Sign in to your account</p>
+              <div className="space-y-2" aria-hidden="true">
+                <div className="h-9 rounded-lg border border-gray-300 bg-gray-50" />
+                <div className="h-9 rounded-lg border border-gray-300 bg-gray-50" />
+                <div className="h-9 rounded-lg bg-brand-800" />
+              </div>
+              {preview.enabled ? (
+                <DemoLoginBox demo={preview} onPick={() => undefined} />
+              ) : (
+                <p className="mt-4 border-t border-gray-100 pt-3 text-center text-xs text-gray-400">No demo accounts are shown.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -452,11 +579,12 @@ function DataImportTab() {
 
 // ── Main component ────────────────────────────────────────────────
 
-type Tab = 'general' | 'email' | 'roles' | 'import';
+type Tab = 'general' | 'email' | 'demo' | 'roles' | 'import';
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'general', label: 'General', icon: <Settings size={16} /> },
   { id: 'email', label: 'Email', icon: <Mail size={16} /> },
+  { id: 'demo', label: 'Demo login', icon: <KeyRound size={16} /> },
   { id: 'roles', label: 'Roles & Permissions', icon: <ShieldCheck size={16} /> },
   { id: 'import', label: 'Data Import', icon: <Upload size={16} /> },
 ];
@@ -491,6 +619,7 @@ export default function SystemSettings() {
 
       {activeTab === 'general' && <GeneralTab />}
       {activeTab === 'email' && <EmailTab />}
+      {activeTab === 'demo' && <DemoLoginTab />}
       {activeTab === 'roles' && <RolesPermissions />}
       {activeTab === 'import' && <DataImportTab />}
     </div>

@@ -12,4 +12,6 @@ export class SavePolicyDto {
   @IsOptional() @IsBoolean() requireAccreditation?: boolean;
   @IsOptional() @IsInt() @Min(0) @Max(40) hubRequirementsTransfer?: number;
   @IsOptional() @IsInt() @Min(0) @Max(10) hubCocurricularAllowed?: number;
+  /** PRG-02: months from starting within which all credit must be transferred. */
+  @IsOptional() @IsInt() @Min(1) @Max(120) creditDeadlineMonths?: number;
 }

@@ -4,6 +4,8 @@
  * credit buckets. No database access here so it can be tested with synthetic rows.
  */
 
+import type { CreditDeadline } from '../policy/credit-deadline';
+
 export type Bucket = 'secure' | 'likely' | 'pending' | 'not_counted';
 
 export interface ProgressFlag {
@@ -54,6 +56,8 @@ export interface ProgressOptions {
   hubCocurricularAllowed: number;
   applicantType?: string | null;
   policyKnown?: boolean;
+  /** PRG-02 deadline for this student (null when migration 024 is not applied). */
+  deadline?: CreditDeadline | null;
 }
 
 export interface CourseProgress {
@@ -97,6 +101,8 @@ export interface ProgressResult {
   hub: { requirements: number; cocurricularAllowed: number; note: string };
   requests: RequestProgress[];
   isProvisional: boolean;
+  /** PRG-02: when everything must be transferred by, plus how many courses still wait on a decision. */
+  deadline: (CreditDeadline & { pendingCourses: number }) | null;
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -218,6 +224,17 @@ export function buildProgress(requests: ProgressRequestRow[], o: ProgressOptions
   const used = r2(totals.secure + o.examCredits);
   const projectedMax = r2(used + totals.likelyHigh);
 
+  // Courses still waiting on a decision (pending or likely) in real (non-preview) requests; coursework outside the US is evaluated elsewhere.
+  let pendingCourses = 0;
+  requests.forEach((r, ri) => {
+    if (r.kind === 'preview') return;
+    reqs[ri].courses.forEach((cp, ci) => {
+      const raw = r.courses[ci];
+      const intl = raw.isOutsideUS || (raw.flags ?? []).some((f) => f.code === 'international');
+      if ((cp.bucket === 'pending' || cp.bucket === 'likely') && !intl) pendingCourses++;
+    });
+  });
+
   const hubNote =
     `Transfer courses never satisfy BU Hub requirements: you will still complete ${o.hubRequirements} Hub requirements at BU` +
     (o.hubCocurricularAllowed ? ` (${o.hubCocurricularAllowed} co-curricular may be earned elsewhere).` : '.');
@@ -234,6 +251,7 @@ export function buildProgress(requests: ProgressRequestRow[], o: ProgressOptions
     },
     hub: { requirements: o.hubRequirements, cocurricularAllowed: o.hubCocurricularAllowed, note: hubNote },
     requests: reqs,
+    deadline: o.deadline ? { ...o.deadline, pendingCourses } : null,
     isProvisional: totals.likelyHigh > 0 || totals.pending > 0 || reqs.some((r) => r.kind === 'preview'),
   };
 }

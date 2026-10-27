@@ -88,6 +88,28 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return request.execute<T>(procedure);
   }
 
+  /**
+   * Runs `fn` inside one transaction on one pinned connection (so #temp tables, if any, survive between
+   * statements). Commits when `fn` resolves, rolls everything back when it throws.
+   */
+  async transaction<T>(fn: (run: <R = any>(queryText: string, inputs?: QueryInput[]) => Promise<sql.IResult<R>>) => Promise<T>): Promise<T> {
+    const tx = this.pool.transaction();
+    await tx.begin();
+    const run = <R = any>(queryText: string, inputs: QueryInput[] = []) => {
+      const request = tx.request();
+      for (const input of inputs) request.input(input.name, input.type, input.value);
+      return request.query<R>(queryText);
+    };
+    try {
+      const out = await fn(run);
+      await tx.commit();
+      return out;
+    } catch (err) {
+      try { await tx.rollback(); } catch { /* already rolled back by the server */ }
+      throw err;
+    }
+  }
+
   get sqlTypes() {
     return sql;
   }

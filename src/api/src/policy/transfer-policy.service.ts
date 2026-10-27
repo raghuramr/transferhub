@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
 import { SchemaService } from './schema.service';
+import { CreditDeadlineService } from './credit-deadline.service';
 
 export interface TransferPolicy {
   id: number | null;
@@ -16,6 +17,8 @@ export interface TransferPolicy {
   requireAccreditation: boolean;
   hubRequirementsTransfer: number;
   hubCocurricularAllowed: number;
+  /** PRG-02: months from starting at the university within which credit must be transferred (migration 024; 12 when absent). */
+  creditDeadlineMonths: number;
 }
 
 /** BU's published rules (doc 12) - used when migration 015 is not applied or no row exists. */
@@ -31,6 +34,7 @@ export const DEFAULT_POLICY: TransferPolicy = {
   requireAccreditation: true,
   hubRequirementsTransfer: 10,
   hubCocurricularAllowed: 1,
+  creditDeadlineMonths: 12,
 };
 
 export type FlagSeverity = 'block' | 'review' | 'info';
@@ -60,6 +64,7 @@ interface PolicyRow {
   RequireAccreditation: boolean;
   HubRequirementsTransfer: number;
   HubCocurricularAllowed: number;
+  CreditDeadlineMonths?: number | null;
 }
 
 const mapPolicy = (r: PolicyRow): TransferPolicy => ({
@@ -75,6 +80,7 @@ const mapPolicy = (r: PolicyRow): TransferPolicy => ({
   requireAccreditation: !!r.RequireAccreditation,
   hubRequirementsTransfer: r.HubRequirementsTransfer,
   hubCocurricularAllowed: r.HubCocurricularAllowed,
+  creditDeadlineMonths: r.CreditDeadlineMonths ? Number(r.CreditDeadlineMonths) : 12,
 });
 
 export const parseFlags = (json: string | null | undefined): PolicyFlag[] => {
@@ -97,7 +103,7 @@ export const parseFlags = (json: string | null | undefined): PolicyFlag[] => {
 export class TransferPolicyService {
   private readonly logger = new Logger(TransferPolicyService.name);
 
-  constructor(private db: DatabaseService, private schema: SchemaService) {}
+  constructor(private db: DatabaseService, private schema: SchemaService, private deadlines: CreditDeadlineService) {}
 
   // ── settings ──────────────────────────────────────────────────
 
@@ -124,8 +130,11 @@ export class TransferPolicyService {
     const base = await this.getEffective(institutionId);
     const m = { ...base, ...input };
     if (!(m.minGrade in GRADE_POINTS) || m.minGrade === 'F' || m.minGrade === 'A+') m.minGrade = 'C';
+    const deadlineReady = await this.schema.deadlineReady();
+    const months = Math.min(120, Math.max(1, Math.round(Number(m.creditDeadlineMonths) || 12)));
     const inputs = [
       { name: 'i', type: sql.Int, value: institutionId },
+      { name: 'dm', type: sql.Int, value: months },
       { name: 'g', type: sql.VarChar(3), value: m.minGrade },
       { name: 'age', type: sql.Int, value: m.maxCourseAgeYears },
       { name: 'ct', type: sql.Decimal(6, 2), value: m.capTransfer },
@@ -140,13 +149,13 @@ export class TransferPolicyService {
     await this.db.query(
       `IF EXISTS (SELECT 1 FROM TransferPolicies WHERE (@i IS NULL AND InstitutionId IS NULL) OR InstitutionId = @i)
          UPDATE TransferPolicies SET MinGrade=@g, MaxCourseAgeYears=@age, CapTransfer=@ct, CapFirstYear=@cf, CapCurrentStudent=@cc,
-                AllowPassFail=@pf, RequireAccreditation=@acc, HubRequirementsTransfer=@hub, HubCocurricularAllowed=@hubc,
+                AllowPassFail=@pf, RequireAccreditation=@acc, HubRequirementsTransfer=@hub, HubCocurricularAllowed=@hubc${deadlineReady ? ', CreditDeadlineMonths=@dm' : ''},
                 UpdatedAt=SYSUTCDATETIME(), UpdatedBy=@u
          WHERE (@i IS NULL AND InstitutionId IS NULL) OR InstitutionId = @i
        ELSE
          INSERT INTO TransferPolicies (InstitutionId, MinGrade, MaxCourseAgeYears, CapTransfer, CapFirstYear, CapCurrentStudent,
-                AllowPassFail, RequireAccreditation, HubRequirementsTransfer, HubCocurricularAllowed, UpdatedBy)
-         VALUES (@i, @g, @age, @ct, @cf, @cc, @pf, @acc, @hub, @hubc, @u)`,
+                AllowPassFail, RequireAccreditation, HubRequirementsTransfer, HubCocurricularAllowed${deadlineReady ? ', CreditDeadlineMonths' : ''}, UpdatedBy)
+         VALUES (@i, @g, @age, @ct, @cf, @cc, @pf, @acc, @hub, @hubc${deadlineReady ? ', @dm' : ''}, @u)`,
       inputs,
     );
     return this.getEffective(institutionId);
@@ -230,8 +239,8 @@ export class TransferPolicyService {
   /** Re-evaluates every course of a request against the policy. Safe to run repeatedly. */
   async applyToTranscript(transcriptId: string): Promise<{ flagged: number } | null> {
     if (!(await this.schema.policyReady())) return null;
-    const head = await this.db.query<{ StudentUserId: string; IsAccredited: boolean | null; Calendar: string; ApplicantType: string | null }>(
-      `SELECT t.StudentUserId, i.IsAccredited, i.Calendar, sp.ApplicantType
+    const head = await this.db.query<{ StudentUserId: string; IsAccredited: boolean | null; Calendar: string; ApplicantType: string | null; Kind: string | null }>(
+      `SELECT t.StudentUserId, i.IsAccredited, i.Calendar, sp.ApplicantType, t.EvaluationKind AS Kind
        FROM Transcripts t JOIN Institutions i ON i.Id = t.InstitutionId
        LEFT JOIN StudentProfiles sp ON sp.UserId = t.StudentUserId
        WHERE t.Id = @t`,
@@ -244,14 +253,25 @@ export class TransferPolicyService {
     const courses = await this.db.query<{
       Id: string; CourseCode: string; Grade: string; Lane: string; OriginalCredits: number; NormalisedCredits: number | null;
       TermSeason: string | null; TermYear: number | null; GradingBasis: string | null; CourseType: string | null;
-      IsOutsideUS: boolean; PassFailException: boolean; HasEval: number;
+      IsOutsideUS: boolean; PassFailException: boolean; HasEval: number; Settled: number;
     }>(
       `SELECT tc.Id, tc.CourseCode, tc.Grade, tc.Lane, tc.OriginalCredits, tc.NormalisedCredits, tc.TermSeason, tc.TermYear,
               tc.GradingBasis, tc.CourseType, tc.IsOutsideUS, tc.PassFailException,
-              (SELECT COUNT(*) FROM Evaluations e WHERE e.TranscriptCourseId = tc.Id) AS HasEval
+              (SELECT COUNT(*) FROM Evaluations e WHERE e.TranscriptCourseId = tc.Id) AS HasEval,
+              CASE WHEN tc.Status IN ('decided','posted')
+                     OR EXISTS (SELECT 1 FROM Evaluations e WHERE e.TranscriptCourseId = tc.Id AND e.Status IN ('decided','posted'))
+                   THEN 1 ELSE 0 END AS Settled
        FROM TranscriptCourses tc WHERE tc.TranscriptId = @t ORDER BY tc.SortOrder, tc.CourseCode`,
       [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
     );
+
+    // PRG-02 credit deadline: evaluated FIRST. Preview requests are exempt (not admitted yet), an estimated start
+    // (no entry term on file) is shown but never enforced, and nothing happens before migration 024.
+    let pastDeadline: { deadlineOn: string; months: number } | null = null;
+    if (t.Kind !== 'preview') {
+      const dl = await this.deadlines.forStudent(t.StudentUserId);
+      if (dl && dl.state === 'overdue' && !dl.isEstimate && dl.deadlineOn) pastDeadline = { deadlineOn: dl.deadlineOn, months: dl.months };
+    }
 
     const nowYear = new Date().getUTCFullYear();
     const minPoints = GRADE_POINTS[policy.minGrade] ?? 2;
@@ -271,6 +291,12 @@ export class TransferPolicyService {
         lane = 'not_eligible';
       };
       const grade = (c.Grade ?? '').trim().toUpperCase();
+
+      // Deadline first: a course nobody has settled yet goes to a person with a clear flag. It is never denied for lateness
+      // (the reviewer can still accept it), and courses already decided/posted are left alone.
+      if (pastDeadline && !c.Settled && !c.IsOutsideUS && lane !== 'not_eligible') {
+        review('past_deadline', `The ${pastDeadline.months}-month deadline to transfer credit passed on ${pastDeadline.deadlineOn}; a reviewer must decide whether to accept this course.`);
+      }
 
       if (c.IsOutsideUS) {
         flags.push({ code: 'international', severity: 'info', message: 'Completed outside the US: evaluated by the Office of International Undergraduate Admissions (intadvis@bu.edu), not in this request.' });

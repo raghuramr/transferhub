@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,7 +6,8 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
 import { LogoTile } from '../../components/shared/Logo';
-import { authApi } from '../../lib/api';
+import { authApi, demoLoginApi, type DemoLoginPublic } from '../../lib/api';
+import { DemoLoginBox } from '../../components/auth/DemoLoginBox';
 import { useAuthStore } from '../../store/auth';
 import { Button } from '../../components/ui/Button';
 import type { AxiosError } from 'axios';
@@ -27,8 +28,17 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  // Demo accounts are controlled by the super admin (System Settings > Demo login). Any failure -> show nothing.
+  const [demo, setDemo] = useState<DemoLoginPublic | null>(null);
+  useEffect(() => {
+    let alive = true;
+    demoLoginApi.publicGet().then((r) => { if (alive) setDemo(r.data); }).catch(() => { if (alive) setDemo(null); });
+    return () => { alive = false; };
+  }, []);
 
   const onSubmit = async (data: FormData) => {
     setServerError('');
@@ -166,28 +176,14 @@ export default function LoginPage() {
             <Link to="/intake" className="text-brand-800 font-medium hover:underline">Find my records from my previous university</Link>
           </p>
 
-          {/* Demo hint */}
-          <div className="mt-6 pt-6 border-t border-gray-100">
-            <p className="text-xs text-gray-500 text-center mb-3">Demo accounts</p>
-            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-              {[
-                ['Student', 'student@test.edu', 'Student@123!'],
-                ['Faculty', 'faculty.cs@bu.edu', 'Faculty@123!'],
-                ['Admin', 'admin@bu.edu', 'Admin@123!'],
-                ['Super Admin', 'super_admin@bu.edu', 'SuperAdmin@123!'],
-              ].map(([role, email, password]) => (
-                <div key={email} className="bg-brand-50/60 rounded-lg p-2">
-                  <p className="font-medium text-brand-900">{role}</p>
-                  <p className="text-gray-400 truncate">{email}</p>
-                  <p className="text-gray-400 font-mono">{password}</p>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-gray-400 text-center mt-2">
-              Run <code className="bg-gray-100 px-1 rounded">npm run seed:users</code> in src/api first
-              so these passwords are actually set.
-            </p>
-          </div>
+          <DemoLoginBox
+            demo={demo}
+            onPick={(a) => {
+              setValue('email', a.email, { shouldValidate: true });
+              setValue('password', a.password, { shouldValidate: true });
+              setServerError('');
+            }}
+          />
         </motion.div>
       </motion.div>
     </div>

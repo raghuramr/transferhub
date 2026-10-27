@@ -390,6 +390,57 @@ export const templates = {
     });
   },
 
+  /** PRG-02: the credit-transfer deadline is close (90 / 30 / 7 days) and courses are still undecided. */
+  deadlineApproaching(ctx: EmailContext, d: { name: string; audience: 'student' | 'staff'; student: string; deadlineOn: string; daysLeft: number; pendingCourses: number; months: number; transcriptId: string }): Email {
+    const ref = refOf(d.transcriptId);
+    const student = d.audience === 'student';
+    const when = d.daysLeft <= 0 ? 'today' : `in ${d.daysLeft} day${d.daysLeft === 1 ? '' : 's'}`;
+    const n = `${d.pendingCourses} course${d.pendingCourses === 1 ? '' : 's'}`;
+    return render(ctx, {
+      subject: student ? `Transfer credit deadline ${when}` : `Credit deadline ${when}: ${d.student}`,
+      preheader: `${n} still waiting on a decision.`,
+      chip: { label: d.daysLeft <= 30 ? 'Deadline soon' : 'Deadline ahead', tone: d.daysLeft <= 30 ? 'danger' : 'warning' },
+      headline: student ? 'Your transfer credit deadline is coming up' : 'A transfer credit deadline is coming up',
+      greetingName: d.name,
+      paragraphs: student
+        ? [`Transfer credit must be transferred within ${d.months} months of starting. Your deadline is ${d.deadlineOn} (${when}) and ${n} still ${d.pendingCourses === 1 ? 'is' : 'are'} waiting on a decision. Please upload anything we have asked for, such as syllabi, so the reviewers can finish in time.`]
+        : [`${d.student} must have all transfer credit decided within ${d.months} months of starting. The deadline is ${d.deadlineOn} (${when}) and ${n} still ${d.pendingCourses === 1 ? 'needs' : 'need'} a decision. Courses left undecided after the deadline go to review with a flag; none is denied for lateness.`],
+      cta: student ? { label: 'View your request', path: `/student/transcript/${d.transcriptId}` } : { label: 'Open request', path: `/requests/${d.transcriptId}` },
+      reference: ref,
+      card: { title: 'The deadline', rows: [
+        { label: 'Student', value: d.student },
+        { label: 'Deadline', value: d.deadlineOn },
+        { label: 'Courses still waiting', value: String(d.pendingCourses) },
+        { label: 'Reference number', value: ref },
+      ] },
+    });
+  },
+
+  /** PRG-02: the deadline has passed and courses are still undecided. */
+  deadlineOverdue(ctx: EmailContext, d: { name: string; audience: 'student' | 'staff'; student: string; deadlineOn: string; daysOver: number; pendingCourses: number; months: number; transcriptId: string }): Email {
+    const ref = refOf(d.transcriptId);
+    const student = d.audience === 'student';
+    const n = `${d.pendingCourses} course${d.pendingCourses === 1 ? '' : 's'}`;
+    return render(ctx, {
+      subject: student ? 'Your transfer credit deadline has passed' : `Credit deadline passed: ${d.student}`,
+      preheader: `${n} still waiting on a decision.`,
+      chip: { label: 'Deadline passed', tone: 'danger' },
+      headline: student ? 'Your transfer credit deadline has passed' : 'A transfer credit deadline has passed',
+      greetingName: d.name,
+      paragraphs: student
+        ? [`The ${d.months}-month window to transfer credit ended on ${d.deadlineOn}, and ${n} still ${d.pendingCourses === 1 ? 'is' : 'are'} waiting on a decision. Nothing is denied automatically: a reviewer will look at each remaining course and decide whether it can still be accepted.`]
+        : [`The ${d.months}-month window for ${d.student} ended on ${d.deadlineOn} (${d.daysOver} day${d.daysOver === 1 ? '' : 's'} ago) and ${n} still ${d.pendingCourses === 1 ? 'has' : 'have'} no decision. They are flagged "past deadline"; please decide whether to accept each one.`],
+      cta: student ? { label: 'View your request', path: `/student/transcript/${d.transcriptId}` } : { label: 'Open request', path: `/requests/${d.transcriptId}` },
+      reference: ref,
+      card: { title: 'The deadline', rows: [
+        { label: 'Student', value: d.student },
+        { label: 'Deadline was', value: d.deadlineOn },
+        { label: 'Courses still waiting', value: String(d.pendingCourses) },
+        { label: 'Reference number', value: ref },
+      ] },
+    });
+  },
+
   /** A student asked the reviewers for an update. */
   studentAskedForUpdate(ctx: EmailContext, d: { name: string; student: string; stage: string; waitingDays: number; message?: string | null; transcriptId: string }): Email {
     const ref = refOf(d.transcriptId);
@@ -632,6 +683,8 @@ export function samples(ctx: EmailContext, from: string): { key: TemplateKey; na
     { key: 'requestDecided', name: 'Request completed', audience: 'Student', email: templates.requestDecided(ctx, { firstName: 'Priya', transcriptId: tid, rejected: false, stageName: 'Final approval', reason: null }) },
     { key: 'requestDecided', name: 'Request not approved', audience: 'Student', email: templates.requestDecided(ctx, { firstName: 'Priya', transcriptId: tid, rejected: true, stageName: 'Faculty review', reason: 'The official transcript is missing the fall term.' }) },
     { key: 'stageOverdue', name: 'Stage overdue', audience: 'Approvers + admins', email: templates.stageOverdue(ctx, { name: 'Alex Chen', student: 'Priya Rao', stage: 'Faculty review', days: 3, dueAt: new Date(Date.now() - 3 * 86_400_000), transcriptId: tid }) },
+    { key: 'deadlineApproaching', name: 'Credit deadline approaching (90/30/7 days)', audience: 'Student + approvers', email: templates.deadlineApproaching(ctx, { name: 'Priya', audience: 'student', student: 'Priya Rao', deadlineOn: '2027-01-15', daysLeft: 30, pendingCourses: 3, months: 12, transcriptId: tid }) },
+    { key: 'deadlineOverdue', name: 'Credit deadline passed', audience: 'Student + approvers', email: templates.deadlineOverdue(ctx, { name: 'Alex Chen', audience: 'staff', student: 'Priya Rao', deadlineOn: '2026-09-01', daysOver: 4, pendingCourses: 2, months: 12, transcriptId: tid }) },
     { key: 'studentAskedForUpdate', name: 'Student asked for an update', audience: 'Approvers', email: templates.studentAskedForUpdate(ctx, { name: 'Alex Chen', student: 'Priya Rao', stage: 'Faculty review', waitingDays: 5, message: 'I need to register for spring classes soon.', transcriptId: tid }) },
     { key: 'statusUpdate', name: 'Status update from a reviewer', audience: 'Student', email: templates.statusUpdate(ctx, { firstName: 'Priya', stage: 'Faculty review', message: 'We will get back to you shortly.', transcriptId: tid }) },
     { key: 'appealReceived', name: 'New appeal', audience: 'Faculty + admins', email: templates.appealReceived(ctx, { name: 'Alex Chen', code: 'CS 2000', title: 'Discrete Structures', transcriptId: tid }) },

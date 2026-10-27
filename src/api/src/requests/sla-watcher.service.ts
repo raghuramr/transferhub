@@ -3,6 +3,9 @@ import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
 import { EmailService } from '../common/email.service';
 import { templates } from '../common/email-templates';
+import { SchemaService } from '../policy/schema.service';
+import { CreditDeadlineService } from '../policy/credit-deadline.service';
+import { thresholdFor } from '../policy/credit-deadline';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 
@@ -28,6 +31,8 @@ export class SlaWatcherService implements OnModuleInit, OnModuleDestroy {
     private email: EmailService,
     private workflows: WorkflowsService,
     private engine: WorkflowEngineService,
+    private schema: SchemaService,
+    private deadlines: CreditDeadlineService,
   ) {}
 
   onModuleInit() {
@@ -78,10 +83,87 @@ export class SlaWatcherService implements OnModuleInit, OnModuleDestroy {
         this.warnedMissingColumn = true;
         this.logger.warn(`Overdue sweep skipped: ${(e as Error).message}`);
       }
+    }
+    // PRG-02 credit-deadline reminders: independent of the stage sweep (runs even if that one failed), never breaks it.
+    try {
+      await this.deadlineSweep();
+    } catch (e) {
+      this.logger.warn(`Credit-deadline sweep failed: ${(e as Error).message}`);
     } finally {
       this.running = false;
     }
     return escalated;
+  }
+
+  /**
+   * Emails the student and the approvers once per threshold (90, 30, 7 days before the credit deadline, and once it
+   * has passed) for requests that still have courses waiting on a decision. The (request, threshold) row in
+   * CreditDeadlineNotices is claimed BEFORE sending, so restarts and a second instance never repeat a notice.
+   * Requests whose deadline is only an estimate (no entry term on file) and previews are skipped.
+   * Returns how many requests were notified. Does nothing until migration 024 is applied.
+   */
+  async deadlineSweep(now: Date = new Date()): Promise<number> {
+    if (!(await this.schema.deadlineReady()) || !(await this.schema.policyReady())) return 0;
+    const cand = await this.db.query<{ Id: string; StudentUserId: string; Email: string; FirstName: string; LastName: string; Pending: number; StageId: number | null }>(
+      `SELECT TOP 500 x.* FROM (
+         SELECT t.Id, t.StudentUserId, u.Email, u.FirstName, u.LastName,
+                (SELECT COUNT(*) FROM TranscriptCourses tc
+                  WHERE tc.TranscriptId = t.Id AND tc.Lane NOT IN ('not_eligible', 'applied') AND ISNULL(tc.IsOutsideUS, 0) = 0
+                    AND tc.Status NOT IN ('decided', 'posted')
+                    AND NOT EXISTS (SELECT 1 FROM Evaluations e WHERE e.TranscriptCourseId = tc.Id AND e.Status IN ('decided', 'posted'))) AS Pending,
+                (SELECT TOP 1 ts.WorkflowStageId FROM TranscriptStages ts
+                  WHERE ts.TranscriptId = t.Id AND ts.Status = 'active' AND ts.StageType <> 'system' ORDER BY ts.StageOrder) AS StageId
+         FROM Transcripts t JOIN Users u ON u.Id = t.StudentUserId
+         WHERE ISNULL(t.EvaluationKind, 'official') <> 'preview' AND ISNULL(t.WorkflowStatus, 'active') NOT IN ('approved', 'rejected', 'bypassed')
+       ) x WHERE x.Pending > 0 ORDER BY x.Id`,
+    );
+    if (!cand.recordset.length) return 0;
+    const dl = await this.deadlines.forStudents(cand.recordset.map((c) => c.StudentUserId), now);
+    let notified = 0;
+    for (const c of cand.recordset) {
+      try {
+        const d = dl.get(String(c.StudentUserId).toLowerCase());
+        if (!d || d.isEstimate || !d.deadlineOn || d.daysLeft == null) continue;
+        const key = thresholdFor(d.daysLeft);
+        if (!key) continue;
+        const claim = await this.db.query(
+          `INSERT INTO CreditDeadlineNotices (TranscriptId, ThresholdKey)
+           SELECT @t, @k WHERE NOT EXISTS (SELECT 1 FROM CreditDeadlineNotices WHERE TranscriptId = @t AND ThresholdKey = @k)`,
+          [
+            { name: 't', type: sql.UniqueIdentifier, value: c.Id },
+            { name: 'k', type: sql.VarChar(10), value: key },
+          ],
+        );
+        if (!claim.rowsAffected[0]) continue;
+        notified++;
+        const student = `${c.FirstName} ${c.LastName}`;
+        const staff = (await this.workflows.resolveApprovers(c.StageId)).concat(c.StageId ? [] : await this.workflows.admins());
+        const people: { email: string; name: string; audience: 'student' | 'staff' }[] = [{ email: c.Email, name: c.FirstName, audience: 'student' }];
+        const seen = new Set([c.Email.toLowerCase()]);
+        for (const p of staff) if (!seen.has(p.email.toLowerCase())) { seen.add(p.email.toLowerCase()); people.push({ email: p.email, name: p.name, audience: 'staff' }); }
+        let sent = 0;
+        for (const p of people) {
+          try {
+            const base = { name: p.name, audience: p.audience, student, deadlineOn: d.deadlineOn, pendingCourses: c.Pending, months: d.months, transcriptId: c.Id };
+            await this.email.sendEmail(p.email, key === 'overdue'
+              ? templates.deadlineOverdue(this.email.context, { ...base, daysOver: Math.abs(d.daysLeft) })
+              : templates.deadlineApproaching(this.email.context, { ...base, daysLeft: d.daysLeft }));
+            sent++;
+          } catch (e) {
+            this.logger.warn(`Deadline email to ${p.email} failed: ${(e as Error).message}`);
+          }
+        }
+        await this.db.query(`UPDATE CreditDeadlineNotices SET Recipients = @n WHERE TranscriptId = @t AND ThresholdKey = @k`, [
+          { name: 'n', type: sql.Int, value: sent },
+          { name: 't', type: sql.UniqueIdentifier, value: c.Id },
+          { name: 'k', type: sql.VarChar(10), value: key },
+        ]).catch(() => undefined);
+      } catch (e) {
+        this.logger.warn(`Deadline notice failed for request ${c.Id}: ${(e as Error).message}`);
+      }
+    }
+    if (notified) this.logger.log(`Sent credit-deadline notices for ${notified} request(s)`);
+    return notified;
   }
 
   private async escalate(s: { Id: number; TranscriptId: string; WorkflowStageId: number | null; StageName: string; DueAt: Date; Student: string }) {

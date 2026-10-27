@@ -8,6 +8,7 @@ import { cn } from '../../lib/cn';
 import { GeneralNotes, RequestTimeline, formatDateTime } from '../../components/workflow/RequestTimeline';
 import { DocumentsPanel, NoteComposer, ReminderPanel } from '../../components/workflow/RequestPanels';
 import { CreditHubCard, EvaluationKindBanner, FlagList } from '../../components/policy/PolicyBits';
+import DeadlineBadge, { formatDeadlineDate } from '../../components/policy/DeadlineBadge';
 import StudentProfileCard from '../../components/policy/StudentProfileCard';
 import ExchangePanel, { OpenRequestsBanner } from '../../components/transfers/ExchangePanel';
 import type { RequestTimeline as TimelineData, StageBrief, TimelineStage } from '../../types/workflow';
@@ -310,6 +311,12 @@ export default function RequestReview() {
             {tl.transcript.institutionName}{tl.transcript.targetInstitutionName && <> → {tl.transcript.targetInstitutionName}</>} · submitted {formatDateTime(tl.transcript.receivedAt)}
           </p>
           {tl.transcript.workflow && <p className="mt-0.5 text-xs text-gray-400">Workflow: {tl.transcript.workflow.name}</p>}
+          {tl.transcript.deadline && tl.transcript.evaluationKind !== 'preview' && (
+            <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+              <DeadlineBadge deadline={tl.transcript.deadline} />
+              {tl.transcript.deadline.deadlineOn && <span>all credit due by {formatDeadlineDate(tl.transcript.deadline.deadlineOn)} ({tl.transcript.deadline.months} months from start)</span>}
+            </p>
+          )}
         </div>
         {wfStatus && (
           <span className={cn('rounded-full px-3 py-1 text-sm font-medium capitalize', WORKFLOW_BADGE[wfStatus])}>
