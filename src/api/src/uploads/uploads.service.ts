@@ -265,4 +265,37 @@ export class UploadsService {
     );
     return res.recordset.map(mapUpload);
   }
+
+  /**
+   * Deletes a private upload (row + stored file) for its owner, but ONLY when nothing else points at it.
+   * "Something else" = any foreign key into Uploads other than `ignoreTables` (found from the catalog, so new
+   * features that reference uploads are protected automatically), or the upload being tied to a transfer request.
+   * Returns false (and deletes nothing) when it is still in use.
+   */
+  async deleteIfUnreferenced(id: string, ownerUserId: string, ignoreTables: string[] = []): Promise<boolean> {
+    const row = await this.findById(id);
+    if (String(row.OwnerUserId).toLowerCase() !== String(ownerUserId).toLowerCase()) throw new ForbiddenException('You do not have access to this file');
+    if (row.IsPublic) return false;
+    if ((row as { TranscriptId?: string | null }).TranscriptId) return false;
+    const fks = await this.db.query<{ T: string; C: string }>(
+      `SELECT OBJECT_NAME(fkc.parent_object_id) AS T, COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS C
+         FROM sys.foreign_key_columns fkc WHERE fkc.referenced_object_id = OBJECT_ID('Uploads')`,
+    );
+    for (const fk of fks.recordset) {
+      if (ignoreTables.includes(fk.T)) continue;
+      const r = await this.db.query<{ N: number }>(
+        `SELECT COUNT(*) AS N FROM [${fk.T.replace(/]/g, ']]')}] WHERE [${fk.C.replace(/]/g, ']]')}] = @id`,
+        [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+      );
+      if (r.recordset[0].N > 0) return false;
+    }
+    const meta = this.resolve(row);
+    await this.db.query(`DELETE FROM Uploads WHERE Id = @id`, [{ name: 'id', type: sql.UniqueIdentifier, value: id }]);
+    try {
+      await this.storage.remove(meta.provider, meta.container, meta.blobName);
+    } catch {
+      /* the row is gone; an orphaned blob is harmless */
+    }
+    return true;
+  }
 }
