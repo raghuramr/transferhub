@@ -3,7 +3,7 @@ import * as sql from 'mssql';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import { ScopeService } from '../policy/scope.service';
 import { Viewer } from '../requests/requests.service';
-import { BUCKET_LABEL, TransferBucket, statusBucket } from './exchange.logic';
+import { BUCKET_LABEL, TransferBucket } from './exchange.logic';
 import { ExchangeService } from './exchange.service';
 
 export type Direction = 'incoming' | 'outgoing';
@@ -169,7 +169,7 @@ export class TransfersService {
       page,
       pageSize,
       total: total.recordset[0]?.N ?? 0,
-      rows: rows.recordset.map((r) => ({ ...r, bucketLabel: BUCKET_LABEL[statusBucket(r.bucket === 'in_review' ? 'active' : r.bucket === 'approved' ? 'approved' : r.bucket === 'rejected' ? 'rejected' : null, r.bucket === 'new' ? 'received' : 'complete')] })),
+      rows: rows.recordset.map((r) => ({ ...r, bucketLabel: BUCKET_LABEL[r.bucket as TransferBucket] })),
     };
   }
 }

@@ -10,7 +10,7 @@ import { Avatar } from '../shared/Avatar';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
-  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ScanText, ShieldQuestion, ScanLine,
+  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ScanText, ShieldQuestion, ScanLine, ArrowRightLeft,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -31,6 +31,7 @@ const navItems: Record<Role, NavEntry[]> = {
   faculty: [
     { to: '/faculty', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     { to: '/requests', label: 'Approval queue', icon: <Inbox size={18} /> },
+    { to: '/transfers', label: 'Transfers', icon: <ArrowRightLeft size={18} /> },
     { to: '/faculty/queue', label: 'My evaluations', icon: <ClipboardList size={18} /> },
     { to: '/appeals', label: 'Appeals', icon: <Gavel size={18} /> },
     { to: '/faculty/verification', label: 'Course verification', icon: <ShieldQuestion size={18} /> },
@@ -40,6 +41,7 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
     // Operations
     { to: '/requests', label: 'Approval queue', icon: <Inbox size={18} />, group: 'Operations' },
+    { to: '/transfers', label: 'Transfers', icon: <ArrowRightLeft size={18} /> },
     { to: '/appeals', label: 'Appeals', icon: <Gavel size={18} /> },
     { to: '/admin/transcripts', label: 'Transcripts', icon: <FileText size={18} /> },
     { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },
@@ -65,6 +67,7 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/superadmin/agencies', label: 'Agencies', icon: <Handshake size={18} /> },
     // Operations
     { to: '/requests', label: 'Approval queue', icon: <Inbox size={18} />, group: 'Operations' },
+    { to: '/transfers', label: 'Transfers', icon: <ArrowRightLeft size={18} /> },
     { to: '/appeals', label: 'Appeals', icon: <Gavel size={18} /> },
     { to: '/admin/transcripts', label: 'Transcripts', icon: <FileText size={18} /> },
     { to: '/admin/courses', label: 'Course Database', icon: <BookOpen size={18} /> },

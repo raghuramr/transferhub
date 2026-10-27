@@ -60,6 +60,8 @@ import AiControls from './pages/superadmin/AiControls';
 import RequestsQueue from './pages/staff/RequestsQueue';
 import RequestReview from './pages/staff/RequestReview';
 import AppealsQueue from './pages/staff/AppealsQueue';
+import Transfers from './pages/staff/Transfers';
+import TransferDetail from './pages/staff/TransferDetail';
 
 // Custom Pages (CMS) — public-facing view, any authenticated role
 import CmsPageView from './pages/cms/CmsPageView';
@@ -186,6 +188,11 @@ export default function App() {
         <Route path="/requests" element={<RequireAuth roles={['faculty','admin','super_admin']}><AppLayout /></RequireAuth>}>
           <Route index element={<RequestsQueue />} />
           <Route path=":id" element={<RequestReview />} />
+        </Route>
+        {/* Transfers between universities: incoming / outgoing, document requests, reminders */}
+        <Route path="/transfers" element={<RequireAuth roles={['faculty','admin','super_admin']}><AppLayout /></RequireAuth>}>
+          <Route index element={<Transfers />} />
+          <Route path=":id" element={<TransferDetail />} />
         </Route>
         <Route path="/appeals" element={<RequireAuth roles={['faculty','admin','super_admin']}><AppLayout /></RequireAuth>}>
           <Route index element={<AppealsQueue />} />

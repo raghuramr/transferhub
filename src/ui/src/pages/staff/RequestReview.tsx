@@ -9,6 +9,7 @@ import { GeneralNotes, RequestTimeline, formatDateTime } from '../../components/
 import { DocumentsPanel, NoteComposer, ReminderPanel } from '../../components/workflow/RequestPanels';
 import { CreditHubCard, EvaluationKindBanner, FlagList } from '../../components/policy/PolicyBits';
 import StudentProfileCard from '../../components/policy/StudentProfileCard';
+import ExchangePanel, { OpenRequestsBanner } from '../../components/transfers/ExchangePanel';
 import type { RequestTimeline as TimelineData, StageBrief, TimelineStage } from '../../types/workflow';
 
 const errMsg = (e: unknown, fallback: string) => {
@@ -333,6 +334,8 @@ export default function RequestReview() {
         ) : undefined}
       />
 
+      <OpenRequestsBanner transcriptId={id!} />
+
       {!tl.transcript.workflow && tl.transcript.evaluationKind !== 'preview' && (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           This request was submitted before approval workflows existed, so it has no stages yet.
@@ -358,6 +361,7 @@ export default function RequestReview() {
             />
             <div className="mt-6"><GeneralNotes notes={tl.generalNotes} /></div>
           </div>
+          <ExchangePanel transcriptId={id!} />
         </div>
         <div className="min-w-0 space-y-4">
           <StudentProfileCard p={tl.student} />
