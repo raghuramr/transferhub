@@ -5,6 +5,7 @@
  */
 
 import type { CreditDeadline } from '../policy/credit-deadline';
+import type { ExamResult } from '../policy/exam-credit';
 
 export type Bucket = 'secure' | 'likely' | 'pending' | 'not_counted';
 
@@ -36,6 +37,14 @@ export interface ProgressCourseRow {
   isOutsideUS?: boolean;
   appealStatus?: string | null;
   hasSyllabus?: boolean;
+  /** OUT-06: every BU course this course counts as, when it counts as more than one (credits per course). */
+  mappings?: MappedBuCourse[];
+}
+
+export interface MappedBuCourse {
+  code: string;
+  title?: string;
+  credits: number | null;
 }
 
 export interface ProgressRequestRow {
@@ -51,6 +60,8 @@ export interface ProgressRequestRow {
 export interface ProgressOptions {
   cap: number;
   examCredits: number;
+  /** Each exam with its state against the minimum score (ExamCreditService); optional. */
+  exams?: ExamResult[];
   likelyThreshold: number;
   hubRequirements: number;
   hubCocurricularAllowed: number;
@@ -70,6 +81,8 @@ export interface CourseProgress {
   originalCredits: number;
   convertedCredits: number;
   awardedCredits: number | null;
+  /** OUT-06: the BU courses this course counts as (empty unless it maps to more than one). */
+  mappings: MappedBuCourse[];
   /** Provisional credit range for this course (only meaningful for secure/likely). */
   low: number;
   high: number;
@@ -101,6 +114,8 @@ export interface ProgressResult {
   hub: { requirements: number; cocurricularAllowed: number; note: string };
   requests: RequestProgress[];
   isProvisional: boolean;
+  /** AP / IB / CLEP / A-level exams and whether each counts toward the cap. */
+  exams: ExamResult[];
   /** PRG-02: when everything must be transferred by, plus how many courses still wait on a decision. */
   deadline: (CreditDeadline & { pendingCourses: number }) | null;
 }
@@ -130,11 +145,14 @@ export function classifyCourse(c: ProgressCourseRow, calendar: string | null, ki
     originalCredits: num(c.originalCredits),
     convertedCredits: converted,
     awardedCredits: c.awardedCredits == null ? null : num(c.awardedCredits),
+    mappings: c.mappings ?? [],
   };
   const out = (bucket: Bucket, low: number, high: number, nextStep: string, buCourse: string | null = null): CourseProgress => ({
     ...base, bucket, low: r2(low), high: r2(high), nextStep, buCourse,
   });
-  const decidedBu = c.decidedBuCode ?? null;
+  const multi = (c.mappings ?? []).length > 1 ? c.mappings! : null;
+  const multiLabel = multi ? multi.map((m) => m.code).join(' + ') : null;
+  const decidedBu = multiLabel ?? c.decidedBuCode ?? null;
   const preview = kind === 'preview';
 
   // 1. Coursework outside the US is never evaluated in this request.
@@ -166,8 +184,11 @@ export function classifyCourse(c: ProgressCourseRow, calendar: string | null, ki
 
   // 4. Exact equivalency applied by the rules engine.
   if (c.lane === 'applied') {
-    if (preview) return out('likely', converted, converted, 'Matches an existing equivalency. Preview only: it becomes official once you are admitted.');
-    return out('secure', converted, converted, 'Matched an existing equivalency and applied automatically.');
+    // One course counting as several BU courses: the credits are the sum of the mappings (never more than converted unless the data says so).
+    const mappedSum = multi && multi.every((m) => m.credits != null) ? r2(multi.reduce((s, m) => s + num(m.credits), 0)) : converted;
+    const how = multiLabel ? `Matches existing equivalencies and counts as ${multiLabel}` : 'Matched an existing equivalency and applied automatically';
+    if (preview) return out('likely', mappedSum, mappedSum, `${multiLabel ? how : 'Matches an existing equivalency'}. Preview only: it becomes official once you are admitted.`, multiLabel);
+    return out('secure', mappedSum, mappedSum, `${how}.`, multiLabel);
   }
 
   // 5. Suggestions (AI or built-in rules) above the threshold, or the likely lane.
@@ -251,6 +272,7 @@ export function buildProgress(requests: ProgressRequestRow[], o: ProgressOptions
     },
     hub: { requirements: o.hubRequirements, cocurricularAllowed: o.hubCocurricularAllowed, note: hubNote },
     requests: reqs,
+    exams: o.exams ?? [],
     deadline: o.deadline ? { ...o.deadline, pendingCourses } : null,
     isProvisional: totals.likelyHigh > 0 || totals.pending > 0 || reqs.some((r) => r.kind === 'preview'),
   };

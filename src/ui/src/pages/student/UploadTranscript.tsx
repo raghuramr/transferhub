@@ -35,12 +35,15 @@ type CourseRow = {
   gradingBasis: string;
   deliveryMode: string;
   courseType: string;
+  /** Optional per-course syllabus: an uploaded file (entityType/documentType 'syllabus') and/or a catalogue link. */
+  syllabus: { id: string; name: string } | null;
+  catalogUrl: string;
 };
 
 type ValidCourseRow = CourseRow & { course: RawExternalCourse };
 
 const EMPTY_COURSE: CourseRow = {
-  courseId: null, topicId: null, credits: '', grade: '', termSeason: '', termYear: '', gradingBasis: 'graded', deliveryMode: 'in_person', courseType: 'lecture',
+  courseId: null, topicId: null, credits: '', grade: '', termSeason: '', termYear: '', gradingBasis: 'graded', deliveryMode: 'in_person', courseType: 'lecture', syllabus: null, catalogUrl: '',
 };
 
 export default function UploadTranscript() {
@@ -155,6 +158,12 @@ export default function UploadTranscript() {
       return;
     }
 
+    const badUrl = validCourses.find((c) => c.catalogUrl.trim() && !/^https?:\/\/\S+$/i.test(c.catalogUrl.trim()));
+    if (badUrl) {
+      setError(`The catalogue link for ${badUrl.course.code} must start with http:// or https://.`);
+      return;
+    }
+
     setError('');
     setSubmitting(true);
     try {
@@ -183,6 +192,8 @@ export default function UploadTranscript() {
           gradingBasis: c.gradingBasis || undefined,
           deliveryMode: c.deliveryMode || undefined,
           courseType: c.courseType || undefined,
+          syllabusUploadId: c.syllabus?.id || undefined,
+          catalogUrl: c.catalogUrl.trim() || undefined,
         })),
       });
       navigate(`${basePath}/transcript/${(res.data as { id: string }).id}`);
@@ -371,6 +382,24 @@ function CourseRowFields({
   removable: boolean;
 }) {
   const { topics } = useTopicCatalog(row.courseId);
+  const [sylUploading, setSylUploading] = useState(false);
+  const [sylError, setSylError] = useState('');
+
+  const attachSyllabus = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setSylUploading(true);
+    setSylError('');
+    try {
+      const res = await uploadsApi.upload(file, { entityType: 'syllabus', documentType: 'syllabus' });
+      onChange({ syllabus: { id: (res.data as { id: string }).id, name: file.name } });
+    } catch {
+      setSylError('Could not upload the syllabus. You can skip it and send it later.');
+    } finally {
+      setSylUploading(false);
+    }
+  };
 
   return (
     <div className="border border-gray-200 rounded-lg p-4">
@@ -439,6 +468,33 @@ function CourseRowFields({
         </div>
         <div className="flex items-end justify-end">
           <button type="button" onClick={onRemove} disabled={!removable} className="pb-2 text-sm text-gray-400 hover:text-red-500 disabled:opacity-30">Remove</button>
+        </div>
+      </div>
+      <div className="mt-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/60 p-3" data-testid="syllabus-slot">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="min-w-0">
+            <span className="mb-1 block text-xs font-medium text-gray-500">Syllabus <span className="font-normal text-gray-400">(optional)</span></span>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">
+                {sylUploading ? <Loader2 size={14} className="animate-spin" /> : <Paperclip size={14} />}
+                {sylUploading ? 'Uploading…' : row.syllabus ? 'Replace' : 'Attach syllabus'}
+                <input type="file" accept=".pdf,.doc,.docx,image/*" className="hidden" onChange={attachSyllabus} disabled={sylUploading} />
+              </label>
+              {row.syllabus && !sylUploading && (
+                <span className="flex min-w-0 items-center gap-1.5 text-sm text-gray-600">
+                  <CheckCircle2 size={14} className="shrink-0 text-green-600" />
+                  <span className="truncate">{row.syllabus.name}</span>
+                  <button type="button" onClick={() => onChange({ syllabus: null })} className="text-gray-400 hover:text-red-500" aria-label="Remove syllabus"><X size={14} /></button>
+                </span>
+              )}
+            </div>
+            {sylError && <p className="mt-1 text-xs text-red-600">{sylError}</p>}
+            <p className="mt-1 text-xs text-gray-400">PDF, Word or image. A syllabus helps the reviewer match this course faster.</p>
+          </div>
+          <div className="min-w-0">
+            <label className="mb-1 block text-xs font-medium text-gray-500">Catalogue link <span className="font-normal text-gray-400">(optional)</span></label>
+            <input value={row.catalogUrl} onChange={(e) => onChange({ catalogUrl: e.target.value })} placeholder="https://catalog.college.edu/course/…" type="url" inputMode="url" className={fieldCls} />
+          </div>
         </div>
       </div>
       {(row.gradingBasis !== 'graded' || ['internship', 'research', 'military', 'life_experience'].includes(row.courseType)) && (

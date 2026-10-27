@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarClock, ChevronDown, GraduationCap, Info, Upload } from 'lucide-react';
 import { DEADLINE_TONE, daysText, formatDeadlineDate } from '../policy/DeadlineBadge';
-import type { CreditDeadline } from '../../types/policy';
+import type { CreditDeadline, ExamResult } from '../../types/policy';
 import { api } from '../../lib/api';
 import { cn } from '../../lib/cn';
 
@@ -15,6 +15,8 @@ interface CourseProgress {
   id: string; courseCode: string; courseTitle: string; lane: string; bucket: Bucket; grade: string | null;
   originalCredits: number; convertedCredits: number; awardedCredits: number | null; low: number; high: number;
   buCourse: string | null; nextStep: string;
+  /** One course counting as several BU courses (OUT-06). */
+  mappings?: { code: string; title?: string; credits: number | null }[];
 }
 interface RequestProgress {
   id: string; institutionName: string; kind: string; status: string; receivedAt: string | null; totals: Totals; courses: CourseProgress[];
@@ -25,6 +27,7 @@ export interface ProgressResult {
   hub: { requirements: number; cocurricularAllowed: number; note: string };
   requests: RequestProgress[];
   isProvisional: boolean;
+  exams?: ExamResult[];
   deadline?: (CreditDeadline & { pendingCourses: number }) | null;
 }
 
@@ -221,6 +224,16 @@ export function DegreeProgressCard({ studentUserId, className }: Props) {
 
         {data.deadline && data.deadline.state !== 'unknown' && data.deadline.deadlineOn && <DeadlineBlock d={data.deadline} />}
 
+        {(data.exams ?? []).some((x) => x.state !== 'counts') && (
+          <ul data-testid="exam-notes" className="mt-3 space-y-1.5">
+            {(data.exams ?? []).filter((x) => x.state !== 'counts').map((x, i) => (
+              <li key={i} className={cn('flex gap-2 rounded-lg px-3 py-2 text-xs', x.state === 'below_minimum' ? 'bg-gray-100 text-gray-700' : 'bg-amber-50 text-amber-800')}>
+                <Info size={13} className="mt-0.5 shrink-0" />{x.message}
+              </li>
+            ))}
+          </ul>
+        )}
+
         {exam > 0 && <p className="mt-3 text-xs text-gray-500">Includes {fmt(exam)} AP / IB / A-level credits counted toward the same limit.</p>}
 
         <div className="mt-4 flex gap-2 rounded-xl bg-brand-50/70 border border-brand-100 px-3 py-2.5 text-xs text-brand-900">
@@ -266,6 +279,13 @@ export function DegreeProgressCard({ studentUserId, className }: Props) {
                                 <span className="font-normal text-gray-500"> {c.courseTitle}</span>
                               </p>
                               <p className="mt-0.5 text-xs text-gray-600 break-words">{c.nextStep}</p>
+                              {(c.mappings?.length ?? 0) > 1 && (
+                                <ul className="mt-1 space-y-0.5 text-xs text-gray-500" data-testid="multi-mapping">
+                                  {c.mappings!.map((m) => (
+                                    <li key={m.code}>{m.code}{m.title ? ` ${m.title}` : ''}{m.credits != null ? ` (${m.credits} cr)` : ''}</li>
+                                  ))}
+                                </ul>
+                              )}
                             </div>
                             <div className="text-right shrink-0">
                               <span className={cn('inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset', BUCKETS[c.bucket].pill)}>

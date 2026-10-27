@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { DecideEvaluationDto, AssignEvaluationDto } from './dto/create-evaluation.dto';
+import { CourseMappingsService } from '../policy/course-mappings.service';
 
 interface EvaluationListRow {
   Id: string;
@@ -39,7 +40,7 @@ interface AiCandidateRow {
 
 @Injectable()
 export class EvaluationsService {
-  constructor(private db: DatabaseService) {}
+  constructor(private db: DatabaseService, private mappings: CourseMappingsService) {}
 
   /**
    * assignedToMe=true + userId means "my queue": evaluations already
@@ -142,15 +143,24 @@ export class EvaluationsService {
     ]);
     if (!exists.recordset[0]) throw new NotFoundException('Evaluation not found');
 
+    // OUT-06: one external course counting as several BU courses.
+    const multi = dto.mappings?.length ? dto.mappings : dto.buCourseIds?.map((buCourseId) => ({ buCourseId }));
+    if (multi && multi.length > 1) {
+      const r = await this.mappings.recordMultiDecision(id, decidedBy, dto.outcome, multi, dto.notes ?? null);
+      return { message: 'Decision recorded', total: r.total, mappings: r.mappings };
+    }
+    const only = multi?.[0]; // a one-element list is just the single-course path
+
     await this.db.execute('sp_RecordDecision', [
       { name: 'EvaluationId', type: sql.UniqueIdentifier, value: id },
       { name: 'DecidedBy', type: sql.UniqueIdentifier, value: decidedBy },
       { name: 'Outcome', type: sql.VarChar(20), value: dto.outcome },
-      { name: 'BUCourseId', type: sql.Int, value: dto.buCourseId ?? null },
-      { name: 'AwardedCredits', type: sql.Decimal(5, 2), value: dto.awardedCredits ?? null },
+      { name: 'BUCourseId', type: sql.Int, value: only?.buCourseId ?? dto.buCourseId ?? null },
+      { name: 'AwardedCredits', type: sql.Decimal(5, 2), value: (only as { awardedCredits?: number } | undefined)?.awardedCredits ?? dto.awardedCredits ?? null },
       { name: 'EvaluatorNotes', type: sql.NVarChar(sql.MAX), value: dto.notes ?? null },
     ]);
 
+    await this.mappings.clearDecisionMappings(id).catch(() => undefined);
     return { message: 'Decision recorded' };
   }
 

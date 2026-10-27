@@ -740,7 +740,7 @@ Several ways to get a student's data in; every channel ends at the same "confirm
   (4+4+3), not 12. Reset does not clear `AiMatchCache`.
 
 ## PENDING (parked by the user 2026-10-27; to be worked on together "tonight", do not start unprompted)
-**Medium-sized gaps** (from `_designs/GAP_ANALYSIS.md`; Gap 5 and PRG-02 are done):
+**Medium-sized gaps** (items 1-6 below were BUILT on 2026-10-27, see the 'medium gaps built' session note; item 7 deck refresh remains):
 1. Side-by-side course comparison with highlighted overlapping topics/outcomes + credit math in the evaluator workbench (RequestReview).
 2. OUT-06 one external course -> several BU courses (split/combine, e.g. NU CHEM 1161), currently one BU course per decision.
 3. Programme rules PRG-04..08 (Econ max 4 courses at 200+, Biology 5 BI at BU, Psych/Math rules, substitutions like MA 242 <-> CS 132) as a rules table.
@@ -752,6 +752,21 @@ Several ways to get a student's data in; every channel ends at the same "confirm
 backtest (AI Controls > Usage) for a real number; click through the Demo scenario page; set `StudentProfiles.StartDate` has no UI yet.
 **Open question**: public `/auth/universities` lists BSCC/PVTC (community colleges), so a registrant can pick one as target.
 **Waiting on infra**: `ANTHROPIC_API_KEY`.
+
+## Session 2026-10-27 (e): medium gaps built (branch `claude/medium-gaps`; apply 025 -> 029 + seeds 018, 019; all SQL UNTESTED)
+- **025** `Syllabi.UploadId/CatalogUrl`: per-course syllabus attach + catalogue URL on the submit form (UploadTranscript), shown on student/staff pages.
+- **Side-by-side compare**: `GET /comparison/evaluation/:id` (staff only, needs canWorkRequest) + `CourseComparison.tsx` panel in RequestReview
+  (overlap highlight, credit math, candidate switcher, one-click decide via POST /evaluations/:id/decide).
+- **026** one-to-many: `EvaluationCourseMappings`, `Equivalencies.GroupKey`; decide API accepts `mappings[]`/`buCourseIds[]`; multi decision runs in TS around
+  the unchanged `sp_RecordDecision` (one transaction); workflow-engine/appeals paths still record one BU course; no faculty UI to pick several yet.
+- **027 + seed 018** `ProgramRules` (12 BU rules PRG-03..08) + engine `policy/programme-rules*.ts` (flags only, never denies) + Workflows > Programme rules tab.
+- **028 + seed 019** `ExamCreditRules` (AP>=3, IB HL>=5, CLEP>=50, A-level C - defaults, confirm with BU), CLEP allowed in StudentExamCredits, doc types
+  credential_evaluation / certified_translation / exam_score_report (conditional checklist), Exam credit card in Transfer rules. CLEP not yet offered in the
+  registration form.
+- **Tests/docs**: `npm run test:unit` (src/api), `npm run smoke -- --base <url>`, `database/tests/{smoke,triage-contract}.sql` (run with sqlcmd, not via the
+  migration runner), `docs/TESTING.md`, `docs/BU_OPEN_QUESTIONS.md` (5-credit lab rule CR-04 etc., Discovery Log rows).
+- **Bug fixed by migration 029**: `sp_TriageCourse` ignored `Equivalencies.Outcome` in the 'applied' check, so a `bu_only` mapping returned lane `applied`; now it
+  returns `elective_only` (PRG-03). Existing triaged rows are not rewritten. `triage-contract.sql` case 8 expects `elective_only`. Apply 029 with the others.
 
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)

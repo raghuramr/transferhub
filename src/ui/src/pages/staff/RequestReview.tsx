@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ArrowLeft, Check, Coins, Flag, FastForward, Loader2, Play, RotateCcw, Sparkles, Undo2, X, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, ChevronDown, ChevronRight, Coins, FileCheck2, Flag, FastForward, Loader2, Play, RotateCcw, Sparkles, Undo2, X, Zap } from 'lucide-react';
 import { requestsApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
 import { cn } from '../../lib/cn';
@@ -10,6 +10,7 @@ import { DocumentsPanel, NoteComposer, ReminderPanel } from '../../components/wo
 import { CreditHubCard, EvaluationKindBanner, FlagList } from '../../components/policy/PolicyBits';
 import DeadlineBadge, { formatDeadlineDate } from '../../components/policy/DeadlineBadge';
 import StudentProfileCard from '../../components/policy/StudentProfileCard';
+import CourseComparison from '../../components/workflow/CourseComparison';
 import ExchangePanel, { OpenRequestsBanner } from '../../components/transfers/ExchangePanel';
 import type { RequestTimeline as TimelineData, StageBrief, TimelineStage } from '../../types/workflow';
 
@@ -61,7 +62,21 @@ function AcceptSuggestions({ brief, requestId, onDone }: { brief: StageBrief; re
   );
 }
 
-function Brief({ brief, evalBase, requestId, canAct, onDone }: { brief: StageBrief; evalBase: string; requestId: string; canAct: boolean; onDone: (t: TimelineData) => void }) {
+function Brief({ brief, evalBase, requestId, canAct, onDone, syllabusCourseIds }: { brief: StageBrief; evalBase: string; requestId: string; canAct: boolean; onDone: (t: TimelineData) => void; syllabusCourseIds: Set<string> }) {
+  // Course-row expansion: the side-by-side comparison. The panel is sized to the scroll wrapper (not the
+  // table) so it never forces a horizontal scroll of the page on a phone.
+  const [openEval, setOpenEval] = useState<string | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [wrapW, setWrapW] = useState(0);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => setWrapW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const t = brief.totals;
   const chips = [
     { label: 'Applied', n: t.applied, cls: 'bg-emerald-50 text-emerald-700' },
@@ -104,17 +119,21 @@ function Brief({ brief, evalBase, requestId, canAct, onDone }: { brief: StageBri
         </div>
       )}
       {canAct && <AcceptSuggestions brief={brief} requestId={requestId} onDone={onDone} />}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" ref={wrapRef}>
         <table className="w-full text-left text-sm">
           <thead className="text-xs uppercase tracking-wide text-gray-400">
             <tr><th className="py-1.5 pr-3">Course</th><th className="pr-3">Grade</th><th className="pr-3">Credits</th><th className="pr-3">AI suggestion</th><th className="pr-3">Decision</th><th /></tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {brief.courses.map((c) => (
-              <tr key={c.code + c.title}>
+              <Fragment key={c.code + c.title}>
+              <tr>
                 <td className="py-2 pr-3">
                   <div className="font-medium text-gray-800">{c.code}</div><div className="text-xs text-gray-500">{c.title}</div>
                   <FlagList flags={c.flags} compact />
+                  {c.courseId && syllabusCourseIds.has(String(c.courseId).toLowerCase()) && (
+                    <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-700" data-testid="syllabus-attached"><FileCheck2 size={12} /> Syllabus attached</p>
+                  )}
                   {canAct && c.courseId && c.flags?.some((f) => f.code === 'pass_fail') && (
                     <button type="button" onClick={() => void requestsApi.passFailException(requestId, c.courseId!, true).then((r) => onDone(r.data.timeline))}
                       className="mt-1 text-xs font-medium text-brand-800 hover:underline">
@@ -139,10 +158,26 @@ function Brief({ brief, evalBase, requestId, canAct, onDone }: { brief: StageBri
                 <td className="pr-3 text-xs text-gray-600">
                   {c.decided ? `${c.decided.outcome?.replace('_', ' ') ?? ''}${c.decided.code ? ` → ${c.decided.code}` : ''}${c.decided.awardedCredits != null ? ` (${c.decided.awardedCredits} cr)` : ''}` : '—'}
                 </td>
-                <td className="text-right">
+                <td className="whitespace-nowrap text-right">
+                  {c.evaluationId && (
+                    <button type="button" onClick={() => setOpenEval((o) => (o === c.evaluationId ? null : c.evaluationId))} aria-expanded={openEval === c.evaluationId}
+                      className="mr-3 inline-flex items-center gap-0.5 text-xs font-medium text-brand-800 hover:underline">
+                      {openEval === c.evaluationId ? <ChevronDown size={13} /> : <ChevronRight size={13} />} Compare
+                    </button>
+                  )}
                   {c.evaluationId && <Link to={`${evalBase}/${c.evaluationId}`} className="text-xs font-medium text-brand-800 hover:underline">Open</Link>}
                 </td>
               </tr>
+              {c.evaluationId && openEval === c.evaluationId && (
+                <tr>
+                  <td colSpan={6} className="p-0 pb-3">
+                    <div className="sticky left-0" style={{ width: wrapW > 0 ? wrapW : undefined }}>
+                      <CourseComparison evaluationId={c.evaluationId} requestId={requestId} canDecide={canAct} />
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
           </tbody>
         </table>
@@ -359,7 +394,8 @@ export default function RequestReview() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
           <CreditHubCard credit={tl.credit} />
-          {active?.aiBrief && <Brief brief={active.aiBrief} evalBase={evalBase} requestId={id!} canAct={tl.permissions.canAct} onDone={set} />}
+          {active?.aiBrief && <Brief brief={active.aiBrief} evalBase={evalBase} requestId={id!} canAct={tl.permissions.canAct} onDone={set}
+            syllabusCourseIds={new Set(tl.documents.uploaded.filter((d) => d.docTypeKey === 'syllabus' && d.transcriptCourseId).map((d) => String(d.transcriptCourseId).toLowerCase()))} />}
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="mb-4 text-base font-semibold text-gray-900">Progress</h2>
             <RequestTimeline

@@ -1,3 +1,4 @@
+import { CourseMappingsService } from '../policy/course-mappings.service';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
@@ -93,6 +94,7 @@ export class TranscriptsService {
     private workflowEngine: WorkflowEngineService,
     private policy: TransferPolicyService,
     private schema: SchemaService,
+    private courseMappings: CourseMappingsService,
   ) {}
   private readonly logger = new Logger(TranscriptsService.name);
 
@@ -174,6 +176,16 @@ export class TranscriptsService {
       originalFileName = upload.fileName;
     }
 
+    // Per-course syllabus attachments: ownership is re-checked up front (before anything is written), so a
+    // syllabusUploadId can never attach someone else's file. Optional and independent of the transcript upload.
+    const syllabusUploads = new Map<number, { id: string; blobName: string; fileName: string }>();
+    for (let i = 0; i < dto.courses.length; i++) {
+      const sid = dto.courses[i].syllabusUploadId;
+      if (!sid) continue;
+      const up = await this.uploadsService.getForAuthenticatedUser(sid, { id: submittedByUserId, role: submittedByRole });
+      syllabusUploads.set(i, { id: sid, blobName: up.blobName, fileName: up.fileName });
+    }
+
     const transcriptRes = await this.db.query<{ Id: string }>(
       `INSERT INTO Transcripts (StudentUserId, SubmittedById, InstitutionId, Status, Notes, FileStoragePath, OriginalFileName)
        OUTPUT inserted.Id
@@ -199,7 +211,7 @@ export class TranscriptsService {
       ]);
     }
 
-    for (const course of dto.courses) {
+    for (const [courseIndex, course] of dto.courses.entries()) {
       const externalCourseId = await this.findOrCreateExternalCourse(
         institutionId,
         course.courseCode,
@@ -223,6 +235,7 @@ export class TranscriptsService {
         ],
       );
       const transcriptCourseId = tcRes.recordset[0].Id;
+      await this.attachSyllabus(transcriptId, transcriptCourseId, submittedByUserId, syllabusUploads.get(courseIndex) ?? null, course.catalogUrl ?? null);
       if (policyReady) {
         await this.db.query(
           `UPDATE TranscriptCourses SET TermSeason = @ts, TermYear = @ty, GradingBasis = @gb, DeliveryMode = @dm, CourseType = @ct, IsOutsideUS = @os
@@ -281,6 +294,85 @@ export class TranscriptsService {
     }
 
     return this.findById(transcriptId);
+  }
+
+  /**
+   * Links an optional per-course syllabus (uploaded file and/or catalogue URL). Never fails a submission.
+   * - the file is recorded as a 'syllabus' TranscriptDocument, which is exactly what the document checklist
+   *   counts (documentChecklist: per-course syllabi), so no workflow-engine change is needed;
+   * - a Syllabi row keeps the course-level link (+ UploadId / CatalogUrl when migration 025 is applied).
+   */
+  private async attachSyllabus(
+    transcriptId: string,
+    transcriptCourseId: string,
+    userId: string,
+    upload: { id: string; blobName: string; fileName: string } | null,
+    catalogUrl: string | null,
+  ) {
+    if (!upload && !catalogUrl) return;
+    try {
+      if (upload && (await this.schema.has('TranscriptDocuments'))) {
+        await this.db.query(
+          `INSERT INTO TranscriptDocuments (TranscriptId, TranscriptCourseId, DocTypeKey, UploadId, FileName, CreatedBy)
+           VALUES (@t, @c, 'syllabus', @u, @f, @by)`,
+          [
+            { name: 't', type: sql.UniqueIdentifier, value: transcriptId },
+            { name: 'c', type: sql.UniqueIdentifier, value: transcriptCourseId },
+            { name: 'u', type: sql.UniqueIdentifier, value: upload.id },
+            { name: 'f', type: sql.NVarChar(300), value: upload.fileName },
+            { name: 'by', type: sql.UniqueIdentifier, value: userId },
+          ],
+        );
+      }
+      const v25 = (await this.schema.has('Syllabi', 'CatalogUrl')) && (await this.schema.has('Syllabi', 'UploadId'));
+      if (upload || v25) {
+        await this.db.query(
+          `INSERT INTO Syllabi (TranscriptCourseId, FileStoragePath, OriginalFileName, UploadedBy${v25 ? ', UploadId, CatalogUrl' : ''})
+           VALUES (@c, @p, @n, @by${v25 ? ', @u, @url' : ''})`,
+          [
+            { name: 'c', type: sql.UniqueIdentifier, value: transcriptCourseId },
+            { name: 'p', type: sql.NVarChar(500), value: upload?.blobName ?? null },
+            { name: 'n', type: sql.NVarChar(300), value: upload?.fileName ?? null },
+            { name: 'by', type: sql.UniqueIdentifier, value: userId },
+            ...(v25
+              ? [
+                  { name: 'u', type: sql.UniqueIdentifier, value: upload?.id ?? null },
+                  { name: 'url', type: sql.NVarChar(500), value: catalogUrl },
+                ]
+              : []),
+          ],
+        );
+      }
+    } catch (err) {
+      this.logger.warn(`Request ${transcriptId}: could not link the syllabus for a course: ${(err as Error).message}`);
+    }
+  }
+
+  /** Syllabus status per course of a request (file and/or catalogue link). Empty map on any problem. */
+  private async syllabusStatus(transcriptId: string): Promise<Map<string, { attached: boolean; fileName: string | null; hasCatalogUrl: boolean }>> {
+    const out = new Map<string, { attached: boolean; fileName: string | null; hasCatalogUrl: boolean }>();
+    const bump = (tcId: string, fileName: string | null, url: boolean) => {
+      const k = String(tcId).toLowerCase();
+      const cur = out.get(k) ?? { attached: false, fileName: null, hasCatalogUrl: false };
+      out.set(k, { attached: true, fileName: cur.fileName ?? fileName, hasCatalogUrl: cur.hasCatalogUrl || url });
+    };
+    try {
+      const hasUrl = await this.schema.has('Syllabi', 'CatalogUrl');
+      const r = await this.db.query<{ Tc: string; FileName: string | null; Url: string | null }>(
+        `SELECT s.TranscriptCourseId AS Tc, s.OriginalFileName AS FileName, ${hasUrl ? 's.CatalogUrl' : 'CAST(NULL AS NVARCHAR(500))'} AS Url
+         FROM Syllabi s JOIN TranscriptCourses tc ON tc.Id = s.TranscriptCourseId WHERE tc.TranscriptId = @t`,
+        [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+      );
+      for (const x of r.recordset) if (x.FileName || x.Url) bump(x.Tc, x.FileName, !!x.Url);
+    } catch { /* ignore */ }
+    try {
+      const d = await this.db.query<{ Tc: string; FileName: string }>(
+        `SELECT TranscriptCourseId AS Tc, FileName FROM TranscriptDocuments WHERE TranscriptId = @t AND DocTypeKey = 'syllabus' AND TranscriptCourseId IS NOT NULL`,
+        [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
+      );
+      for (const x of d.recordset) bump(x.Tc, x.FileName, false);
+    } catch { /* ignore */ }
+    return out;
   }
 
   /** applicant (not admitted) -> preview; current BU student -> pre-approval; otherwise official. Legacy profiles stay official. */
@@ -363,6 +455,9 @@ export class TranscriptsService {
       credit = await this.policy.creditSummary(t.StudentUserId);
     }
 
+    const syllabi = await this.syllabusStatus(id);
+    const multiMappings = await this.courseMappings.forTranscript(id); // OUT-06: BU courses per course (empty unless one-to-many)
+
     return {
       id: t.Id,
       evaluationKind,
@@ -381,7 +476,12 @@ export class TranscriptsService {
         name: t.InstitutionName,
         calendar: t.Calendar,
       },
-      courses: courses.recordset.map((r) => ({ ...mapCourseRow(r), ...(extras.get(String(r.Id).toLowerCase()) ?? {}) })),
+      courses: courses.recordset.map((r) => ({
+        ...mapCourseRow(r),
+        ...(extras.get(String(r.Id).toLowerCase()) ?? {}),
+        syllabus: syllabi.get(String(r.Id).toLowerCase()) ?? { attached: false, fileName: null, hasCatalogUrl: false },
+        mappedBuCourses: multiMappings.get(String(r.Id).toLowerCase()) ?? [],
+      })),
     };
   }
 
