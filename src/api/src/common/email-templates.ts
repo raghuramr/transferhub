@@ -27,6 +27,12 @@ export interface Email {
   subject: string;
   html: string;
   text: string;
+  /** Template key, set when the e-mail came from `templates.*`. */
+  key?: string;
+  /** Extra recipients from the template's override (validated e-mail addresses). */
+  cc?: string[];
+  /** True when the super admin switched this e-mail off; `EmailService.sendEmail` then skips it. */
+  suppressed?: boolean;
 }
 
 export interface Row {
@@ -133,7 +139,84 @@ interface Layout {
   subject: string;
 }
 
+
+// ── super-admin overrides (System Settings > Email) ────────────
+// Text stored in the DB replaces the coded text of a template: subject, headline,
+// body paragraphs and button label, with {{placeholders}} filled from the data the
+// template was called with. Colours, layout, callouts and detail cards stay coded.
+
+export interface TemplateOverride {
+  subject?: string;
+  headline?: string;
+  paragraphs?: string[];
+  ctaLabel?: string;
+  /** false switches the e-mail off (ignored for NON_DISABLEABLE templates). */
+  enabled?: boolean;
+  /** Extra recipients copied on every send of this template. */
+  cc?: string[];
+}
+
+/** Security-critical or credential-carrying e-mails: can be reworded but never switched off. */
+export const NON_DISABLEABLE: ReadonlySet<string> = new Set(['emailChange', 'accountCreated', 'intakeInvite', 'partnerAccess', 'test']);
+
+/** Data fields never offered as placeholders (secrets / one-time links). */
+const SENSITIVE_FIELDS = new Set(['password', 'token', 'claimUrl', 'instructions']);
+
+let overrideStore: Map<string, TemplateOverride> = new Map();
+/** While set, this draft replaces the stored override for its key (used by the live preview). */
+let previewDraft: { key: string; override: TemplateOverride | null } | null = null;
+/** While true, overrides are ignored (used to read the coded defaults). */
+let ignoreOverrides = false;
+let current: { key: string; vars: Record<string, string> } | null = null;
+let captureSink: { key: string; vars: Record<string, string>; layout?: Layout }[] | null = null;
+
+export function setTemplateOverrides(map: Map<string, TemplateOverride>): void {
+  overrideStore = map;
+}
+
+function overrideFor(key: string): TemplateOverride | null {
+  if (ignoreOverrides) return null;
+  if (previewDraft && previewDraft.key === key) return previewDraft.override;
+  return overrideStore.get(key) ?? null;
+}
+
+/** Replaces {{name}} with the value (HTML-escaping happens later in render). Unknown names become empty. */
+export function fillPlaceholders(text: string, vars: Record<string, string>): string {
+  return String(text ?? '').replace(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g, (_m, k: string) => vars[k] ?? '');
+}
+
+function varsOf(ctx: EmailContext, d: unknown): Record<string, string> {
+  const out: Record<string, string> = { supportEmail: ctx.support, appBaseUrl: ctx.appBaseUrl };
+  if (d && typeof d === 'object') {
+    for (const [k, v] of Object.entries(d as Record<string, unknown>)) {
+      if (SENSITIVE_FIELDS.has(k) || v === null || v === undefined) continue;
+      if (v instanceof Date) out[k] = v.toISOString().slice(0, 10);
+      else if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') out[k] = String(v);
+    }
+    const tid = (d as { transcriptId?: unknown }).transcriptId;
+    if (typeof tid === 'string' && tid) out.ref = refOf(tid);
+  }
+  return out;
+}
+
+function applyOverride(l: Layout, o: TemplateOverride, vars: Record<string, string>): Layout {
+  const f = (t: string) => fillPlaceholders(t, vars);
+  const paragraphs = (o.paragraphs ?? []).map((p) => p.trim()).filter(Boolean);
+  return {
+    ...l,
+    subject: o.subject?.trim() ? f(o.subject).replace(/[\r\n]+/g, ' ').trim() || l.subject : l.subject,
+    headline: o.headline?.trim() ? f(o.headline) : l.headline,
+    paragraphs: paragraphs.length ? paragraphs.map(f) : l.paragraphs,
+    cta: l.cta && o.ctaLabel?.trim() ? { ...l.cta, label: f(o.ctaLabel) } : l.cta,
+  };
+}
+
 function render(ctx: EmailContext, l: Layout): Email {
+  if (captureSink && current) captureSink.push({ key: current.key, vars: current.vars, layout: l });
+  if (current) {
+    const o = overrideFor(current.key);
+    if (o) l = applyOverride(l, o, current.vars);
+  }
   const support = ctx.support;
   const mail = `<a href="mailto:${esc(support)}" style="color:${RED};font-weight:bold;">${esc(support)}</a>`;
   const ctaUrl = l.cta ? `${ctx.appBaseUrl}${l.cta.path}` : '';
@@ -245,7 +328,7 @@ const TRANSCRIPT_STATUS: Record<string, { label: string; tone: Tone }> = {
   complete: { label: 'Complete', tone: 'success' },
 };
 
-export const templates = {
+const baseTemplates = {
   /** Student registered themselves. */
   welcome(ctx: EmailContext, d: { firstName: string; email: string }): Email {
     return render(ctx, {
@@ -695,7 +778,35 @@ export const templates = {
   },
 };
 
-export type TemplateKey = keyof typeof templates;
+type Templates = typeof baseTemplates;
+
+/**
+ * The public catalogue: each coded template, wrapped so the stored override (if any)
+ * is applied inside `render` and the result carries its key, cc list and on/off state.
+ */
+export const templates: Templates = Object.fromEntries(
+  Object.entries(baseTemplates).map(([key, fn]) => [
+    key,
+    (ctx: EmailContext, d: unknown): Email => {
+      const prev = current;
+      current = { key, vars: varsOf(ctx, d) };
+      try {
+        const email = (fn as (c: EmailContext, x: unknown) => Email)(ctx, d);
+        const o = overrideFor(key);
+        return {
+          ...email,
+          key,
+          ...(o?.cc?.length ? { cc: o.cc } : {}),
+          ...(o && o.enabled === false && !NON_DISABLEABLE.has(key) ? { suppressed: true } : {}),
+        };
+      } finally {
+        current = prev;
+      }
+    },
+  ]),
+) as unknown as Templates;
+
+export type TemplateKey = keyof typeof baseTemplates;
 
 /** Sample data for every template, for the preview gallery. */
 export function samples(ctx: EmailContext, from: string): { key: TemplateKey; name: string; audience: string; email: Email }[] {
@@ -725,4 +836,88 @@ export function samples(ctx: EmailContext, from: string): { key: TemplateKey; na
     { key: 'partyReminder', name: 'Reminder between parties', audience: 'Student or university staff', email: templates.partyReminder(ctx, { name: 'Alex Chen', fromName: 'Priya Rao (student)', student: 'Priya Rao', subjectLine: 'still waiting on the official transcript', message: 'Registration opens next week.', path: `/transfers/${tid}`, transcriptId: tid, source: 'Northeastern University', target: 'Boston University' }) },
     { key: 'test', name: 'Test e-mail', audience: 'Super admin', email: templates.test(ctx, { from }) },
   ];
+}
+
+/** Coded text + available placeholders for one template (rendered with sample data, no overrides). */
+export interface TemplateDefaults {
+  subject: string;
+  headline: string;
+  paragraphs: string[];
+  ctaLabel: string;
+  hasCta: boolean;
+  placeholders: string[];
+}
+
+/** One entry per template key (first sample wins): name, audience, defaults and placeholders. */
+export function templateCatalogue(ctx: EmailContext, from: string): { key: TemplateKey; name: string; audience: string; canDisable: boolean; defaults: TemplateDefaults }[] {
+  const sink: NonNullable<typeof captureSink> = [];
+  captureSink = sink;
+  ignoreOverrides = true;
+  let list: ReturnType<typeof samples>;
+  try {
+    list = samples(ctx, from);
+  } finally {
+    captureSink = null;
+    ignoreOverrides = false;
+  }
+  const seen = new Set<string>();
+  const out: ReturnType<typeof templateCatalogue> = [];
+  list.forEach((s, i) => {
+    if (seen.has(s.key)) return;
+    seen.add(s.key);
+    const c = sink[i];
+    const l = c?.layout;
+    out.push({
+      key: s.key,
+      name: s.name,
+      audience: s.audience,
+      canDisable: !NON_DISABLEABLE.has(s.key),
+      defaults: {
+        subject: l?.subject ?? s.email.subject,
+        headline: l?.headline ?? '',
+        paragraphs: l?.paragraphs ?? [],
+        ctaLabel: l?.cta?.label ?? '',
+        hasCta: !!l?.cta,
+        placeholders: Object.keys(c?.vars ?? {}),
+      },
+    });
+  });
+  return out;
+}
+
+/** Renders a template's sample with a draft override (or none) instead of the stored one. */
+export function previewWithDraft(ctx: EmailContext, from: string, key: string, draft: TemplateOverride | null): Email | null {
+  previewDraft = { key, override: draft };
+  try {
+    const hit = samples(ctx, from).find((s) => s.key === key);
+    return hit ? { ...hit.email, suppressed: undefined } : null;
+  } finally {
+    previewDraft = null;
+  }
+}
+
+/** Trims, bounds and validates an override coming from the API. Throws Error(message) on bad input. */
+export function sanitizeOverride(key: string, raw: TemplateOverride): TemplateOverride {
+  const out: TemplateOverride = {};
+  const str = (v: unknown, max: number, label: string) => {
+    const t = String(v ?? '').trim();
+    if (t.length > max) throw new Error(`${label} is too long (max ${max} characters).`);
+    return t;
+  };
+  const subject = str(raw.subject, 200, 'Subject');
+  if (subject) out.subject = subject;
+  const headline = str(raw.headline, 200, 'Headline');
+  if (headline) out.headline = headline;
+  const ctaLabel = str(raw.ctaLabel, 60, 'Button label');
+  if (ctaLabel) out.ctaLabel = ctaLabel;
+  const paragraphs = (raw.paragraphs ?? []).map((p) => str(p, 1200, 'A paragraph')).filter(Boolean);
+  if (paragraphs.length > 8) throw new Error('At most 8 paragraphs.');
+  if (paragraphs.length) out.paragraphs = paragraphs;
+  const cc = [...new Set((raw.cc ?? []).map((e) => String(e).trim().toLowerCase()).filter(Boolean))];
+  if (cc.length > 10) throw new Error('At most 10 CC addresses.');
+  for (const e of cc) if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(e) || e.length > 254) throw new Error(`"${e}" is not a valid e-mail address.`);
+  if (cc.length) out.cc = cc;
+  // Switching off is only recorded for e-mails that may be switched off.
+  if (raw.enabled === false && !NON_DISABLEABLE.has(key)) out.enabled = false;
+  return out;
 }

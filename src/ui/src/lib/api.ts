@@ -304,8 +304,17 @@ export const permissionsApi = {
 
 
 // ── Data Import endpoints (super_admin only) ──────────────────
-export interface EmailAttempt { ok: boolean; id?: string; error?: string; to: string; subject: string; at: string }
+export interface EmailAttempt { ok: boolean; id?: string; error?: string; skipped?: boolean; to: string; subject: string; at: string }
 export interface EmailTemplateSample { id: number; key: string; name: string; audience: string; subject: string; html: string }
+export interface EmailTemplateOverride { subject?: string; headline?: string; paragraphs?: string[]; ctaLabel?: string; enabled?: boolean; cc?: string[] }
+export interface EmailTemplateItem {
+  key: string;
+  name: string;
+  audience: string;
+  canDisable: boolean;
+  defaults: { subject: string; headline: string; paragraphs: string[]; ctaLabel: string; hasCta: boolean; placeholders: string[] };
+  override: EmailTemplateOverride | null;
+}
 export interface EmailStatus {
   configured: boolean;
   fromAddress: string;
@@ -343,6 +352,12 @@ export const emailApi = {
   test: (to?: string) => api.post<EmailAttempt>('/email/test', to ? { to } : {}),
   templates: () => api.get<EmailTemplateSample[]>('/email/templates'),
   sendSample: (id: number, to?: string) => api.post<EmailAttempt>(`/email/templates/${id}/send`, to ? { to } : {}),
+  // editable template text + CC recipients
+  overrides: () => api.get<{ ready: boolean; items: EmailTemplateItem[] }>('/email/overrides'),
+  saveOverride: (key: string, o: EmailTemplateOverride) => api.put<{ override: EmailTemplateOverride }>(`/email/overrides/${key}`, o),
+  resetOverride: (key: string) => api.delete(`/email/overrides/${key}`),
+  previewOverride: (key: string, draft: EmailTemplateOverride) => api.post<{ subject: string; html: string }>(`/email/overrides/${key}/preview`, { draft }),
+  testOverride: (key: string, draft: EmailTemplateOverride, to?: string) => api.post<EmailAttempt>(`/email/overrides/${key}/test`, { draft, ...(to ? { to } : {}) }),
 };
 
 export const importApi = {
