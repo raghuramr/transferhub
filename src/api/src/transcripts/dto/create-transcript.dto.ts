@@ -20,6 +20,18 @@ export class TranscriptCourseInputDto {
   @IsOptional() @IsString() @MaxLength(500) @Matches(/^https?:\/\/\S+$/i, { message: 'catalogUrl must start with http:// or https://' }) catalogUrl?: string;
 }
 
+/** Student edit of one already-submitted course's details; the request is re-triaged after. */
+export class UpdateTranscriptCourseDto {
+  @IsOptional() @IsString() courseCode?: string;
+  @IsOptional() @IsString() courseTitle?: string;
+  @IsOptional() @IsNumber() originalCredits?: number;
+  @IsOptional() @IsString() grade?: string;
+  @IsOptional() @IsString() term?: string;
+  @IsOptional() @IsIn(['fall', 'spring', 'summer', 'winter', 'other']) termSeason?: string;
+  @IsOptional() @IsInt() @Min(1950) @Max(2100) termYear?: number;
+  @IsOptional() @IsIn(['graded', 'pass_fail', 'sat_unsat']) gradingBasis?: string;
+}
+
 /**
  * Matches the single combined payload the Upload Transcript screen sends:
  * institution details + an inline list of courses, submitted in one call.

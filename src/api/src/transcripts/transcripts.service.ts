@@ -1,8 +1,8 @@
 import { CourseMappingsService } from '../policy/course-mappings.service';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
-import { SubmitTranscriptDto } from './dto/create-transcript.dto';
+import { SubmitTranscriptDto, UpdateTranscriptCourseDto } from './dto/create-transcript.dto';
 import { EmailService } from '../common/email.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { ScopeService } from '../policy/scope.service';
@@ -303,6 +303,92 @@ export class TranscriptsService {
     }
 
     return this.findById(transcriptId);
+  }
+
+  /**
+   * A student corrects one of their own submitted courses (code/title/credits/grade/term). The course
+   * is re-triaged and the request's policy flags recomputed. Blocked once a decision is posted — the
+   * evaluation outcome stays system-controlled, this only edits what the student entered.
+   */
+  async updateCourseByStudent(courseId: string, user: { id: string; role: string }, dto: UpdateTranscriptCourseDto) {
+    const row = await this.db.query<{
+      Id: string; TranscriptId: string; StudentUserId: string; InstitutionId: number; Status: string;
+      CourseCode: string; CourseTitle: string; OriginalCredits: number; Grade: string; Term: string | null;
+    }>(
+      `SELECT tc.Id, tc.TranscriptId, t.StudentUserId, t.InstitutionId, tc.Status,
+              tc.CourseCode, tc.CourseTitle, tc.OriginalCredits, tc.Grade, tc.Term
+       FROM TranscriptCourses tc JOIN Transcripts t ON t.Id = tc.TranscriptId WHERE tc.Id = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: courseId }],
+    );
+    const c = row.recordset[0];
+    if (!c) throw new NotFoundException('Course not found');
+    if (user.role === 'student' && String(c.StudentUserId).toLowerCase() !== user.id.toLowerCase()) {
+      throw new ForbiddenException('You can only edit your own courses.');
+    }
+    const posted = await this.db.query<{ N: number }>(
+      `SELECT COUNT(*) AS N FROM Evaluations WHERE TranscriptCourseId = @id AND Status = 'posted'`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: courseId }],
+    );
+    if (c.Status === 'posted' || posted.recordset[0]?.N > 0) {
+      throw new BadRequestException('This course has already been decided and can no longer be edited.');
+    }
+
+    const code = (dto.courseCode ?? c.CourseCode).trim();
+    const title = (dto.courseTitle ?? c.CourseTitle).trim();
+    const credits = dto.originalCredits ?? Number(c.OriginalCredits);
+    const grade = (dto.grade ?? c.Grade ?? '').trim().toUpperCase() || c.Grade;
+    const term = dto.term !== undefined ? (dto.term || null) : c.Term;
+
+    const extId = await this.findOrCreateExternalCourse(c.InstitutionId, code, title, credits);
+    await this.db.query(
+      `UPDATE TranscriptCourses SET CourseCode = @code, CourseTitle = @title, ExternalCourseId = @ext,
+              OriginalCredits = @cr, Grade = @grade, Term = @term WHERE Id = @id`,
+      [
+        { name: 'code', type: sql.NVarChar(50), value: code },
+        { name: 'title', type: sql.NVarChar(300), value: title },
+        { name: 'ext', type: sql.Int, value: extId },
+        { name: 'cr', type: sql.Decimal(5, 2), value: credits },
+        { name: 'grade', type: sql.NVarChar(10), value: grade },
+        { name: 'term', type: sql.NVarChar(50), value: term },
+        { name: 'id', type: sql.UniqueIdentifier, value: courseId },
+      ],
+    );
+    if (await this.schema.policyReady()) {
+      await this.db.query(
+        `UPDATE TranscriptCourses SET TermSeason = COALESCE(@ts, TermSeason), TermYear = COALESCE(@ty, TermYear),
+                GradingBasis = COALESCE(@gb, GradingBasis) WHERE Id = @id`,
+        [
+          { name: 'ts', type: sql.VarChar(10), value: dto.termSeason ?? null },
+          { name: 'ty', type: sql.Int, value: dto.termYear ?? null },
+          { name: 'gb', type: sql.VarChar(10), value: dto.gradingBasis ?? null },
+          { name: 'id', type: sql.UniqueIdentifier, value: courseId },
+        ],
+      ).catch(() => {});
+    }
+
+    // Re-triage this course against the (possibly new) code/credits/grade.
+    const triageRes = await this.db.execute<TriageResultRow>('sp_TriageCourse', [
+      { name: 'TranscriptCourseId', type: sql.UniqueIdentifier, value: courseId },
+      { name: 'TriagedBy', type: sql.UniqueIdentifier, value: user.id },
+    ]);
+    const lane = triageRes.recordset[0]?.Lane ?? 'needs_syllabus';
+    if (lane === 'needs_syllabus') {
+      const ev = await this.db.query<{ N: number }>(
+        `SELECT COUNT(*) AS N FROM Evaluations WHERE TranscriptCourseId = @id AND Status IN ('queued','in_progress')`,
+        [{ name: 'id', type: sql.UniqueIdentifier, value: courseId }],
+      );
+      if (!ev.recordset[0]?.N) {
+        await this.db.query(`INSERT INTO Evaluations (TranscriptCourseId, Status) VALUES (@id, 'queued')`, [
+          { name: 'id', type: sql.UniqueIdentifier, value: courseId },
+        ]);
+      }
+    }
+    try {
+      await this.policy.applyToTranscript(c.TranscriptId);
+    } catch (err) {
+      this.logger.warn(`Re-triage policy pass failed for ${c.TranscriptId}: ${(err as Error).message}`);
+    }
+    return { ok: true, lane };
   }
 
   /**

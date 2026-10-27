@@ -3,7 +3,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { TranscriptsService } from './transcripts.service';
-import { SubmitTranscriptDto } from './dto/create-transcript.dto';
+import { SubmitTranscriptDto, UpdateTranscriptCourseDto } from './dto/create-transcript.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -47,6 +47,12 @@ export class TranscriptsController {
   @Post()
   create(@Body() dto: SubmitTranscriptDto, @Req() req: AuthenticatedRequest) {
     return this.transcriptsService.submit(dto, req.user.id, req.user.role);
+  }
+
+  /** A student corrects one of their own submitted courses; it is re-triaged. */
+  @Patch('courses/:courseId')
+  updateCourse(@Param('courseId') courseId: string, @Body() dto: UpdateTranscriptCourseDto, @Req() req: AuthenticatedRequest) {
+    return this.transcriptsService.updateCourseByStudent(courseId, req.user, dto);
   }
 
   /** The attached transcript document (if any) — same visibility rule as GET :id. */
