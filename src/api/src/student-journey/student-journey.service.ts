@@ -7,10 +7,20 @@ import { TransferPolicyService } from '../policy/transfer-policy.service';
 import { ProgressService } from '../progress/progress.service';
 import { convertCredits } from '../progress/progress.aggregate';
 import type { CatalogCourse } from '../ai/course-prefilter';
+import { TranscriptsService } from '../transcripts/transcripts.service';
 import { compareUniversity, EquivalencyInput, ProgramInput, StudentCourseInput, UniversityComparison, UniversityInput } from './compare.logic';
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const intList = (ids: number[]) => ids.map((i) => String(Math.trunc(Number(i)))).join(',');
+
+/** Outcome of applying to one university via POST /student/apply. */
+export interface ApplyOutcome {
+  institutionId: number;
+  institutionName: string | null;
+  transcriptId: string | null;
+  status: 'created' | 'skipped' | 'error';
+  reason?: string;
+}
 
 export const PREVIEW_NOTE =
   'This is a preview, not a guarantee. Matches come from existing equivalencies and built-in rules; the official evaluation happens after you are admitted and the department decides.';
@@ -25,6 +35,7 @@ export class StudentJourneyService {
     private scope: ScopeService,
     private policy: TransferPolicyService,
     private progress: ProgressService,
+    private transcripts: TranscriptsService,
   ) {}
 
   /** Students see themselves; staff may pass ?userId= under the same scope rules as /progress. */
@@ -305,5 +316,89 @@ export class StudentJourneyService {
       text: r.ExtId != null ? text.get(r.ExtId) ?? '' : '',
       notEligible: r.Lane === 'not_eligible',
     }));
+  }
+
+  // ── apply (create a tracked request for each chosen university) ──────────
+
+  /**
+   * Creates one transcript ("request") per selected university, each targeted at that university
+   * (Transcripts.TargetInstitutionId) and copying the student's current courses, so each is tracked
+   * separately. Reuses TranscriptsService.submit, which keeps the existing preview/official evaluation-kind
+   * logic intact. Universities the student already has an active (non-preview) request for are skipped.
+   */
+  async apply(studentUserId: string, rawIds: number[], role: string): Promise<ApplyOutcome[]> {
+    const ids = [...new Set(rawIds.map((i) => Math.trunc(Number(i))).filter((i) => Number.isInteger(i) && i > 0))];
+    if (!ids.length) throw new BadRequestException('Pick at least one university to apply to.');
+
+    // The source institution + courses from the student's most recent request.
+    const latest = await this.db.query<{ Id: string; InstId: number; Code: string; Name: string; Calendar: string | null }>(
+      `SELECT TOP 1 t.Id, t.InstitutionId AS InstId, i.Code, i.Name, i.Calendar
+       FROM Transcripts t JOIN Institutions i ON i.Id = t.InstitutionId
+       WHERE t.StudentUserId = @u ORDER BY t.ReceivedAt DESC`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: studentUserId }]);
+    const source = latest.recordset[0];
+    if (!source) {
+      throw new BadRequestException('You have no courses yet. Submit a transcript or use Smart Upload first, then apply.');
+    }
+    const courseRows = await this.db.query<{ CourseCode: string; CourseTitle: string; OriginalCredits: number; Grade: string | null; Term: string | null }>(
+      `SELECT CourseCode, CourseTitle, OriginalCredits, Grade, Term
+       FROM TranscriptCourses WHERE TranscriptId = @t ORDER BY SortOrder, CourseCode`,
+      [{ name: 't', type: sql.UniqueIdentifier, value: source.Id }]);
+    if (!courseRows.recordset.length) {
+      throw new BadRequestException('Your latest transcript has no courses to apply with.');
+    }
+
+    // Only active receiving universities can be applied to.
+    const inst = await this.db.query<{ Id: number; Name: string }>(
+      `SELECT Id, Name FROM Institutions WHERE IsActive = 1 AND Type = 'university' AND Id IN (${intList(ids)})`);
+    const found = new Map(inst.recordset.map((i) => [i.Id, i.Name] as const));
+
+    // Universities the student already has an active (non-preview) request for — skip those.
+    const already = new Set<number>();
+    const hasTarget = await this.schema.has('Transcripts', 'TargetInstitutionId');
+    if (hasTarget) {
+      const hasKind = await this.schema.has('Transcripts', 'EvaluationKind');
+      const ex = await this.db.query<{ TargetInstitutionId: number }>(
+        `SELECT DISTINCT TargetInstitutionId FROM Transcripts
+         WHERE StudentUserId = @u AND TargetInstitutionId IS NOT NULL
+           AND TargetInstitutionId IN (${intList(ids)})
+           ${hasKind ? `AND ISNULL(EvaluationKind, 'official') <> 'preview'` : ''}`,
+        [{ name: 'u', type: sql.UniqueIdentifier, value: studentUserId }]);
+      for (const r of ex.recordset) already.add(r.TargetInstitutionId);
+    }
+
+    const calendar = ['semester', 'quarter', 'trimester'].includes(String(source.Calendar)) ? String(source.Calendar) : 'semester';
+    const courses = courseRows.recordset.map((c) => ({
+      courseCode: c.CourseCode,
+      courseTitle: c.CourseTitle,
+      originalCredits: Number(c.OriginalCredits),
+      grade: c.Grade ?? '',
+      term: c.Term ?? undefined,
+    }));
+
+    const out: ApplyOutcome[] = [];
+    for (const id of ids) {
+      const name = found.get(id) ?? null;
+      if (!name) {
+        out.push({ institutionId: id, institutionName: null, transcriptId: null, status: 'error', reason: 'University not found or inactive.' });
+        continue;
+      }
+      if (already.has(id)) {
+        out.push({ institutionId: id, institutionName: name, transcriptId: null, status: 'skipped', reason: 'You already have a request for this university.' });
+        continue;
+      }
+      try {
+        const created = await this.transcripts.submit(
+          { institutionName: source.Name, institutionCode: source.Code, calendar, targetInstitutionId: id, courses },
+          studentUserId,
+          role,
+        );
+        out.push({ institutionId: id, institutionName: name, transcriptId: created.id, status: 'created' });
+      } catch (err) {
+        this.logger.warn(`apply: request for university ${id} failed: ${(err as Error).message}`);
+        out.push({ institutionId: id, institutionName: name, transcriptId: null, status: 'error', reason: 'Could not create this request. Please try again.' });
+      }
+    }
+    return out;
   }
 }

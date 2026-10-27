@@ -39,4 +39,13 @@ export interface UniversityComparison {
 }
 export interface CompareResult { preview: boolean; note: string; studentCourses: { id: string; code: string; title: string; term: string | null; convertedCredits: number }[]; universities: UniversityComparison[] }
 
+/** One university's outcome from POST /student/apply. */
+export interface ApplyResult {
+  institutionId: number;
+  institutionName: string | null;
+  transcriptId: string | null;
+  status: 'created' | 'skipped' | 'error';
+  reason?: string;
+}
+
 export const fmtCredits = (n: number) => (Math.round(n * 100) / 100).toString();
