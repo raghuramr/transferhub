@@ -162,12 +162,57 @@ export class PartnersService {
     return { message: 'Partner updated' };
   }
 
-  async setActive(id: number, active: boolean) {
+  private async audit(userId: string | undefined, action: string, partnerId: number, detail: Record<string, unknown>) {
+    try {
+      await this.db.query(
+        `INSERT INTO AuditLog (UserId, Action, EntityType, EntityId, NewValue, OccurredAt)
+         VALUES (@u, @a, 'DataPartner', @e, @v, SYSUTCDATETIME())`,
+        [
+          { name: 'u', type: sql.UniqueIdentifier, value: userId ?? null },
+          { name: 'a', type: sql.NVarChar(100), value: action },
+          { name: 'e', type: sql.NVarChar(100), value: String(partnerId) },
+          { name: 'v', type: sql.NVarChar(sql.MAX), value: JSON.stringify(detail) },
+        ],
+      );
+    } catch {
+      /* auditing must never block the action itself */
+    }
+  }
+
+  /** Hard delete, only when nothing references the partner. Its API keys go with it (FK cascade). */
+  async remove(id: number, userId?: string) {
+    const p = await this.load(id);
+    const used = await this.db.query<{ N: number }>(`SELECT COUNT(*) AS N FROM ImportBatches WHERE PartnerId = @id`, [{ name: 'id', type: sql.Int, value: id }]);
+    const n = used.recordset[0]?.N ?? 0;
+    if (n > 0) {
+      throw new BadRequestException(`${p.UniversityName} has ${n} submission(s) on record, so it cannot be deleted. Deactivate it instead - that disables its keys and keeps the history.`);
+    }
+    await this.db.query(`DELETE FROM PartnerApiKeys WHERE PartnerId = @id; DELETE FROM DataPartners WHERE Id = @id`, [{ name: 'id', type: sql.Int, value: id }]);
+    await this.audit(userId, 'PARTNER_DELETED', id, { universityName: p.UniversityName, universityCode: p.UniversityCode });
+    return { message: 'Partner deleted' };
+  }
+
+  /** Applies one action to several partners; reports per-partner success so a refused delete does not hide the rest. */
+  async bulk(ids: number[], action: 'activate' | 'deactivate' | 'delete', userId?: string) {
+    const results: { id: number; ok: boolean; message: string }[] = [];
+    for (const id of [...new Set(ids)]) {
+      try {
+        const r = action === 'delete' ? await this.remove(id, userId) : await this.setActive(id, action === 'activate', userId);
+        results.push({ id, ok: true, message: r.message });
+      } catch (e) {
+        results.push({ id, ok: false, message: (e as { message?: string }).message ?? 'Failed' });
+      }
+    }
+    return { ok: results.filter((r) => r.ok).length, failed: results.filter((r) => !r.ok).length, results };
+  }
+
+  async setActive(id: number, active: boolean, userId?: string) {
     await this.load(id);
     await this.db.query(`UPDATE DataPartners SET IsActive = @a, UpdatedAt = SYSUTCDATETIME() WHERE Id = @id`, [
       { name: 'a', type: sql.Bit, value: active ? 1 : 0 },
       { name: 'id', type: sql.Int, value: id },
     ]);
+    await this.audit(userId, active ? 'PARTNER_ACTIVATED' : 'PARTNER_DEACTIVATED', id, {});
     return { message: active ? 'Partner reactivated' : 'Partner deactivated - their keys no longer work' };
   }
 
@@ -195,7 +240,7 @@ export class PartnersService {
     return { apiKey: key, prefix, endpoint: `${this.endpointBase}/submissions`, emailed, instructions: this.instructions(partner.UniversityCode, key) };
   }
 
-  async revokeKey(partnerId: number, keyId: number) {
+  async revokeKey(partnerId: number, keyId: number, userId?: string) {
     const r = await this.db.query(
       `UPDATE PartnerApiKeys SET IsActive = 0, RevokedAt = SYSUTCDATETIME() WHERE Id = @k AND PartnerId = @p AND RevokedAt IS NULL`,
       [
@@ -204,6 +249,7 @@ export class PartnersService {
       ],
     );
     if (!r.rowsAffected[0]) throw new NotFoundException('Key not found or already revoked');
+    await this.audit(userId, 'PARTNER_KEY_REVOKED', partnerId, { keyId });
     return { message: 'Key revoked' };
   }
 
