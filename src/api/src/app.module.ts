@@ -27,6 +27,7 @@ import { RequestsModule } from './requests/requests.module';
 import { DocumentsModule } from './documents/documents.module';
 import { TransfersModule } from './transfers/transfers.module';
 import { ProgressModule } from './progress/progress.module';
+import { SettingsModule } from './settings/settings.module';
 import { AuditController } from './common/audit.controller';
 import { HealthController } from './common/health.controller';
 
@@ -67,6 +68,7 @@ const envFilePath =
     RequestsModule,
     DocumentsModule,
     ProgressModule,
+    SettingsModule,
   ],
   controllers: [AuditController, HealthController],
 })

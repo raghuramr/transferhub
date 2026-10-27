@@ -313,6 +313,26 @@ export interface EmailStatus {
   recent: EmailAttempt[];
 }
 
+export interface DemoLoginPublic {
+  enabled: boolean;
+  namesOnly?: boolean;
+  showCredentials?: boolean;
+  accounts?: { label: string; role: string; email: string; password: string }[];
+}
+export interface DemoLoginAdmin {
+  enabled: boolean;
+  showCredentials: boolean;
+  ready: boolean;
+  accounts: NonNullable<DemoLoginPublic['accounts']>;
+}
+
+export const demoLoginApi = {
+  /** Public (no auth) - what the login page may show. */
+  publicGet: () => api.get<DemoLoginPublic>('/auth/demo-login'),
+  get: () => api.get<DemoLoginAdmin>('/settings/demo-login'),
+  save: (data: { enabled: boolean; showCredentials: boolean }) => api.put<DemoLoginAdmin>('/settings/demo-login', data),
+};
+
 export const emailApi = {
   status: () => api.get<EmailStatus>('/email/status'),
   test: (to?: string) => api.post<EmailAttempt>('/email/test', to ? { to } : {}),
