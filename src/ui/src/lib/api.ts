@@ -436,7 +436,33 @@ export const aiControlsApi = {
   summary: (days: number) => api.get<UsageSummary>('/ai-controls/usage/summary', { params: { days } }),
   byRequest: (days: number) => api.get<RequestUsageRow[]>('/ai-controls/usage/requests', { params: { days } }),
   clearCache: () => api.post<{ cleared: number }>('/ai-controls/cache/clear'),
+  providers: () => api.get<AiProviderPublic>('/ai-controls/providers'),
+  saveProviders: (data: Partial<AiProviderSave>) => api.put<AiProviderPublic>('/ai-controls/providers', data),
 };
+
+export interface AiProviderPublic {
+  ready: boolean;
+  chatProvider: 'anthropic' | 'azure_openai';
+  anthropicKeySet: boolean;
+  azureOpenAiEndpoint: string | null;
+  azureOpenAiKeySet: boolean;
+  azureOpenAiDeployment: string | null;
+  azureOpenAiApiVersion: string;
+  docProvider: 'none' | 'azure_document_intelligence';
+  azureDocEndpoint: string | null;
+  azureDocKeySet: boolean;
+}
+export interface AiProviderSave {
+  chatProvider: 'anthropic' | 'azure_openai';
+  anthropicKey: string;
+  azureOpenAiEndpoint: string;
+  azureOpenAiKey: string;
+  azureOpenAiDeployment: string;
+  azureOpenAiApiVersion: string;
+  docProvider: 'none' | 'azure_document_intelligence';
+  azureDocEndpoint: string;
+  azureDocKey: string;
+}
 
 // ── Transfer policy (per-university rules) ──
 export const policiesApi = {
