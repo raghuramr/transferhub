@@ -740,7 +740,7 @@ Several ways to get a student's data in; every channel ends at the same "confirm
   (4+4+3), not 12. Reset does not clear `AiMatchCache`.
 
 ## PENDING (parked by the user 2026-10-27; to be worked on together "tonight", do not start unprompted)
-**Medium-sized gaps** (items 1-6 below were BUILT on 2026-10-27, see the 'medium gaps built' session note; item 7 deck refresh remains):
+**Medium-sized gaps** (items 1-6 below were BUILT on 2026-10-27, see the 'medium gaps built' session note; item 7 deck refresh DONE 2026-10-27: scorecard 20 built / 2 partial / 0 open, backtest slide 63 cases top-1 88.9% top-3 96.8%, live smoke 39/0/1):
 1. Side-by-side course comparison with highlighted overlapping topics/outcomes + credit math in the evaluator workbench (RequestReview).
 2. OUT-06 one external course -> several BU courses (split/combine, e.g. NU CHEM 1161), currently one BU course per decision.
 3. Programme rules PRG-04..08 (Econ max 4 courses at 200+, Biology 5 BI at BU, Psych/Math rules, substitutions like MA 242 <-> CS 132) as a rules table.

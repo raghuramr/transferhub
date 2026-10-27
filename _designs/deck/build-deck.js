@@ -280,16 +280,35 @@ async function iconCircle(s, name, x, y, d = 0.7, bg = C.maroon, fg = 'FFFFFF') 
     await shot(s, '11-super-admin-dashboard.png', 7.4, 1.5, 5.4, 4.8, 'Dashboard screenshot');
   }
 
+  // 13b ─ Proof: measured accuracy + live checks
+  {
+    const s = content('Measured, not claimed', 'Backtest: for each past decision (63), hide it from the matcher and ask whether the right BU course is in its top 1 or top 3. Built-in rules only, no AI key. Smoke suite ran against the live site.');
+    const stats = [['96.8%', 'right BU course in the top 3', C.maroon], ['88.9%', 'right BU course ranked first', C.maroon], ['63', 'past decisions tested', C.deep]];
+    stats.forEach((st, i) => {
+      const x = 0.6 + i * 4.1;
+      card(s, x, 1.6, 3.9, 2.4);
+      s.addText(st[0], { x, y: 1.8, w: 3.9, h: 1.3, align: 'center', fontFace: 'Cambria', fontSize: 60, bold: true, color: st[2], margin: 0, isTextBox: true });
+      s.addText(st[1], { x: x + 0.2, y: 3.15, w: 3.5, h: 0.7, align: 'center', fontSize: 16, color: C.ink, margin: 0, isTextBox: true });
+    });
+    const pts = [['Live smoke test', '39 of 40 checks pass on the deployed app, 1 skipped (a write check), 0 failed: logins for all five roles, dashboards, the Maya scenario with the 2.66 quarter conversion, transfers, backtest, permissions and role checks.'],
+                 ['Database checks', '243 SQL checks pass and all 11 triage contract cases pass, including the quarter 2.66 rule and "must be taken at BU".'],
+                 ['What this is', 'A hold-out test of the built-in rules matcher on past equivalencies. The same harness will score Claude once the key arrives.']];
+    pts.forEach((p, i) => {
+      const y = 4.35 + i * 0.85;
+      s.addText([{ text: p[0] + '  ', options: { bold: true, color: C.maroon } }, { text: p[1], options: { color: C.ink } }], { x: 0.6, y, w: 12.1, h: 0.8, fontSize: 14, margin: 0, valign: 'middle', isTextBox: true });
+    });
+  }
+
   // 14 ─ Scorecard (native chart)
   {
-    const s = content('Scorecard: 22 requirements vs. the code', 'We compared every rule and ask in the design docs with the code. 17 built, 3 partial, 2 open. Full table in _designs/GAP_ANALYSIS.md.');
-    s.addChart(pres.charts.DOUGHNUT, [{ name: 'Status', labels: ['Built', 'Partial', 'Open'], values: [17, 3, 2] }], {
+    const s = content('Scorecard: 22 requirements vs. the code', 'We compared every rule and ask in the design docs with the code. 20 built, 2 partial, 0 open (the partials: a faculty picker for several BU courses, and the 5-credit lab rule that needs an answer from BU). Full table in _designs/GAP_ANALYSIS.md.');
+    s.addChart(pres.charts.DOUGHNUT, [{ name: 'Status', labels: ['Built', 'Partial', 'Open'], values: [20, 2, 0] }], {
       x: 0.6, y: 1.5, w: 5.2, h: 4.9, holeSize: 62, chartColors: [C.green, C.amber, C.red], showLegend: true, legendPos: 'b', legendFontSize: 14, legendColor: C.ink,
       showPercent: false, showValue: true, dataLabelColor: C.white, dataLabelFontSize: 16, dataLabelFontBold: true, showTitle: false,
     });
-    const g = [['Open', C.red, 'One-year deadline tracker · programme rules (Econ/Bio caps, substitutions)'],
-               ['Partial', C.amber, 'Side-by-side course diff · one-to-many mappings · 5-credit lab rule (BU to confirm)'],
-               ['Built', C.green, 'Lanes, quarter 2/3, grade rules, BU caps, Hub, appeals, workflow, learning loop, degree progress, accuracy backtest, Maya demo data']];
+    const g = [['Open', C.red, 'No requirement is left open'],
+               ['Partial', C.amber, 'Faculty screen to pick several BU courses for one external course (API ready) · 5-credit lab rule (BU to answer)'],
+               ['Built', C.green, 'Lanes, quarter 2/3, grades, BU caps, Hub, appeals, workflow, learning loop, degree progress, side-by-side compare, programme rules, exam credit, one-year deadline, accuracy backtest, repeatable demo']];
     g.forEach((r, i) => {
       const y = 1.6 + i * 1.6;
       card(s, 6.2, y, 6.5, 1.4);
@@ -301,10 +320,10 @@ async function iconCircle(s, name, x, y, d = 0.7, bg = C.maroon, fg = 'FFFFFF') 
   // 15 ─ What we don't know + next
   {
     const s = content('What we have not proven yet, and what comes next', 'Be honest: no live Claude key, no BU baseline numbers. Plan to close the gaps.');
-    const L = ['No Anthropic key yet: AI paths are unverified, the rules fallback carries the demo', 'No BU baseline for evaluator minutes or turnaround, so the saving is not yet quantified', 'SQL logic was written and reviewed but has no automated tests', 'Quarter rounding (2.66) follows the brief; BU to confirm'];
+    const L = ['No Anthropic key yet: AI paths are unverified, the rules fallback carries the demo', 'No BU baseline for evaluator minutes or turnaround, so the saving is not yet quantified', 'No API integration tests yet; coverage is unit tests, an HTTP smoke suite and SQL contract tests', 'Quarter rounding (2.66) follows the brief; BU to confirm'];
     s.addText('Not proven yet', { x: 0.6, y: 1.55, w: 5.8, h: 0.5, fontSize: 22, bold: true, fontFace: 'Cambria', color: C.maroon, margin: 0, isTextBox: true });
     s.addText(L.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < L.length - 1, paraSpaceAfter: 10 } })), { x: 0.6, y: 2.15, w: 5.8, h: 4.4, fontSize: 16, color: C.ink, margin: 0, valign: 'top', isTextBox: true });
-    const N = [['1', 'Apply migrations and seeds, then rehearse the demo'], ['2', 'Run the backtest on live data and publish the top-3 rate'], ['3', 'Side-by-side course comparison'], ['4', 'One-year deadline and programme rules'], ['5', 'Turn on Claude and measure']];
+    const N = [['1', 'Rehearse the demo from the Demo scenario page'], ['2', 'Get BU answers: 5-credit lab rule, rounding, AP/IB minimums'], ['3', 'Faculty screen for one-to-many course mappings'], ['4', 'Turn on Claude and re-run the same backtest'], ['5', 'Measure evaluator minutes against a BU baseline']];
     s.addText('Next', { x: 6.9, y: 1.55, w: 5.8, h: 0.5, fontSize: 22, bold: true, fontFace: 'Cambria', color: C.maroon, margin: 0, isTextBox: true });
     N.forEach((r, i) => {
       const y = 2.2 + i * 0.85;

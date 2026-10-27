@@ -17,9 +17,9 @@ Legend: ✅ built · 🟡 partial · ❌ gap · ⭐ beyond the ask
 | 3 | **Less stressful** | ✅ | Syllabus requested only for review-lane courses; preview before admission; status per course instead of "0 units" |
 | 4 | **Department makes the final decision** (GOV-01) | ✅ | Configurable approval stages; AI/rules never reject; rules confidence capped at 0.7; auto-approve is an opt-in per-stage setting that records the agent as the actor |
 | 5 | Demo: six courses (3 equivalent, 2 maybe, 1 quarter) upload → posting | ✅ | Seed 015 (applied, counts verified) + a repeatable presenter page (reset Maya, second student for the learning loop) and docs/DEMO_SCRIPT.md |
-| 6 | Measurable outcome (07): top-3 hit rate on held-out decisions | ✅ | `GET /ai-controls/backtest` + Matcher accuracy card (AI Controls, Usage tab). Number not yet run on live data; AI matcher plugs into the same harness |
+| 6 | Measurable outcome (07): top-3 hit rate on held-out decisions | ✅ | `GET /ai-controls/backtest` + Matcher accuracy card (AI Controls, Usage tab). Live result: 63 past decisions, top-1 88.9%, top-3 96.8% (built-in rules); AI matcher plugs into the same harness |
 | 7 | Student "provisional range" + degree-progress view (07/05) | ✅ | `GET /progress/me` + Degree progress card: secured / likely range / pending / not counted vs the cap, next step per course |
-| 8 | Evaluator workbench: side-by-side comparison with highlighted overlap, credit math (07) | 🟡 | Request review shows brief, AI/rule candidates with rationale, credit conversion; **no side-by-side description/outcome diff with highlighting** |
+| 8 | Evaluator workbench: side-by-side comparison with highlighted overlap, credit math (07) | ✅ | `GET /comparison/evaluation/:id` + Compare panel on the request page: candidates #1-3, shared terms highlighted, overlap %, credit math, one-click decide |
 | 9 | Learning loop: next student auto-applied (demo step 7) | ✅ | `sp_RecordDecision` writes an `Equivalencies` row (now with effective dates); `AiMatchCache` reuses AI results across students |
 
 ## 2. Business rules (doc 03 / 12)
@@ -27,7 +27,7 @@ Legend: ✅ built · 🟡 partial · ❌ gap · ⭐ beyond the ask
 | Rule | Status | Note |
 |---|---|---|
 | OUT-01/02/04/05 outcomes, existing-equivalency auto-apply, grade "T", 0-unit pending | ✅ | Equivalent / elective / no-credit / bu_only |
-| OUT-06 one external course → several BU courses (e.g. NU CHEM 1161) | 🟡 | Up to 3 ranked candidates; a single decision maps one BU course. Splits/combines not modelled _(not verified end-to-end)_ |
+| OUT-06 one external course → several BU courses (e.g. NU CHEM 1161) | 🟡 | Decision API accepts several BU courses; known one-to-many and many-to-one equivalencies apply automatically (migration 026). No faculty screen to pick several yet |
 | CR-01/02 quarter × 2/3, truncated (4 → 2.66) | ✅ | `FLOOR(x·2/3·100)/100` in `sp_TriageCourse` |
 | CR-04 5-credit NU lab course | 🟡 | Credits stored as given; no explicit rule (BU never stated one — open question) |
 | GR-01 C or higher; C- not eligible | ✅ | Plus policy engine: P/F & S/U → review (exceptions: Spring 2020, mandated P/F), per-university minimum |
@@ -37,7 +37,7 @@ Legend: ✅ built · 🟡 partial · ❌ gap · ⭐ beyond the ask
 | GR-06 / PRG-01 Hub never satisfied by transfer | ✅ | Always stated in brief and student summary |
 | **PRG-02 all credits within one year of starting** | ✅ | Credit-deadline tracker: per-university months, `past_deadline` review flag, progress/staff badges, 90/30/7-day and overdue reminders (migration 024; SQL unverified until applied) |
 | PRG-03 "Must be taken at BU" (CS 320/332/350) | ✅ | `Equivalencies.Outcome = 'bu_only'` honoured by triage |
-| **PRG-04/05/06/07/08** programme caps and substitutions (Econ ≤4 at 200+, Biology 5 BI at BU, MA 242 ↔ CS 132 …) | ❌ | Not encoded as rules; only the BU-only flag exists |
+| **PRG-04/05/06/07/08** programme caps and substitutions (Econ ≤4 at 200+, Biology 5 BI at BU, MA 242 ↔ CS 132 …) | ✅ | `ProgramRules` table + 12 BU rules (seed 018), flags-only engine, admin tab on Workflows (migration 027) |
 | International coursework → International Admissions | ✅ ⭐ | Flagged, excluded from evaluation and AI |
 
 ## 3. Data promised vs. seeded (doc 08)
@@ -60,15 +60,15 @@ Legend: ✅ built · 🟡 partial · ❌ gap · ⭐ beyond the ask
 | AI cost controls, usage log, skill playbooks | ✅ ⭐ |
 | Appeals (BU form), pre-approval, preview→official | ✅ ⭐ |
 | Equivalency effective dates (Phase 5) | ✅ |
-| Syllabus upload tied to a course | 🟡 — via Smart Upload / appeals; no per-course syllabus slot on the submit form |
-| NACES credential evaluation / certified translation checklist items | ❌ |
-| AP/IB score-threshold rule (AP ≥ 3 etc.) | ❌ (exams captured, thresholds not enforced) |
+| Syllabus upload tied to a course | ✅ — optional per-course attach + catalogue URL on the submit form (migration 025) |
+| NACES credential evaluation / certified translation checklist items | ✅ (conditional documents, seed 019) |
+| AP/IB score-threshold rule (AP ≥ 3 etc.) | ✅ per-university `ExamCreditRules` (defaults to confirm with BU), only qualifying exams count toward the cap (migration 028) |
 
 ## 5. Quality & proof gaps
 
 | Item | Status |
 |---|---|
-| Automated tests | ❌ none for the API (one script test for the rules document reader) |
+| Automated tests | 🟡 11 unit-test files (`npm run test:unit`), HTTP smoke suite (39/40 pass on the live site, 1 write check skipped), SQL smoke (243 pass) and triage contract (11/11); no API integration tests |
 | Live AI validation | ❌ no Anthropic key yet — AI paths unverified; **built-in rules fallback** keeps every AI step working without it |
 | Baseline numbers (45/month, 18-day turnaround were only the template example) | ❌ none supplied by BU |
 | Live DB migrations 018–021 | ⚠️ user applied via MCP; end-to-end smoke test still owed |
