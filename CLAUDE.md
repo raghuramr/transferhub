@@ -753,7 +753,7 @@ backtest (AI Controls > Usage) for a real number; click through the Demo scenari
 **Open question**: public `/auth/universities` lists BSCC/PVTC (community colleges), so a registrant can pick one as target.
 **Waiting on infra**: `ANTHROPIC_API_KEY`.
 
-## Session 2026-10-27 (e): medium gaps built (branch `claude/medium-gaps`; apply 025 -> 028 + seeds 018, 019; all SQL UNTESTED)
+## Session 2026-10-27 (e): medium gaps built (branch `claude/medium-gaps`; apply 025 -> 029 + seeds 018, 019; all SQL UNTESTED)
 - **025** `Syllabi.UploadId/CatalogUrl`: per-course syllabus attach + catalogue URL on the submit form (UploadTranscript), shown on student/staff pages.
 - **Side-by-side compare**: `GET /comparison/evaluation/:id` (staff only, needs canWorkRequest) + `CourseComparison.tsx` panel in RequestReview
   (overlap highlight, credit math, candidate switcher, one-click decide via POST /evaluations/:id/decide).
@@ -765,8 +765,8 @@ backtest (AI Controls > Usage) for a real number; click through the Demo scenari
   registration form.
 - **Tests/docs**: `npm run test:unit` (src/api), `npm run smoke -- --base <url>`, `database/tests/{smoke,triage-contract}.sql` (run with sqlcmd, not via the
   migration runner), `docs/TESTING.md`, `docs/BU_OPEN_QUESTIONS.md` (5-credit lab rule CR-04 etc., Discovery Log rows).
-- **KNOWN BUG (not fixed)**: `sp_TriageCourse` first existence check ignores `Equivalencies.Outcome`, so a `bu_only` mapping returns lane `applied` (PRG-03 should
-  be elective-only/review). Fix = one-line outcome filter in a new migration; `triage-contract.sql` case 8 pins today's behaviour.
+- **Bug fixed by migration 029**: `sp_TriageCourse` ignored `Equivalencies.Outcome` in the 'applied' check, so a `bu_only` mapping returned lane `applied`; now it
+  returns `elective_only` (PRG-03). Existing triaged rows are not rewritten. `triage-contract.sql` case 8 expects `elective_only`. Apply 029 with the others.
 
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)

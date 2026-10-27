@@ -84,10 +84,7 @@ elective credit?
 course in that group, which is a large share of the core courses.
 
 **Current default.** Treated as elective credit only (`Equivalencies.Outcome = 'bu_only'`, intended lane
-`elective_only`). Note from the SQL contract test: `sp_TriageCourse` currently returns lane `applied` for a `bu_only`
-mapping because its first existence check ignores the outcome, so the `elective_only` branch is never reached. The
-outcome itself is still stored and shown; the lane label is the part that is wrong. This needs a code fix once BU
-confirms the answer.
+`elective_only`). Migration 029 fixed the triage lane: a `bu_only` mapping now returns `elective_only` instead of `applied`. Whether such a course may earn elective credit at all is still the question for BU.
 
 **Where configured.** Per mapping (`Equivalencies.Outcome`); programme rules (migration 027) for residency limits.
 

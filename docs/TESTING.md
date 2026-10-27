@@ -129,6 +129,5 @@ any change to `sp_TriageCourse` or `sp_RecordDecision`.
   SQL contract covers the procedure only, and notes where the application layer takes over.
 - **The 5-credit lab rule and other open BU policy points** (`docs/BU_OPEN_QUESTIONS.md`): current behaviour is pinned
   where possible, but the tests do not decide what is right.
-- **Known finding pinned, not fixed:** `sp_TriageCourse` gives lane `applied` for a `bu_only` mapping, so its
-  `elective_only` branch cannot be reached (`triage-contract.sql` case 8).
+- **Fixed by migration 029:** `sp_TriageCourse` used to give lane `applied` for a `bu_only` mapping; `triage-contract.sql` case 8 now expects `elective_only` (fails until 029 is applied).
 - **Load, security and accessibility testing** are out of scope.
