@@ -15,6 +15,7 @@ import { ScopeService } from '../policy/scope.service';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import { AnthropicDocumentReader, DocumentReader, PAUSED_REASON, PausedDocumentReader } from './document-reader';
 import { RulesDocumentReader, RULES_REASON } from './rules-document-reader';
+import { AzureDocumentIntelligenceReader } from './azure-document-reader';
 import { AiSettingsService } from '../ai/ai-settings.service';
 import { DOC_TYPES, DOC_TYPE_KEYS, ExtractedData, needsReview, normalizeExtraction, toPrefill } from './document-types';
 
@@ -72,14 +73,22 @@ export class DocumentsService {
     private paused: PausedDocumentReader,
     private rules: RulesDocumentReader,
     private aiSettings: AiSettingsService,
+    private azureDoc: AzureDocumentIntelligenceReader,
   ) {}
 
+  /** True for any reader that uses a real model/OCR service (vs the built-in rules or paused readers). */
+  private isAiReader(r: DocumentReader): boolean {
+    return r === this.anthropic || r === this.azureDoc;
+  }
+
   /**
-   * Anthropic when a key exists, AI is on and budget remains; else the built-in rules reader when the
+   * Azure Document Intelligence when it is the selected document provider and configured; else Anthropic
+   * when a key exists, AI is on and budget remains; else the built-in rules reader when the
    * `rulesFallbackEnabled` setting allows (missing = on); else the paused reader.
-   * `available` = a reader will actually run; `aiAvailable` (status) = only true for anthropic.
    */
   private async pickReader(): Promise<{ reader: DocumentReader; available: boolean; fallback: boolean; reason?: string }> {
+    const di = await this.azureDoc.isAvailable();
+    if (di.available) return { reader: this.azureDoc, available: true, fallback: false };
     const a = await this.anthropic.isAvailable();
     if (a.available) return { reader: this.anthropic, available: true, fallback: false };
     let rulesOn = true;
@@ -99,7 +108,7 @@ export class DocumentsService {
   async status() {
     const [pick, ready] = await Promise.all([this.pickReader(), this.ready()]);
     return {
-      aiAvailable: pick.reader === this.anthropic,
+      aiAvailable: this.isAiReader(pick.reader),
       reader: pick.reader.name,
       fallback: pick.fallback,
       reason: pick.reason ?? null,
@@ -199,7 +208,7 @@ export class DocumentsService {
         });
       }
     }
-    return { aiAvailable: pick.reader === this.anthropic, reader: pick.reader.name, fallback: pick.fallback, reason: pick.reason ?? null, intakes: out };
+    return { aiAvailable: this.isAiReader(pick.reader), reader: pick.reader.name, fallback: pick.fallback, reason: pick.reason ?? null, intakes: out };
   }
 
   private async readBytes(uploadId: string, userId: string): Promise<{ bytes: Buffer; mimeType: string; fileName: string }> {

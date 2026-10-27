@@ -6,10 +6,11 @@ import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 import { AnthropicDocumentReader, PausedDocumentReader } from './document-reader';
 import { RulesDocumentReader } from './rules-document-reader';
+import { AzureDocumentIntelligenceReader } from './azure-document-reader';
 
 @Module({
   imports: [AuthModule, UploadsModule, AiModule],
-  providers: [DocumentsService, AnthropicDocumentReader, PausedDocumentReader, RulesDocumentReader],
+  providers: [DocumentsService, AnthropicDocumentReader, PausedDocumentReader, RulesDocumentReader, AzureDocumentIntelligenceReader],
   controllers: [DocumentsController],
   exports: [DocumentsService],
 })
