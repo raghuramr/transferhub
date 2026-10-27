@@ -437,7 +437,7 @@ export class TranscriptsService {
     if (filters.requestingRole === 'admin' && filters.requestingUserId) {
       // Admins assigned to universities see only requests targeting (or registered for) those universities.
       const adminScope = await this.scopeService.universityScope({ id: filters.requestingUserId, role: 'admin' });
-      if (adminScope) where += ` AND ${this.scopeService.transcriptInScope(adminScope, 't', inputs)}`;
+      if (adminScope) where += ` AND ${this.scopeService.transcriptVisibleInScope(adminScope, 't', inputs)}`;
     } else {
       const scope = await this.getUniversityScope(filters.requestingUserId);
       if (scope) {
@@ -521,7 +521,7 @@ export class TranscriptsService {
     const ids = await this.scopeService.universityScope(viewer);
     if (!ids) return true;
     const inputs: QueryInput[] = [{ name: 'tid', type: sql.UniqueIdentifier, value: transcriptId }];
-    const pred = this.scopeService.transcriptInScope(ids, 't', inputs);
+    const pred = this.scopeService.transcriptVisibleInScope(ids, 't', inputs);
     const r = await this.db.query<{ N: number }>(`SELECT COUNT(*) AS N FROM Transcripts t WHERE t.Id = @tid AND ${pred}`, inputs);
     return r.recordset[0].N > 0;
   }

@@ -6,6 +6,7 @@ import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner
 import { MotionCard } from '../../components/ui/Card';
 import { Reveal } from '../../components/ui/PageTransition';
 import { DashboardView } from '../../components/dashboard/DashboardView';
+import { DegreeProgressCard } from '../../components/student/DegreeProgressCard';
 import {
   Upload, Clock, CheckCircle, AlertCircle, ChevronRight, GraduationCap
 } from 'lucide-react';
@@ -95,6 +96,8 @@ export default function StudentDashboard() {
           </div>
         </MotionCard>
       </div>
+
+      <DegreeProgressCard className="mb-8" />
 
       <div className="mb-8"><DashboardView withRange={false} /></div>
 

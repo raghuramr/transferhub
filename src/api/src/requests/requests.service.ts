@@ -81,10 +81,20 @@ export class RequestsService {
       const ids = await this.scopeSvc.universityScope(viewer);
       if (ids) {
         const inputs: QueryInput[] = [{ name: 'tid', type: sql.UniqueIdentifier, value: transcriptId }];
-        const pred = this.scopeSvc.transcriptInScope(ids, 't', inputs);
+        // incoming (full access) or outgoing from a scoped university (read + documents + reminders)
+        const pred = this.scopeSvc.transcriptVisibleInScope(ids, 't', inputs);
         const ok = await this.db.query<{ N: number }>(`SELECT COUNT(*) AS N FROM Transcripts t WHERE t.Id = @tid AND ${pred}`, inputs);
         if (!ok.recordset[0].N) throw new ForbiddenException('This request belongs to a university outside your assignment.');
       }
+    }
+    return row;
+  }
+
+  /** assertCanView + "may decide stages": a scoped admin of the SOURCE university only reads / uploads / reminds. */
+  async assertCanWork(transcriptId: string, viewer: Viewer) {
+    const row = await this.assertCanView(transcriptId, viewer);
+    if (!(await this.scopeSvc.canWorkRequest(viewer, transcriptId))) {
+      throw new ForbiddenException('This request is incoming at another university. You can view it, add documents and send reminders, but not approve it.');
     }
     return row;
   }
@@ -137,6 +147,8 @@ export class RequestsService {
   async getTimeline(transcriptId: string, viewer: Viewer) {
     await this.assertCanView(transcriptId, viewer);
     const staff = !isOwnerRole(viewer.role);
+    // A scoped admin of the SOURCE university only reads: no approving, no internal notes or AI brief of the receiving university.
+    const readOnly = staff && !(await this.scopeSvc.canWorkRequest(viewer, transcriptId));
     const mine = await this.myStageIds(viewer);
     const actsOn = (wsId: number | null) => (mine === null ? true : wsId != null && mine.has(wsId));
 
@@ -204,6 +216,7 @@ export class RequestsService {
     const canSeeNote = (n: (typeof noteRows)[number]) => {
       if (n.Audience === 'student') return true;
       if (!staff) return false;
+      if (readOnly) return !!n.AuthorUserId && String(n.AuthorUserId).toLowerCase() === viewer.id.toLowerCase();
       if (mine === null) return true;
       if (n.AuthorUserId && String(n.AuthorUserId).toLowerCase() === viewer.id.toLowerCase()) return true;
       return n.WorkflowStageId != null ? mine.has(n.WorkflowStageId) : involved;
@@ -211,8 +224,8 @@ export class RequestsService {
     const visibleNotes = noteRows.filter(canSeeNote);
 
     const active = stages.recordset.find((s) => s.Status === 'active');
-    const canAct = !!active && active.StageType !== 'system' && staff && actsOn(active.WorkflowStageId);
-    const admin = isAdminRole(viewer.role);
+    const canAct = !readOnly && !!active && active.StageType !== 'system' && staff && actsOn(active.WorkflowStageId);
+    const admin = isAdminRole(viewer.role) && !readOnly;
     const workflowActive = t.workflowStatus === 'active';
     const now = Date.now();
 
@@ -283,8 +296,8 @@ export class RequestsService {
         approvers: s.StageType === 'system' ? [] : approverLabels(s.WorkflowStageId),
         canSkip: admin && workflowActive && s.Status === 'active' && s.StageType !== 'system' && s.CanBypass !== false,
         requiresComment: !!s.RequiresComment,
-        aiRecommendation: staff ? s.AiRecommendation : null,
-        aiBrief: staff && s.Status === 'active' ? parseBrief(s.AiBrief) : null,
+        aiRecommendation: staff && !readOnly ? s.AiRecommendation : null,
+        aiBrief: staff && !readOnly && s.Status === 'active' ? parseBrief(s.AiBrief) : null,
         notes: visibleNotes
           .filter((n) => n.TranscriptStageId === s.Id)
           .map((n) => ({
@@ -306,14 +319,15 @@ export class RequestsService {
         canAccept: admin && workflowActive && (t.allowBypass == null || !!t.allowBypass),
         canStartWorkflow: admin && !t.workflowId && evaluationKind !== 'preview',
         canMakeOfficial: admin && evaluationKind === 'preview',
-        canNoteInternal: staff && (admin || involved),
+        canNoteInternal: staff && !readOnly && (admin || involved),
+        readOnly,
         canNoteStudent: true,
         canSeeAiUsage: staff,
       },
       documents: { checklist, uploaded: docs.recordset },
       reminders: {
         canNudge: !staff && workflowActive && !within(lastOf('nudge_staff'), 24),
-        canSendUpdate: staff && (admin || involved) && workflowActive && !within(lastOf('update_student'), 12),
+        canSendUpdate: staff && !readOnly && (admin || involved) && workflowActive && !within(lastOf('update_student'), 12),
         lastNudgeAt: lastOf('nudge_staff'),
         lastUpdateAt: lastOf('update_student'),
         emailConfigured: this.email.isConfigured,
@@ -379,7 +393,7 @@ export class RequestsService {
   // ── notes ───────────────────────────────────────────────────
 
   async postNote(transcriptId: string, viewer: Viewer, dto: { audience: 'internal' | 'student'; body: string; stageId?: number }) {
-    await this.assertCanView(transcriptId, viewer);
+    await this.assertCanWork(transcriptId, viewer);
     const owner = isOwnerRole(viewer.role);
     if (owner && dto.audience === 'internal') throw new ForbiddenException('Internal notes are for staff only.');
 
@@ -474,7 +488,7 @@ export class RequestsService {
    * the student a status update. Rate-limited (24h / 12h) and always logged.
    */
   async remind(transcriptId: string, viewer: Viewer, message?: string) {
-    await this.assertCanView(transcriptId, viewer);
+    await this.assertCanWork(transcriptId, viewer);
     const t = await this.db.query<{ WorkflowStatus: string | null; Email: string; FirstName: string; StudentName: string }>(
       `SELECT t.WorkflowStatus, u.Email, u.FirstName, u.FirstName + ' ' + u.LastName AS StudentName
        FROM Transcripts t JOIN Users u ON u.Id = t.StudentUserId WHERE t.Id = @t`,

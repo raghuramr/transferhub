@@ -8,6 +8,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UploadsService } from '../uploads/uploads.service';
+import { ScopeService } from '../policy/scope.service';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 @Controller('transcripts')
@@ -16,6 +17,7 @@ export class TranscriptsController {
   constructor(
     private transcriptsService: TranscriptsService,
     private uploadsService: UploadsService,
+    private scope: ScopeService,
   ) {}
 
   @Get()
@@ -68,11 +70,13 @@ export class TranscriptsController {
   @Patch(':id/status')
   @UseGuards(RolesGuard)
   @Roles('faculty', 'admin', 'super_admin')
-  updateStatus(
+  async updateStatus(
     @Param('id') id: string,
     @Body() body: { status: string },
     @Req() req: AuthenticatedRequest,
   ) {
+    // A scoped admin of the SOURCE university may read the request but not change its status.
+    if (!(await this.scope.canWorkRequest(req.user, id))) throw new ForbiddenException('This request is incoming at another university.');
     return this.transcriptsService.updateStatus(id, body.status, req.user.id);
   }
 }

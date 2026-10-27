@@ -6,6 +6,7 @@ import { aiControlsApi, universitiesApi } from '../../lib/api';
 import { usePermissions } from '../../hooks/usePermissions';
 import { cn } from '../../lib/cn';
 import ReadinessCard from '../../components/workflow/ReadinessCard';
+import MatcherAccuracyCard from '../../components/workflow/MatcherAccuracyCard';
 import type { AgentSkill, AiSettings } from '../../types/workflow';
 
 type Tab = 'usage' | 'settings' | 'playbook' | 'requests';
@@ -96,6 +97,7 @@ function UsageTab({ days }: { days: number }) {
 
   return (
     <div className="space-y-6">
+      <MatcherAccuracyCard />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat icon={<Coins size={13} />} label="Tokens used" value={fmt(spent)} hint={`${fmt(s.totals.inputTokens)} in · ${fmt(s.totals.outputTokens)} out`} />
         <Stat icon={<Gauge size={13} />} label="Estimated cost" value={usd(s.totals.costUsd)} hint={`${fmt(s.totals.requests)} requests`} />
