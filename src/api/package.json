@@ -24,6 +24,7 @@
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/serve-static": "^4.0.2",
+    "@nestjs/swagger": "^7.4.2",
     "@nestjs/throttler": "^6.4.0",
     "@types/pdfkit": "^0.13.9",
     "argon2": "^0.43.0",

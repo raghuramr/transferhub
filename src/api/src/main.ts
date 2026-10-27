@@ -5,6 +5,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { setupSwagger, swaggerEnabled, SWAGGER_PATH } from './swagger';
 
 async function bootstrap() {
   // Captured before NestFactory.create(AppModule) touches process.env at all.
@@ -22,7 +23,10 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
 
-  app.use(helmet());
+  // Swagger UI needs inline scripts/styles, so the docs routes get a relaxed CSP; everything else keeps helmet's defaults.
+  const strictHelmet = helmet();
+  const docsHelmet = helmet({ contentSecurityPolicy: false });
+  app.use((req: any, res: any, next: any) => (req.path.startsWith(`/${SWAGGER_PATH}`) ? docsHelmet(req, res, next) : strictHelmet(req, res, next)));
   // Partner data submissions can carry thousands of rows; Express' 100kb default would reject them.
   app.useBodyParser('json', { limit: '6mb' });
 
@@ -40,6 +44,11 @@ async function bootstrap() {
   );
 
   app.setGlobalPrefix('api');
+
+  if (swaggerEnabled()) {
+    setupSwagger(app);
+    console.log(`[bootstrap] Swagger UI at /${SWAGGER_PATH}`);
+  }
 
   const port = Number(injectedPort) || config.get<number>('PORT', 3001);
   await app.listen(port);
