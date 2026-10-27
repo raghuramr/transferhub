@@ -5,6 +5,7 @@ import { SchemaService } from '../policy/schema.service';
 import { ScopeService, ScopeViewer } from '../policy/scope.service';
 import { TransferPolicyService, parseFlags } from '../policy/transfer-policy.service';
 import { CreditDeadlineService } from '../policy/credit-deadline.service';
+import { CourseMappingsService } from '../policy/course-mappings.service';
 import { AiSettingsService } from '../ai/ai-settings.service';
 import { buildProgress, ProgressCourseRow, ProgressRequestRow, ProgressResult } from './progress.aggregate';
 
@@ -53,6 +54,7 @@ export class ProgressService {
     private policy: TransferPolicyService,
     private aiSettings: AiSettingsService,
     private deadlines: CreditDeadlineService,
+    private courseMappings: CourseMappingsService,
   ) {}
 
   /** Staff view of one student; same visibility rules as the other student-data endpoints. */
@@ -100,6 +102,7 @@ export class ProgressService {
         )
       : { recordset: [] as CourseRow[] };
 
+    const multiMappings = await this.courseMappings.forStudent(studentUserId);
     const byReq = new Map<string, ProgressCourseRow[]>();
     for (const c of courseRows.recordset) {
       const key = String(c.TranscriptId).toLowerCase();
@@ -126,6 +129,7 @@ export class ProgressService {
         isOutsideUS: !!c.IsOutsideUS,
         appealStatus: c.AppealStatus ?? null,
         hasSyllabus: !!c.HasSyllabus,
+        mappings: (multiMappings.get(String(c.Id).toLowerCase()) ?? []).map((m) => ({ code: m.code, title: m.title, credits: m.credits })),
       });
       byReq.set(key, list);
     }

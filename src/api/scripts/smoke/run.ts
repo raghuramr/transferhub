@@ -66,7 +66,7 @@ async function check(name: string, fn: () => Promise<string | void>): Promise<vo
   let status: Status = 'PASS';
   let detail = '';
   try {
-    detail = (await fn()) ?? '';
+    detail = ((await fn()) as string | undefined) ?? '';
   } catch (e) {
     if (e instanceof SkipError) { status = 'SKIP'; detail = e.message; }
     else { status = 'FAIL'; detail = (e as Error).message; }

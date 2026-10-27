@@ -1,3 +1,4 @@
+import { CourseMappingsService } from '../policy/course-mappings.service';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
@@ -93,6 +94,7 @@ export class TranscriptsService {
     private workflowEngine: WorkflowEngineService,
     private policy: TransferPolicyService,
     private schema: SchemaService,
+    private courseMappings: CourseMappingsService,
   ) {}
   private readonly logger = new Logger(TranscriptsService.name);
 
@@ -454,6 +456,7 @@ export class TranscriptsService {
     }
 
     const syllabi = await this.syllabusStatus(id);
+    const multiMappings = await this.courseMappings.forTranscript(id); // OUT-06: BU courses per course (empty unless one-to-many)
 
     return {
       id: t.Id,
@@ -477,6 +480,7 @@ export class TranscriptsService {
         ...mapCourseRow(r),
         ...(extras.get(String(r.Id).toLowerCase()) ?? {}),
         syllabus: syllabi.get(String(r.Id).toLowerCase()) ?? { attached: false, fileName: null, hasCatalogUrl: false },
+        mappedBuCourses: multiMappings.get(String(r.Id).toLowerCase()) ?? [],
       })),
     };
   }
