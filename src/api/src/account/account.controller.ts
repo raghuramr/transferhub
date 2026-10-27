@@ -20,6 +20,10 @@ class SetTargetDto {
   @IsInt() institutionId: number;
   @IsOptional() @IsInt() programId?: number;
 }
+class UpdateStudentProfileDto {
+  @IsOptional() @IsString() currentInstitution?: string;
+  @IsOptional() @IsString() currentProgram?: string;
+}
 class ConfirmEmailChangeDto {
   @IsString() @MinLength(20) token: string;
 }
@@ -63,6 +67,14 @@ export class AccountController {
   @Roles('student')
   overview(@Req() req: AuthenticatedRequest) {
     return this.account.studentOverview(req.user.id);
+  }
+
+  /** Student edits their own current institution / program (free text). */
+  @Put('student-profile')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student')
+  updateStudentProfile(@Body() dto: UpdateStudentProfileDto, @Req() req: AuthenticatedRequest) {
+    return this.account.updateStudentProfile(req.user, dto);
   }
 
   @Put('photo')

@@ -486,6 +486,8 @@ export const accountApi = {
   setTarget: (institutionId: number, programId?: number) =>
     api.put<{ ok: boolean; warning: string | null }>('/account/target', { institutionId, ...(programId ? { programId } : {}) }),
   studentOverview: () => api.get<StudentOverview>('/account/student-overview'),
+  updateStudentProfile: (patch: { currentInstitution?: string | null; currentProgram?: string | null }) =>
+    api.put<{ ok: boolean }>('/account/student-profile', patch),
 };
 
 export interface TargetUniversityOption {
