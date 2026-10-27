@@ -16,7 +16,7 @@ Legend: ✅ built · 🟡 partial · ❌ gap · ⭐ beyond the ask
 | 2 | **More transparent** for students | ✅ | Student request page: vertical timeline, per-course lane, notes, reminders ("nudge"); dashboards |
 | 3 | **Less stressful** | ✅ | Syllabus requested only for review-lane courses; preview before admission; status per course instead of "0 units" |
 | 4 | **Department makes the final decision** (GOV-01) | ✅ | Configurable approval stages; AI/rules never reject; rules confidence capped at 0.7; auto-approve is an opt-in per-stage setting that records the agent as the actor |
-| 5 | Demo: six courses (3 equivalent, 2 maybe, 1 quarter) upload → posting | ✅ | Seed 015 adds the BSCC/PVTC catalogues, 3 known equivalencies and Maya's six-course story (two transcripts, quarter course = 2.66). _SQL unverified until applied_ |
+| 5 | Demo: six courses (3 equivalent, 2 maybe, 1 quarter) upload → posting | ✅ | Seed 015 (applied, counts verified) + a repeatable presenter page (reset Maya, second student for the learning loop) and docs/DEMO_SCRIPT.md |
 | 6 | Measurable outcome (07): top-3 hit rate on held-out decisions | ✅ | `GET /ai-controls/backtest` + Matcher accuracy card (AI Controls, Usage tab). Number not yet run on live data; AI matcher plugs into the same harness |
 | 7 | Student "provisional range" + degree-progress view (07/05) | ✅ | `GET /progress/me` + Degree progress card: secured / likely range / pending / not counted vs the cap, next step per course |
 | 8 | Evaluator workbench: side-by-side comparison with highlighted overlap, credit math (07) | 🟡 | Request review shows brief, AI/rule candidates with rationale, credit conversion; **no side-by-side description/outcome diff with highlighting** |
@@ -35,7 +35,7 @@ Legend: ✅ built · 🟡 partial · ❌ gap · ⭐ beyond the ask
 | GR-04 68/60/80 external-credit cap incl. AP/IB/A-level | ✅ ⭐ | `TransferPolicyService`, per-university thresholds |
 | GR-05 5-year age, accreditation, no internships/research/military/life experience | ✅ ⭐ | Flags stored per course and shown in brief + student view |
 | GR-06 / PRG-01 Hub never satisfied by transfer | ✅ | Always stated in brief and student summary |
-| **PRG-02 all credits within one year of starting** | ❌ | No deadline tracking per student. (SLA watcher covers stage turnaround, not the one-year BU deadline) |
+| **PRG-02 all credits within one year of starting** | ✅ | Credit-deadline tracker: per-university months, `past_deadline` review flag, progress/staff badges, 90/30/7-day and overdue reminders (migration 024; SQL unverified until applied) |
 | PRG-03 "Must be taken at BU" (CS 320/332/350) | ✅ | `Equivalencies.Outcome = 'bu_only'` honoured by triage |
 | **PRG-04/05/06/07/08** programme caps and substitutions (Econ ≤4 at 200+, Biology 5 BI at BU, MA 242 ↔ CS 132 …) | ❌ | Not encoded as rules; only the BU-only flag exists |
 | International coursework → International Admissions | ✅ ⭐ | Flagged, excluded from evaluation and AI |

@@ -722,6 +722,23 @@ Several ways to get a student's data in; every channel ends at the same "confirm
 - `_designs/deck/`: `TransferHub-Hackathon.pptx` (16 slides) built by `build-deck.js` (needs pptxgenjs, react-icons, sharp via
   NODE_PATH); `screens/` are mocked-API screenshots (synthetic numbers, not real data).
 
+## Session 2026-10-27 (d): demo-login controls, student spread, deadline tracker, repeatable demo (branch `claude/demo-login-controls`)
+- **Apply**: migration 023 (`AppSettings`), seed 017 (spread students over the receiving universities, deterministic; check run log shows the
+  expected university count), migration 024 (`TransferPolicies.CreditDeadlineMonths`, `StudentProfiles.StartDate`, `CreditDeadlineNotices`).
+- **Demo login**: public `GET /auth/demo-login` (off by default, 10s cache, per-IP limit), super_admin `GET/PUT /settings/demo-login`
+  (System Settings > Demo login): off / names-only buttons that autofill / show credentials. Accounts are the 5 seed demo accounts
+  hard-coded in `src/api/src/settings/demo-accounts.ts`. Audit action `DEMO_LOGIN_SETTINGS_CHANGED`.
+- **Student spread** (seed 017): the 120 synthetic students + any student with no valid target get a hash-picked receiving university
+  (Type='university', not BSCC/PVTC); Maya stays BU; real registrants with a valid choice are untouched; only pre-workflow transcripts
+  are realigned. Scoped admins now see only their university's slice.
+- **PRG-02 credit deadline**: `policy/credit-deadline.ts` (term starts Fall Sep 1 / Spring Jan 15 / Summer May 25, months per university
+  in Transfer rules, estimate from first request if no entry term), `past_deadline` flag sends undecided courses to review (never denies),
+  progress card block, staff badge + queue filter, SLA-watcher reminders at 90/30/7 days + overdue (ledger `CreditDeadlineNotices`).
+  Nothing populates `StudentProfiles.StartDate` yet.
+- **Repeatable demo (Gap 5)**: `/superadmin/settings/demo-scenario` page + `src/api/src/demo/` (`POST /demo/maya/reset`, `/second-student`,
+  `GET /demo/status`); built in TypeScript (mirrors seed 015 section 3 - keep in step); `docs/DEMO_SCRIPT.md`. Secure credits at upload = 11
+  (4+4+3), not 12. Reset does not clear `AiMatchCache`.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group
