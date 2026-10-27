@@ -1,9 +1,10 @@
-import { Controller, Get, Query, Req, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import { StudentJourneyService } from './student-journey.service';
+import { ApplyDto } from './dto/apply.dto';
 
 @Controller('student')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -28,5 +29,12 @@ export class StudentJourneyController {
   async compare(@Req() req: AuthenticatedRequest, @Query('ids') ids: string, @Query('userId', new ParseUUIDPipe({ optional: true })) userId?: string) {
     const parsed = this.service.parseIds(ids);
     return this.service.compare(await this.service.resolveStudent(req.user, userId), parsed);
+  }
+
+  /** Apply to one or more universities at once — one tracked request each: POST /student/apply { institutionIds }. */
+  @Post('apply')
+  async apply(@Req() req: AuthenticatedRequest, @Body() dto: ApplyDto, @Query('userId', new ParseUUIDPipe({ optional: true })) userId?: string) {
+    const studentUserId = await this.service.resolveStudent(req.user, userId);
+    return this.service.apply(studentUserId, dto.institutionIds, req.user.role);
   }
 }

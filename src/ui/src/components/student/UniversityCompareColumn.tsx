@@ -80,10 +80,12 @@ interface Props {
   targetInstitutionId: number | null;
   targetProgramId: number | null;
   optional: boolean;
+  /** The student's own total credits, for the my-credits vs would-transfer comparison. */
+  myTotalCredits: number;
 }
 
 /** One of the three comparison slots: a university dropdown plus its auto-populated preview. */
-export function UniversityCompareColumn({ index, universities, value, onChange, takenIds, data, loading, error, targetInstitutionId, targetProgramId, optional }: Props) {
+export function UniversityCompareColumn({ index, universities, value, onChange, takenIds, data, loading, error, targetInstitutionId, targetProgramId, optional, myTotalCredits }: Props) {
   const qc = useQueryClient();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -144,15 +146,20 @@ export function UniversityCompareColumn({ index, universities, value, onChange, 
         <p className="p-4 text-sm text-red-600">Could not load the comparison for {uni?.name ?? 'this university'}.</p>
       ) : (
         <div className="space-y-4 p-3 sm:p-4">
+          {/* Your credits vs what would transfer to this university, side by side. */}
           <div className="grid grid-cols-2 gap-2 text-center">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <p className="text-2xl font-bold leading-none text-gray-800">{fmtCredits(myTotalCredits)}</p>
+              <p className="mt-1 text-[11px] text-gray-500">your total credits</p>
+            </div>
             <div className="rounded-xl bg-brand-800 p-3 text-white">
               <p className="text-2xl font-bold leading-none">{fmtCredits(s.transferableCredits)}</p>
-              <p className="mt-1 text-[11px] text-brand-100">credits could transfer</p>
+              <p className="mt-1 text-[11px] text-brand-100">would transfer to {uni?.name ?? 'here'}</p>
             </div>
-            <div className="rounded-xl bg-brand-50 p-3">
-              <p className="text-2xl font-bold leading-none text-brand-800">{s.coursesMatched} <span className="text-sm font-medium text-gray-500">of {s.studentCourses}</span></p>
-              <p className="mt-1 text-[11px] text-gray-500">courses matched ({s.percentMatched}%)</p>
-            </div>
+          </div>
+          <div className="rounded-xl bg-brand-50 p-3 text-center">
+            <p className="text-lg font-bold leading-none text-brand-800">{s.coursesMatched} <span className="text-sm font-medium text-gray-500">of {s.studentCourses}</span></p>
+            <p className="mt-1 text-[11px] text-gray-500">courses matched ({s.percentMatched}%)</p>
           </div>
           <div className="flex flex-wrap gap-1.5 text-xs">
             <Badge tone="green">{fmtCredits(s.knownCredits)} cr known ({s.coursesKnown})</Badge>
