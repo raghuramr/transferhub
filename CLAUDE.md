@@ -739,6 +739,20 @@ Several ways to get a student's data in; every channel ends at the same "confirm
   `GET /demo/status`); built in TypeScript (mirrors seed 015 section 3 - keep in step); `docs/DEMO_SCRIPT.md`. Secure credits at upload = 11
   (4+4+3), not 12. Reset does not clear `AiMatchCache`.
 
+## PENDING (parked by the user 2026-10-27; to be worked on together "tonight", do not start unprompted)
+**Medium-sized gaps** (from `_designs/GAP_ANALYSIS.md`; Gap 5 and PRG-02 are done):
+1. Side-by-side course comparison with highlighted overlapping topics/outcomes + credit math in the evaluator workbench (RequestReview).
+2. OUT-06 one external course -> several BU courses (split/combine, e.g. NU CHEM 1161), currently one BU course per decision.
+3. Programme rules PRG-04..08 (Econ max 4 courses at 200+, Biology 5 BI at BU, Psych/Math rules, substitutions like MA 242 <-> CS 132) as a rules table.
+4. AP/IB score thresholds (AP >= 3, IB 4-5, CLEP >= 50); NACES credential evaluation + certified translation checklist items.
+5. Per-course syllabus upload slot on the submit form (today only via Smart Upload / appeals).
+6. API/SQL smoke tests (triage, policy, workflow, exchange); CR-04 5-credit lab rule needs BU's answer.
+7. Re-run the deck (`_designs/deck/build-deck.js`): scorecard still shows PRG-02 open; refresh counts after these.
+**User-side checks still owed**: apply migration 023 -> seed 017 (check log shows 6 universities) -> migration 024; run the Matcher accuracy
+backtest (AI Controls > Usage) for a real number; click through the Demo scenario page; set `StudentProfiles.StartDate` has no UI yet.
+**Open question**: public `/auth/universities` lists BSCC/PVTC (community colleges), so a registrant can pick one as target.
+**Waiting on infra**: `ANTHROPIC_API_KEY`.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group
