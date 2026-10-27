@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { coursesApi, universitiesApi } from '../../lib/api';
-import { GraduationCap, Plus, Power } from 'lucide-react';
+import { GraduationCap, Plus, Power, Trash2 } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useAuthStore } from '../../store/auth';
+import { PermanentDeleteDialog } from '../../components/shared/PermanentDeleteDialog';
 import {
   ProgramFields,
   ProgramEditForm,
@@ -16,6 +18,8 @@ import {
 export default function ProgramsManagement() {
   const qc = useQueryClient();
   const { can } = usePermissions();
+  const isSuperAdmin = useAuthStore((s) => s.user?.role) === 'super_admin';
+  const [purgeQueue, setPurgeQueue] = useState<Program[]>([]);
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [createForm, setCreateForm] = useState<ProgramForm>(emptyForm);
   const [justCreatedId, setJustCreatedId] = useState<number | null>(null);
@@ -129,6 +133,14 @@ export default function ProgramsManagement() {
               <Power size={12} /> Activate
             </button>
           )}
+          {isSuperAdmin && (
+            <button
+              onClick={() => setPurgeQueue([p])}
+              className="flex items-center gap-1 text-xs text-red-700 hover:underline"
+            >
+              <Trash2 size={12} /> Delete permanently
+            </button>
+          )}
         </div>
       ),
     },
@@ -180,6 +192,21 @@ export default function ProgramsManagement() {
         </div>
       )}
 
+      {isSuperAdmin && purgeQueue.length > 0 && (
+        <PermanentDeleteDialog
+          key={purgeQueue[0].id}
+          entity="programs"
+          id={purgeQueue[0].id}
+          fallbackLabel={`${purgeQueue[0].name}${purgeQueue.length > 1 ? ` (1 of ${purgeQueue.length})` : ''}`}
+          onClose={() => setPurgeQueue([])}
+          onDeleted={() => {
+            setPurgeQueue((q) => q.slice(1));
+            qc.invalidateQueries({ queryKey: ['programs'] });
+            qc.invalidateQueries({ queryKey: ['courses'] });
+          }}
+        />
+      )}
+
       <DataTable<Program>
         columns={columns}
         rows={programs}
@@ -207,6 +234,9 @@ export default function ProgramsManagement() {
             : []),
           ...(can('programs', 'delete')
             ? [{ label: 'Deactivate', onClick: (selected: Program[]) => bulkDeactivateMutation.mutate(selected.map((p) => p.id)), danger: true }]
+            : []),
+          ...(isSuperAdmin
+            ? [{ label: 'Delete permanently', onClick: (selected: Program[]) => setPurgeQueue(selected), danger: true }]
             : []),
         ]}
         showExport={false}

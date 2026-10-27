@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { BookOpen, Check, Upload } from 'lucide-react';
+import { BookOpen, Check, Upload, Trash2 } from 'lucide-react';
+import { PermanentDeleteDialog } from '../../components/shared/PermanentDeleteDialog';
 import { coursesApi } from '../../lib/api';
 import { useMemo, useRef, useState } from 'react';
 import { DataTable, type DataTableColumn, type DataTableFilter } from '../../components/ui/DataTable';
@@ -183,6 +184,8 @@ export default function CourseDatabase() {
   const canEditTopics = !!role && TOPIC_EDITOR_ROLES.includes(role);
   const canEditCourse = !!role && COURSE_EDITOR_ROLES.includes(role);
   const { can } = usePermissions();
+  const isSuperAdmin = role === 'super_admin';
+  const [purgeQueue, setPurgeQueue] = useState<CourseRow[]>([]);
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importResult, setImportResult] = useState<{ created: number; updated: number; errors?: unknown[] } | null>(null);
@@ -243,6 +246,20 @@ export default function CourseDatabase() {
           <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">Active</span>
         ),
     },
+    ...(isSuperAdmin
+      ? [{
+          key: 'purge',
+          header: 'Actions',
+          render: (row: CourseRow) => (
+            <button
+              onClick={(e) => { e.stopPropagation(); setPurgeQueue([row]); }}
+              className="flex items-center gap-1 text-xs text-red-700 hover:underline"
+            >
+              <Trash2 size={12} /> Delete permanently
+            </button>
+          ),
+        } as DataTableColumn<CourseRow>]
+      : []),
   ];
 
   const filters: DataTableFilter[] = [
@@ -282,6 +299,21 @@ export default function CourseDatabase() {
         </div>
       )}
 
+      {isSuperAdmin && purgeQueue.length > 0 && (
+        <PermanentDeleteDialog
+          key={purgeQueue[0].id}
+          entity="courses"
+          id={purgeQueue[0].id}
+          fallbackLabel={`${purgeQueue[0].code} — ${purgeQueue[0].title}${purgeQueue.length > 1 ? ` (1 of ${purgeQueue.length})` : ''}`}
+          onClose={() => setPurgeQueue([])}
+          onDeleted={() => {
+            setPurgeQueue((q) => q.slice(1));
+            qc.invalidateQueries({ queryKey: ['courses'] });
+            qc.invalidateQueries({ queryKey: ['course-topics'] });
+          }}
+        />
+      )}
+
       <DataTable
         columns={columns}
         rows={courses}
@@ -315,6 +347,9 @@ export default function CourseDatabase() {
                   },
                 },
               ]
+            : []),
+          ...(isSuperAdmin
+            ? [{ label: 'Delete permanently', danger: true, onClick: (selected: typeof courses) => setPurgeQueue(selected) }]
             : []),
         ]}
         renderExpanded={(row) => (
