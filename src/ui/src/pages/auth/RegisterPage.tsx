@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import { AlertCircle, ArrowLeft, ArrowRight, Check, Eye, EyeOff, Globe2, Info, Plus, Trash2 } from 'lucide-react';
 import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
-import { LogoMark } from '../../components/shared/Logo';
+import { LogoTile } from '../../components/shared/Logo';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../lib/cn';
 import type { AxiosError } from 'axios';
@@ -124,6 +124,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
   const [step, setStep] = useState(0);
+  const [stepError, setStepError] = useState<string | null>(null);
   const [showPass, setShowPass] = useState(false);
   const [serverError, setServerError] = useState('');
   const [extra, setExtra] = useState<Record<string, FormFieldValue>>({});
@@ -202,6 +203,7 @@ export default function RegisterPage() {
   const needsUnit = () => transfer && units.length > 0 && !getValues('intendedAcademicUnitId');
 
   const next = async () => {
+    setStepError(null);
     let ok = await trigger(cur.fields);
     if (cur.kind === 'application' && needsUnit()) {
       setError('intendedAcademicUnitId', { message: 'Choose a school or college - transfer applications cannot be undeclared' });
@@ -209,6 +211,7 @@ export default function RegisterPage() {
     }
     if (cur.kind === 'extra' && !validateExtra(cur.section!)) ok = false;
     if (ok) setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    else setStepError('Please fix the highlighted fields before continuing.');
   };
 
   const onSubmit = async (d: FormData) => {
@@ -291,28 +294,42 @@ export default function RegisterPage() {
       <motion.div className="absolute -left-32 -top-32 h-[32rem] w-[32rem] rounded-full bg-brand-700/40 blur-3xl" animate={{ x: [0, 40, 0], y: [0, 30, 0] }} transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }} />
       <motion.div className="absolute -bottom-40 -right-20 h-[36rem] w-[36rem] rounded-full bg-brand-500/30 blur-3xl" animate={{ x: [0, -30, 0], y: [0, -40, 0] }} transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }} />
 
-      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative w-full max-w-3xl">
+      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative w-full max-w-4xl">
         <div className="mb-6 text-center">
-          <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-lg"><LogoMark size={36} /></div>
-          <h1 className="text-2xl font-bold text-white">TransferHub</h1>
-          <p className="mt-1 text-brand-200">Create your student account</p>
+          <LogoTile width={220} className="mb-3" />
+          <h1 className="sr-only">TransferHub</h1>
+          <p className="mt-1 text-lg text-brand-200">Create your student account</p>
         </div>
 
-        <div className="rounded-2xl bg-white p-6 shadow-2xl shadow-black/20 sm:p-8">
-          {/* Stepper */}
-          <ol className="mb-6 flex items-center gap-1 overflow-x-auto pb-1">
-            {STEPS.map((s, i) => (
-              <li key={s.title} className="flex items-center gap-1">
-                <button type="button" disabled={i > step} onClick={() => setStep(i)}
-                  className={cn('flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium',
-                    i === step ? 'bg-brand-800 text-white' : i < step ? 'bg-brand-50 text-brand-800' : 'bg-gray-100 text-gray-400')}>
-                  <span className={cn('flex h-4 w-4 items-center justify-center rounded-full text-[10px]', i < step ? 'bg-brand-800 text-white' : '')}>{i < step ? <Check size={10} /> : i + 1}</span>
-                  {s.title}
-                </button>
-                {i < STEPS.length - 1 && <span className="h-px w-3 bg-gray-200" />}
-              </li>
-            ))}
-          </ol>
+        <div className="overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/20 md:flex">
+          {/* Vertical stepper (desktop) */}
+          <aside className="hidden shrink-0 bg-brand-50/60 p-6 md:block md:w-56">
+            <ol className="relative space-y-1">
+              {STEPS.map((s, i) => (
+                <li key={s.title} className="relative">
+                  {i < STEPS.length - 1 && <span className={cn('absolute left-[15px] top-8 h-[calc(100%-8px)] w-px', i < step ? 'bg-brand-800' : 'bg-gray-200')} />}
+                  <button type="button" disabled={i > step} onClick={() => setStep(i)}
+                    className={cn('relative flex w-full items-center gap-3 rounded-lg px-1.5 py-2 text-left text-sm font-medium',
+                      i === step ? 'text-brand-900' : i < step ? 'text-brand-800 hover:bg-brand-50' : 'text-gray-400')}>
+                    <span className={cn('flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-xs',
+                      i === step ? 'bg-brand-800 text-white ring-4 ring-brand-200' : i < step ? 'bg-brand-800 text-white' : 'border border-gray-300 bg-white text-gray-400')}>
+                      {i < step ? <Check size={14} /> : i + 1}
+                    </span>
+                    <span className="leading-tight">{s.title}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </aside>
+
+          <div className="min-w-0 flex-1 p-6 sm:p-8">
+          {/* Compact progress (phones) */}
+          <div className="mb-5 md:hidden">
+            <div className="mb-1.5 flex items-center justify-between text-sm font-medium text-brand-900">
+              <span>{cur.title}</span><span className="text-xs text-gray-500">Step {step + 1} of {STEPS.length}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-gray-200"><div className="h-1.5 rounded-full bg-brand-800 transition-all" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} /></div>
+          </div>
 
           {serverError && (
             <div className="mb-5 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"><AlertCircle size={18} className="shrink-0" />{serverError}</div>
@@ -414,7 +431,7 @@ export default function RegisterPage() {
                     <span className="text-sm font-medium text-gray-700">Every college or university you have attended</span>
                     <button type="button" onClick={() => edu.append({ institutionName: '', fullTime: true })} className="inline-flex items-center gap-1 text-sm font-medium text-brand-800 hover:underline"><Plus size={14} /> Add</button>
                   </div>
-                  {errors.education?.message && <p className="mb-2 text-xs text-red-600">{errors.education.message}</p>}
+                  {(errors.education?.message ?? errors.education?.root?.message) && <p className="mb-2 text-sm font-medium text-red-600">{errors.education?.message ?? errors.education?.root?.message}</p>}
                   <div className="space-y-3">
                     {edu.fields.map((f, i) => (
                       <div key={f.id} className="rounded-lg border border-gray-200 p-3">
@@ -551,9 +568,10 @@ export default function RegisterPage() {
               </div>
             )}
 
+            {stepError && <p role="alert" className="flex items-center gap-2 text-sm font-medium text-red-600"><AlertCircle size={16} />{stepError}</p>}
             <div className="flex items-center justify-between pt-2">
               {step > 0 ? (
-                <button type="button" onClick={() => setStep(step - 1)} className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900"><ArrowLeft size={16} /> Back</button>
+                <button type="button" onClick={() => { setStepError(null); setStep(step - 1); }} className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900"><ArrowLeft size={16} /> Back</button>
               ) : <span />}
               {step < STEPS.length - 1 ? (
                 <Button type="button" onClick={() => void next()} icon={<ArrowRight size={16} />}>Continue</Button>
@@ -566,6 +584,7 @@ export default function RegisterPage() {
           <p className="mt-6 text-center text-sm text-gray-500">
             Already have an account? <Link to="/login" className="font-medium text-brand-800 hover:underline">Sign in</Link>
           </p>
+          </div>
         </div>
       </motion.div>
     </div>

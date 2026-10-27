@@ -572,8 +572,13 @@ export interface TranscriptPrefill {
   isOutsideUS?: boolean;
 }
 export interface DocumentsStatus {
-  aiEnabled: boolean;
-  reason?: string;
+  /** True only when the Anthropic reader is active. */
+  aiAvailable?: boolean;
+  /** 'anthropic' | 'rules' (built-in, no AI) | 'paused' */
+  reader?: 'anthropic' | 'rules' | 'paused';
+  /** True when the built-in rules reader is standing in for AI. */
+  fallback?: boolean;
+  reason?: string | null;
   docTypes: { key: string; label: string }[];
 }
 export const documentsApi = {

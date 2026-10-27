@@ -269,6 +269,7 @@ function SettingsTab() {
             <h3 className="font-semibold text-gray-900">Switches</h3>
             <Check checked={draft.isEnabled} disabled={!canEdit} onChange={(v) => set({ isEnabled: v })} label="AI matching enabled" hint="Off = no tokens are spent. Reviewers match courses by hand and see the rules-based brief only." />
             <Check checked={draft.autoRunOnIntake} disabled={!canEdit || !draft.isEnabled} onChange={(v) => set({ autoRunOnIntake: v })} label="Run the agent automatically when a request arrives" hint="Off = reviewers start AI matching manually from the request." />
+            <Check checked={draft.rulesFallbackEnabled !== false} disabled={!canEdit} onChange={(v) => set({ rulesFallbackEnabled: v })} label="Built-in rules fallback" hint="When AI is off, has no key, or runs out of budget, a built-in rules engine still reads documents and suggests course matches (less accurate, always marked for review). Costs no tokens." />
             <Check checked={draft.narrativeBriefEnabled} disabled={!canEdit || !draft.isEnabled} onChange={(v) => set({ narrativeBriefEnabled: v })} label="Write the reviewer brief with AI" hint="Off (recommended) = the brief is a free template built from the data; no tokens." />
           </div>
 

@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { AlertCircle, ArrowRight, CheckCircle2, FlaskConical, GraduationCap, Search } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle2, FlaskConical, Search } from 'lucide-react';
 import { AxiosError } from 'axios';
 import { authApi, intakeApi, getErrorMessage } from '../../lib/api';
 import { Button } from '../../components/ui/Button';
 
+import { LogoTile } from '../../components/shared/Logo';
 const inputClass = 'w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-colors';
 
 export function IntakeShell({ title, subtitle, children, wide }: { title: string; subtitle?: string; children: React.ReactNode; wide?: boolean }) {
@@ -16,7 +17,7 @@ export function IntakeShell({ title, subtitle, children, wide }: { title: string
       <motion.div className="absolute -bottom-40 -right-20 h-[36rem] w-[36rem] rounded-full bg-brand-500/30 blur-3xl" animate={{ x: [0, -30, 0], y: [0, -40, 0] }} transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }} />
       <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className={`relative w-full ${wide ? 'max-w-3xl' : 'max-w-md'}`}>
         <div className="mb-6 text-center">
-          <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-lg"><GraduationCap className="text-brand-800" size={28} /></div>
+          <LogoTile width={220} className="mb-3" />
           <h1 className="text-2xl font-bold text-white">{title}</h1>
           {subtitle && <p className="mt-1 text-brand-200">{subtitle}</p>}
         </div>

@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth';
-import { LogoMark } from '../shared/Logo';
+import { LogoFull, LogoMark } from '../shared/Logo';
 import { authApi, pagesApi } from '../../lib/api';
 import { PageTransition } from '../ui/PageTransition';
 import { Avatar } from '../shared/Avatar';
@@ -134,12 +134,8 @@ export default function AppLayout() {
   const sidebarContent = (
     <>
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-brand-100/60">
-        <LogoMark size={36} className="shrink-0" />
-        <div>
-          <p className="font-bold text-gray-900 text-sm leading-tight">TransferHub</p>
-          <p className="text-xs text-gray-500">Credit Evaluation</p>
-        </div>
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-brand-100/60">
+        <LogoFull height={88} className="shrink-0" />
         <button
           onClick={() => setMobileNavOpen(false)}
           className="ml-auto md:hidden text-gray-400 hover:text-gray-700 p-1"
@@ -221,8 +217,7 @@ export default function AppLayout() {
           >
             <Menu size={22} />
           </button>
-          <LogoMark size={28} className="shrink-0" />
-          <p className="font-bold text-gray-900 text-sm">TransferHub</p>
+          <LogoFull height={44} className="shrink-0" />
         </div>
 
         <main className="flex-1 overflow-auto">

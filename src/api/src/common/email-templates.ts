@@ -185,16 +185,15 @@ function render(ctx: EmailContext, l: Layout): Email {
   <table role="presentation" class="wrap" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
     <tr><td bgcolor="${RED}" style="background-color:${RED};border-radius:12px 12px 0 0;padding:22px 28px;" class="px">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td width="64" valign="middle" style="width:64px;">
+        <td valign="middle" style="width:216px;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td width="58" height="58" align="center" valign="middle" bgcolor="#ffffff" style="width:58px;height:58px;line-height:58px;border-radius:32px;background-color:#ffffff;border:3px solid ${GOLD};">
-              <img src="${ctx.appBaseUrl}/logo-icon.png?v=2" width="44" height="44" alt="${BRAND_NAME}" style="display:block;width:44px;height:44px;border:0;outline:none;" />
+            <td align="center" valign="middle" bgcolor="#ffffff" style="background-color:#ffffff;border-radius:14px;border:3px solid ${GOLD};padding:0;line-height:0;font-size:0;">
+              <a href="${esc(ctx.appBaseUrl)}" style="text-decoration:none;"><img src="${ctx.appBaseUrl}/logo.png?v=3" width="210" height="110" alt="${BRAND_NAME}" style="display:block;width:210px;height:110px;border:0;outline:none;border-radius:11px;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:110px;font-weight:bold;color:${RED};text-align:center;" /></a>
             </td>
           </tr></table>
         </td>
-        <td valign="middle" style="padding-left:16px;">
-          <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:28px;font-weight:bold;color:#ffffff;">${BRAND_NAME}</div>
-          <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;letter-spacing:1px;text-transform:uppercase;color:${ROSE};padding-top:2px;">${BRAND_TAGLINE}</div>
+        <td valign="middle" align="right" style="padding-left:12px;">
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;letter-spacing:1px;text-transform:uppercase;color:${ROSE};">${BRAND_TAGLINE}</div>
         </td>
       </tr></table>
     </td></tr>

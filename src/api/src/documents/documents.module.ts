@@ -5,10 +5,11 @@ import { AiModule } from '../ai/ai.module';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 import { AnthropicDocumentReader, PausedDocumentReader } from './document-reader';
+import { RulesDocumentReader } from './rules-document-reader';
 
 @Module({
   imports: [AuthModule, UploadsModule, AiModule],
-  providers: [DocumentsService, AnthropicDocumentReader, PausedDocumentReader],
+  providers: [DocumentsService, AnthropicDocumentReader, PausedDocumentReader, RulesDocumentReader],
   controllers: [DocumentsController],
   exports: [DocumentsService],
 })

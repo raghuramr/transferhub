@@ -44,8 +44,8 @@ export class ReadinessService {
     items.push({
       key: 'anthropic',
       label: 'AI provider key',
-      status: keyOk ? 'ok' : 'error',
-      detail: keyOk ? 'ANTHROPIC_API_KEY is set.' : 'ANTHROPIC_API_KEY is missing, so AI matching cannot run.',
+      status: keyOk ? 'ok' : 'warn',
+      detail: keyOk ? 'ANTHROPIC_API_KEY is set.' : 'ANTHROPIC_API_KEY is missing, so AI cannot run; the built-in rules engine is used instead (if enabled in AI Controls).',
       hint: keyOk ? undefined : 'Add ANTHROPIC_API_KEY under App Service > Environment variables, then restart the app.',
     });
 
