@@ -1136,3 +1136,14 @@ No migrations were added this session. Still to apply by the user: seed 020 (and
   `workflow-engine.service.ts` `runAgentTask`, allowed values in DB constraint `CK_WS_Agent`. A new AI step needs all three (code + a migration).
 - **System Settings > General** cards (Transfer Credit Rules, Security) are inert placeholders - nothing is stored or read; real values live in AI Controls and Workflows > Transfer rules.
 - React gotcha: never define a component inside another component's body (inputs lose focus each keystroke) - e.g. `ProviderCard` is module-level in `AiControls.tsx`.
+
+## Session 2026-10-28 (b): demo catalogue + super-admin permanent delete (branch `claude/super-admin-purge`, apply nothing - no migrations)
+- **Demo data** `docs/demo-data/`: `pacific-ridge-catalogue.json` (fictional university `PRU`, 10 programs, 50 courses, 200 topics), `validate.js`, `build-postman.js`,
+  generated Postman collection, README with the presenter flow (onboard partner PRU -> key -> POST via Postman -> review/import in Data Import > Submissions -> reset by deleting).
+  Partner keys are scoped to ONE university code, so the catalogue is for `PRU` only. Regenerate the collection with `node docs/demo-data/build-postman.js` after editing the JSON.
+- **Permanent delete** (super_admin ONLY, not in the permissions matrix): `src/api/src/purge/` - `GET /purge/:entity/:id/impact?cascade=` previews, `DELETE /purge/:entity/:id?cascade=`
+  deletes in one transaction; entity = universities|programs|courses|topics. One rule table drives both: real history BLOCKS (transcripts, transcript courses, evaluations, equivalencies,
+  appeals, multi-course decisions, programme/transfer/exam rules, workflows, approver groups, AI overrides, student targets, BU home university, programs shared with other universities);
+  link/derived rows are deleted with it; informational links are detached (course primary program, student target program, schools become unmapped). A university needs cascade to also remove its
+  programs/courses/topics. Unknown FK -> rollback + 409. Audit `DATA_PURGED`. UI: `components/shared/PermanentDeleteDialog.tsx` (preview + type DELETE) wired on Universities, Programs, Course Database,
+  Topics editor, row + bulk. Test: `scripts/test-purge.ts` (stubbed DB). The delete SQL is untested against a live database - try a throwaway university first.
