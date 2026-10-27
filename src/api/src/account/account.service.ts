@@ -271,6 +271,43 @@ export class AccountService {
     return { ok: true, targetInstitutionId: institutionId, targetProgramId: programId ?? null, warning };
   }
 
+  /**
+   * Student edits their own "current" school details — free text, so a college
+   * that isn't in our catalogue is captured just as well. Maps to
+   * StudentProfiles.PriorInstitutionName / FieldOfStudy (what the profile and
+   * the transcript form call "current institution" / "current program").
+   */
+  async updateStudentProfile(
+    user: { id: string; email?: string },
+    patch: { currentInstitution?: string | null; currentProgram?: string | null },
+  ) {
+    const exists = await this.db.query<{ UserId: string }>(
+      `SELECT UserId FROM StudentProfiles WHERE UserId = @u`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: user.id }],
+    );
+    if (!exists.recordset[0]) {
+      await this.db.query(`INSERT INTO StudentProfiles (UserId) VALUES (@u)`, [{ name: 'u', type: sql.UniqueIdentifier, value: user.id }]);
+    }
+    const sets: string[] = [];
+    const params: { name: string; type: unknown; value: unknown }[] = [
+      { name: 'u', type: sql.UniqueIdentifier, value: user.id },
+    ];
+    if (patch.currentInstitution !== undefined) {
+      sets.push('PriorInstitutionName = @inst');
+      params.push({ name: 'inst', type: sql.NVarChar(300), value: patch.currentInstitution?.trim() || null });
+    }
+    if (patch.currentProgram !== undefined) {
+      sets.push('FieldOfStudy = @prog');
+      params.push({ name: 'prog', type: sql.NVarChar(300), value: patch.currentProgram?.trim() || null });
+    }
+    if (sets.length === 0) return { ok: true };
+    await this.db.query(
+      `UPDATE StudentProfiles SET ${sets.join(', ')}, UpdatedAt = SYSUTCDATETIME() WHERE UserId = @u`,
+      params as never,
+    );
+    return { ok: true };
+  }
+
   /** What the profile page shows under "University & program" (read-only). */
   async studentOverview(userId: string) {
     const res = await this.db.query<{

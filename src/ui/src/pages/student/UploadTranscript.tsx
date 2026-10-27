@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { documentsApi, transcriptsApi, universitiesApi, uploadsApi } from '../../lib/api';
+import { accountApi, documentsApi, transcriptsApi, universitiesApi, uploadsApi } from '../../lib/api';
 import {
   Upload,
   Info,
@@ -92,6 +92,28 @@ export default function UploadTranscript() {
   );
   const selectedKnown = collegeId ? knownColleges.find((c) => c.id === collegeId) ?? null : null;
   const { courses: courseOptions, raw: rawCourses, isLoading: coursesLoading } = useCourseCatalog(collegeId);
+
+  // Prefill the source college from the student's own profile ("current institution").
+  // Skipped for agencies and when a Smart-Upload document is driving the prefill instead.
+  const [searchParamsEarly] = useSearchParams();
+  const hasIntake = !!searchParamsEarly.get('intake');
+  const overviewQuery = useQuery({
+    queryKey: ['account-overview-upload'],
+    queryFn: () => accountApi.studentOverview(),
+    enabled: user?.role === 'student' && !hasIntake,
+    retry: false,
+  });
+  const [collegePrefilled, setCollegePrefilled] = useState(false);
+  useEffect(() => {
+    if (collegePrefilled || hasIntake) return;
+    const cur = overviewQuery.data?.data?.currentInstitution?.trim();
+    if (!cur || !universitiesQuery.data) return;
+    const norm = (v: string) => v.trim().toLowerCase();
+    const match = knownColleges.find((c) => norm(c.name) === norm(cur));
+    if (match) { setCollegeId(match.id); setCollegeName(match.name); }
+    else setCollegeName(cur);
+    setCollegePrefilled(true);
+  }, [overviewQuery.data, universitiesQuery.data, knownColleges, collegePrefilled, hasIntake]);
 
   const [courses, setCourses] = useState<CourseRow[]>([{ ...EMPTY_COURSE }]);
   const [submitting, setSubmitting] = useState(false);
@@ -402,8 +424,8 @@ export default function UploadTranscript() {
         </section>
       </form>
 
-      {/* ── Sticky summary + submit bar ── */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 backdrop-blur">
+      {/* ── Sticky summary + submit bar (offset past the desktop sidebar so it never covers it) ── */}
+      <div className="fixed bottom-0 left-0 right-0 md:left-64 z-20 border-t border-gray-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8">
           <div className="text-sm">
             <span className="font-semibold text-gray-900">{filledCourses.length}</span>

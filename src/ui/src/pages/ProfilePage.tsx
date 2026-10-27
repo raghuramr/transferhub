@@ -91,6 +91,28 @@ export default function ProfilePage() {
     }
   }, [overview]);
   const pickedPrograms = targets.find((t) => String(t.id) === pickUni)?.programs ?? [];
+
+  // Student-editable "current" school details (free text — the college need not be in our list).
+  const [currentInst, setCurrentInst] = useState('');
+  const [currentProg, setCurrentProg] = useState('');
+  const [schoolLoaded, setSchoolLoaded] = useState(false);
+  const [schoolMsg, setSchoolMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  useEffect(() => {
+    if (overview && !schoolLoaded) {
+      setCurrentInst(overview.currentInstitution ?? '');
+      setCurrentProg(overview.currentProgram ?? '');
+      setSchoolLoaded(true);
+    }
+  }, [overview, schoolLoaded]);
+  const schoolMutation = useMutation({
+    mutationFn: () => accountApi.updateStudentProfile({ currentInstitution: currentInst, currentProgram: currentProg }),
+    onSuccess: () => {
+      setSchoolMsg({ kind: 'ok', text: 'Your current school details were saved.' });
+      qc.invalidateQueries({ queryKey: ['account-overview', user?.id] });
+      qc.invalidateQueries({ queryKey: ['profile', user?.id] });
+    },
+    onError: (err: unknown) => setSchoolMsg({ kind: 'err', text: getErrorMessage(err, 'Could not save your school details') }),
+  });
   const targetMutation = useMutation({
     mutationFn: () => accountApi.setTarget(Number(pickUni), pickProg ? Number(pickProg) : undefined),
     onSuccess: (res) => {
@@ -310,8 +332,24 @@ export default function ProfilePage() {
             <h2 className="text-lg font-semibold text-gray-900">University &amp; program</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {readonlyField('Current institution', overview?.currentInstitution ?? (profileData?.priorInstitutionName as string | undefined))}
-            {readonlyField('Current program / major', overview?.currentProgram ?? (profileData?.fieldOfStudy as string | undefined))}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Current institution</label>
+              <input
+                value={currentInst}
+                onChange={(e) => { setCurrentInst(e.target.value); setSchoolMsg(null); }}
+                placeholder="e.g. Miami Dade College"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Current program / major</label>
+              <input
+                value={currentProg}
+                onChange={(e) => { setCurrentProg(e.target.value); setSchoolMsg(null); }}
+                placeholder="e.g. Business Administration"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
             {readonlyField('Target university', overview?.targetInstitutionName ?? (profileData?.targetInstitutionName as string | undefined))}
             {readonlyField('Target program',
               overview?.targetProgramName
@@ -320,6 +358,18 @@ export default function ProfilePage() {
             {readonlyField('Credits completed', overview?.creditsCompleted != null ? Number(overview.creditsCompleted) : undefined)}
             {readonlyField('Courses submitted for evaluation', overview ? overview.submittedCourses : undefined)}
           </div>
+          {schoolMsg && (
+            <div className={`p-3 rounded-lg text-sm border ${schoolMsg.kind === 'ok' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+              {schoolMsg.text}
+            </div>
+          )}
+          <button
+            onClick={() => { setSchoolMsg(null); schoolMutation.mutate(); }}
+            disabled={schoolMutation.isPending}
+            className="px-5 py-2.5 bg-brand-800 text-white rounded-lg text-sm font-medium hover:bg-brand-900 disabled:bg-brand-400"
+          >
+            {schoolMutation.isPending ? 'Saving…' : 'Save current school'}
+          </button>
 
           <div className="pt-4 border-t border-gray-100">
             <p className="text-sm font-semibold text-gray-900 mb-1">Change target university</p>
