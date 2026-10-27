@@ -148,27 +148,17 @@ export class AccountService {
     return stream ? { stream, mimeType: file.mimeType || 'image/jpeg' } : null;
   }
 
-  /** Gives every user without a photo a generated initials avatar (stored in blob storage). */
-  async generateDefaultPhotos() {
+  /**
+   * The default profile picture is the TransferHub logo (the UI shows it for anyone without a photo), so this clears the
+   * initials avatars an earlier version generated. Real uploaded photos are never touched.
+   */
+  async resetDefaultPhotos() {
     await this.requireColumns();
-    const res = await this.db.query<{ Id: string; FirstName: string; LastName: string; Role: string }>(
-      `SELECT u.Id, u.FirstName, u.LastName, r.Name AS Role FROM Users u JOIN Roles r ON r.Id = u.RoleId WHERE u.AvatarUploadId IS NULL`,
+    const res = await this.db.query<{ Cleared: number }>(
+      `UPDATE Users SET AvatarUploadId = NULL, UpdatedAt = SYSUTCDATETIME()
+       WHERE AvatarUploadId IN (SELECT Id FROM Uploads WHERE DocumentType = 'default_avatar');
+       SELECT @@ROWCOUNT AS Cleared;`,
     );
-    let created = 0;
-    let failed = 0;
-    for (const u of res.recordset) {
-      try {
-        const buf = defaultAvatarSvg(u.Id, u.FirstName, u.LastName);
-        await this.setPhoto(
-          { id: u.Id, role: u.Role },
-          { originalname: 'avatar.svg', buffer: buf, mimetype: 'image/svg+xml', size: buf.length },
-          'default_avatar',
-        );
-        created++;
-      } catch {
-        failed++;
-      }
-    }
-    return { created, failed, total: res.recordset.length };
+    return { cleared: res.recordset[0]?.Cleared ?? 0 };
   }
 }
