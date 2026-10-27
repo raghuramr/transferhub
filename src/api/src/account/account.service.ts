@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import * as sql from 'mssql';
@@ -111,19 +111,43 @@ export class AccountService {
     }
   }
 
+  /** Self-service photo upload (the signed-in user sets their own). */
   async setPhoto(user: { id: string; role: string }, file: UploadedFileLike, documentType = 'profile_photo') {
+    return this.setPhotoForUser(user.id, user, file, documentType);
+  }
+
+  /**
+   * Set a user's photo. The signed-in user may set their own; admins/super admins may set anyone's
+   * (so staff can upload a real photo for a student, replacing a generated initials avatar).
+   */
+  async setPhotoForUser(
+    targetUserId: string,
+    actor: { id: string; role: string },
+    file: UploadedFileLike,
+    documentType = 'profile_photo',
+  ) {
     await this.requireColumns();
+    const isSelf = actor.id.toLowerCase() === targetUserId.toLowerCase();
+    if (!isSelf && !['admin', 'super_admin'].includes(actor.role)) {
+      throw new ForbiddenException('You can only change your own photo.');
+    }
+    // Store under the target user's own role folder.
+    const roleRes = await this.db.query<{ Role: string }>(
+      `SELECT r.Name AS Role FROM Users u JOIN Roles r ON r.Id = u.RoleId WHERE u.Id = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: targetUserId }],
+    );
+    const targetRole = roleRes.recordset[0]?.Role ?? actor.role;
     const saved = await this.uploads.save(file, {
-      ownerUserId: user.id,
-      role: user.role,
+      ownerUserId: targetUserId,
+      role: targetRole,
       entityType: 'avatar',
-      entityId: user.id,
+      entityId: targetUserId,
       isPublic: false,
       documentType,
     });
     await this.db.query(`UPDATE Users SET AvatarUploadId = @u, UpdatedAt = SYSUTCDATETIME() WHERE Id = @id`, [
       { name: 'u', type: sql.UniqueIdentifier, value: saved.id },
-      { name: 'id', type: sql.UniqueIdentifier, value: user.id },
+      { name: 'id', type: sql.UniqueIdentifier, value: targetUserId },
     ]);
     return { uploadId: saved.id };
   }
@@ -134,6 +158,15 @@ export class AccountService {
       { name: 'id', type: sql.UniqueIdentifier, value: userId },
     ]);
     return { removed: true };
+  }
+
+  /** Remove another user's photo (self, or admin/super admin). */
+  async removePhotoFor(targetUserId: string, actor: { id: string; role: string }) {
+    const isSelf = actor.id.toLowerCase() === targetUserId.toLowerCase();
+    if (!isSelf && !['admin', 'super_admin'].includes(actor.role)) {
+      throw new ForbiddenException('You can only change your own photo.');
+    }
+    return this.removePhoto(targetUserId);
   }
 
   /** Stream + metadata for a user's photo, or null when they have none. */

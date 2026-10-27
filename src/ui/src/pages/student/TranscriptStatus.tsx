@@ -5,7 +5,7 @@ import { requestsApi, transcriptsApi } from '../../lib/api';
 import { GeneralNotes, RequestTimeline } from '../../components/workflow/RequestTimeline';
 import { DocumentsPanel, NoteComposer, ReminderPanel } from '../../components/workflow/RequestPanels';
 import type { RequestTimeline as TimelineData } from '../../types/workflow';
-import { CheckCircle, Clock, AlertCircle, BookOpen, Sparkles, FileDown, FileCheck2 } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, BookOpen, Sparkles, FileDown, FileCheck2, ArrowRight, ArrowDown, Lightbulb } from 'lucide-react';
 import { TransferWorkflowStepper, TRANSCRIPT_STEPS } from '../../components/ui/TransferWorkflowStepper';
 import { CreditHubCard, EvaluationKindBanner, FlagList } from '../../components/policy/PolicyBits';
 import AppealModal from '../../components/policy/AppealModal';
@@ -90,6 +90,28 @@ export default function TranscriptStatus() {
         )}
       </div>
 
+      {/* From -> To summary: where the credits come from and where they are going, with totals */}
+      <div className="mb-6 flex flex-col items-stretch gap-3 rounded-xl border border-gray-200 bg-white p-5 sm:flex-row sm:items-center">
+        <div className="flex-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Transferring from</p>
+          <p className="mt-0.5 font-semibold text-gray-900">{transcript.institution?.name ?? '—'}</p>
+          <p className="text-sm text-gray-500">{transcript.fromCredits ?? 0} credits submitted</p>
+        </div>
+        <div className="flex items-center justify-center text-brand-700 sm:px-4">
+          <ArrowRight size={22} className="hidden sm:block" />
+          <ArrowDown size={20} className="sm:hidden" />
+        </div>
+        <div className="flex-1 sm:text-right">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Transferring to</p>
+          <p className="mt-0.5 font-semibold text-gray-900">{transcript.targetInstitutionName ?? 'Receiving university'}</p>
+          <p className="text-sm text-gray-500">
+            {transcript.status === 'complete'
+              ? `${transcript.toCredits ?? 0} credits accepted`
+              : `${transcript.toCredits ?? 0} credits accepted so far`}
+          </p>
+        </div>
+      </div>
+
       <EvaluationKindBanner kind={transcript.evaluationKind} expiresAt={transcript.preapprovalExpiresAt} />
       <OpenRequestsBanner transcriptId={transcript.id} />
 
@@ -165,6 +187,20 @@ export default function TranscriptStatus() {
                         <li key={m.buCourseId}>Counts as {m.code} — {m.title}{m.credits != null ? ` (${m.credits} cr)` : ''}</li>
                       ))}
                     </ul>
+                  )}
+                  {!course.evaluation?.outcome && (course.suggestions?.length ?? 0) > 0 && (
+                    <div className="mt-1.5 rounded-md border border-blue-100 bg-blue-50/60 px-2.5 py-1.5" data-testid="course-suggestions">
+                      <p className="flex items-center gap-1 text-xs font-semibold text-blue-800">
+                        <Lightbulb size={12} /> Suggested matches <span className="font-normal text-blue-600">(a reviewer confirms the final decision)</span>
+                      </p>
+                      <ul className="mt-1 space-y-0.5">
+                        {course.suggestions!.map((s, idx) => (
+                          <li key={idx} className="text-xs text-blue-900">
+                            {s.code} — {s.title} <span className="text-blue-600">({s.credits} cr{s.score != null ? ` · ${Math.round(s.score * 100)}% match` : ''})</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                   <FlagList flags={course.policyFlags} compact />
                   {course.syllabus?.attached && (

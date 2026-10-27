@@ -369,6 +369,33 @@ export const templates = {
     });
   },
 
+  /** Sent to the sending (source) institution when a student's transfer evaluation completes. */
+  sourceDecisionNotice(ctx: EmailContext, d: { contactName: string; studentName: string; sourceName: string; targetName: string; postedCredits: number; postedCourses: number; transcriptId: string }): Email {
+    const ref = refOf(d.transcriptId);
+    return render(ctx, {
+      subject: `Transfer evaluation complete - ${d.studentName}`,
+      preheader: `${d.targetName} has completed the credit evaluation for a student from ${d.sourceName}.`,
+      chip: { label: 'Evaluation complete', tone: 'success' },
+      headline: 'A transfer evaluation has completed',
+      greetingName: d.contactName,
+      paragraphs: [
+        `${d.targetName} has finished evaluating the transfer credits for ${d.studentName}, who studied at ${d.sourceName}.`,
+        `${d.postedCourses} course(s) were posted, totalling ${d.postedCredits} transfer credit(s). This note is for your records as the sending institution.`,
+      ],
+      reference: ref,
+      card: {
+        title: 'Evaluation summary',
+        rows: [
+          { label: 'Student', value: d.studentName },
+          { label: 'From', value: d.sourceName },
+          { label: 'To', value: d.targetName },
+          { label: 'Credits posted', value: String(d.postedCredits) },
+          { label: 'Reference number', value: ref },
+        ],
+      },
+    });
+  },
+
   /** SLA watcher: a stage is past its due date. */
   stageOverdue(ctx: EmailContext, d: { name: string; student: string; stage: string; days: number; dueAt: Date | string; transcriptId: string }): Email {
     const ref = refOf(d.transcriptId);

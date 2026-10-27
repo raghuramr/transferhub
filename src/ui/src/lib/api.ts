@@ -316,24 +316,25 @@ export interface EmailStatus {
   recent: EmailAttempt[];
 }
 
+export interface DemoLoginUser { userId: string; label: string; role: string; }
 export interface DemoLoginPublic {
   enabled: boolean;
-  namesOnly?: boolean;
-  showCredentials?: boolean;
-  accounts?: { label: string; role: string; email: string; password: string }[];
+  users?: DemoLoginUser[];
 }
 export interface DemoLoginAdmin {
   enabled: boolean;
-  showCredentials: boolean;
+  users: Record<string, string>;
+  resolved: DemoLoginUser[];
   ready: boolean;
-  accounts: NonNullable<DemoLoginPublic['accounts']>;
 }
 
 export const demoLoginApi = {
-  /** Public (no auth) - what the login page may show. */
+  /** Public (no auth) - the accounts the login page may offer. */
   publicGet: () => api.get<DemoLoginPublic>('/auth/demo-login'),
+  /** Public (no auth) - one-click sign-in as a configured demo user; returns a normal session. */
+  loginAs: (userId: string) => api.post<AuthTokens>('/auth/demo-login', { userId }),
   get: () => api.get<DemoLoginAdmin>('/settings/demo-login'),
-  save: (data: { enabled: boolean; showCredentials: boolean }) => api.put<DemoLoginAdmin>('/settings/demo-login', data),
+  save: (data: { enabled: boolean; users: Record<string, string> }) => api.put<DemoLoginAdmin>('/settings/demo-login', data),
 };
 
 export const emailApi = {
@@ -477,6 +478,12 @@ export const accountApi = {
     return api.put('/account/photo', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   removePhoto: () => api.delete('/account/photo'),
+  setUserPhoto: (userId: string, blob: Blob) => {
+    const form = new FormData();
+    form.append('file', blob, 'photo.jpg');
+    return api.put(`/account/photo/${userId}`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  removeUserPhoto: (userId: string) => api.delete(`/account/photo/${userId}`),
   resetDefaultPhotos: () => api.post<{ cleared: number }>('/account/photos/reset-defaults'),
   requestEmailChange: (newEmail: string, password: string) =>
     api.post<{ message: string; emailSent: boolean }>('/account/email-change', { newEmail, password }),

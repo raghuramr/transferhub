@@ -1,35 +1,48 @@
-import { DEMO_ACCOUNTS, DemoAccount } from './demo-accounts';
+import { DEMO_ACCOUNTS } from './demo-accounts';
 
+/**
+ * Demo-login configuration. `users` maps a role to the specific user account the super admin
+ * picked to be offered on the login page for that role. Empty => fall back to the seed demo accounts.
+ */
 export interface DemoLoginSettings {
   enabled: boolean;
-  showCredentials: boolean;
+  users: Record<string, string>; // role -> userId
+}
+
+/** One offered demo account, as the login page and settings preview see it — never includes a password. */
+export interface DemoLoginUser {
+  userId: string;
+  label: string;
+  role: string;
 }
 
 export interface PublicDemoLogin {
   enabled: boolean;
-  namesOnly?: boolean;
-  showCredentials?: boolean;
-  accounts?: { label: string; role: string; email: string; password: string }[];
+  users?: DemoLoginUser[];
 }
 
-/** Secure default: hidden, no credentials displayed. */
-export const DEMO_LOGIN_DEFAULTS: DemoLoginSettings = { enabled: false, showCredentials: false };
+/** Secure default: hidden, nothing configured. */
+export const DEMO_LOGIN_DEFAULTS: DemoLoginSettings = { enabled: false, users: {} };
+
+/** The seed demo-account emails, used only as a fallback when the super admin has picked no users. */
+export const DEMO_FALLBACK_EMAILS: readonly string[] = DEMO_ACCOUNTS.map((a) => a.email);
 
 export function parseFlag(v: string | null | undefined): boolean {
   return v === '1' || v === 'true';
 }
 
-/**
- * What the public login page may receive. Disabled -> nothing else at all (no accounts, no passwords).
- * Enabled -> accounts incl. password (needed so a button click can fill the form); `showCredentials` only
- * controls whether the page DISPLAYS them. "Names only" is simply the opposite of showCredentials.
- */
-export function buildPublicDemoLogin(s: DemoLoginSettings, accounts: readonly DemoAccount[] = DEMO_ACCOUNTS): PublicDemoLogin {
-  if (!s.enabled) return { enabled: false };
-  return {
-    enabled: true,
-    namesOnly: !s.showCredentials,
-    showCredentials: s.showCredentials,
-    accounts: accounts.map((a) => ({ label: a.label, role: a.role, email: a.email, password: a.password })),
-  };
+/** Tolerant parse of the stored role->userId JSON map. */
+export function parseUsers(v: string | null | undefined): Record<string, string> {
+  if (!v) return {};
+  try {
+    const o = JSON.parse(v);
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, val] of Object.entries(o)) {
+      if (typeof val === 'string' && val.trim()) out[k] = val.trim();
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }

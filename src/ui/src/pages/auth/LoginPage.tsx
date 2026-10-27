@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, AlertCircle, ArrowRight } from 'lucide-react';
 import { LogoTile } from '../../components/shared/Logo';
-import { authApi, demoLoginApi, type DemoLoginPublic } from '../../lib/api';
+import { authApi, demoLoginApi, type DemoLoginPublic, type DemoLoginUser } from '../../lib/api';
 import { DemoLoginBox } from '../../components/auth/DemoLoginBox';
 import { useAuthStore } from '../../store/auth';
 import { Button } from '../../components/ui/Button';
@@ -28,17 +28,32 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   // Demo accounts are controlled by the super admin (System Settings > Demo login). Any failure -> show nothing.
   const [demo, setDemo] = useState<DemoLoginPublic | null>(null);
+  const [demoBusy, setDemoBusy] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
     demoLoginApi.publicGet().then((r) => { if (alive) setDemo(r.data); }).catch(() => { if (alive) setDemo(null); });
     return () => { alive = false; };
   }, []);
+
+  // One-click demo sign-in: the server issues a real session for the configured account.
+  const demoLogin = async (u: DemoLoginUser) => {
+    setServerError('');
+    setDemoBusy(u.userId);
+    try {
+      const res = await demoLoginApi.loginAs(u.userId);
+      setAuth(res.data.user, res.data.accessToken, res.data.refreshToken);
+      navigate(res.data.user.mustChangePass ? '/change-password' : '/');
+    } catch (e) {
+      const err = e as AxiosError<ApiError>;
+      setServerError(err.response?.data?.message ?? 'Demo sign-in is not available right now.');
+      setDemoBusy(null);
+    }
+  };
 
   const onSubmit = async (data: FormData) => {
     setServerError('');
@@ -176,14 +191,7 @@ export default function LoginPage() {
             <Link to="/intake" className="text-brand-800 font-medium hover:underline">Find my records from my previous university</Link>
           </p>
 
-          <DemoLoginBox
-            demo={demo}
-            onPick={(a) => {
-              setValue('email', a.email, { shouldValidate: true });
-              setValue('password', a.password, { shouldValidate: true });
-              setServerError('');
-            }}
-          />
+          <DemoLoginBox demo={demo} onPick={demoLogin} busyId={demoBusy} />
         </motion.div>
       </motion.div>
     </div>

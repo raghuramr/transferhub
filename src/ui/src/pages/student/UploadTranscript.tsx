@@ -100,9 +100,29 @@ export default function UploadTranscript() {
   const overviewQuery = useQuery({
     queryKey: ['account-overview-upload'],
     queryFn: () => accountApi.studentOverview(),
-    enabled: user?.role === 'student' && !hasIntake,
+    enabled: user?.role === 'student',
     retry: false,
   });
+
+  // Target (receiving) university — where these credits should go. Students pick it here; prefilled
+  // from their profile target. Agencies submit on the student's behalf and leave it to fall back.
+  const isStudent = user?.role === 'student';
+  const targetsQuery = useQuery({
+    queryKey: ['account-targets-upload'],
+    queryFn: () => accountApi.targets(),
+    enabled: isStudent,
+    retry: false,
+  });
+  const targetOptions = targetsQuery.data?.data ?? [];
+  const [targetId, setTargetId] = useState<number | null>(null);
+  const [targetPrefilled, setTargetPrefilled] = useState(false);
+  useEffect(() => {
+    if (targetPrefilled) return;
+    const tgt = overviewQuery.data?.data?.targetInstitutionId ?? null;
+    if (tgt == null) return;
+    setTargetId(tgt);
+    setTargetPrefilled(true);
+  }, [overviewQuery.data, targetPrefilled]);
   const [collegePrefilled, setCollegePrefilled] = useState(false);
   useEffect(() => {
     if (collegePrefilled || hasIntake) return;
@@ -221,6 +241,10 @@ export default function UploadTranscript() {
       setError('Tell us which college you took these courses at.');
       return;
     }
+    if (isStudent && !targetId) {
+      setError('Choose the university you are transferring to.');
+      return;
+    }
     const valid = courses.filter((c) => c.code.trim() || c.title.trim());
     if (valid.length === 0) {
       setError('Add at least one course — a course code or name is enough to start.');
@@ -246,6 +270,7 @@ export default function UploadTranscript() {
       const res = await transcriptsApi.submit({
         institutionName,
         institutionCode,
+        targetInstitutionId: targetId ?? undefined,
         calendar: data.calendar,
         studentName: data.studentName,
         studentId: data.studentId,
@@ -336,6 +361,24 @@ export default function UploadTranscript() {
           ) : collegeName.trim() ? (
             <p className="mt-2 text-xs text-gray-500">We'll record "{collegeName.trim()}" as your transfer college. Type your courses in below.</p>
           ) : null}
+
+          {isStudent && (
+            <div className="mt-5">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Transferring to *</label>
+              <select
+                value={targetId ?? ''}
+                onChange={(e) => setTargetId(e.target.value ? Number(e.target.value) : null)}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="">Select the university you're transferring to…</option>
+                {targetOptions.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+              <p className="mt-1 text-xs text-gray-400">
+                The receiving university that will evaluate these credits.{' '}
+                {overviewQuery.data?.data?.targetInstitutionName ? `Prefilled from your profile (${overviewQuery.data.data.targetInstitutionName}).` : 'You can set a default on your profile.'}
+              </p>
+            </div>
+          )}
 
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>

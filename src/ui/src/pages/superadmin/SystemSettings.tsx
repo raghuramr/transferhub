@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Settings, Save, Info, Mail, ShieldCheck, Upload, Eye, CheckCircle, AlertCircle, Code2, Send, KeyRound } from 'lucide-react';
 import RolesPermissions from './RolesPermissions';
 import { Link } from 'react-router-dom';
-import { api, emailApi, demoLoginApi } from '../../lib/api';
+import { api, emailApi, demoLoginApi, usersApi } from '../../lib/api';
 import { DemoLoginBox } from '../../components/auth/DemoLoginBox';
 import { useAuthStore } from '../../store/auth';
 
@@ -123,19 +123,31 @@ function GeneralTab() {
 
 // ── Demo login (login-page demo accounts) ─────────────────────────
 
+const DEMO_ROLES: { role: string; label: string }[] = [
+  { role: 'student', label: 'Student' },
+  { role: 'faculty', label: 'Faculty' },
+  { role: 'admin', label: 'Admin' },
+  { role: 'agency', label: 'Agency' },
+  { role: 'super_admin', label: 'Super Admin' },
+];
+
 function DemoLoginTab() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['demo-login-settings'], queryFn: () => demoLoginApi.get() });
+  const usersQ = useQuery({ queryKey: ['demo-login-users'], queryFn: () => usersApi.list({ pageSize: 1000 }) });
   const [enabled, setEnabled] = useState(false);
-  const [showCreds, setShowCreds] = useState(false);
+  const [users, setUsers] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
-    if (q.data) { setEnabled(q.data.data.enabled); setShowCreds(q.data.data.showCredentials); }
+    if (q.data) { setEnabled(q.data.data.enabled); setUsers(q.data.data.users ?? {}); }
   }, [q.data]);
 
+  const allUsers = (usersQ.data?.data ?? []) as { id: string; firstName: string; lastName: string; role: string; email: string }[];
+  const usersByRole = (role: string) => allUsers.filter((u) => u.role === role);
+
   const save = useMutation({
-    mutationFn: () => demoLoginApi.save({ enabled, showCredentials: enabled && showCreds }),
+    mutationFn: () => demoLoginApi.save({ enabled, users }),
     onSuccess: () => {
       setMsg({ ok: true, text: 'Saved. The login page picks this up within a few seconds.' });
       void qc.invalidateQueries({ queryKey: ['demo-login-settings'] });
@@ -147,18 +159,26 @@ function DemoLoginTab() {
   });
 
   const data = q.data?.data;
-  const dirty = !!data && (enabled !== data.enabled || (enabled && showCreds) !== data.showCredentials);
-  const effectiveCreds = enabled && showCreds;
-  const preview = enabled && data
-    ? { enabled: true, namesOnly: !effectiveCreds, showCredentials: effectiveCreds, accounts: data.accounts }
-    : { enabled: false };
+  const dirty = !!data && (enabled !== data.enabled || JSON.stringify(users) !== JSON.stringify(data.users ?? {}));
+
+  // Preview from the current picks (falls back to the already-resolved seed accounts when nothing is picked).
+  const previewUsers = Object.entries(users)
+    .map(([role, id]) => {
+      const u = allUsers.find((x) => x.id === id);
+      return u ? { userId: u.id, label: `${u.firstName} ${u.lastName}`, role: u.role } : null;
+    })
+    .filter((x): x is { userId: string; label: string; role: string } => !!x);
+  const resolvedFallback = data?.resolved ?? [];
+  const preview = enabled
+    ? { enabled: true as const, users: previewUsers.length ? previewUsers : resolvedFallback }
+    : { enabled: false as const };
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <section className="rounded-xl border border-gray-200 bg-white">
         <header className="border-b border-gray-100 px-4 py-3">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900"><KeyRound size={15} />Demo login</h2>
-          <p className="text-xs text-gray-500">Controls the demo-account box on the public sign-in page.</p>
+          <p className="text-xs text-gray-500">Pick the account offered per role. Clicking it on the login page signs in instantly.</p>
         </header>
         {q.isLoading && <p className="px-4 py-3 text-sm text-gray-400">Loading…</p>}
         {q.isError && <p className="px-4 py-3 text-sm text-red-600">Could not load the setting.</p>}
@@ -171,37 +191,44 @@ function DemoLoginTab() {
               </div>
             )}
             <label className="flex items-start gap-3">
-              <input type="checkbox" checked={enabled} onChange={(e) => { setEnabled(e.target.checked); if (!e.target.checked) setShowCreds(false); setMsg(null); }}
+              <input type="checkbox" checked={enabled} onChange={(e) => { setEnabled(e.target.checked); setMsg(null); }}
                 className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-brand-800" />
               <span>
                 <span className="block font-medium text-gray-900">Show demo accounts on the login page</span>
-                <span className="block text-xs text-gray-500">Off by default. When off, nothing about the demo accounts is sent to the browser.</span>
+                <span className="block text-xs text-gray-500">Off by default. When off, nothing about the demo accounts is sent to the browser and one-click sign-in is refused.</span>
               </span>
             </label>
 
             <fieldset disabled={!enabled} className={`space-y-3 border-l-2 pl-4 ${enabled ? 'border-brand-200' : 'border-gray-100 opacity-50'}`}>
-              <legend className="sr-only">What to show</legend>
-              <label className="flex items-start gap-3">
-                <input type="radio" name="demo-mode" checked={!showCreds} onChange={() => { setShowCreds(false); setMsg(null); }}
-                  className="mt-0.5 h-4 w-4 accent-brand-800" />
-                <span>
-                  <span className="block font-medium text-gray-900">Show only the user names as buttons</span>
-                  <span className="block text-xs text-gray-500">One button per account (name and role). Clicking fills in the email and password; the presenter just clicks Sign in. The password is not displayed.</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-3">
-                <input type="radio" name="demo-mode" checked={showCreds} onChange={() => { setShowCreds(true); setMsg(null); }}
-                  className="mt-0.5 h-4 w-4 accent-brand-800" />
-                <span>
-                  <span className="block font-medium text-gray-900">Also show the credentials</span>
-                  <span className="block text-xs text-gray-500">Buttons plus the visible email and password. Still click-to-fill.</span>
-                </span>
-              </label>
+              <legend className="mb-1 text-xs font-medium text-gray-500">Account offered for each role</legend>
+              {DEMO_ROLES.map(({ role, label }) => (
+                <div key={role}>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
+                  <select
+                    value={users[role] ?? ''}
+                    onChange={(e) => {
+                      setMsg(null);
+                      setUsers((prev) => {
+                        const next = { ...prev };
+                        if (e.target.value) next[role] = e.target.value; else delete next[role];
+                        return next;
+                      });
+                    }}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  >
+                    <option value="">Not offered</option>
+                    {usersByRole(role).map((u) => (
+                      <option key={u.id} value={u.id}>{u.firstName} {u.lastName} · {u.email}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+              <p className="text-xs text-gray-400">Leave all unset to offer the built-in seed demo accounts (one per role).</p>
             </fieldset>
 
             <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
-              Even with names only, the password is sent to the visitor&apos;s browser so the button can fill it in. Anyone who opens the login page
-              can read it, so turn this off outside demos and never enable it for a real deployment.
+              Clicking a demo button signs in as that exact account. No password is ever sent to the browser — the server
+              only allows it while this is on and only for the accounts you pick here. Still, turn it off outside demos.
             </p>
 
             {msg && (
