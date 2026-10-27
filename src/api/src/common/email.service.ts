@@ -33,7 +33,13 @@ export class EmailService {
     this.resend = apiKey ? new Resend(apiKey) : null;
     this.fromAddress = process.env.RESEND_FROM_EMAIL || 'support@wcubeprojects.in';
     this.fromName = process.env.RESEND_FROM_NAME || 'TransferHub';
-    this.appBaseUrl = (process.env.APP_BASE_URL || 'https://transferhub.azurewebsites.net').replace(/\/+$/, '');
+    // Used for every link AND the logo image in emails, so it must be the public address people can open.
+    // Prefer an explicit APP_BASE_URL (e.g. your custom domain); else this App Service's own hostname; else the old guess.
+    const azureHost = process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : '';
+    this.appBaseUrl = (process.env.APP_BASE_URL || azureHost || 'https://transferhub.azurewebsites.net').replace(/\/+$/, '');
+    if (!process.env.APP_BASE_URL) {
+      this.logger.warn(`APP_BASE_URL is not set; email links and the logo use ${this.appBaseUrl}. Set APP_BASE_URL to your public site address.`);
+    }
     this.supportEmail = process.env.SUPPORT_EMAIL || this.fromAddress;
   }
 
