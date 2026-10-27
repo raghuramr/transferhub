@@ -481,7 +481,23 @@ export const accountApi = {
   requestEmailChange: (newEmail: string, password: string) =>
     api.post<{ message: string; emailSent: boolean }>('/account/email-change', { newEmail, password }),
   confirmEmailChange: (token: string) => api.post<{ email: string }>('/account/email-change/confirm', { token }),
+  // Student target university / program
+  targets: () => api.get<TargetUniversityOption[]>('/account/targets'),
+  setTarget: (institutionId: number, programId?: number) =>
+    api.put<{ ok: boolean; warning: string | null }>('/account/target', { institutionId, ...(programId ? { programId } : {}) }),
+  studentOverview: () => api.get<StudentOverview>('/account/student-overview'),
 };
+
+export interface TargetUniversityOption {
+  id: number; code: string; name: string;
+  programs: { id: number; name: string; degree: string | null }[];
+}
+export interface StudentOverview {
+  currentInstitution: string | null; currentProgram: string | null; highestEducationLevel: string | null;
+  targetInstitutionId: number | null; targetInstitutionName: string | null; targetInstitutionCode: string | null;
+  targetProgramId: number | null; targetProgramName: string | null; targetProgramDegree: string | null;
+  creditsCompleted: number | null; submittedCourses: number; submittedCredits: number | null;
+}
 
 // ── Course verification requests (faculty raise, admins resolve) ──
 export const verificationApi = {

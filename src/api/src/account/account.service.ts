@@ -7,6 +7,7 @@ import { EmailService } from '../common/email.service';
 import { templates } from '../common/email-templates';
 import { UploadsService } from '../uploads/uploads.service';
 import { SchemaService } from '../policy/schema.service';
+import { isSelectableUniversity, validateTarget, keepIntendedUnit } from './target.logic';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 
 const COLORS = ['#770816', '#1e4a80', '#14612f', '#7a5a06', '#5b2a86', '#0f6b6b', '#9a3b34', '#33415c'];
@@ -160,5 +161,160 @@ export class AccountService {
        SELECT @@ROWCOUNT AS Cleared;`,
     );
     return { cleared: res.recordset[0]?.Cleared ?? 0 };
+  }
+
+  // ── student university & program (profile page, Explore "make this my target") ──
+
+  /** Receiving universities a student can pick as a target, each with its active programs. */
+  async getTargets() {
+    const unis = await this.db.query<{ Id: number; Code: string; Name: string; Type: string; IsActive: boolean }>(
+      `SELECT Id, Code, Name, Type, IsActive FROM Institutions WHERE IsActive = 1 AND Type = 'university' ORDER BY Name`,
+    );
+    const progs = await this.db.query<{ InstitutionId: number; Id: number; Name: string; Degree: string | null }>(
+      `SELECT pu.InstitutionId, p.Id, p.Name, p.Degree
+       FROM ProgramUniversities pu JOIN Programs p ON p.Id = pu.ProgramId
+       WHERE p.IsActive = 1 ORDER BY p.Name`,
+    );
+    return unis.recordset
+      .filter((u) => isSelectableUniversity({ code: u.Code, type: u.Type, isActive: !!u.IsActive }))
+      .map((u) => ({
+        id: u.Id,
+        code: u.Code,
+        name: u.Name,
+        programs: progs.recordset
+          .filter((p) => p.InstitutionId === u.Id)
+          .map((p) => ({ id: p.Id, name: p.Name, degree: p.Degree })),
+      }));
+  }
+
+  async setTarget(user: { id: string; email?: string }, institutionId: number, programId?: number | null) {
+    const inst = await this.db.query<{ Id: number; Code: string; Type: string; IsActive: boolean }>(
+      `SELECT Id, Code, Type, IsActive FROM Institutions WHERE Id = @i`,
+      [{ name: 'i', type: sql.Int, value: institutionId }],
+    );
+    const iRow = inst.recordset[0];
+    let program: { id: number; isActive: boolean; offeredAt: number[] } | null = null;
+    if (programId != null) {
+      const pr = await this.db.query<{ Id: number; IsActive: boolean }>(
+        `SELECT Id, IsActive FROM Programs WHERE Id = @p`,
+        [{ name: 'p', type: sql.Int, value: programId }],
+      );
+      if (pr.recordset[0]) {
+        const off = await this.db.query<{ InstitutionId: number }>(
+          `SELECT InstitutionId FROM ProgramUniversities WHERE ProgramId = @p`,
+          [{ name: 'p', type: sql.Int, value: programId }],
+        );
+        program = { id: programId, isActive: !!pr.recordset[0].IsActive, offeredAt: off.recordset.map((r) => r.InstitutionId) };
+      }
+    }
+    const check = validateTarget(
+      iRow ? { id: iRow.Id, code: iRow.Code, type: iRow.Type, isActive: !!iRow.IsActive } : null,
+      program,
+      programId != null,
+    );
+    if ('error' in check) throw new BadRequestException(check.error);
+
+    const cur = await this.db.query<{ TargetInstitutionId: number | null; TargetProgramId: number | null; IntendedAcademicUnitId: number | null }>(
+      `SELECT TargetInstitutionId, TargetProgramId, IntendedAcademicUnitId FROM StudentProfiles WHERE UserId = @u`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: user.id }],
+    );
+    const old = cur.recordset[0];
+    if (!old) {
+      await this.db.query(`INSERT INTO StudentProfiles (UserId) VALUES (@u)`, [{ name: 'u', type: sql.UniqueIdentifier, value: user.id }]);
+    }
+    let keepUnit = false;
+    if (old?.IntendedAcademicUnitId != null) {
+      const au = await this.db.query<{ InstitutionId: number | null }>(
+        `SELECT InstitutionId FROM AcademicUnits WHERE Id = @a`,
+        [{ name: 'a', type: sql.Int, value: old.IntendedAcademicUnitId }],
+      );
+      keepUnit = keepIntendedUnit(au.recordset[0]?.InstitutionId, institutionId);
+    }
+    await this.db.query(
+      `UPDATE StudentProfiles
+       SET TargetInstitutionId = @i, TargetProgramId = @p,
+           IntendedAcademicUnitId = ${keepUnit ? 'IntendedAcademicUnitId' : 'NULL'},
+           UpdatedAt = SYSUTCDATETIME()
+       WHERE UserId = @u`,
+      [
+        { name: 'i', type: sql.Int, value: institutionId },
+        { name: 'p', type: sql.Int, value: programId ?? null },
+        { name: 'u', type: sql.UniqueIdentifier, value: user.id },
+      ],
+    );
+    await this.db.query(
+      `INSERT INTO AuditLog (UserId, UserEmail, Action, EntityType, EntityId, OldValue, NewValue)
+       VALUES (@u, @e, 'STUDENT_TARGET_CHANGED', 'StudentProfile', @eid, @old, @new)`,
+      [
+        { name: 'u', type: sql.UniqueIdentifier, value: user.id },
+        { name: 'e', type: sql.NVarChar(254), value: user.email ?? null },
+        { name: 'eid', type: sql.NVarChar(100), value: user.id },
+        { name: 'old', type: sql.NVarChar(sql.MAX), value: JSON.stringify({ institutionId: old?.TargetInstitutionId ?? null, programId: old?.TargetProgramId ?? null }) },
+        { name: 'new', type: sql.NVarChar(sql.MAX), value: JSON.stringify({ institutionId, programId: programId ?? null }) },
+      ],
+    ).catch(() => {});
+
+    // Existing requests are never altered: warn when an official one exists for a different university.
+    let warning: string | null = null;
+    try {
+      if (await this.schema.has('Transcripts', 'EvaluationKind')) {
+        const r = await this.db.query<{ N: number }>(
+          `SELECT COUNT(*) AS N FROM Transcripts
+           WHERE StudentUserId = @u AND EvaluationKind <> 'preview' AND ISNULL(TargetInstitutionId, -1) <> @i`,
+          [{ name: 'u', type: sql.UniqueIdentifier, value: user.id }, { name: 'i', type: sql.Int, value: institutionId }],
+        );
+        if (r.recordset[0]?.N > 0) {
+          warning = 'You already have an official request for another university. It keeps its original target; the new choice applies to new requests and previews.';
+        }
+      }
+    } catch { /* optional */ }
+    return { ok: true, targetInstitutionId: institutionId, targetProgramId: programId ?? null, warning };
+  }
+
+  /** What the profile page shows under "University & program" (read-only). */
+  async studentOverview(userId: string) {
+    const res = await this.db.query<{
+      PriorInstitutionName: string | null; FieldOfStudy: string | null; ProgramArea: string | null; HighestEducationLevel: string | null;
+      CreditsCompleted: number | null; TargetInstitutionId: number | null; TargetProgramId: number | null;
+      TargetInstitutionName: string | null; TargetInstitutionCode: string | null; TargetProgramName: string | null; TargetProgramDegree: string | null;
+    }>(
+      `SELECT sp.PriorInstitutionName, sp.FieldOfStudy, sp.ProgramArea, sp.HighestEducationLevel,
+              ${(await this.schema.has('StudentProfiles', 'CreditsCompleted')) ? 'sp.CreditsCompleted' : 'CAST(NULL AS DECIMAL(6,2)) AS CreditsCompleted'},
+              sp.TargetInstitutionId, sp.TargetProgramId,
+              ti.Name AS TargetInstitutionName, ti.Code AS TargetInstitutionCode,
+              tp.Name AS TargetProgramName, tp.Degree AS TargetProgramDegree
+       FROM Users u
+       LEFT JOIN StudentProfiles sp ON sp.UserId = u.Id
+       LEFT JOIN Institutions ti ON ti.Id = sp.TargetInstitutionId
+       LEFT JOIN Programs tp ON tp.Id = sp.TargetProgramId
+       WHERE u.Id = @u`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: userId }],
+    );
+    const row = res.recordset[0];
+    const last = await this.db.query<{ Name: string }>(
+      `SELECT TOP 1 i.Name FROM Transcripts t JOIN Institutions i ON i.Id = t.InstitutionId
+       WHERE t.StudentUserId = @u ORDER BY t.ReceivedAt DESC`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: userId }],
+    );
+    const tc = await this.db.query<{ Credits: number | null; Courses: number }>(
+      `SELECT SUM(COALESCE(tc.NormalisedCredits, tc.OriginalCredits)) AS Credits, COUNT(*) AS Courses
+       FROM Transcripts t JOIN TranscriptCourses tc ON tc.TranscriptId = t.Id WHERE t.StudentUserId = @u`,
+      [{ name: 'u', type: sql.UniqueIdentifier, value: userId }],
+    );
+    const fromTranscripts = tc.recordset[0]?.Credits ?? null;
+    return {
+      currentInstitution: row?.PriorInstitutionName ?? last.recordset[0]?.Name ?? null,
+      currentProgram: row?.FieldOfStudy ?? row?.ProgramArea ?? null,
+      highestEducationLevel: row?.HighestEducationLevel ?? null,
+      targetInstitutionId: row?.TargetInstitutionId ?? null,
+      targetInstitutionName: row?.TargetInstitutionName ?? null,
+      targetInstitutionCode: row?.TargetInstitutionCode ?? null,
+      targetProgramId: row?.TargetProgramId ?? null,
+      targetProgramName: row?.TargetProgramName ?? null,
+      targetProgramDegree: row?.TargetProgramDegree ?? null,
+      creditsCompleted: row?.CreditsCompleted ?? fromTranscripts,
+      submittedCourses: tc.recordset[0]?.Courses ?? 0,
+      submittedCredits: fromTranscripts,
+    };
   }
 }

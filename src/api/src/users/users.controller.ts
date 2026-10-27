@@ -67,8 +67,9 @@ export class UsersController {
     return this.usersService.importCsv(file.buffer.toString('utf-8'), req.user.id, req.user.role);
   }
 
+  // No @Roles here on purpose: any signed-in user may open their OWN profile (checked below).
+  // A class-level/route @Roles('admin','super_admin') made RolesGuard 403 students, so the profile page got nothing.
   @Get(':id')
-  @Roles('admin', 'super_admin')
   async findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     // Allow users to view their own profile
     if (req.user.id !== id && !['admin', 'super_admin'].includes(req.user.role)) {

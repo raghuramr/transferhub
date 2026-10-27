@@ -3,7 +3,7 @@ import {
   UploadedFile, UseGuards, UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
 import type { Response } from 'express';
 import { AccountService } from './account.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -15,6 +15,10 @@ import type { UploadedFileLike } from '../common/uploaded-file.interface';
 class RequestEmailChangeDto {
   @IsEmail() newEmail: string;
   @IsString() @MinLength(1) password: string;
+}
+class SetTargetDto {
+  @IsInt() institutionId: number;
+  @IsOptional() @IsInt() programId?: number;
 }
 class ConfirmEmailChangeDto {
   @IsString() @MinLength(20) token: string;
@@ -36,6 +40,29 @@ export class AccountController {
   @Post('email-change/confirm')
   confirmEmailChange(@Body() dto: ConfirmEmailChangeDto) {
     return this.account.confirmEmailChange(dto.token);
+  }
+
+  /** Selectable receiving universities with their active programs (profile + Explore). */
+  @Get('targets')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student')
+  targets() {
+    return this.account.getTargets();
+  }
+
+  /** The student's own target; existing requests are never changed. */
+  @Put('target')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student')
+  setTarget(@Body() dto: SetTargetDto, @Req() req: AuthenticatedRequest) {
+    return this.account.setTarget(req.user, dto.institutionId, dto.programId ?? null);
+  }
+
+  @Get('student-overview')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student')
+  overview(@Req() req: AuthenticatedRequest) {
+    return this.account.studentOverview(req.user.id);
   }
 
   @Put('photo')
