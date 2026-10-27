@@ -25,6 +25,7 @@ import { PolicyModule } from './policy/policy.module';
 import { WorkflowsModule } from './workflows/workflows.module';
 import { RequestsModule } from './requests/requests.module';
 import { DocumentsModule } from './documents/documents.module';
+import { TransfersModule } from './transfers/transfers.module';
 import { ProgressModule } from './progress/progress.module';
 import { AuditController } from './common/audit.controller';
 import { HealthController } from './common/health.controller';

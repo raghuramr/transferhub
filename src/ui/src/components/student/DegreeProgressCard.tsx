@@ -135,7 +135,7 @@ export function DegreeProgressCard({ studentUserId, className }: Props) {
         </div>
         <p className="mt-2 text-sm sm:text-base text-brand-50">
           {hasRange
-            ? <>Between <strong className="font-semibold">{fmt(low)}</strong> and <strong className="font-semibold">{fmt(high)}</strong> credits likely once pending decisions are confirmed.</>
+            ? <>Between <strong className="font-semibold">{fmt(low)}</strong> and <strong className="font-semibold">{fmt(high)}</strong> credits likely in total once pending decisions are confirmed.</>
             : t.pending > 0
               ? <>{fmt(t.pending)} more credits are still being reviewed.</>
               : <>No further credits are waiting on a decision.</>}
