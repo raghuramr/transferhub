@@ -16,7 +16,8 @@ BEGIN
 END
 ELSE
 BEGIN
-    DECLARE @before INT = (SELECT COUNT(*) FROM ProgramRules WHERE InstitutionId = @bu);
+    DECLARE @before INT;
+    SELECT @before = COUNT(*) FROM ProgramRules WHERE InstitutionId = @bu;
 
     INSERT INTO ProgramRules (InstitutionId, ProgramId, RuleCode, RuleType, LevelMin, MaxCount, MinCount, CourseCodePattern, SubstituteFor, ParamsJson, Description)
     SELECT @bu, p.Id, v.RuleCode, v.RuleType, v.LevelMin, v.MaxCount, v.MinCount, v.Pattern, v.SubFor, v.ParamsJson, v.Descr
@@ -53,8 +54,10 @@ BEGIN
           AND ISNULL(r.CourseCodePattern, N'') = ISNULL(v.Pattern, N'') AND ISNULL(r.SubstituteFor, N'') = ISNULL(v.SubFor, N'')
     );
 
-    DECLARE @after INT = (SELECT COUNT(*) FROM ProgramRules WHERE InstitutionId = @bu);
-    DECLARE @added INT = @after - @before;
+    DECLARE @after INT;
+    SELECT @after = COUNT(*) FROM ProgramRules WHERE InstitutionId = @bu;
+    DECLARE @added INT;
+    SET @added = @after - @before;
     PRINT CONCAT('Seed 018: ', @added, ' programme rule(s) added for BU.');
 END
 GO
