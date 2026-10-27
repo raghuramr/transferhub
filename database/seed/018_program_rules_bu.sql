@@ -53,6 +53,8 @@ BEGIN
           AND ISNULL(r.CourseCodePattern, N'') = ISNULL(v.Pattern, N'') AND ISNULL(r.SubstituteFor, N'') = ISNULL(v.SubFor, N'')
     );
 
-    PRINT CONCAT('Seed 018: ', (SELECT COUNT(*) FROM ProgramRules WHERE InstitutionId = @bu) - @before, ' programme rule(s) added for BU.');
+    DECLARE @after INT = (SELECT COUNT(*) FROM ProgramRules WHERE InstitutionId = @bu);
+    DECLARE @added INT = @after - @before;
+    PRINT CONCAT('Seed 018: ', @added, ' programme rule(s) added for BU.');
 END
 GO
