@@ -436,10 +436,19 @@ export const aiControlsApi = {
   summary: (days: number) => api.get<UsageSummary>('/ai-controls/usage/summary', { params: { days } }),
   byRequest: (days: number) => api.get<RequestUsageRow[]>('/ai-controls/usage/requests', { params: { days } }),
   clearCache: () => api.post<{ cleared: number }>('/ai-controls/cache/clear'),
+  learnedSkills: (min = 2) => api.get<LearnedSkills>('/ai-controls/learned-skills', { params: { min } }),
   providers: () => api.get<AiProviderPublic>('/ai-controls/providers'),
   saveProviders: (data: Partial<AiProviderSave>) => api.put<AiProviderPublic>('/ai-controls/providers', data),
 };
 
+export interface LearnedSuggestion {
+  key: string; kind: 'override' | 'elective' | 'no_credit'; title: string; instructions: string;
+  count: number; evidence: string; alreadyInPlaybook: boolean;
+}
+export interface LearnedSkills {
+  stats: { decided: number; withAiPick: number; agreed: number; overridden: number; agreementRate: number | null };
+  suggestions: LearnedSuggestion[];
+}
 export interface AiProviderPublic {
   ready: boolean;
   chatProvider: 'anthropic' | 'azure_openai';

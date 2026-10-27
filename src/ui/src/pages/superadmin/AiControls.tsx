@@ -370,9 +370,53 @@ function PlaybookTab() {
     onSuccess: refresh,
   });
 
+  const learned = useQuery({ queryKey: ['ai-learned-skills'], queryFn: () => aiControlsApi.learnedSkills(2) });
+  const addLearned = useMutation({
+    mutationFn: (sg: { title: string; instructions: string }) =>
+      aiControlsApi.saveSkill(null, { title: sg.title, category: 'matching', instructions: sg.instructions, isActive: true, sortOrder: 100 }),
+    onSuccess: () => { refresh(); void qc.invalidateQueries({ queryKey: ['ai-learned-skills'] }); },
+    onError: (e) => setError(errMsg(e, 'Could not add the skill.')),
+  });
+  const learnedData = learned.data?.data;
+  const pending = (learnedData?.suggestions ?? []).filter((x) => !x.alreadyInPlaybook);
+
   const list = skills.data?.data ?? [];
   return (
     <div className="space-y-5">
+      <div className="rounded-xl border border-gray-200 bg-white p-4" data-testid="learned-skills">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Sparkles size={15} /> Learned from faculty decisions</h3>
+        <p className="mt-1 text-xs text-gray-500">
+          Patterns that repeat in what faculty decide — a course mapped somewhere other than the agent's top pick, or repeatedly elective / no credit.
+          Review each one and add it to the playbook; nothing is added automatically. Works with every provider because the playbook is sent with each call.
+        </p>
+        {learnedData && (
+          <p className="mt-2 text-xs text-gray-600">
+            {learnedData.stats.decided} equivalency decisions
+            {learnedData.stats.agreementRate != null && <> · the agent's top pick matched faculty <strong>{learnedData.stats.agreementRate}%</strong> of the time ({learnedData.stats.overridden} overridden)</>}
+          </p>
+        )}
+        {learned.isLoading && <p className="mt-2 text-xs text-gray-400">Looking for patterns…</p>}
+        {learnedData && pending.length === 0 && (
+          <p className="mt-2 text-xs text-gray-500">No new repeating patterns yet. Suggestions appear once the same decision has been made at least twice.</p>
+        )}
+        <ul className="mt-3 space-y-2">
+          {pending.map((sg) => (
+            <li key={sg.key} className="flex flex-wrap items-start gap-3 rounded-lg border border-gray-200 p-3">
+              <div className="min-w-0 flex-1 basis-64">
+                <p className="text-sm font-medium text-gray-900">{sg.title}</p>
+                <p className="mt-0.5 text-xs text-gray-600">{sg.instructions}</p>
+                <p className="mt-1 text-[11px] text-brand-700">{sg.evidence}</p>
+              </div>
+              {canEdit && (
+                <button type="button" disabled={addLearned.isPending} onClick={() => addLearned.mutate({ title: sg.title, instructions: sg.instructions })}
+                  className="inline-flex items-center gap-1 rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-900 disabled:opacity-60">
+                  <Plus size={13} /> Add to playbook
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
       <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-gray-700">
         <p><strong>The playbook teaches the agent how your team matches courses.</strong> Each active skill is added to the agent's instructions on every call, so keep them short and specific: every token here is paid on every match (cached when prompt caching is on).</p>
         <p className="mt-2 text-gray-600">
