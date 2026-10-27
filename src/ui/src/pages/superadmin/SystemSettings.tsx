@@ -18,15 +18,6 @@ type SettingGroup = {
 
 const GROUPS: SettingGroup[] = [
   {
-    title: 'AI Matching',
-    desc: 'Configure Anthropic AI match thresholds and behaviour',
-    fields: [
-      { key: 'ai_auto_apply_threshold', label: 'Auto-apply threshold (0–1)', type: 'number', help: 'Evaluations scoring above this are auto-applied without human review.' },
-      { key: 'ai_candidate_count', label: 'Max AI candidates per course', type: 'number' },
-      { key: 'ai_model', label: 'Anthropic model', type: 'select', options: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-4-5'] },
-    ],
-  },
-  {
     title: 'Transfer Credit Rules',
     desc: 'BU-level academic business rules',
     fields: [
@@ -47,9 +38,6 @@ const GROUPS: SettingGroup[] = [
 ];
 
 const DEFAULTS: Record<string, string> = {
-  ai_auto_apply_threshold: '0.92',
-  ai_candidate_count: '3',
-  ai_model: 'claude-opus-4-5',
   min_grade_threshold: 'C',
   quarter_credit_divisor: '1.5',
   group_c_min_credits: '16',
@@ -76,7 +64,7 @@ function GeneralTab() {
           <Link to="/superadmin/settings/workflows" className="font-medium underline">Workflows → Transfer rules</Link> (minimum grade, credit caps, course age).
         </span>
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {GROUPS.map((group) => (
           <section key={group.title} className="rounded-xl border border-gray-200 bg-white">
             <header className="border-b border-gray-100 px-4 py-3">

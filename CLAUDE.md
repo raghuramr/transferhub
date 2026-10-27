@@ -1130,3 +1130,9 @@ No migrations were added this session. Still to apply by the user: seed 020 (and
   `SchemaService.has(table, column)` guards pre-migration deployments.
 - **Remaining roadmap**: SuperAdmin Partners table (search, expandable rows, bulk deactivate/delete - agent was in progress), improve the rules fallback (honour
   playbook), Document Intelligence/Azure OpenAI live verification, per-university AI settings UI, seed 020 apply, disable demo login before launch.
+- **Email links/logo base URL**: `EmailService.appBaseUrl` = `APP_BASE_URL` env, else `https://$WEBSITE_HOSTNAME`, else a guessed azurewebsites host (logs a warning).
+  The email logo is `${appBaseUrl}/logo.png`, so a broken logo in emails means `APP_BASE_URL` is unset/wrong - set it to the public site (e.g. https://transferhub.wcubeprojects.in).
+- **Workflow "Agent does" steps** are a fixed list (`none|intake|match|finalize`): options in `WorkflowDesigner.tsx` `AGENT_TASKS`, behaviour in
+  `workflow-engine.service.ts` `runAgentTask`, allowed values in DB constraint `CK_WS_Agent`. A new AI step needs all three (code + a migration).
+- **System Settings > General** cards (Transfer Credit Rules, Security) are inert placeholders - nothing is stored or read; real values live in AI Controls and Workflows > Transfer rules.
+- React gotcha: never define a component inside another component's body (inputs lose focus each keystroke) - e.g. `ProviderCard` is module-level in `AiControls.tsx`.

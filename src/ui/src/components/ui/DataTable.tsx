@@ -137,6 +137,16 @@ export function DataTable<T extends { id: string | number }>({
     }
   };
 
+  // Drop selections for rows that no longer exist (e.g. after a delete) so the bulk bar does not linger.
+  useEffect(() => {
+    setSelected((prev) => {
+      if (prev.size === 0) return prev;
+      const ids = new Set(rows.map((r) => r.id));
+      const next = new Set([...prev].filter((id) => ids.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [rows]);
+
   const toggleRow = (id: string | number) => {
     setSelected((prev) => {
       const next = new Set(prev);

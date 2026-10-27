@@ -514,6 +514,37 @@ function RequestsTab({ days }: { days: number }) {
 }
 
 // ── Providers (Anthropic + Azure OpenAI / Document Intelligence) ──
+// One provider card. Declared at module level (NOT inside ProvidersTab) so typing in its fields does not remount it and drop focus.
+function ProviderCard({ active, onActivate, activating, icon, title, blurb, configured, canEdit, children }: {
+  active: boolean; onActivate: () => void; activating?: boolean; icon: React.ReactNode; title: string; blurb?: string;
+  configured?: boolean; canEdit: boolean; children?: React.ReactNode;
+}) {
+  return (
+    <div className={cn('rounded-xl border bg-white p-4 transition', active ? 'border-brand-400 ring-2 ring-brand-500/40' : 'border-gray-200')}>
+      <div className="flex items-start gap-3">
+        <span className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', active ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-500')}>{icon}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-gray-900">{title}</span>
+            {active && <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-800">Active</span>}
+            {configured != null && (
+              <span className={cn('ml-auto text-[11px]', configured ? 'text-green-600' : 'text-gray-400')}>{configured ? 'Configured' : 'Not configured'}</span>
+            )}
+          </div>
+          {blurb && <p className="mt-0.5 text-xs text-gray-500">{blurb}</p>}
+        </div>
+      </div>
+      {children && <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">{children}</div>}
+      {canEdit && !active && (
+        <button type="button" onClick={onActivate} disabled={activating}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-800 hover:bg-brand-100 disabled:opacity-60">
+          {activating ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />} Make active
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ProvidersTab() {
   const qc = useQueryClient();
   const { can } = usePermissions();
@@ -552,6 +583,27 @@ function ProvidersTab() {
     onError: (e) => { const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message; setMsg({ ok: false, text: (Array.isArray(m) ? m.join(', ') : m) ?? 'Could not save.' }); },
   });
 
+  // 'Make active' saves the provider choice right away (it does not wait for the Save button or touch unsaved field edits).
+  const [activating, setActivating] = useState<string | null>(null);
+  const activate = async (choice: { chatProvider?: 'anthropic' | 'azure_openai'; docProvider?: 'none' | 'azure_document_intelligence' }) => {
+    const which = choice.chatProvider ?? choice.docProvider ?? null;
+    setActivating(which);
+    setMsg(null);
+    try {
+      await aiControlsApi.saveProviders(choice);
+      if (choice.chatProvider) setChatProvider(choice.chatProvider);
+      if (choice.docProvider) setDocProvider(choice.docProvider);
+      setMsg({ ok: true, text: 'Active provider updated. New calls use it within ~15 seconds.' });
+      void qc.invalidateQueries({ queryKey: ['ai-providers'] });
+      void qc.invalidateQueries({ queryKey: ['ai-readiness'] });
+    } catch (e) {
+      const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+      setMsg({ ok: false, text: (Array.isArray(m) ? m.join(', ') : m) ?? 'Could not switch provider.' });
+    } finally {
+      setActivating(null);
+    }
+  };
+
   if (q.isLoading) return <p className="text-sm text-gray-400">Loading…</p>;
   const keyField = (label: string, isSet: boolean, value: string, onChange: (v: string) => void) => (
     <Field label={label} hint={isSet ? 'A value is saved — leave blank to keep it, or type a new one to replace.' : 'Not set yet.'}>
@@ -566,31 +618,6 @@ function ProvidersTab() {
     </Field>
   );
 
-  // One selectable provider card: click to make it active; its own fields live inside and stay editable.
-  const Card = ({ active, onActivate, icon, title, blurb, configured, disabled, children }: {
-    active: boolean; onActivate: () => void; icon: React.ReactNode; title: string; blurb?: string;
-    configured?: boolean; disabled?: boolean; children?: React.ReactNode;
-  }) => (
-    <div className={cn('rounded-xl border bg-white p-4 transition', active ? 'border-brand-400 ring-2 ring-brand-500/40' : 'border-gray-200')}>
-      <button type="button" onClick={() => { if (!disabled) { onActivate(); setMsg(null); } }} disabled={disabled}
-        className="flex w-full items-start gap-3 text-left">
-        <span className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', active ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-500')}>{icon}</span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <span className="font-semibold text-gray-900">{title}</span>
-            {active ? <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-800">Active</span>
-              : <span className="text-[11px] text-brand-700">Click to use</span>}
-            {configured != null && (
-              <span className={cn('ml-auto text-[11px]', configured ? 'text-green-600' : 'text-gray-400')}>{configured ? 'Configured' : 'Not configured'}</span>
-            )}
-          </span>
-          {blurb && <span className="mt-0.5 block text-xs text-gray-500">{blurb}</span>}
-        </span>
-      </button>
-      {children && <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">{children}</div>}
-    </div>
-  );
-
   return (
     <div className="space-y-6">
       {!d?.ready && (
@@ -601,11 +628,11 @@ function ProvidersTab() {
         <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Sparkles size={15} /> Course matching &amp; chat</h3>
         <p className="mb-3 text-xs text-gray-500">Configure any provider; the one you pick as Active is used. The built-in rules engine still covers everything when none is available.</p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Card active={chatProvider === 'anthropic'} onActivate={() => setChatProvider('anthropic')} disabled={!canEdit}
+          <ProviderCard active={chatProvider === 'anthropic'} onActivate={() => activate({ chatProvider: 'anthropic' })} activating={activating === 'anthropic'} canEdit={canEdit}
             icon={<Bot size={16} />} title="Anthropic (Claude)" blurb="Claude models via the Anthropic API." configured={!!d?.anthropicKeySet || !!keys.anthropicKey}>
             {keyField('API key', !!d?.anthropicKeySet, keys.anthropicKey, (v) => setKeys((k) => ({ ...k, anthropicKey: v })))}
-          </Card>
-          <Card active={chatProvider === 'azure_openai'} onActivate={() => setChatProvider('azure_openai')} disabled={!canEdit}
+          </ProviderCard>
+          <ProviderCard active={chatProvider === 'azure_openai'} onActivate={() => activate({ chatProvider: 'azure_openai' })} activating={activating === 'azure_openai'} canEdit={canEdit}
             icon={<Zap size={16} />} title="Azure OpenAI" blurb="GPT models via your Azure Foundry deployment." configured={!!d?.azureOpenAiKeySet && !!endpoints.azureOpenAiEndpoint && !!endpoints.azureOpenAiDeployment}>
             {txt('Endpoint', endpoints.azureOpenAiEndpoint, (v) => setEndpoints((s) => ({ ...s, azureOpenAiEndpoint: v })), 'https://my-resource.openai.azure.com')}
             {keyField('API key', !!d?.azureOpenAiKeySet, keys.azureOpenAiKey, (v) => setKeys((k) => ({ ...k, azureOpenAiKey: v })))}
@@ -613,7 +640,7 @@ function ProvidersTab() {
               {txt('Chat deployment', endpoints.azureOpenAiDeployment, (v) => setEndpoints((s) => ({ ...s, azureOpenAiDeployment: v })), 'e.g. gpt-4o')}
               {txt('API version', endpoints.azureOpenAiApiVersion, (v) => setEndpoints((s) => ({ ...s, azureOpenAiApiVersion: v })), '2024-06-01')}
             </div>
-          </Card>
+          </ProviderCard>
         </div>
       </div>
 
@@ -621,13 +648,13 @@ function ProvidersTab() {
         <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Database size={15} /> Document reading</h3>
         <p className="mb-3 text-xs text-gray-500">Reads transcripts, IDs and score reports in Smart Upload. The built-in rules reader needs no cloud service.</p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Card active={docProvider === 'none'} onActivate={() => setDocProvider('none')} disabled={!canEdit}
+          <ProviderCard active={docProvider === 'none'} onActivate={() => activate({ docProvider: 'none' })} activating={activating === 'none'} canEdit={canEdit}
             icon={<Database size={16} />} title="Built-in rules reader" blurb="No cloud service; works without a key (no OCR on scans)." />
-          <Card active={docProvider === 'azure_document_intelligence'} onActivate={() => setDocProvider('azure_document_intelligence')} disabled={!canEdit}
+          <ProviderCard active={docProvider === 'azure_document_intelligence'} onActivate={() => activate({ docProvider: 'azure_document_intelligence' })} activating={activating === 'azure_document_intelligence'} canEdit={canEdit}
             icon={<Sparkles size={16} />} title="Azure AI Document Intelligence" blurb="OCR + layout; reads scans and photos." configured={!!d?.azureDocKeySet && !!endpoints.azureDocEndpoint}>
             {txt('Endpoint', endpoints.azureDocEndpoint, (v) => setEndpoints((s) => ({ ...s, azureDocEndpoint: v })), 'https://my-di.cognitiveservices.azure.com')}
             {keyField('API key', !!d?.azureDocKeySet, keys.azureDocKey, (v) => setKeys((k) => ({ ...k, azureDocKey: v })))}
-          </Card>
+          </ProviderCard>
         </div>
       </div>
 
