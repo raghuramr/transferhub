@@ -45,4 +45,9 @@ export class SchemaService {
   policyReady(): Promise<boolean> {
     return this.has('CourseAppeals');
   }
+
+  /** Migration 024 (credit deadline: per-university months, StudentProfiles.StartDate, reminder ledger). */
+  deadlineReady(): Promise<boolean> {
+    return this.has('CreditDeadlineNotices');
+  }
 }

@@ -7,6 +7,7 @@ import { EmailService } from '../common/email.service';
 import { templates } from '../common/email-templates';
 import { SchemaService } from '../policy/schema.service';
 import { TransferPolicyService, parseFlags, type PolicyFlag } from '../policy/transfer-policy.service';
+import { CreditDeadlineService } from '../policy/credit-deadline.service';
 
 export interface Actor {
   id: string;
@@ -59,6 +60,7 @@ export class WorkflowEngineService {
     private email: EmailService,
     private schema: SchemaService,
     private policy: TransferPolicyService,
+    private deadlines: CreditDeadlineService,
   ) {}
 
   // ── starting ────────────────────────────────────────────────
@@ -795,6 +797,12 @@ export class WorkflowEngineService {
       const studentId = pf.recordset[0]?.StudentUserId;
       if (studentId) {
         const cs = await this.policy.creditSummary(studentId);
+        const kind = (await this.db.query<{ K: string | null }>(`SELECT EvaluationKind AS K FROM Transcripts WHERE Id = @t`, [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }])).recordset[0]?.K;
+        const dl = kind === 'preview' ? null : await this.deadlines.forStudent(studentId);
+        if (dl && dl.deadlineOn) {
+          const when = dl.daysLeft! < 0 ? `passed ${-dl.daysLeft!} day(s) ago` : `${dl.daysLeft} day(s) left`;
+          notes.push(`Credit deadline (${dl.months} months from start${dl.isEstimate ? ', estimated from the first request: no entry term on file' : ''}): ${dl.deadlineOn}, ${when}.`);
+        }
         notes.push(`External credit: ${cs.used} of ${cs.cap} allowed credits counted so far (transfer, AP, IB and A-level combined).`);
         notes.push(`BU Hub: transfer courses never satisfy Hub requirements; this student still owes ${cs.hubRequirements} Hub requirements (up to ${cs.hubCocurricularAllowed} via a cocurricular).`);
       }
