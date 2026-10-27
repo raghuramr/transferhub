@@ -131,7 +131,7 @@ function SendTab({ apiKey, who, onSent }: { apiKey: string; who: PartnerIdentity
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="mb-1 flex items-center gap-2 font-semibold text-gray-900"><FileSpreadsheet size={17} className="text-green-700" /> Excel</div>
           <p className="mb-3 text-sm text-gray-500">Fill in our workbook: sheets for Universities, Programs, Courses, Topics, Students and StudentCourses. Delete the example rows you do not need.</p>
@@ -255,7 +255,7 @@ function ApiTab({ who }: { who: PartnerIdentity }) {
       {fmt.data && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h3 className="mb-3 font-semibold text-gray-900">Field reference</h3>
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {Object.entries(fmt.data.schemas).map(([name, s]) => (
               <div key={name}>
                 <div className="text-sm font-semibold capitalize text-gray-800">{name}</div>

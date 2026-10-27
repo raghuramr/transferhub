@@ -177,7 +177,7 @@ export default function TranscriptStatus() {
       </div>
 
       {timeline && timeline.transcript.workflow && (
-        <div className="mt-8 grid gap-4 lg:grid-cols-2">
+        <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <NoteComposer requestId={transcript.id} timeline={timeline} onUpdated={setTimeline} />
           <ReminderPanel
             requestId={transcript.id}

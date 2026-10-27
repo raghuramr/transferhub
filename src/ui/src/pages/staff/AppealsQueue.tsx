@@ -84,7 +84,7 @@ function DecisionForm({ appeal, onDone }: { appeal: Appeal; onDone: (msg: string
           <textarea value={denial} onChange={(e) => setDenial(e.target.value)} rows={2} maxLength={1000} className={inputCls} />
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-500">Department</label>
           <input value={dept} onChange={(e) => setDept(e.target.value)} maxLength={150} placeholder="e.g. Computer Science" className={inputCls} />

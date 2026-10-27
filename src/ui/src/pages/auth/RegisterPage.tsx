@@ -345,7 +345,7 @@ export default function RegisterPage() {
             {cur.kind === 'application' && (
               <>
                 <Field label="Which describes you?" error={errors.applicantType?.message}>
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {APPLICANT_TYPES.map((t) => (
                       <label key={t.value} className={cn('cursor-pointer rounded-lg border p-3 text-sm', applicantType === t.value ? 'border-brand-500 bg-brand-50' : 'border-gray-200 hover:border-gray-300')}>
                         <input type="radio" value={t.value} {...register('applicantType')} className="sr-only" />

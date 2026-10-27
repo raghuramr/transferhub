@@ -74,7 +74,7 @@ function GeneralTab() {
           <Link to="/superadmin/settings/workflows" className="font-medium underline">Workflows → Transfer rules</Link> (minimum grade, credit caps, course age).
         </span>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {GROUPS.map((group) => (
           <section key={group.title} className="rounded-xl border border-gray-200 bg-white">
             <header className="border-b border-gray-100 px-4 py-3">
@@ -187,7 +187,7 @@ function EmailTab() {
     : null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <section className="rounded-xl border border-gray-200 bg-white">
         <header className="border-b border-gray-100 px-4 py-3">
           <h2 className="text-sm font-semibold text-gray-900">Email delivery (Resend)</h2>

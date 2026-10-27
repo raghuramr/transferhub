@@ -197,7 +197,7 @@ function DecisionPanel({ requestId, stage, canAct, isAdmin, onDone }: {
       {canAct ? (
         <>
           <p className="text-sm font-medium text-gray-800">Your decision on “{stage.name}”</p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-xs font-medium text-gray-500">
               Internal comment <span className="font-normal">(this stage's team + admins only)</span>
               <textarea value={internal} onChange={(e) => setInternal(e.target.value)} rows={2} maxLength={4000}
@@ -346,8 +346,8 @@ export default function RequestReview() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           <CreditHubCard credit={tl.credit} />
           {active?.aiBrief && <Brief brief={active.aiBrief} evalBase={evalBase} requestId={id!} canAct={tl.permissions.canAct} onDone={set} />}
           <div className="rounded-xl border border-gray-200 bg-white p-5">
@@ -359,7 +359,7 @@ export default function RequestReview() {
             <div className="mt-6"><GeneralNotes notes={tl.generalNotes} /></div>
           </div>
         </div>
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <StudentProfileCard p={tl.student} />
           <NoteComposer requestId={id!} timeline={tl} onUpdated={set} />
           <DocumentsPanel requestId={id!} timeline={tl} onUpdated={set} />

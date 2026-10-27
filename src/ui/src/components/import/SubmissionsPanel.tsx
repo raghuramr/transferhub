@@ -134,7 +134,7 @@ function RowDetail({ batch, row, onChanged }: { batch: BatchDetail; row: BatchRo
     onError: (e) => setError(errMsg(e, 'Could not save.')),
   });
   return (
-    <div className="grid gap-4 bg-gray-50 p-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 bg-gray-50 p-4 lg:grid-cols-2">
       <div>
         <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">Checks</div>
         {row.messages.length === 0 && row.validation === 'valid' && <p className="text-sm text-green-700">No problems found.</p>}
