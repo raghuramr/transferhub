@@ -635,6 +635,7 @@ export interface IntakeItem {
   error: string | null;
   createdAt: string;
   aiEnabled: boolean;
+  extracted?: ExtractedDocument | null;
 }
 export interface ExtractedDocument {
   docType: string;
@@ -679,6 +680,10 @@ export const documentsApi = {
   get: (id: string) => api.get<IntakeDetail>(`/documents/intakes/${id}`),
   update: (id: string, data: { docType?: string; extracted?: ExtractedDocument }) => api.patch<IntakeDetail>(`/documents/intakes/${id}`, data),
   retry: (id: string) => api.post<IntakeItem>(`/documents/intakes/${id}/retry`),
+  reprocess: (id: string) => api.post<IntakeItem>(`/documents/${id}/reprocess`),
+  remove: (id: string) => api.delete<{ ok: boolean; fileDeleted: boolean; message: string }>(`/documents/${id}`),
+  attach: (id: string, data: { transcriptId: string; docTypeKey?: string }) =>
+    api.post<{ ok: boolean; transcriptId: string; docTypeKey: string }>(`/documents/${id}/attach`, data),
   confirm: (id: string) =>
     api.post<{ ok: boolean; docType: string; applied: { education: boolean; profile: boolean }; prefill?: TranscriptPrefill }>(`/documents/intakes/${id}/confirm`),
   prefill: (id: string) => api.get<TranscriptPrefill>(`/documents/intakes/${id}/prefill`),

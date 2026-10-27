@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -23,6 +24,15 @@ import { DOC_TYPE_KEYS } from './document-types';
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp']);
+
+class AttachIntakeDto {
+  @IsString()
+  transcriptId!: string;
+
+  @IsOptional()
+  @IsString()
+  docTypeKey?: string;
+}
 
 class UpdateIntakeDto {
   @IsOptional()
@@ -77,6 +87,22 @@ export class DocumentsController {
   @Post('intakes/:id/retry')
   retry(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.documents.retry(id, req.user);
+  }
+
+  /** Re-runs extraction with the reader currently configured (also for confirmed documents). */
+  @Post(':id/reprocess')
+  reprocess(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.documents.reprocess(id, req.user);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.documents.remove(id, req.user);
+  }
+
+  @Post(':id/attach')
+  attach(@Param('id') id: string, @Body() dto: AttachIntakeDto, @Req() req: AuthenticatedRequest) {
+    return this.documents.attach(id, req.user, dto);
   }
 
   @Post('intakes/:id/confirm')
