@@ -775,6 +775,16 @@ backtest (AI Controls > Usage) for a real number; click through the Demo scenari
 - **Bug found via Swagger**: `TransfersModule` was imported in `app.module.ts` but missing from the `imports` array, so every `/transfers/*` endpoint 404'd in production
   (the smoke suite caught it). Fixed. Check for this class of bug by comparing module imports vs the array.
 
+## Session 2026-10-27 (g): student journey (branch `claude/student-journey`; apply seed 020; SQL UNTESTED)
+- **Profile bug root cause**: `GET /users/:id` had `@Roles('admin','super_admin')`, so students got 403 and the profile page showed "Not provided" everywhere. Role guard removed; the
+  controller's own self-or-admin + scope check still applies. Profile page now shows an error banner on failure and a "University & program" card.
+- **Student target**: `GET /account/targets`, `PUT /account/target {institutionId, programId?}` (student only; receiving universities only, program must be offered there; audit
+  `STUDENT_TARGET_CHANGED`; never touches existing transcripts/workflows), `GET /account/student-overview`. Profile page has "Change target university".
+- **Seed 020** completes every student's profile consistently (prior institution = latest transcript source, education rows, credits, target program; Maya = Bay State CC -> BU CS).
+- **Where I am now + Explore**: `src/api/src/student-journey/` (`GET /student/overview`, `/student/universities`, `/student/compare?ids=a,b,c` max 3), UI `CurrentStatusCard` on the
+  student dashboard and `/student/explore` (compare up to 3 universities: known equivalencies first, then built-in rules matcher, programs ranked by transferable credits, capped
+  by the external-credit cap; preview only; "Make this my target" button).
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group

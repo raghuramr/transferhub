@@ -30,6 +30,7 @@ import { ProgressModule } from './progress/progress.module';
 import { ComparisonModule } from './comparison/comparison.module';
 import { SettingsModule } from './settings/settings.module';
 import { DemoModule } from './demo/demo.module';
+import { StudentJourneyModule } from './student-journey/student-journey.module';
 import { AuditController } from './common/audit.controller';
 import { HealthController } from './common/health.controller';
 
@@ -74,6 +75,7 @@ const envFilePath =
     ComparisonModule,
     SettingsModule,
     DemoModule,
+    StudentJourneyModule,
   ],
   controllers: [AuditController, HealthController],
 })

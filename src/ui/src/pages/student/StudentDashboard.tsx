@@ -6,6 +6,7 @@ import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner
 import { MotionCard } from '../../components/ui/Card';
 import { Reveal } from '../../components/ui/PageTransition';
 import { DashboardView } from '../../components/dashboard/DashboardView';
+import { CurrentStatusCard } from '../../components/student/CurrentStatusCard';
 import { DegreeProgressCard } from '../../components/student/DegreeProgressCard';
 import {
   Upload, Clock, CheckCircle, AlertCircle, ChevronRight, GraduationCap
@@ -96,6 +97,8 @@ export default function StudentDashboard() {
           </div>
         </MotionCard>
       </div>
+
+      <CurrentStatusCard className="mb-8" />
 
       <DegreeProgressCard className="mb-8" />
 
