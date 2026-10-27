@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, ChevronDown, Compass, Flag, GraduationCap, School, Upload } from 'lucide-react';
-import { api } from '../../lib/api';
+import { BookOpen, ChevronDown, Compass, Flag, GraduationCap, School, Upload, Pencil, Check, X, Loader2 } from 'lucide-react';
+import { api, transcriptsApi } from '../../lib/api';
+import type { JourneyCourse } from './journeyTypes';
 import { cn } from '../../lib/cn';
 import { Badge } from '../ui/Badge';
 import { fmtCredits, type JourneyOverview } from './journeyTypes';
@@ -15,6 +16,8 @@ const SOURCE_LABEL = { transcript: 'from your latest transcript request', profil
 /** "Where I am now": current institution, program, courses and credits, and where the student is headed. */
 export function CurrentStatusCard({ className }: { className?: string }) {
   const [showAll, setShowAll] = useState(false);
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState<JourneyCourse | null>(null);
   const { data, isLoading, isError } = useQuery({
     queryKey: ['student', 'overview'],
     queryFn: async () => (await api.get<JourneyOverview>('/student/overview')).data,
@@ -110,17 +113,37 @@ export function CurrentStatusCard({ className }: { className?: string }) {
       {hasCourses ? (
         <div className="px-5 py-4 sm:px-6">
           <ul className="divide-y divide-gray-100">
-            {shown.map((c) => (
-              <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
-                <span className="w-24 shrink-0 font-medium text-gray-900">{c.code}</span>
-                <span className="min-w-0 flex-1 basis-40 break-words text-gray-700">{c.title}</span>
-                <span className="text-xs text-gray-500">{[c.term, c.grade && `Grade ${c.grade}`].filter(Boolean).join(' - ')}</span>
-                <span className="text-xs tabular-nums text-gray-600">
-                  {fmtCredits(c.convertedCredits)} cr{c.convertedCredits !== c.originalCredits && ` (${fmtCredits(c.originalCredits)} orig.)`}
-                </span>
-                {c.bucket && <Badge tone={BUCKET_TONE[c.bucket] ?? 'gray'}>{BUCKET_LABEL[c.bucket] ?? c.bucket}</Badge>}
-              </li>
-            ))}
+            {shown.map((c) =>
+              editing?.id === c.id ? (
+                <li key={c.id} className="py-2">
+                  <CourseEditRow
+                    course={c}
+                    onCancel={() => setEditing(null)}
+                    onSaved={() => { setEditing(null); void qc.invalidateQueries({ queryKey: ['student'] }); }}
+                  />
+                </li>
+              ) : (
+                <li key={c.id} className="group flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
+                  <span className="w-24 shrink-0 font-medium text-gray-900">{c.code}</span>
+                  <span className="min-w-0 flex-1 basis-40 break-words text-gray-700">{c.title}</span>
+                  <span className="text-xs text-gray-500">{[c.term, c.grade && `Grade ${c.grade}`].filter(Boolean).join(' - ')}</span>
+                  <span className="text-xs tabular-nums text-gray-600">
+                    {fmtCredits(c.convertedCredits)} cr{c.convertedCredits !== c.originalCredits && ` (${fmtCredits(c.originalCredits)} orig.)`}
+                  </span>
+                  {c.bucket && <Badge tone={BUCKET_TONE[c.bucket] ?? 'gray'}>{BUCKET_LABEL[c.bucket] ?? c.bucket}</Badge>}
+                  {c.bucket !== 'secure' && (
+                    <button
+                      type="button"
+                      onClick={() => setEditing(c)}
+                      className="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-brand-700"
+                      aria-label={`Edit ${c.code}`}
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  )}
+                </li>
+              ),
+            )}
           </ul>
           {o.courses.length > 5 && (
             <button onClick={() => setShowAll((v) => !v)} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline">
@@ -142,5 +165,67 @@ export function CurrentStatusCard({ className }: { className?: string }) {
         </div>
       )}
     </motion.section>
+  );
+}
+
+const SEASONS = ['', 'fall', 'spring', 'summer', 'winter', 'other'];
+
+/** Inline editor for one submitted course (student fixes code/title/credits/grade/term); re-triages on save. */
+function CourseEditRow({ course, onCancel, onSaved }: { course: JourneyCourse; onCancel: () => void; onSaved: () => void }) {
+  const parsed = /(fall|spring|summer|winter)\s*(\d{4})?/i.exec(course.term ?? '');
+  const [form, setForm] = useState({
+    courseCode: course.code,
+    courseTitle: course.title,
+    originalCredits: String(course.originalCredits ?? ''),
+    grade: course.grade ?? '',
+    termSeason: (parsed?.[1] ?? '').toLowerCase(),
+    termYear: parsed?.[2] ?? '',
+  });
+  const [err, setErr] = useState('');
+  const save = useMutation({
+    mutationFn: () => {
+      const season = form.termSeason;
+      const term = season ? `${season[0].toUpperCase()}${season.slice(1)} ${form.termYear}`.trim() : (course.term ?? undefined);
+      return transcriptsApi.updateCourse(course.id, {
+        courseCode: form.courseCode.trim(),
+        courseTitle: form.courseTitle.trim(),
+        originalCredits: parseFloat(form.originalCredits) || course.originalCredits,
+        grade: form.grade.trim().toUpperCase() || undefined,
+        term,
+        termSeason: season || undefined,
+        termYear: form.termYear ? Number(form.termYear) : undefined,
+      });
+    },
+    onSuccess: onSaved,
+    onError: (e: unknown) => {
+      const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+      setErr((Array.isArray(m) ? m.join(', ') : m) ?? 'Could not save this course.');
+    },
+  });
+  const field = 'rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500';
+
+  return (
+    <div className="rounded-lg border border-brand-200 bg-brand-50/40 p-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <input value={form.courseCode} onChange={(e) => setForm((f) => ({ ...f, courseCode: e.target.value }))} placeholder="Code" className={field} />
+        <input value={form.courseTitle} onChange={(e) => setForm((f) => ({ ...f, courseTitle: e.target.value }))} placeholder="Title" className={`${field} col-span-2 sm:col-span-3`} />
+        <input value={form.originalCredits} onChange={(e) => setForm((f) => ({ ...f, originalCredits: e.target.value }))} placeholder="Credits" type="number" step="0.5" className={field} />
+        <input value={form.grade} onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))} placeholder="Grade" className={field} />
+        <select value={form.termSeason} onChange={(e) => setForm((f) => ({ ...f, termSeason: e.target.value }))} className={field}>
+          {SEASONS.map((s) => <option key={s} value={s}>{s ? s[0].toUpperCase() + s.slice(1) : 'Term…'}</option>)}
+        </select>
+        <input value={form.termYear} onChange={(e) => setForm((f) => ({ ...f, termYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} placeholder="Year" inputMode="numeric" className={field} />
+      </div>
+      {err && <p className="mt-1 text-xs text-red-600">{err}</p>}
+      <div className="mt-2 flex items-center gap-2">
+        <button type="button" onClick={() => save.mutate()} disabled={save.isPending}
+          className="inline-flex items-center gap-1 rounded-md bg-brand-800 px-3 py-1 text-xs font-medium text-white hover:bg-brand-900 disabled:opacity-60">
+          {save.isPending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Save &amp; re-check
+        </button>
+        <button type="button" onClick={onCancel} className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50">
+          <X size={13} /> Cancel
+        </button>
+      </div>
+    </div>
   );
 }

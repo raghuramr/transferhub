@@ -9,7 +9,7 @@ import ReadinessCard from '../../components/workflow/ReadinessCard';
 import MatcherAccuracyCard from '../../components/workflow/MatcherAccuracyCard';
 import type { AgentSkill, AiSettings } from '../../types/workflow';
 
-type Tab = 'usage' | 'settings' | 'playbook' | 'requests';
+type Tab = 'usage' | 'settings' | 'providers' | 'playbook' | 'requests';
 
 const errMsg = (e: unknown, fallback: string) => {
   const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
@@ -469,12 +469,119 @@ function RequestsTab({ days }: { days: number }) {
   );
 }
 
+// ── Providers (Anthropic + Azure OpenAI / Document Intelligence) ──
+function ProvidersTab() {
+  const qc = useQueryClient();
+  const { can } = usePermissions();
+  const canEdit = can('ai_controls', 'edit');
+  const q = useQuery({ queryKey: ['ai-providers'], queryFn: () => aiControlsApi.providers() });
+  const d = q.data?.data;
+  const [chatProvider, setChatProvider] = useState<'anthropic' | 'azure_openai'>('anthropic');
+  const [docProvider, setDocProvider] = useState<'none' | 'azure_document_intelligence'>('none');
+  const [endpoints, setEndpoints] = useState({ azureOpenAiEndpoint: '', azureOpenAiDeployment: '', azureOpenAiApiVersion: '2024-06-01', azureDocEndpoint: '' });
+  const [keys, setKeys] = useState({ anthropicKey: '', azureOpenAiKey: '', azureDocKey: '' });
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    if (d) {
+      setChatProvider(d.chatProvider);
+      setDocProvider(d.docProvider);
+      setEndpoints({
+        azureOpenAiEndpoint: d.azureOpenAiEndpoint ?? '',
+        azureOpenAiDeployment: d.azureOpenAiDeployment ?? '',
+        azureOpenAiApiVersion: d.azureOpenAiApiVersion ?? '2024-06-01',
+        azureDocEndpoint: d.azureDocEndpoint ?? '',
+      });
+      setKeys({ anthropicKey: '', azureOpenAiKey: '', azureDocKey: '' });
+    }
+  }, [d]);
+
+  const save = useMutation({
+    mutationFn: () => {
+      const payload: Record<string, string> = { chatProvider, docProvider, ...endpoints };
+      if (keys.anthropicKey) payload.anthropicKey = keys.anthropicKey;
+      if (keys.azureOpenAiKey) payload.azureOpenAiKey = keys.azureOpenAiKey;
+      if (keys.azureDocKey) payload.azureDocKey = keys.azureDocKey;
+      return aiControlsApi.saveProviders(payload);
+    },
+    onSuccess: () => { setMsg({ ok: true, text: 'Saved. New calls use this provider within ~15 seconds.' }); void qc.invalidateQueries({ queryKey: ['ai-providers'] }); void qc.invalidateQueries({ queryKey: ['ai-readiness'] }); },
+    onError: (e) => { const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message; setMsg({ ok: false, text: (Array.isArray(m) ? m.join(', ') : m) ?? 'Could not save.' }); },
+  });
+
+  if (q.isLoading) return <p className="text-sm text-gray-400">Loading…</p>;
+  const keyField = (label: string, isSet: boolean, value: string, onChange: (v: string) => void) => (
+    <Field label={label} hint={isSet ? 'A value is saved — leave blank to keep it, or type a new one to replace.' : 'Not set yet.'}>
+      <input type="password" value={value} onChange={(e) => { onChange(e.target.value); setMsg(null); }} placeholder={isSet ? '•••••••• (saved)' : 'Paste the key'}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" disabled={!canEdit} />
+    </Field>
+  );
+  const txt = (label: string, val: string, onChange: (v: string) => void, placeholder = '') => (
+    <Field label={label}>
+      <input value={val} onChange={(e) => { onChange(e.target.value); setMsg(null); }} placeholder={placeholder}
+        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" disabled={!canEdit} />
+    </Field>
+  );
+
+  return (
+    <div className="space-y-5">
+      {!d?.ready && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Migration 023 (AppSettings) is not applied yet, so provider settings cannot be saved.</div>
+      )}
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Sparkles size={15} /> Course matching &amp; chat provider</h3>
+        <p className="mb-4 text-xs text-gray-500">Switch between Anthropic and Azure OpenAI. Either can be configured; only the selected one is used, and the built-in rules engine still covers everything when neither is available.</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Active chat provider">
+            <select value={chatProvider} onChange={(e) => { setChatProvider(e.target.value as 'anthropic' | 'azure_openai'); setMsg(null); }} disabled={!canEdit}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="azure_openai">Azure OpenAI</option>
+            </select>
+          </Field>
+          <div />
+          {keyField('Anthropic API key', !!d?.anthropicKeySet, keys.anthropicKey, (v) => setKeys((k) => ({ ...k, anthropicKey: v })))}
+          <div />
+          {txt('Azure OpenAI endpoint', endpoints.azureOpenAiEndpoint, (v) => setEndpoints((s) => ({ ...s, azureOpenAiEndpoint: v })), 'https://my-resource.openai.azure.com')}
+          {keyField('Azure OpenAI API key', !!d?.azureOpenAiKeySet, keys.azureOpenAiKey, (v) => setKeys((k) => ({ ...k, azureOpenAiKey: v })))}
+          {txt('Chat deployment name', endpoints.azureOpenAiDeployment, (v) => setEndpoints((s) => ({ ...s, azureOpenAiDeployment: v })), 'e.g. gpt-4o')}
+          {txt('API version', endpoints.azureOpenAiApiVersion, (v) => setEndpoints((s) => ({ ...s, azureOpenAiApiVersion: v })), '2024-06-01')}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Database size={15} /> Document reading provider</h3>
+        <p className="mb-4 text-xs text-gray-500">Azure AI Document Intelligence reads transcripts, IDs and score reports in Smart Upload. Leave as None to use the built-in rules reader.</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Document provider">
+            <select value={docProvider} onChange={(e) => { setDocProvider(e.target.value as 'none' | 'azure_document_intelligence'); setMsg(null); }} disabled={!canEdit}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="none">None (built-in rules reader)</option>
+              <option value="azure_document_intelligence">Azure AI Document Intelligence</option>
+            </select>
+          </Field>
+          <div />
+          {txt('Document Intelligence endpoint', endpoints.azureDocEndpoint, (v) => setEndpoints((s) => ({ ...s, azureDocEndpoint: v })), 'https://my-di.cognitiveservices.azure.com')}
+          {keyField('Document Intelligence API key', !!d?.azureDocKeySet, keys.azureDocKey, (v) => setKeys((k) => ({ ...k, azureDocKey: v })))}
+        </div>
+      </div>
+
+      {msg && <p className={cn('rounded-lg p-2 text-sm', msg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')}>{msg.text}</p>}
+      {canEdit && (
+        <button type="button" onClick={() => { setMsg(null); save.mutate(); }} disabled={save.isPending || !d?.ready}
+          className="flex items-center gap-2 rounded-lg bg-brand-800 px-5 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50">
+          <Save size={16} /> {save.isPending ? 'Saving…' : 'Save providers'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function AiControls() {
   const [tab, setTab] = useState<Tab>('usage');
   const [days, setDays] = useState(30);
   const tabs: { key: Tab; label: string }[] = [
     { key: 'usage', label: 'Usage' }, { key: 'requests', label: 'By request' },
-    { key: 'settings', label: 'Settings' }, { key: 'playbook', label: 'Agent playbook' },
+    { key: 'settings', label: 'Settings' }, { key: 'providers', label: 'Providers' }, { key: 'playbook', label: 'Agent playbook' },
   ];
   return (
     <div className="mx-auto w-[95%] max-w-6xl p-4 sm:p-6">
@@ -498,6 +605,7 @@ export default function AiControls() {
       {tab === 'usage' && <UsageTab days={days} />}
       {tab === 'requests' && <RequestsTab days={days} />}
       {tab === 'settings' && <SettingsTab />}
+      {tab === 'providers' && <ProvidersTab />}
       {tab === 'playbook' && <PlaybookTab />}
     </div>
   );
