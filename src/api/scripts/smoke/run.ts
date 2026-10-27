@@ -178,7 +178,7 @@ async function main() {
   await check('transfers: GET /transfers/summary shape (admin)', async () => {
     const r = await http.get('/transfers/summary', need('admin').token);
     if (r.status === 503) throw new SkipError('transfer exchange migration 022 not applied');
-    expect(r.status === 200, `status ${r.status}`);
+    expect(r.status === 200, `status ${r.status} ${typeof r.json?.message === 'string' ? r.json.message : r.text.slice(0, 160)}`);
     shape(r.json, { days: 'number', scope: 'object', incoming: 'object', outgoing: 'object', documentRequests: 'object' }, 'summary');
     return `days=${r.json.days}`;
   });
@@ -245,7 +245,7 @@ async function main() {
   for (const p of ['/requests/queue', '/transfers/summary', '/ai-controls/readiness', '/email/templates', '/permissions/matrix']) {
     await check(`scope: student GET ${p} -> 403`, async () => {
       const r = await http.get(p, need('student').token);
-      expect(r.status === 403, `expected 403, got ${r.status}`);
+      expect(r.status === 403, `expected 403, got ${r.status} ${typeof r.json?.message === 'string' ? r.json.message : r.text.slice(0, 160)}`);
     });
   }
   await check('scope: admin GET /permissions/matrix (super_admin only) -> 403', async () => {
