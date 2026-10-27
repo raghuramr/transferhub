@@ -38,14 +38,16 @@ async function icon(name, color = 'FFFFFF') {
 }
 const DIMS = {};
 const has = (f) => fs.existsSync(path.join(SCREENS, f));
-function shot(slide, file, x, y, w, h, name) {
+async function shot(slide, file, x, y, w, h, name) {
   if (has(file)) {
-    // keep aspect ratio inside the box, anchored top-left; frame with a soft shadow
-    const { width: iw, height: ih } = DIMS[file] || { width: 1440, height: 900 };
-    const r = Math.min(w / iw, h / ih);
-    const dw = iw * r, dh = ih * r;
-    slide.addImage({ path: path.join(SCREENS, file), x: x + (w - dw) / 2, y: y + (h - dh) / 2, w: dw, h: dh, objectName: name,
-      altText: name, shadow: { type: 'outer', color: '000000', opacity: 0.25, blur: 12, offset: 3, angle: 90 } });
+    // crop the top of the screenshot to the box's aspect ratio so tall pages fill the frame
+    const { width: iw, height: ih } = DIMS[file];
+    const want = w / h;
+    let cw = iw, ch = Math.round(iw / want);
+    if (ch > ih) { ch = ih; cw = Math.round(ih * want); }
+    const buf = await sharp(path.join(SCREENS, file)).extract({ left: 0, top: 0, width: cw, height: ch }).png().toBuffer();
+    slide.addImage({ data: 'image/png;base64,' + buf.toString('base64'), x, y, w, h, objectName: name, altText: name,
+      shadow: { type: 'outer', color: '000000', opacity: 0.25, blur: 12, offset: 3, angle: 90 } });
   } else {
     slide.addShape(pres.ShapeType.roundRect, { x, y, w, h, fill: { color: C.tint }, line: { color: C.rose, width: 1 }, rectRadius: 0.1 });
     slide.addText('screenshot: ' + file, { x, y, w, h, align: 'center', valign: 'middle', color: C.mute, fontSize: 14, isTextBox: true });
@@ -81,7 +83,8 @@ async function iconCircle(s, name, x, y, d = 0.7, bg = C.maroon, fg = 'FFFFFF') 
   // 1 ─ Title
   {
     const s = dark('Open with the one-line promise: faster for evaluators, clearer for students, and the department still decides.');
-    s.addImage({ path: path.join(REPO, 'src/ui/public/logo.png'), x: 0.7, y: 0.6, w: 3.4, h: 1.785, altText: 'TransferHub logo' });
+    s.addShape(pres.ShapeType.roundRect, { x: 0.7, y: 0.6, w: 3.6, h: 1.9, fill: { color: C.white }, line: { color: C.white, width: 0 }, rectRadius: 0.15 });
+    s.addImage({ path: path.join(REPO, 'src/ui/public/logo.png'), x: 0.7, y: 0.6, w: 3.6, h: 1.89, altText: 'TransferHub logo' });
     s.addText('Smarter Transfer Credit Evaluation', { x: 0.7, y: 2.7, w: 11.5, h: 1.0, fontFace: 'Cambria', fontSize: 48, bold: true, color: C.white, margin: 0, isTextBox: true });
     s.addText('From zero units and weeks of waiting to a clear status for every course, on day one.', { x: 0.7, y: 3.8, w: 10.5, h: 0.9, fontSize: 22, color: C.rose, margin: 0, isTextBox: true });
     s.addText([{ text: 'Clopay Code Crafters', options: { bold: true, color: C.gold } }, { text: '   ·   FDE AI Hackathon 5.0   ·   Problem 1 · Boston University', options: { color: C.white } }],
@@ -123,8 +126,8 @@ async function iconCircle(s, name, x, y, d = 0.7, bg = C.maroon, fg = 'FFFFFF') 
       const y = 1.6 + i * 1.35;
       card(s, 0.6, y, 12.1, 1.2);
       await iconCircle(s, rows[i][0], 0.85, y + 0.27, 0.66);
-      s.addText(rows[i][1], { x: 1.8, y, w: 2.8, h: 1.2, fontSize: 22, bold: true, fontFace: 'Cambria', color: C.maroon, margin: 0, valign: 'middle', isTextBox: true });
-      s.addText(rows[i][2], { x: 4.6, y: y + 0.05, w: 7.9, h: 1.1, fontSize: 15, color: C.ink, margin: 0, valign: 'middle', isTextBox: true });
+      s.addText(rows[i][1], { x: 1.8, y, w: 3.1, h: 1.2, fontSize: 20, bold: true, fontFace: 'Cambria', color: C.maroon, margin: 0, valign: 'middle', isTextBox: true });
+      s.addText(rows[i][2], { x: 5.0, y: y + 0.05, w: 7.5, h: 1.1, fontSize: 15, color: C.ink, margin: 0, valign: 'middle', isTextBox: true });
     }
   }
 
@@ -174,7 +177,7 @@ async function iconCircle(s, name, x, y, d = 0.7, bg = C.maroon, fg = 'FFFFFF') 
   // 6 ─ Evaluator screenshot
   {
     const s = content('Evaluators: everything in one place', 'Request review: timeline, reviewer brief, ranked suggestions with rationale, one-click accept above a threshold, bulk approve in the queue.');
-    shot(s, '05-request-review.png', 0.6, 1.45, 8.3, 5.3, 'Request review screenshot');
+    await shot(s, '05-request-review.png', 0.6, 1.45, 8.3, 5.3, 'Request review screenshot');
     const pts = [['Reviewer brief', 'Policy flags, credit math and Hub rule, generated for free.'], ['Ranked suggestions', 'Each with a plain-language reason. One click accepts all above X%.'], ['Approve in bulk', 'Queue-level approve for clean requests.'], ['Always overridable', 'Faculty can change any match by hand.']];
     pts.forEach((p, i) => {
       const y = 1.55 + i * 1.3;
@@ -186,7 +189,7 @@ async function iconCircle(s, name, x, y, d = 0.7, bg = C.maroon, fg = 'FFFFFF') 
   // 7 ─ Student experience
   {
     const s = content('Students: no more black box', 'Per-course lanes, timeline, internal vs student notes, nudge reminders, dashboards.');
-    shot(s, '04-student-dashboard.png', 4.9, 1.45, 7.9, 5.3, 'Student dashboard screenshot');
+    await shot(s, '04-student-dashboard.png', 4.9, 1.45, 7.9, 5.3, 'Student dashboard screenshot');
     const pts = [['FiEye', 'See every course', 'Status and next action per course.'], ['FiClock', 'Live timeline', 'Which stage, who owns it, how long.'], ['FiBell', 'Nudge', 'Ask for an update, rate-limited.'], ['FiFileText', 'Only needed syllabi', 'And why each one matters.']];
     for (let i = 0; i < 4; i++) {
       const y = 1.55 + i * 1.3;
@@ -200,7 +203,7 @@ async function iconCircle(s, name, x, y, d = 0.7, bg = C.maroon, fg = 'FFFFFF') 
   {
     const s = dark('Now the part nobody asked for.');
     s.addText('Beyond the ask', { x: 0.8, y: 2.4, w: 11.5, h: 1.2, fontFace: 'Cambria', fontSize: 60, bold: true, color: C.gold, margin: 0, isTextBox: true });
-    s.addText('Six things that turn an evaluator tool into a platform', { x: 0.8, y: 3.8, w: 11.5, h: 0.8, fontSize: 26, color: C.white, margin: 0, isTextBox: true });
+    s.addText('What turns an evaluator tool into a platform', { x: 0.8, y: 3.8, w: 11.5, h: 0.8, fontSize: 26, color: C.white, margin: 0, isTextBox: true });
   }
 
   // 9 ─ AI that works without AI
@@ -215,15 +218,15 @@ async function iconCircle(s, name, x, y, d = 0.7, bg = C.maroon, fg = 'FFFFFF') 
       s.addText(t[0], { x: 0.8, y, w: 0.7, h: 1.45, fontSize: 40, bold: true, fontFace: 'Cambria', color: t[4], margin: 0, valign: 'middle', isTextBox: true });
       s.addText([{ text: t[1], options: { bold: true, fontSize: 20, breakLine: true } }, { text: t[2], options: { fontSize: 14 } }], { x: 1.6, y: y + 0.05, w: 6.0, h: 1.35, color: t[4], margin: 0, valign: 'middle', isTextBox: true });
     });
-    shot(s, '06-ai-controls.png', 8.1, 1.6, 4.7, 4.9, 'AI Controls screenshot');
+    await shot(s, '06-ai-controls.png', 8.1, 1.6, 4.7, 4.9, 'AI Controls screenshot');
     s.addText('Falls through automatically: key missing, switch off, budget used, or API error.', { x: 0.6, y: 6.55, w: 7.2, h: 0.4, fontSize: 14, italic: true, color: C.mute, margin: 0, isTextBox: true });
   }
 
   // 10 ─ Documents + intake
   {
     const s = content('Reads the documents. Gets students in five ways', 'Smart upload classifies and extracts. Intake channels all end at a confirm step before an account exists.');
-    shot(s, '08-smart-upload.png', 0.6, 1.45, 5.9, 3.7, 'Smart upload screenshot');
-    shot(s, '09-intake-lookup.png', 6.9, 1.45, 5.9, 3.7, 'Intake lookup screenshot');
+    await shot(s, '08-smart-upload.png', 0.6, 1.45, 5.9, 3.7, 'Smart upload screenshot');
+    await shot(s, '09-intake-lookup.png', 6.9, 1.45, 5.9, 3.7, 'Intake lookup screenshot');
     const ch = [['Self-register', 'FiUserPlus'], ['Email link', 'FiMail'], ['QR code', 'FiGrid'], ['Registrar profile', 'FiDatabase'], ['Agency bulk API', 'FiUploadCloud']];
     for (let i = 0; i < ch.length; i++) {
       const x = 0.6 + i * 2.45;
@@ -242,7 +245,7 @@ async function iconCircle(s, name, x, y, d = 0.7, bg = C.maroon, fg = 'FFFFFF') 
       card(s, 0.6, y, 6.0, 0.86);
       s.addText([{ text: r[0] + '  ', options: { bold: true, color: C.maroon } }, { text: r[1], options: { color: C.ink } }], { x: 0.85, y, w: 5.6, h: 0.86, fontSize: 14, margin: 0, valign: 'middle', isTextBox: true });
     });
-    shot(s, '12-workflow-designer.png', 6.9, 1.5, 5.9, 4.6, 'Workflow designer screenshot');
+    await shot(s, '12-workflow-designer.png', 6.9, 1.5, 5.9, 4.6, 'Workflow designer screenshot');
     s.addText('Stages, owners, SLAs, auto-approve, bypass and appeals are configured per university.', { x: 6.9, y: 6.2, w: 5.9, h: 0.6, fontSize: 14, color: C.mute, italic: true, margin: 0, isTextBox: true });
   }
 
@@ -274,12 +277,12 @@ async function iconCircle(s, name, x, y, d = 0.7, bg = C.maroon, fg = 'FFFFFF') 
       s.addText(String(i + 1), { x: 0.6, y: y + 0.1, w: 0.6, h: 0.6, align: 'center', valign: 'middle', fontSize: 18, bold: true, color: C.white, margin: 0, isTextBox: true });
       s.addText([{ text: r[0], options: { bold: true, color: C.maroon, fontSize: 19, breakLine: true } }, { text: r[1], options: { color: C.ink, fontSize: 14 } }], { x: 1.5, y, w: 5.6, h: 0.85, margin: 0, valign: 'middle', isTextBox: true });
     });
-    shot(s, '11-super-admin-dashboard.png', 7.4, 1.5, 5.4, 4.8, 'Dashboard screenshot');
+    await shot(s, '11-super-admin-dashboard.png', 7.4, 1.5, 5.4, 4.8, 'Dashboard screenshot');
   }
 
   // 14 ─ Scorecard (native chart)
   {
-    const s = content('Honest scorecard: 22 requirements checked against the code', 'We compared every rule and ask in the design docs with the code. 14 built, 5 partial, 3 open. Full table in _designs/GAP_ANALYSIS.md.');
+    const s = content('Scorecard: 22 requirements vs. the code', 'We compared every rule and ask in the design docs with the code. 14 built, 5 partial, 3 open. Full table in _designs/GAP_ANALYSIS.md.');
     s.addChart(pres.charts.DOUGHNUT, [{ name: 'Status', labels: ['Built', 'Partial', 'Open'], values: [14, 5, 3] }], {
       x: 0.6, y: 1.5, w: 5.2, h: 4.9, holeSize: 62, chartColors: [C.green, C.amber, C.red], showLegend: true, legendPos: 'b', legendFontSize: 14, legendColor: C.ink,
       showPercent: false, showValue: true, dataLabelColor: C.white, dataLabelFontSize: 16, dataLabelFontBold: true, showTitle: false,
@@ -317,7 +320,7 @@ async function iconCircle(s, name, x, y, d = 0.7, bg = C.maroon, fg = 'FFFFFF') 
     s.addText('Faster for evaluators. Clearer for students. Final say stays with the department.', { x: 0.8, y: 0.9, w: 11.7, h: 1.8, fontFace: 'Cambria', fontSize: 38, bold: true, color: C.white, margin: 0, isTextBox: true });
     s.addText('Live demo next', { x: 0.8, y: 2.9, w: 6, h: 0.6, fontSize: 24, color: C.gold, bold: true, margin: 0, isTextBox: true });
     s.addShape(pres.ShapeType.roundRect, { x: 0.8, y: 3.8, w: 11.7, h: 3.0, fill: { color: C.white }, line: { color: C.white, width: 0 }, rectRadius: 0.15 });
-    s.addImage({ path: path.join(REPO, '_designs/team/Clopay Code Crafters.png'), x: 1.4, y: 3.95, w: 8.1, h: 8.1 * 491 / 1333, altText: 'Clopay Code Crafters team' });
+    s.addImage({ path: path.join(REPO, '_designs/team/Clopay Code Crafters.png'), x: 1.4, y: 4.0, w: 7.4, h: 7.4 * 491 / 1333, altText: 'Clopay Code Crafters team' });
     s.addText([{ text: 'Raghuram Raichooti', options: { breakLine: true } }, { text: 'Sankara Varaprasad', options: { breakLine: true } }, { text: 'Swetha Katkkoori', options: { breakLine: true } }, { text: 'Harshil Shah Parimal' }],
       { x: 9.8, y: 4.1, w: 2.6, h: 2.4, fontSize: 15, color: C.ink, margin: 0, valign: 'middle', isTextBox: true });
   }

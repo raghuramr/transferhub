@@ -701,6 +701,13 @@ Several ways to get a student's data in; every channel ends at the same "confirm
 - **Logo**: `LogoFull`/`LogoTile`/`LogoMark` in `components/shared/Logo.tsx`, `public/logo-mark.png` (tight crop); bigger in
   sidebar, auth, home, partner, intake pages; emails use `${APP_BASE_URL}/logo.png?v=3` (210x110) in a white box.
 
+## Session 2026-10-27 (b): hackathon gap analysis + deck (branch `claude/hackathon-deck`, NOT merged)
+- `_designs/GAP_ANALYSIS.md`: ask-vs-built check. Main open gaps: top-3 hit-rate backtest (the brief's measurable outcome),
+  one-year deadline tracker (PRG-02), programme rules PRG-04..08, degree-progress view, side-by-side course diff, scripted
+  six-course "Maya" demo transcript + BSCC/PVTC catalogues (only the institutions are seeded), no API tests.
+- `_designs/deck/`: `TransferHub-Hackathon.pptx` (16 slides) built by `build-deck.js` (needs pptxgenjs, react-icons, sharp via
+  NODE_PATH); `screens/` are mocked-API screenshots (synthetic numbers, not real data).
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group
