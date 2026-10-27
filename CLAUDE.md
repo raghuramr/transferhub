@@ -768,6 +768,13 @@ backtest (AI Controls > Usage) for a real number; click through the Demo scenari
 - **Bug fixed by migration 029**: `sp_TriageCourse` ignored `Equivalencies.Outcome` in the 'applied' check, so a `bu_only` mapping returned lane `applied`; now it
   returns `elective_only` (PRG-03). Existing triaged rows are not rewritten. `triage-contract.sql` case 8 expects `elective_only`. Apply 029 with the others.
 
+## Session 2026-10-27 (f): Swagger + transfers module fix (on main)
+- Swagger UI at `/api/docs`, JSON at `/api/docs-json` (`src/api/src/swagger.ts`, wired in main.ts after setGlobalPrefix). On in dev, OFF in production unless
+  `SWAGGER_ENABLED=true`; optional basic auth via `SWAGGER_USER`/`SWAGGER_PASSWORD`; relaxed CSP only on the docs routes. Bearer auth: POST /api/auth/login -> accessToken
+  -> Authorize. See `docs/SWAGGER.md`. No request-body schemas (plain `tsc`, no CLI plugin).
+- **Bug found via Swagger**: `TransfersModule` was imported in `app.module.ts` but missing from the `imports` array, so every `/transfers/*` endpoint 404'd in production
+  (the smoke suite caught it). Fixed. Check for this class of bug by comparing module imports vs the array.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group

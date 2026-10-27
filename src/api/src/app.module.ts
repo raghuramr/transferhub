@@ -69,6 +69,7 @@ const envFilePath =
     WorkflowsModule,
     RequestsModule,
     DocumentsModule,
+    TransfersModule,
     ProgressModule,
     ComparisonModule,
     SettingsModule,
