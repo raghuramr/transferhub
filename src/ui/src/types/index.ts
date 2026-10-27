@@ -97,6 +97,8 @@ export interface TranscriptCourse {
   appeal?: import('./policy').CourseAppealSummary | null;
   /** Optional per-course syllabus (file and/or catalogue link). */
   syllabus?: { attached: boolean; fileName: string | null; hasCatalogUrl: boolean };
+  /** Suggested receiving-university equivalents from the matcher (top 3), shown before a decision. */
+  suggestions?: { code: string; title: string; credits: number; score: number | null }[];
 }
 
 /**
@@ -121,6 +123,9 @@ export interface Transcript {
   studentUserId: string;
   studentName?: string;
   institution: { id: number; code: string; name: string; calendar: string };
+  targetInstitutionName?: string | null;
+  fromCredits?: number;
+  toCredits?: number;
   status: 'received' | 'processing' | 'complete';
   receivedAt: string;
   processedAt?: string;

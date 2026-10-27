@@ -201,6 +201,15 @@ export class TranscriptsService {
     );
     const transcriptId = transcriptRes.recordset[0].Id;
 
+    // The student may choose where these credits go (the receiving university). Recorded on the
+    // request so the workflow resolves against it; falls back to their profile target, else BU.
+    if (dto.targetInstitutionId && (await this.schema.has('Transcripts', 'TargetInstitutionId'))) {
+      await this.db.query(`UPDATE Transcripts SET TargetInstitutionId = @ti WHERE Id = @id`, [
+        { name: 'ti', type: sql.Int, value: dto.targetInstitutionId },
+        { name: 'id', type: sql.UniqueIdentifier, value: transcriptId },
+      ]).catch(() => {});
+    }
+
     // Preview (not yet admitted), official, or pre-approval (current BU student) - BU never evaluates before admission.
     const policyReady = await this.schema.policyReady();
     const kind = policyReady ? await this.evaluationKindFor(submittedByUserId) : 'official';
@@ -458,6 +467,44 @@ export class TranscriptsService {
     const syllabi = await this.syllabusStatus(id);
     const multiMappings = await this.courseMappings.forTranscript(id); // OUT-06: BU courses per course (empty unless one-to-many)
 
+    // From -> To summary: the receiving university's name, credits submitted (from) and credits
+    // accepted/awarded on this request (to). Target column is guarded for pre-migration-013 DBs.
+    let targetInstitutionName: string | null = null;
+    if (await this.schema.has('Transcripts', 'TargetInstitutionId')) {
+      const tn = await this.db.query<{ Name: string | null }>(
+        `SELECT ti.Name FROM Transcripts t LEFT JOIN Institutions ti ON ti.Id = t.TargetInstitutionId WHERE t.Id = @id`,
+        [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+      ).catch(() => ({ recordset: [] as { Name: string | null }[] }));
+      targetInstitutionName = tn.recordset[0]?.Name ?? null;
+    }
+    const totals = await this.db.query<{ FromCredits: number | null; ToCredits: number | null }>(
+      `SELECT SUM(tc.OriginalCredits) AS FromCredits,
+              SUM(CASE WHEN e.AwardedCredits IS NOT NULL AND e.Outcome IN ('equivalent','elective') THEN e.AwardedCredits
+                       WHEN tc.Lane = 'applied' THEN ISNULL(tc.NormalisedCredits, tc.OriginalCredits) ELSE 0 END) AS ToCredits
+       FROM TranscriptCourses tc LEFT JOIN Evaluations e ON e.TranscriptCourseId = tc.Id
+       WHERE tc.TranscriptId = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+    );
+
+    // Suggested receiving-university equivalents per course (top 3 from the matcher), so the student
+    // can see likely matches even before a reviewer decides. Keyed by TranscriptCourse id.
+    const suggestRows = await this.db.query<{ TcId: string; Rank: number; Code: string; Title: string; Credits: number; Score: number | null }>(
+      `SELECT tc.Id AS TcId, amc.Rank, bu.Code, bu.Title, bu.Credits, amc.Score
+       FROM TranscriptCourses tc
+       JOIN Evaluations e ON e.TranscriptCourseId = tc.Id
+       JOIN AIMatchCandidates amc ON amc.EvaluationId = e.Id
+       JOIN Courses bu ON bu.Id = amc.BUCourseId
+       WHERE tc.TranscriptId = @id AND amc.Rank <= 3
+       ORDER BY tc.Id, amc.Rank`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+    ).catch(() => ({ recordset: [] as { TcId: string; Rank: number; Code: string; Title: string; Credits: number; Score: number | null }[] }));
+    const suggestions = new Map<string, { code: string; title: string; credits: number; score: number | null }[]>();
+    for (const s of suggestRows.recordset) {
+      const key = String(s.TcId).toLowerCase();
+      if (!suggestions.has(key)) suggestions.set(key, []);
+      suggestions.get(key)!.push({ code: s.Code, title: s.Title, credits: s.Credits, score: s.Score });
+    }
+
     return {
       id: t.Id,
       evaluationKind,
@@ -476,11 +523,15 @@ export class TranscriptsService {
         name: t.InstitutionName,
         calendar: t.Calendar,
       },
+      targetInstitutionName,
+      fromCredits: Number(totals.recordset[0]?.FromCredits ?? 0),
+      toCredits: Number(totals.recordset[0]?.ToCredits ?? 0),
       courses: courses.recordset.map((r) => ({
         ...mapCourseRow(r),
         ...(extras.get(String(r.Id).toLowerCase()) ?? {}),
         syllabus: syllabi.get(String(r.Id).toLowerCase()) ?? { attached: false, fileName: null, hasCatalogUrl: false },
         mappedBuCourses: multiMappings.get(String(r.Id).toLowerCase()) ?? [],
+        suggestions: suggestions.get(String(r.Id).toLowerCase()) ?? [],
       })),
     };
   }
