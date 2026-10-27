@@ -11,6 +11,7 @@ import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
   Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ScanText, ShieldQuestion, ScanLine, ArrowRightLeft,
+  Presentation,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -86,6 +87,7 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/superadmin/settings/workflows', label: 'Workflows', icon: <GitBranch size={18} /> },
     { to: '/superadmin/settings/ai-controls', label: 'AI Controls', icon: <Bot size={18} /> },
     { to: '/superadmin/settings/import', label: 'Data Import', icon: <Upload size={18} /> },
+    { to: '/superadmin/settings/demo-scenario', label: 'Demo scenario', icon: <Presentation size={18} /> },
   ],
 };
 

@@ -6,6 +6,7 @@ import { requestsApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
 import { cn } from '../../lib/cn';
 import { durationLabel, formatDateTime } from '../../components/workflow/RequestTimeline';
+import DeadlineBadge from '../../components/policy/DeadlineBadge';
 import type { Recommendation } from '../../types/workflow';
 
 const REC: Record<Recommendation, { label: string; cls: string }> = {
@@ -18,6 +19,8 @@ export default function RequestsQueue() {
   const role = useAuthStore((s) => s.user?.role);
   const isAdmin = role === 'admin' || role === 'super_admin';
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
+  const [dlFilter, setDlFilter] = useState<'all' | 'soon' | 'overdue'>('all');
+  const [sortBy, setSortBy] = useState<'due' | 'deadline'>('due');
   const { data, isLoading, error } = useQuery({
     queryKey: ['requests-queue', scope],
     queryFn: () => requestsApi.queue(scope),
@@ -28,6 +31,13 @@ export default function RequestsQueue() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [banner, setBanner] = useState<{ ok: boolean; text: string } | null>(null);
   const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const rank = (r: { deadline?: { daysLeft: number | null; state: string } | null }) => (r.deadline && r.deadline.state !== 'unknown' && r.deadline.daysLeft != null ? r.deadline.daysLeft : Infinity);
+  const allRows = q?.rows ?? [];
+  const soonCount = allRows.filter((r) => ['due_soon', 'urgent'].includes(r.deadline?.state ?? '')).length;
+  const overdueDlCount = allRows.filter((r) => r.deadline?.state === 'overdue').length;
+  const visibleRows = allRows
+    .filter((r) => dlFilter === 'all' || (dlFilter === 'overdue' ? r.deadline?.state === 'overdue' : ['due_soon', 'urgent', 'overdue'].includes(r.deadline?.state ?? '')))
+    .sort((a, b) => (sortBy === 'deadline' ? rank(a) - rank(b) : 0));
   const readyIds = (q?.rows ?? []).filter((r) => r.canAct && r.aiRecommendation === 'approve' && r.flagCount === 0).map((r) => r.transcriptId);
   const bulk = useMutation({
     mutationFn: (ids: string[]) => requestsApi.bulkApprove(ids),
@@ -72,6 +82,25 @@ export default function RequestsQueue() {
               <AlertTriangle size={13} /> {q.overdue} overdue
             </span>
           )}
+          {overdueDlCount > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 font-medium text-red-700">{overdueDlCount} past credit deadline</span>}
+          {soonCount > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 font-medium text-amber-800">{soonCount} deadline within 90 days</span>}
+        </div>
+      )}
+
+      {q && q.rows.some((r) => r.deadline && r.deadline.state !== 'unknown') && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+          <span className="text-gray-500">Credit deadline:</span>
+          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
+            {([['all', 'All'], ['soon', 'Due soon or overdue'], ['overdue', 'Overdue']] as const).map(([k, l]) => (
+              <button key={k} type="button" onClick={() => setDlFilter(k)} className={cn('rounded-md px-3 py-1 font-medium', dlFilter === k ? 'bg-brand-800 text-white' : 'text-gray-600 hover:bg-gray-50')}>{l}</button>
+            ))}
+          </div>
+          <label className="inline-flex items-center gap-2 text-gray-500">Sort
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'due' | 'deadline')} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700">
+              <option value="due">Stage due date</option>
+              <option value="deadline">Credit deadline (soonest first)</option>
+            </select>
+          </label>
         </div>
       )}
 
@@ -103,6 +132,7 @@ export default function RequestsQueue() {
 
       {isLoading && <p className="text-gray-400">Loading…</p>}
       {error && <p className="text-red-500">Could not load the queue.</p>}
+      {q && q.rows.length > 0 && visibleRows.length === 0 && <p className="mb-4 text-sm text-gray-500">No requests match this credit-deadline filter.</p>}
       {q && q.rows.length === 0 && (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center text-gray-500">
           Nothing is waiting on you right now.
@@ -110,7 +140,7 @@ export default function RequestsQueue() {
       )}
 
       <ul className="space-y-3">
-        {q?.rows.map((r) => (
+        {visibleRows.map((r) => (
           <li key={r.stageId} className="flex items-stretch gap-2">
             <label className={cn('flex w-6 shrink-0 items-center justify-center', !r.canAct && 'opacity-0')}>
               <input type="checkbox" disabled={!r.canAct} checked={selected.has(r.transcriptId)} onChange={() => toggle(r.transcriptId)} className="h-4 w-4 rounded border-gray-300 text-brand-800" aria-label={`Select ${r.studentName}`} />
@@ -142,6 +172,7 @@ export default function RequestsQueue() {
                   </span>
                 )}
                 {r.overdue && <span className="rounded-full bg-red-50 px-2 py-0.5 font-medium text-red-700">Overdue</span>}
+                <DeadlineBadge deadline={r.deadline} />
                 {scope === 'all' && !r.assignedToMe && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-500">Not assigned to you</span>}
               </div>
               <ArrowRight size={18} className="text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-brand-700" />

@@ -41,6 +41,7 @@ import FormSubmissions from './pages/admin/FormSubmissions';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import AuditLog from './pages/superadmin/AuditLog';
 import SystemSettings from './pages/superadmin/SystemSettings';
+import DemoScenario from './pages/superadmin/DemoScenario';
 import UniversitiesManagement from './pages/superadmin/UniversitiesManagement';
 import InstitutionsManagement from './pages/superadmin/InstitutionsManagement';
 import IntakeLookup from './pages/public/IntakeLookup';
@@ -182,6 +183,7 @@ export default function App() {
           <Route path="settings/import" element={<DataImport />} />
           <Route path="settings/workflows" element={<WorkflowDesigner />} />
           <Route path="settings/ai-controls" element={<AiControls />} />
+          <Route path="settings/demo-scenario" element={<DemoScenario />} />
         </Route>
 
         {/* Approval queue + request review (stage owners) */}

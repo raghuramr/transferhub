@@ -105,6 +105,13 @@ export default function TransferRulesTab() {
             </div>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <h3 className="mb-1 font-semibold text-gray-900">Credit deadline</h3>
+            <p className="mb-4 text-xs text-gray-500">All transfer credit must be transferred within this many months of the student starting (their entry term). Courses still undecided after the deadline are flagged for review, never denied automatically. Previews are exempt.</p>
+            <label className="block max-w-xs text-sm font-medium text-gray-700">Months allowed
+              <input disabled={!canEdit} type="number" min={1} max={120} value={draft.creditDeadlineMonths ?? 12} onChange={(e) => set({ creditDeadlineMonths: Number(e.target.value) })} className={inputCls} />
+            </label>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="mb-1 font-semibold text-gray-900">BU Hub</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="text-sm font-medium text-gray-700">Hub requirements for transfer students<input disabled={!canEdit} type="number" value={draft.hubRequirementsTransfer} onChange={(e) => set({ hubRequirementsTransfer: Number(e.target.value) })} className={inputCls} /></label>

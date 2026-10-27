@@ -1,5 +1,6 @@
 // Run: npx tsx scripts/test-credit-deadline.ts
 import assert from 'node:assert/strict';
+import { buildProgress } from '../src/progress/progress.aggregate';
 import { addMonths, computeCreditDeadline, thresholdFor } from '../src/policy/credit-deadline';
 
 const at = (s: string) => new Date(`${s}T12:00:00Z`);
@@ -58,5 +59,14 @@ assert.equal(thresholdFor(90), '90'); assert.equal(thresholdFor(31), '90');
 assert.equal(thresholdFor(30), '30'); assert.equal(thresholdFor(8), '30');
 assert.equal(thresholdFor(7), '7'); assert.equal(thresholdFor(0), '7');
 assert.equal(thresholdFor(-1), 'overdue');
+
+// Progress aggregate: pending count excludes previews and outside-US courses
+const mk = (id: string, o: object) => ({ id, courseCode: id, courseTitle: id, lane: 'pending', status: 'pending', originalCredits: 3, normalisedCredits: 3, evalStatus: null, outcome: null, awardedCredits: null, aiConfidence: null, aiBuCredits: null, flags: [], ...o });
+const pr = buildProgress([
+  { id: 'a', institutionName: 'X', calendar: 'semester', kind: 'official', status: 'p', receivedAt: null, courses: [mk('c1', {}), mk('c2', { isOutsideUS: true }), mk('c3', { lane: 'applied' })] },
+  { id: 'b', institutionName: 'Y', calendar: 'semester', kind: 'preview', status: 'p', receivedAt: null, courses: [mk('c4', {})] },
+], { cap: 68, examCredits: 0, likelyThreshold: 0.75, hubRequirements: 10, hubCocurricularAllowed: 1, deadline: c({ entryTerm: 'fall', entryYear: 2025, now: at('2026-09-02') }) });
+assert.equal(pr.deadline?.pendingCourses, 1); assert.equal(pr.deadline?.state, 'overdue');
+assert.equal(buildProgress([], { cap: 68, examCredits: 0, likelyThreshold: 0.75, hubRequirements: 10, hubCocurricularAllowed: 1 }).deadline, null);
 
 console.log('credit-deadline: all assertions passed');

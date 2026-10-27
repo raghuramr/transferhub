@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, GraduationCap, Info, Upload } from 'lucide-react';
+import { CalendarClock, ChevronDown, GraduationCap, Info, Upload } from 'lucide-react';
+import { DEADLINE_TONE, daysText, formatDeadlineDate } from '../policy/DeadlineBadge';
+import type { CreditDeadline } from '../../types/policy';
 import { api } from '../../lib/api';
 import { cn } from '../../lib/cn';
 
@@ -23,6 +25,7 @@ export interface ProgressResult {
   hub: { requirements: number; cocurricularAllowed: number; note: string };
   requests: RequestProgress[];
   isProvisional: boolean;
+  deadline?: (CreditDeadline & { pendingCourses: number }) | null;
 }
 
 const BUCKETS: Record<Bucket, { label: string; bar: string; dot: string; pill: string }> = {
@@ -39,6 +42,42 @@ interface Props {
   /** Staff view of another student; omit for the signed-in student's own progress. */
   studentUserId?: string;
   className?: string;
+}
+
+const DEADLINE_RING: Record<string, string> = {
+  on_track: 'border-emerald-200 bg-emerald-50/60', not_started: 'border-sky-200 bg-sky-50/60', due_soon: 'border-amber-200 bg-amber-50/70',
+  urgent: 'border-orange-300 bg-orange-50/70', overdue: 'border-red-200 bg-red-50/70',
+};
+
+/** PRG-02: when everything must be transferred by, how long is left and how many courses still wait. */
+function DeadlineBlock({ d }: { d: CreditDeadline & { pendingCourses: number } }) {
+  const tone = DEADLINE_TONE[d.state];
+  const n = d.pendingCourses;
+  const courses = `${n} course${n === 1 ? '' : 's'}`;
+  const message =
+    d.state === 'overdue'
+      ? n > 0
+        ? `The ${d.months}-month window has passed and ${courses} still ${n === 1 ? 'is' : 'are'} waiting on a decision. Nothing is denied automatically: a reviewer will decide on each one.`
+        : `The ${d.months}-month window has passed; every course has a decision.`
+      : d.state === 'not_started'
+        ? `Your ${d.months}-month window starts on ${formatDeadlineDate(d.startsOn)}.`
+        : n > 0
+          ? `${courses} still ${n === 1 ? 'is' : 'are'} waiting on a decision. Upload any syllabi we ask for so they can be finished in time.`
+          : 'No course is waiting on a decision.';
+  return (
+    <div data-testid="deadline-block" className={cn('mt-4 rounded-xl border px-4 py-3', DEADLINE_RING[d.state] ?? 'border-gray-200 bg-gray-50')}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm font-semibold text-gray-900"><CalendarClock size={16} className="text-gray-600" /> Credit transfer deadline</p>
+        <span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1 ring-inset', tone.pill)}>{tone.label}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-xl font-semibold text-gray-900">{formatDeadlineDate(d.deadlineOn)}</span>
+        {d.state !== 'not_started' && <span className="text-sm text-gray-600 tabular-nums">{daysText(d.daysLeft)}</span>}
+        {d.isEstimate && <span className="text-xs text-gray-500">estimated from your first request</span>}
+      </div>
+      <p className="mt-1 text-xs text-gray-700">{message}</p>
+    </div>
+  );
 }
 
 export function DegreeProgressCard({ studentUserId, className }: Props) {
@@ -179,6 +218,8 @@ export function DegreeProgressCard({ studentUserId, className }: Props) {
             </div>
           ))}
         </dl>
+
+        {data.deadline && data.deadline.state !== 'unknown' && data.deadline.deadlineOn && <DeadlineBlock d={data.deadline} />}
 
         {exam > 0 && <p className="mt-3 text-xs text-gray-500">Includes {fmt(exam)} AP / IB / A-level credits counted toward the same limit.</p>}
 

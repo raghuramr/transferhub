@@ -31,6 +31,19 @@ export interface TransferPolicy {
   requireAccreditation: boolean;
   hubRequirementsTransfer: number;
   hubCocurricularAllowed: number;
+  creditDeadlineMonths?: number;
+}
+
+export type DeadlineState = 'not_started' | 'on_track' | 'due_soon' | 'urgent' | 'overdue' | 'unknown';
+/** PRG-02 credit deadline (computed server-side from the student's entry term / start date). */
+export interface CreditDeadline {
+  startsOn: string | null;
+  deadlineOn: string | null;
+  daysLeft: number | null;
+  state: DeadlineState;
+  basis: 'start_date' | 'entry_term' | 'estimate' | 'none';
+  isEstimate: boolean;
+  months: number;
 }
 
 export interface CourseAppealSummary {

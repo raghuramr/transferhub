@@ -28,6 +28,7 @@ import { DocumentsModule } from './documents/documents.module';
 import { TransfersModule } from './transfers/transfers.module';
 import { ProgressModule } from './progress/progress.module';
 import { SettingsModule } from './settings/settings.module';
+import { DemoModule } from './demo/demo.module';
 import { AuditController } from './common/audit.controller';
 import { HealthController } from './common/health.controller';
 
@@ -69,6 +70,7 @@ const envFilePath =
     DocumentsModule,
     ProgressModule,
     SettingsModule,
+    DemoModule,
   ],
   controllers: [AuditController, HealthController],
 })

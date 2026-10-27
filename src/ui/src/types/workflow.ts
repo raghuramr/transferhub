@@ -96,6 +96,7 @@ export interface RequestTimeline {
     workflow: { id: number; name: string; allowBypass: boolean } | null;
     evaluationKind?: import('./policy').EvaluationKind;
     preapprovalExpiresAt?: string | null;
+    deadline?: import('./policy').CreditDeadline | null;
   };
   student?: import('./policy').StudentApplicationProfile | null;
   credit?: import('./policy').CreditSummary | null;
@@ -135,6 +136,7 @@ export interface QueueRow {
   courseCount: number;
   canAct: boolean;
   assignedToMe: boolean;
+  deadline?: { state: import('./policy').DeadlineState; daysLeft: number | null; deadlineOn: string | null; isEstimate: boolean } | null;
 }
 
 export interface StageApprover {

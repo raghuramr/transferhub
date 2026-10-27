@@ -4,6 +4,7 @@ import { DatabaseService } from '../database/database.service';
 import { SchemaService } from '../policy/schema.service';
 import { ScopeService, ScopeViewer } from '../policy/scope.service';
 import { TransferPolicyService, parseFlags } from '../policy/transfer-policy.service';
+import { CreditDeadlineService } from '../policy/credit-deadline.service';
 import { AiSettingsService } from '../ai/ai-settings.service';
 import { buildProgress, ProgressCourseRow, ProgressRequestRow, ProgressResult } from './progress.aggregate';
 
@@ -51,6 +52,7 @@ export class ProgressService {
     private scope: ScopeService,
     private policy: TransferPolicyService,
     private aiSettings: AiSettingsService,
+    private deadlines: CreditDeadlineService,
   ) {}
 
   /** Staff view of one student; same visibility rules as the other student-data endpoints. */
@@ -168,6 +170,7 @@ export class ProgressService {
       hubCocurricularAllowed: pol.hubCocurricularAllowed,
       applicantType,
       policyKnown: policyReady,
+      deadline: await this.deadlines.forStudent(studentUserId),
     });
   }
 }
