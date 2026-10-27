@@ -425,70 +425,101 @@ export default function RegisterPage() {
             )}
 
             {cur.kind === 'education' && (
-              <>
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Every college or university you have attended</span>
-                    <button type="button" onClick={() => edu.append({ institutionName: '', fullTime: true })} className="inline-flex items-center gap-1 text-sm font-medium text-brand-800 hover:underline"><Plus size={14} /> Add</button>
-                  </div>
-                  {(errors.education?.message ?? errors.education?.root?.message) && <p className="mb-2 text-sm font-medium text-red-600">{errors.education?.message ?? errors.education?.root?.message}</p>}
-                  <div className="space-y-3">
+              <div className="space-y-8">
+                <section>
+                  <h3 className="text-base font-semibold text-gray-900">Colleges and universities you have attended</h3>
+                  <p className="mb-3 mt-0.5 text-sm text-gray-500">
+                    {applicantType === 'current_student' ? 'Optional for current students.' : 'Add each one separately, including any you left without a degree.'}
+                  </p>
+                  {(errors.education?.message ?? errors.education?.root?.message) && (
+                    <p role="alert" className="mb-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                      <AlertCircle size={16} />{errors.education?.message ?? errors.education?.root?.message}
+                    </p>
+                  )}
+
+                  <div className="space-y-4">
                     {edu.fields.map((f, i) => (
-                      <div key={f.id} className="rounded-lg border border-gray-200 p-3">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-6">
-                          <div className="sm:col-span-3">
-                            <input {...register(`education.${i}.institutionName`)} list="known-colleges" className={inputClass} placeholder="College / university name" />
-                            {errors.education?.[i]?.institutionName && <p className="mt-1 text-xs text-red-600">Required</p>}
+                      <div key={f.id} className="rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="inline-flex items-center gap-2 text-sm font-semibold text-brand-900">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-800 text-xs text-white">{i + 1}</span>
+                            {eduValues?.[i]?.institutionName || `College ${i + 1}`}
+                          </span>
+                          <button type="button" onClick={() => edu.remove(i)} className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-red-600"><Trash2 size={14} /> Remove</button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+                          <div className="sm:col-span-6">
+                            <Field label="College or university name" error={errors.education?.[i]?.institutionName ? 'Required' : undefined}>
+                              <input {...register(`education.${i}.institutionName`)} list="known-colleges" className={inputClass} placeholder="Start typing, e.g. Northeastern University" />
+                            </Field>
                           </div>
-                          <input {...register(`education.${i}.city`)} className={`${inputClass} sm:col-span-1`} placeholder="City" />
-                          <input {...register(`education.${i}.stateRegion`)} className={`${inputClass} sm:col-span-1`} placeholder="State" />
-                          <input {...register(`education.${i}.country`)} className={`${inputClass} sm:col-span-1`} placeholder="Country" />
-                          <input {...register(`education.${i}.fromYear`)} inputMode="numeric" className={`${inputClass} sm:col-span-1`} placeholder="From (year)" />
-                          <input {...register(`education.${i}.toYear`)} inputMode="numeric" className={`${inputClass} sm:col-span-1`} placeholder="To (year)" />
-                          <input {...register(`education.${i}.creditsEarned`)} inputMode="decimal" className={`${inputClass} sm:col-span-1`} placeholder="Credits earned" />
-                          <label className="flex items-center gap-2 text-sm text-gray-700 sm:col-span-1"><input type="checkbox" {...register(`education.${i}.fullTime`)} className="h-4 w-4 rounded border-gray-300" /> Full-time</label>
-                          <label className="flex items-center gap-2 text-sm text-gray-700 sm:col-span-1"><input type="checkbox" {...register(`education.${i}.isOutsideUS`)} className="h-4 w-4 rounded border-gray-300" /> Outside the US</label>
-                          <button type="button" onClick={() => edu.remove(i)} className="flex items-center justify-end text-gray-400 hover:text-red-600 sm:col-span-1" aria-label="Remove"><Trash2 size={16} /></button>
+                          <div className="sm:col-span-2"><Field label="Country">
+                            <input {...register(`education.${i}.country`, { onChange: (e) => setValue(`education.${i}.isOutsideUS`, !/^(us|usa|u\.s\.a?\.?|united states( of america)?)?$/i.test(String(e.target.value).trim())) })} className={inputClass} />
+                          </Field></div>
+                          <div className="sm:col-span-2"><Field label="City"><input {...register(`education.${i}.city`)} className={inputClass} /></Field></div>
+                          <div className="sm:col-span-2"><Field label="State / province"><input {...register(`education.${i}.stateRegion`)} className={inputClass} /></Field></div>
+                          <div className="sm:col-span-2"><Field label="Year started" error={errors.education?.[i]?.fromYear?.message}><input {...register(`education.${i}.fromYear`)} inputMode="numeric" className={inputClass} placeholder="2021" /></Field></div>
+                          <div className="sm:col-span-2"><Field label="Year finished" hint="Leave blank if still attending" error={errors.education?.[i]?.toYear?.message}><input {...register(`education.${i}.toYear`)} inputMode="numeric" className={inputClass} placeholder="2024" /></Field></div>
+                          <div className="sm:col-span-2"><Field label="Credits earned" hint="Total credits completed there"><input {...register(`education.${i}.creditsEarned`)} inputMode="decimal" className={inputClass} placeholder="e.g. 56" /></Field></div>
+                          <div className="flex flex-wrap gap-x-6 gap-y-2 sm:col-span-6">
+                            <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" {...register(`education.${i}.fullTime`)} className="h-4 w-4 rounded border-gray-300" /> I attended full-time</label>
+                            <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" {...register(`education.${i}.isOutsideUS`)} className="h-4 w-4 rounded border-gray-300" /> This college is outside the United States</label>
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => edu.append({ institutionName: '', country: 'United States', isOutsideUS: false, fullTime: true })}
+                    className={cn('mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 text-sm font-medium text-brand-800 hover:bg-brand-50',
+                      edu.fields.length === 0 ? 'border-brand-300 py-6' : 'border-gray-300')}
+                  >
+                    <Plus size={16} /> {edu.fields.length === 0 ? 'Add a college or university' : 'Add another college'}
+                  </button>
                   <datalist id="known-colleges">{universities.map((u) => <option key={u.id} value={u.name} />)}</datalist>
-                  {credits > 0 && <p className="mt-2 text-xs text-gray-500">{credits} college credits listed. Many universities expect at least 12, completed as a full-time degree student.</p>}
-                </div>
+                  {credits > 0 && <p className="mt-2 text-xs text-gray-500">{credits} college credits listed so far. Many universities expect at least 12, completed as a full-time degree student.</p>}
+                </section>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <Field label="Highest education level">
-                    <select {...register('highestEducationLevel')} className={inputClass}>
-                      <option value="">Select…</option><option>High School</option><option>Associate's</option><option>Bachelor's</option><option>Master's</option><option>Other</option>
-                    </select>
-                  </Field>
-                  <Field label="Field of study"><input {...register('fieldOfStudy')} className={inputClass} /></Field>
-                  <Field label="Cumulative college GPA" error={errors.gpa?.message}><input {...register('gpa')} inputMode="decimal" className={inputClass} placeholder="3.50" /></Field>
-                  <Field label="High school"><input {...register('highSchoolName')} className={inputClass} /></Field>
-                  <Field label="High school graduation year" error={errors.highSchoolGradYear?.message}><input {...register('highSchoolGradYear')} inputMode="numeric" className={inputClass} /></Field>
-                </div>
-
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">AP, IB or A-level exams <span className="font-normal text-gray-400">(count toward the limit on outside credit)</span></span>
-                    <button type="button" onClick={() => exams.append({ examType: 'AP', subject: '' })} className="inline-flex items-center gap-1 text-sm font-medium text-brand-800 hover:underline"><Plus size={14} /> Add exam</button>
+                <section>
+                  <h3 className="mb-3 text-base font-semibold text-gray-900">Your academic record</h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <Field label="Highest education level so far">
+                      <select {...register('highestEducationLevel')} className={inputClass}>
+                        <option value="">Select…</option><option>High School</option><option>Associate's</option><option>Bachelor's</option><option>Master's</option><option>Other</option>
+                      </select>
+                    </Field>
+                    <Field label="Field of study / major"><input {...register('fieldOfStudy')} className={inputClass} placeholder="e.g. Computer Science" /></Field>
+                    <Field label="Cumulative college GPA" hint="On a 4.0 scale" error={errors.gpa?.message}><input {...register('gpa')} inputMode="decimal" className={inputClass} placeholder="3.50" /></Field>
                   </div>
-                  <div className="space-y-2">
+                </section>
+
+                <section>
+                  <h3 className="mb-3 text-base font-semibold text-gray-900">High school</h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="sm:col-span-2"><Field label="High school name"><input {...register('highSchoolName')} className={inputClass} /></Field></div>
+                    <Field label="Graduation year" error={errors.highSchoolGradYear?.message}><input {...register('highSchoolGradYear')} inputMode="numeric" className={inputClass} placeholder="2020" /></Field>
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-base font-semibold text-gray-900">AP, IB or A-level exams <span className="text-sm font-normal text-gray-400">(optional)</span></h3>
+                  <p className="mb-3 mt-0.5 text-sm text-gray-500">Only add these if you took them. They count toward the limit on outside credit.</p>
+                  <div className="space-y-3">
                     {exams.fields.map((f, i) => (
-                      <div key={f.id} className="grid grid-cols-2 gap-2 sm:grid-cols-6">
-                        <select {...register(`exams.${i}.examType`)} className={inputClass}><option>AP</option><option>IB</option><option>A-level</option></select>
-                        <input {...register(`exams.${i}.subject`)} className={`${inputClass} sm:col-span-3`} placeholder="Subject, e.g. Calculus BC" />
-                        <input {...register(`exams.${i}.score`)} className={inputClass} placeholder="Score" />
-                        <div className="flex gap-2">
-                          <input {...register(`exams.${i}.examYear`)} inputMode="numeric" className={inputClass} placeholder="Year" />
-                          <button type="button" onClick={() => exams.remove(i)} className="text-gray-400 hover:text-red-600" aria-label="Remove"><Trash2 size={16} /></button>
-                        </div>
+                      <div key={f.id} className="grid grid-cols-2 gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3 sm:grid-cols-12">
+                        <div className="sm:col-span-2"><Field label="Exam"><select {...register(`exams.${i}.examType`)} className={inputClass}><option>AP</option><option>IB</option><option>A-level</option></select></Field></div>
+                        <div className="col-span-2 sm:col-span-5"><Field label="Subject" error={errors.exams?.[i]?.subject ? 'Required' : undefined}><input {...register(`exams.${i}.subject`)} className={inputClass} placeholder="e.g. Calculus BC" /></Field></div>
+                        <div className="sm:col-span-2"><Field label="Score"><input {...register(`exams.${i}.score`)} className={inputClass} placeholder="e.g. 5" /></Field></div>
+                        <div className="sm:col-span-2"><Field label="Year" error={errors.exams?.[i]?.examYear?.message}><input {...register(`exams.${i}.examYear`)} inputMode="numeric" className={inputClass} placeholder="2020" /></Field></div>
+                        <div className="flex items-end justify-end sm:col-span-1"><button type="button" onClick={() => exams.remove(i)} className="rounded-lg p-2.5 text-gray-400 hover:bg-red-50 hover:text-red-600" aria-label="Remove exam"><Trash2 size={16} /></button></div>
                       </div>
                     ))}
                   </div>
-                </div>
-              </>
+                  <button type="button" onClick={() => exams.append({ examType: 'AP', subject: '' })} className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-brand-800 hover:underline"><Plus size={14} /> Add an exam</button>
+                </section>
+              </div>
             )}
 
             {cur.kind === 'language' && (
