@@ -14,6 +14,8 @@ import { SchemaService } from '../policy/schema.service';
 import { ScopeService } from '../policy/scope.service';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import { AnthropicDocumentReader, DocumentReader, PAUSED_REASON, PausedDocumentReader } from './document-reader';
+import { RulesDocumentReader, RULES_REASON } from './rules-document-reader';
+import { AiSettingsService } from '../ai/ai-settings.service';
 import { DOC_TYPES, DOC_TYPE_KEYS, ExtractedData, needsReview, normalizeExtraction, toPrefill } from './document-types';
 
 interface Viewer {
@@ -68,20 +70,38 @@ export class DocumentsService {
     private scope: ScopeService,
     private anthropic: AnthropicDocumentReader,
     private paused: PausedDocumentReader,
+    private rules: RulesDocumentReader,
+    private aiSettings: AiSettingsService,
   ) {}
 
-  /** The real reader when a key exists, AI is on and budget remains - otherwise the paused one. */
-  private async pickReader(): Promise<{ reader: DocumentReader; available: boolean; reason?: string }> {
+  /**
+   * Anthropic when a key exists, AI is on and budget remains; else the built-in rules reader when the
+   * `rulesFallbackEnabled` setting allows (missing = on); else the paused reader.
+   * `available` = a reader will actually run; `aiAvailable` (status) = only true for anthropic.
+   */
+  private async pickReader(): Promise<{ reader: DocumentReader; available: boolean; fallback: boolean; reason?: string }> {
     const a = await this.anthropic.isAvailable();
-    if (a.available) return { reader: this.anthropic, available: true };
-    return { reader: this.paused, available: false, reason: a.reason ?? PAUSED_REASON };
+    if (a.available) return { reader: this.anthropic, available: true, fallback: false };
+    let rulesOn = true;
+    try {
+      const s = (await this.aiSettings.getEffective(null)) as { rulesFallbackEnabled?: boolean };
+      rulesOn = s.rulesFallbackEnabled !== false;
+    } catch (err) {
+      this.logger.warn(`Could not read AI settings, assuming the rules fallback is on: ${shortError(err)}`);
+    }
+    if (rulesOn) {
+      const why = (a.reason ?? PAUSED_REASON).replace(PAUSED_REASON, '').replace(/^\s*\(|\)\s*$/g, '').trim();
+      return { reader: this.rules, available: true, fallback: true, reason: why ? `${RULES_REASON} (${why})` : RULES_REASON };
+    }
+    return { reader: this.paused, available: false, fallback: false, reason: a.reason ?? PAUSED_REASON };
   }
 
   async status() {
     const [pick, ready] = await Promise.all([this.pickReader(), this.ready()]);
     return {
-      aiAvailable: pick.available,
+      aiAvailable: pick.reader === this.anthropic,
       reader: pick.reader.name,
+      fallback: pick.fallback,
       reason: pick.reason ?? null,
       migrationApplied: ready,
       docTypes: DOC_TYPES,
@@ -179,7 +199,7 @@ export class DocumentsService {
         });
       }
     }
-    return { aiAvailable: pick.available, reason: pick.reason ?? null, intakes: out };
+    return { aiAvailable: pick.reader === this.anthropic, reader: pick.reader.name, fallback: pick.fallback, reason: pick.reason ?? null, intakes: out };
   }
 
   private async readBytes(uploadId: string, userId: string): Promise<{ bytes: Buffer; mimeType: string; fileName: string }> {
@@ -191,7 +211,7 @@ export class DocumentsService {
     return { bytes: Buffer.concat(chunks), mimeType: r.mimeType ?? 'application/octet-stream', fileName: r.fileName };
   }
 
-  /** Reads one intake with the AI. Never throws - failures are stored on the row. */
+  /** Reads one intake with the chosen reader (AI or built-in rules). Never throws - failures are stored on the row. */
   async process(id: string) {
     const res = await this.db.query<IntakeRow>(`SELECT ${COLUMNS} FROM DocumentIntakes WHERE Id = @id`, [
       { name: 'id', type: sql.UniqueIdentifier, value: id },
@@ -225,7 +245,12 @@ export class DocumentsService {
       );
     } catch (err) {
       this.logger.warn(`Reading ${id} failed: ${shortError(err)}`);
-      await this.setStatus(id, 'failed', null, shortError(err));
+      if (pick.reader === this.rules) {
+        // The built-in reader is a convenience: when it breaks, degrade to the manual (skipped) path, not a failed upload.
+        await this.setStatus(id, 'skipped', null, `${PAUSED_REASON} (the built-in reader could not read this file)`);
+      } else {
+        await this.setStatus(id, 'failed', null, shortError(err));
+      }
     }
   }
 

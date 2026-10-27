@@ -687,6 +687,20 @@ Several ways to get a student's data in; every channel ends at the same "confirm
   unless the user has applied them.
 - **Not tested with a real key**: the Anthropic PDF/image request shape and JSON parsing are covered by reading only.
 
+## Session 2026-10-27: built-in rules fallback + bigger logo (branch `claude/offline-ai-fallback`, NOT merged; migration 021 NOT applied)
+- No Anthropic key yet, so every AI step has a zero-token **rules fallback**, switch `AiSettings.RulesFallbackEnabled`
+  (AI Controls > Settings "Built-in rules fallback", default ON; migration 021, code treats missing column as ON).
+  Order: AI if key + switch on + budget; else rules if fallback on; else paused/skipped.
+- **Course matching**: `ai/rules-matcher.ts` ranks the catalogue with the lexical `scoreCourse`, up to 3 candidates, confidence
+  capped at 0.7 (so never auto-"likely"/auto-approved at default thresholds), rationale prefixed "[Built-in rules]", not cached,
+  usage logged as model `built-in rules`. Also used if an AI call errors. `matchQueuedForTranscript` runs it automatically.
+- **Document reading**: `documents/rules-document-reader.ts` + `rules-helpers.ts` (pdf-parse text extraction, keyword
+  classification, regex extractors for transcript/ID+MRZ/English test/syllabus). No OCR: images/scans get filename guesses at
+  confidence <=0.3. Rules results end as read/needs_review, never confirmed. Test: `npx tsx scripts/test-rules-reader.ts` (src/api).
+- Everywhere a person can still override manually (faculty evaluation, document editor).
+- **Logo**: `LogoFull`/`LogoTile`/`LogoMark` in `components/shared/Logo.tsx`, `public/logo-mark.png` (tight crop); bigger in
+  sidebar, auth, home, partner, intake pages; emails use `${APP_BASE_URL}/logo.png?v=3` (210x110) in a white box.
+
 ## Infra ask-list (already handed to IT/provisioning — see full form in
 chat history if needed, repeated here for quick reference)
 - Resource Group

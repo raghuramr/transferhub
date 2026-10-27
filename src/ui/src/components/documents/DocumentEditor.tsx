@@ -21,7 +21,7 @@ type Fields = Record<string, unknown>;
 const asObj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
 const str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
 
-/** Editable view of what the AI read: a courses table for transcripts, key/value inputs for everything else. */
+/** Editable view of what the reader (AI or built-in) found: a courses table for transcripts, key/value inputs for everything else. */
 export function DocumentEditor({
   detail,
   readOnly,

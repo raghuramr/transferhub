@@ -4,7 +4,7 @@ import { RULES_MODEL, extractFromText } from './rules-helpers';
 
 // pdf-parse's package root runs a self-test when loaded without a parent; the lib file is the safe entry point.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const loadPdfParse = (): ((b: Buffer, o?: Record<string, unknown>) => Promise<{ text: string }>) => require('pdf-parse/lib/pdf-parse.js');
+const loadPdfParse = (): ((b: Buffer | Uint8Array, o?: Record<string, unknown>) => Promise<{ text: string }>) => require('pdf-parse/lib/pdf-parse.js');
 
 const MAX_BYTES = 15_000_000;
 const MAX_PAGES = 15;
@@ -31,7 +31,8 @@ async function pageRender(page: any): Promise<string> {
 
 export async function pdfToText(bytes: Buffer): Promise<string> {
   const parse = loadPdfParse();
-  const run = parse(bytes, { max: MAX_PAGES, pagerender: pageRender });
+  // pdf.js 1.x mis-reads a pooled Buffer ("bad XRef entry"); a plain Uint8Array copy is fine.
+  const run = parse(new Uint8Array(bytes), { max: MAX_PAGES, pagerender: pageRender });
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, rej) => { timer = setTimeout(() => rej(new Error('PDF took too long to read')), PDF_TIMEOUT_MS); });
   try {

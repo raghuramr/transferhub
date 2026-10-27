@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, ChevronDown, FileText, Lock, Pause, RefreshCw, UploadCloud } from 'lucide-react';
+import { Check, ChevronDown, FileText, Info, Lock, Pause, RefreshCw, UploadCloud } from 'lucide-react';
 import { documentsApi, getErrorMessage, type ExtractedDocument, type IntakeItem } from '../../lib/api';
 import { DocumentEditor } from '../../components/documents/DocumentEditor';
 import { ConfidenceBar, StatusChip } from '../../components/documents/StatusChip';
@@ -11,7 +11,7 @@ import { cn } from '../../lib/cn';
 const MAX_BYTES = 15 * 1024 * 1024;
 const ALLOWED = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
 
-function DocumentCard({ item, docTypes, aiEnabled }: { item: IntakeItem; docTypes: { key: string; label: string }[]; aiEnabled: boolean }) {
+function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; docTypes: { key: string; label: string }[]; aiEnabled: boolean; rules: boolean }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(item.status === 'needs_review');
@@ -47,7 +47,7 @@ function DocumentCard({ item, docTypes, aiEnabled }: { item: IntakeItem; docType
   });
 
   const label = docTypes.find((d) => d.key === item.docType)?.label ?? item.docType;
-  const canPickType = !confirmed && !busy && (!aiEnabled || item.status === 'skipped' || item.status === 'failed' || item.status === 'needs_review');
+  const canPickType = !confirmed && !busy && (!aiEnabled || rules || item.status === 'skipped' || item.status === 'failed' || item.status === 'needs_review');
 
   return (
     <motion.div layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className={cn('rounded-xl border bg-white shadow-sm', confirmed ? 'border-green-200' : 'border-gray-200')}>
@@ -131,7 +131,10 @@ export default function SmartUpload() {
   });
   const items = list.data ?? [];
   const docTypes = status.data?.docTypes ?? [];
-  const aiEnabled = status.data?.aiEnabled ?? true;
+  const reader = status.data?.reader;
+  const rules = reader === 'rules';
+  // A reader (AI or built-in) will actually run unless the reader is 'paused'.
+  const aiEnabled = reader ? reader !== 'paused' : true;
 
   const upload = useMutation({
     mutationFn: (files: File[]) => documentsApi.upload(files),
@@ -154,10 +157,16 @@ export default function SmartUpload() {
       <h1 className="text-2xl font-bold text-gray-900">Smart upload</h1>
       <p className="mt-1 mb-5 text-gray-500">Drop your transcripts and other documents. We read them, work out what each one is and fill in the details for you to check.</p>
 
-      {!aiEnabled && (
+      {rules && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <Info size={16} className="mt-0.5 shrink-0" />
+          <span>Your documents are read by our built-in reader. It is less accurate than AI reading, so please check every field before you confirm. Scanned PDFs and photos cannot be read automatically - for those, choose the type and fill in the details yourself.</span>
+        </div>
+      )}
+      {reader === 'paused' && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
           <Pause size={16} className="mt-0.5 shrink-0" />
-          <span>AI reading is paused - choose each document type yourself.{status.data?.reason ? ` (${status.data.reason})` : ''}</span>
+          <span>Automatic reading is paused - choose each document type yourself.{status.data?.reason ? ` (${status.data.reason})` : ''}</span>
         </div>
       )}
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
@@ -188,7 +197,7 @@ export default function SmartUpload() {
         </p>
       )}
       <div className="space-y-3">
-        {items.map((it) => <DocumentCard key={it.id} item={it} docTypes={docTypes} aiEnabled={aiEnabled} />)}
+        {items.map((it) => <DocumentCard key={it.id} item={it} docTypes={docTypes} aiEnabled={aiEnabled} rules={rules} />)}
       </div>
     </div>
   );
