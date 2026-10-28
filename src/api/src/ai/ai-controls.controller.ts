@@ -35,6 +35,22 @@ export class AiControlsController {
     return this.learning.learn(min ? Number(min) : 2);
   }
 
+  /** Weekly accuracy / safety / knowledge-base series for the Learning tab. Read-only, computed on demand. */
+  @Get('learning/trend')
+  @Permission('ai_controls', 'view')
+  learningTrend(@Query('weeks') weeks?: string, @Query('institutionId') institutionId?: string) {
+    const inst = institutionId ? Number(institutionId) : null;
+    return this.learning.trend(weeks ? Number(weeks) : 26, inst != null && Number.isInteger(inst) ? inst : null);
+  }
+
+  /** Headline deltas (now vs 4 weeks ago), what the system learned this month, and recurring mistakes. */
+  @Get('learning/overview')
+  @Permission('ai_controls', 'view')
+  learningOverview(@Query('institutionId') institutionId?: string) {
+    const inst = institutionId ? Number(institutionId) : null;
+    return this.learning.overview(inst != null && Number.isInteger(inst) ? inst : null);
+  }
+
   /** AI provider configuration (Anthropic + Azure OpenAI/Document Intelligence). Secrets are masked. */
   @Get('providers')
   @Permission('ai_controls', 'view')

@@ -2,6 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
 import { AiSettingsService } from './ai-settings.service';
+import { SchemaService } from '../policy/schema.service';
+import {
+  buildHeadlines, buildWeeklySeries, countInWindow, countResolvedPatterns, rankRecurringMistakes,
+  type CourseRow, type DecisionRow, type EquivalencyRow, type OverviewHeadlines, type RecurringMistake, type UsageRow, type WeekPoint,
+} from './learning-trend';
 
 export interface LearnedSuggestion {
   /** Stable key so the UI can track which suggestions were added. */
@@ -33,7 +38,7 @@ const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` 
 export class AiLearningService {
   private readonly logger = new Logger(AiLearningService.name);
 
-  constructor(private db: DatabaseService, private settings: AiSettingsService) {}
+  constructor(private db: DatabaseService, private settings: AiSettingsService, private schema: SchemaService) {}
 
   async learn(minCount = 2): Promise<LearnedSkills> {
     const min = Math.max(1, Math.min(20, Math.trunc(minCount) || 2));
@@ -127,5 +132,147 @@ export class AiLearningService {
       this.logger.warn(`Learning from decisions failed: ${(err as Error).message}`);
     }
     return out;
+  }
+  /** Loads the raw rows the learning charts are computed from. Every query degrades to an empty list. */
+  private async loadRows(weeks: number, institutionId: number | null) {
+    const from = new Date(Date.now() - (weeks + 1) * 7 * 86_400_000);
+    const fromIn = { name: 'from', type: sql.DateTime2, value: from };
+    const instIn = { name: 'inst', type: sql.Int, value: institutionId };
+    const scoped = institutionId != null;
+    const hasTarget = scoped && (await this.schema.has('Transcripts', 'TargetInstitutionId'));
+    const rows = { decisions: [] as DecisionRow[], courses: [] as CourseRow[], equivalencies: [] as EquivalencyRow[], usage: [] as UsageRow[] };
+    const safe = async (what: string, fn: () => Promise<void>) => {
+      try { await fn(); } catch (err) { this.logger.warn(`Learning trend (${what}) failed: ${(err as Error).message}`); }
+    };
+
+    await safe('decisions', async () => {
+      const r = await this.db.query<{
+        DecidedAt: Date; Outcome: string; DecId: number | null; Conf: number | null; Top3: string | null; Auto: number;
+        ExtCode: string | null; ExtTitle: string | null; ExtInst: string | null; DecCode: string | null; DecTitle: string | null; AiCode: string | null; AiTitle: string | null;
+      }>(
+        `SELECT e.DecidedAt, e.Outcome, e.DecidedBUCourseId AS DecId, e.AIConfidence AS Conf, ai.Top3,
+                CASE WHEN e.EvaluatorNotes LIKE 'Accepted the AI suggestion%' THEN 1 ELSE 0 END AS Auto,
+                ec.Code AS ExtCode, ec.Title AS ExtTitle, ei.Name AS ExtInst,
+                dbu.Code AS DecCode, dbu.Title AS DecTitle, abu.Code AS AiCode, abu.Title AS AiTitle
+         FROM Evaluations e
+         JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId
+         ${hasTarget ? 'JOIN Transcripts t ON t.Id = tc.TranscriptId' : ''}
+         LEFT JOIN Courses ec ON ec.Id = tc.ExternalCourseId
+         LEFT JOIN Institutions ei ON ei.Id = ec.InstitutionId
+         LEFT JOIN Courses dbu ON dbu.Id = e.DecidedBUCourseId
+         OUTER APPLY (SELECT STRING_AGG(CAST(c.BUCourseId AS VARCHAR(12)), ',') WITHIN GROUP (ORDER BY c.Rank) AS Top3
+                      FROM AIMatchCandidates c WHERE c.EvaluationId = e.Id AND c.Rank <= 3) ai
+         LEFT JOIN Courses abu ON abu.Id = TRY_CAST(LEFT(ai.Top3, CHARINDEX(',', ai.Top3 + ',') - 1) AS INT)
+         WHERE e.Status IN ('decided','posted') AND e.DecidedAt IS NOT NULL AND e.DecidedAt >= @from
+           ${hasTarget ? 'AND t.TargetInstitutionId = @inst' : ''}`,
+        hasTarget ? [fromIn, instIn] : [fromIn],
+      );
+      for (const x of r.recordset) {
+        const ids = (x.Top3 ?? '').split(',').map((v) => Number(v)).filter((v) => Number.isFinite(v) && v > 0);
+        rows.decisions.push({
+          decidedAt: x.DecidedAt, aiTopId: ids[0] ?? null, aiTop3Ids: ids, aiConfidence: x.Conf == null ? null : Number(x.Conf),
+          decidedCourseId: x.DecId, outcome: x.Outcome ?? '', auto: Number(x.Auto) === 1,
+          extCode: x.ExtCode ?? undefined, extLabel: x.ExtTitle ?? undefined, extInstitution: x.ExtInst ?? undefined,
+          aiCode: x.AiCode ?? undefined, aiLabel: x.AiTitle ?? undefined, decidedCode: x.DecCode ?? undefined, decidedLabel: x.DecTitle ?? undefined,
+        });
+      }
+    });
+
+    await safe('courses', async () => {
+      const r = await this.db.query<{ CreatedAt: Date; Lane: string }>(
+        `SELECT tc.CreatedAt, tc.Lane FROM TranscriptCourses tc
+         ${hasTarget ? 'JOIN Transcripts t ON t.Id = tc.TranscriptId' : ''}
+         WHERE tc.CreatedAt >= @from ${hasTarget ? 'AND t.TargetInstitutionId = @inst' : ''}`,
+        hasTarget ? [fromIn, instIn] : [fromIn],
+      );
+      rows.courses = r.recordset.map((x) => ({ createdAt: x.CreatedAt, lane: x.Lane }));
+    });
+
+    await safe('equivalencies', async () => {
+      const r = await this.db.query<{ CreatedAt: Date; Label: string }>(
+        `SELECT eq.CreatedAt, CONCAT(ei.Code, ' ', ec.Code, ' -> ', bc.Code) AS Label
+         FROM Equivalencies eq
+         JOIN Courses ec ON ec.Id = eq.ExternalCourseId
+         JOIN Institutions ei ON ei.Id = ec.InstitutionId
+         JOIN Courses bc ON bc.Id = eq.BUCourseId
+         WHERE eq.IsActive = 1 AND eq.Outcome = 'equivalent' ${scoped ? 'AND bc.InstitutionId = @inst' : ''}`,
+        scoped ? [instIn] : [],
+      );
+      rows.equivalencies = r.recordset.map((x) => ({ createdAt: x.CreatedAt, label: x.Label }));
+    });
+
+    if (await this.schema.has('AiUsageLog')) {
+      await safe('usage', async () => {
+        const r = await this.db.query<{ CreatedAt: Date; SkipReason: string | null }>(
+          `SELECT CreatedAt, SkipReason FROM AiUsageLog
+           WHERE CreatedAt >= @from AND SkipReason IN ('cache_hit','equivalency_exists') ${scoped ? 'AND InstitutionId = @inst' : ''}`,
+          scoped ? [fromIn, instIn] : [fromIn],
+        );
+        rows.usage = r.recordset.map((x) => ({ createdAt: x.CreatedAt, skipReason: x.SkipReason }));
+      });
+    }
+    return rows;
+  }
+
+  private async threshold(institutionId: number | null): Promise<number> {
+    try {
+      const s = await this.settings.getEffective(institutionId);
+      const t = Number(s.autoLikelyThreshold);
+      return Number.isFinite(t) && t > 0 && t <= 1 ? t : 0.85;
+    } catch {
+      return 0.85;
+    }
+  }
+
+  /** Weekly accuracy / safety / knowledge-base series. Never throws: an empty series means "nothing decided yet". */
+  async trend(weeks = 26, institutionId: number | null = null): Promise<{ weeks: number; institutionId: number | null; autoApplyThreshold: number; series: WeekPoint[] }> {
+    const w = Math.max(2, Math.min(104, Math.trunc(weeks) || 26));
+    const autoApplyThreshold = await this.threshold(institutionId);
+    const rows = await this.loadRows(w, institutionId);
+    return { weeks: w, institutionId, autoApplyThreshold, series: buildWeeklySeries({ ...rows, autoApplyThreshold }, w) };
+  }
+
+  async overview(institutionId: number | null = null): Promise<{
+    headlines: OverviewHeadlines;
+    learned: { newEquivalencies: number; newEquivalencyExamples: string[]; playbookRulesAdded: number; patternsResolved: number; days: number };
+    recurringMistakes: Array<RecurringMistake & { alreadyInPlaybook: boolean }>;
+    hasData: boolean;
+  }> {
+    const now = Date.now();
+    const weeks = 26;
+    const autoApplyThreshold = await this.threshold(institutionId);
+    const rows = await this.loadRows(weeks, institutionId);
+    const series = buildWeeklySeries({ ...rows, autoApplyThreshold }, weeks, now);
+
+    let skills: { instructions: string }[] = [];
+    let rulesAdded = 0;
+    try {
+      const list = await this.settings.listSkills();
+      skills = list;
+      const r = await this.db.query<{ N: number }>(
+        `SELECT COUNT(*) AS N FROM AgentSkills WHERE UpdatedBy IS NOT NULL AND UpdatedAt >= DATEADD(DAY, -30, SYSUTCDATETIME())`,
+      );
+      rulesAdded = Number(r.recordset[0]?.N ?? 0);
+    } catch {
+      // playbook unavailable: leave the counts at zero
+    }
+    const have = new Set(skills.map((s) => s.instructions.trim()));
+    const recurringMistakes = rankRecurringMistakes(rows.decisions).map((m) => ({ ...m, alreadyInPlaybook: have.has(m.instructions.trim()) }));
+    const recent = rows.equivalencies
+      .filter((e) => new Date(e.createdAt).getTime() >= now - 30 * 86_400_000)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return {
+      headlines: buildHeadlines(series, 4),
+      learned: {
+        newEquivalencies: countInWindow(rows.equivalencies, now, 30),
+        newEquivalencyExamples: recent.slice(0, 5).map((e) => e.label ?? '').filter(Boolean),
+        playbookRulesAdded: rulesAdded,
+        patternsResolved: countResolvedPatterns(rows.decisions, now, 30),
+        days: 30,
+      },
+      recurringMistakes,
+      hasData: rows.decisions.length > 0 || rows.courses.length > 0 || rows.equivalencies.length > 0,
+    };
   }
 }
