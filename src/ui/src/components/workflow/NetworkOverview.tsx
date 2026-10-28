@@ -76,7 +76,7 @@ export default function NetworkOverview() {
             <ul className="divide-y divide-gray-100">
               {data.topAgreed.map((t) => (
                 <li key={t.title} className="flex flex-wrap items-center gap-2 py-2 text-sm">
-                  <span className="min-w-0 flex-1 break-words text-gray-800">{t.title}</span>
+                  <span className="min-w-0 basis-full break-words text-gray-800 sm:basis-0 sm:flex-1">{t.title}</span>
                   <span className="text-xs text-gray-500">{t.universities} {t.universities === 1 ? 'university' : 'universities'}</span>
                   <AgreementChip level={t.agreementLevel} agreement={t.agreement} />
                 </li>
