@@ -1,18 +1,26 @@
 #!/usr/bin/env node
-// Generates the Pacific Ridge University student roster for the partner API demo.
-//   node docs/demo-data/build-students.js
-// Reads pacific-ridge-catalogue.json (so every student's courses exist in the catalogue) and writes
-//   pacific-ridge-students.json                 - 30 students, every field filled, with documents (PDF, base64)
-//   pacific-ridge-students-no-documents.json    - the same students without documents (small, easy to read)
+// Generates the student roster for one demo data set (partner API demo).
+//   node docs/demo-data/tools/build-students.js <set-folder>      e.g. demo-1-pacific-ridge
+// Reads <set>/catalogue.json (so every student's courses exist in the catalogue), <set>/roster.json
+// ([first, last, nationality|null, idType] rows) and <set>/set.json (university, seed, cities, concentrations...) and writes
+//   <set>/students.json                 - every field filled, with documents (PDF, base64)
+//   <set>/students-no-documents.json    - the same students without documents (small, easy to read)
 // Deterministic: the same input always produces the same students. Needs pdfkit (installed in src/api).
 const fs = require('fs');
 const path = require('path');
 
-const dir = __dirname;
-const catalogue = JSON.parse(fs.readFileSync(path.join(dir, 'pacific-ridge-catalogue.json'), 'utf8'));
+const arg = process.argv[2];
+if (!arg) { console.error('Usage: node build-students.js <set-folder>'); process.exit(1); }
+const dir = path.resolve(arg);
+const readJson = (f) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+const catalogue = readJson('catalogue.json');
+const ROSTER = readJson('roster.json');
+const SET = readJson('set.json');
+const CODE = SET.universityCode;
+const UNI = SET.universityName;
 let PDFDocument;
 try {
-  PDFDocument = require(path.join(dir, '..', '..', 'src', 'api', 'node_modules', 'pdfkit'));
+  PDFDocument = require(path.join(__dirname, '..', '..', '..', 'src', 'api', 'node_modules', 'pdfkit'));
 } catch {
   console.error('pdfkit not found. Run `npm install` in src/api first.');
   process.exit(1);
@@ -29,40 +37,17 @@ function rng(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const rand = rng(20261028);
+const rand = rng(SET.seed);
 const pick = (arr) => arr[Math.floor(rand() * arr.length)];
 const shuffle = (arr) => arr.map((v) => [rand(), v]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
 
-// ── the roster: [first, last, nationality (null = US), idType] ──
-const ROSTER = [
-  ['Avery', 'Nakamura', null, 'student_id'], ['Jordan', 'Okafor', null, 'student_id'], ['Priya', 'Raman', 'India', 'passport'],
-  ['Mateo', 'Alvarez', null, 'student_id'], ['Lena', 'Fischer', 'Germany', 'passport'], ['Noah', 'Whitfield', null, 'student_id'],
-  ['Sofia', 'Rossi', null, 'student_id'], ['Wei', 'Zhang', 'China', 'passport'], ['Imani', 'Brooks', null, 'student_id'],
-  ['Carlos', 'Mendes', 'Brazil', 'national_id'], ['Hannah', 'Lindqvist', null, 'student_id'], ['Ethan', 'Park', null, 'student_id'],
-  ['Amara', 'Nwosu', 'Nigeria', 'passport'], ['Lucas', 'Moreau', null, 'student_id'], ['Zoe', 'Kaplan', null, 'student_id'],
-  ['Minh', 'Tran', 'Vietnam', 'national_id'], ['Owen', 'Gallagher', null, 'student_id'], ['Fatima', 'Hassan', 'Egypt', 'passport'],
-  ['Diego', 'Herrera', null, 'student_id'], ['Chloe', 'Dubois', 'Canada', 'other'], ['Samuel', 'Adeyemi', null, 'student_id'],
-  ['Isabella', 'Conti', null, 'student_id'], ['Kenji', 'Watanabe', 'Japan', 'passport'], ['Maya', 'Patel', null, 'student_id'],
-  ['Jack', 'Sullivan', null, 'student_id'], ['Aisha', 'Rahman', 'Bangladesh', 'passport'], ['Leo', 'Nguyen', null, 'student_id'],
-  ['Camila', 'Torres', 'Mexico', 'national_id'], ['Benjamin', 'Cho', 'South Korea', 'passport'], ['Grace', 'Okonkwo', null, 'student_id'],
-];
-
-const CITIES = [['Seattle', 'Washington'], ['Tacoma', 'Washington'], ['Portland', 'Oregon'], ['Eugene', 'Oregon'], ['Sacramento', 'California'], ['San Jose', 'California']];
-const CONCENTRATION = {
-  'Computer Science': ['Software Engineering', 'Artificial Intelligence', 'Systems'],
-  'Data Science': ['Machine Learning', 'Applied Statistics', 'Data Engineering'],
-  Mathematics: ['Applied Mathematics', 'Statistics', 'Pure Mathematics'],
-  'Business Administration': ['Marketing', 'Finance', 'Operations'],
-  Economics: ['Quantitative Economics', 'Behavioral Economics', 'Policy'],
-  Psychology: ['Cognitive Science', 'Clinical Psychology', 'Developmental Psychology'],
-  Biology: ['Genetics', 'Ecology', 'Cell Biology'],
-  'Electrical Engineering': ['Embedded Systems', 'Signal Processing', 'Digital Design'],
-  Communication: ['Strategic Communication', 'Digital Media', 'Intercultural Communication'],
-  'Environmental Science': ['Climate Policy', 'Sustainable Energy', 'Geospatial Analysis'],
-};
+const CITIES = SET.cities;
+const CONCENTRATION = SET.concentrations;
+const OWN = SET.ownCourses || [4, 5]; // courses taken from the student's own program (min, max)
+const GEN = SET.generalCourses || [2, 3]; // courses from other programs
 const GRADES = [['A', 4.0], ['A-', 3.67], ['B+', 3.33], ['B', 3.0], ['B-', 2.67], ['C+', 2.33], ['C', 2.0]];
 const GRADE_WEIGHTS = [5, 5, 5, 6, 3, 2, 1];
-const TERMS = ['Fall 2023', 'Spring 2024', 'Fall 2024', 'Spring 2025', 'Fall 2025', 'Spring 2026'];
+const TERMS = SET.terms || ['Fall 2023', 'Spring 2024', 'Fall 2024', 'Spring 2025', 'Fall 2025', 'Spring 2026'];
 
 const pickGrade = () => {
   const total = GRADE_WEIGHTS.reduce((a, b) => a + b, 0);
@@ -81,12 +66,12 @@ const level = (code) => Number((/\d+/.exec(code) || ['100'])[0]);
 const byProgram = {};
 for (const c of catalogue.courses) (byProgram[c.programName] ||= []).push(c);
 const programs = catalogue.programs;
-const generalPool = catalogue.courses.filter((c) => ['PSY 101', 'ECON 101', 'COM 101', 'MATH 111', 'BUS 101', 'ENV 101'].includes(c.code));
+const generalPool = catalogue.courses.filter((c) => SET.generalCourseCodes.includes(c.code));
 
 // ── PDFs ──
 function pdf(draw) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'LETTER', margin: 54, info: { Title: 'Pacific Ridge University', Author: 'Pacific Ridge University', CreationDate: new Date('2026-10-01T00:00:00Z') } });
+    const doc = new PDFDocument({ size: 'LETTER', margin: 54, info: { Title: UNI, Author: UNI, CreationDate: new Date('2026-10-01T00:00:00Z') } });
     const chunks = [];
     doc.on('data', (c) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
@@ -98,7 +83,7 @@ function pdf(draw) {
 
 const transcriptPdf = (s) =>
   pdf((d) => {
-    d.fontSize(16).text('Pacific Ridge University', { align: 'center' });
+    d.fontSize(16).text(UNI, { align: 'center' });
     d.fontSize(11).text('Academic transcript (student copy)', { align: 'center' }).moveDown();
     d.fontSize(10).text(`Student: ${s.firstName} ${s.lastName}`).text(`Student ID: ${s.externalId}`).text(`Date of birth: ${s.dateOfBirth}`);
     d.text(`Program: ${s.programName} (${s.degree})`).text('Calendar: Semester').moveDown();
@@ -114,7 +99,7 @@ const transcriptPdf = (s) =>
 
 const idPdf = (s, rec) =>
   pdf((d) => {
-    d.fontSize(16).text(rec.passport ? 'Passport copy' : 'Pacific Ridge University student ID', { align: 'center' }).moveDown();
+    d.fontSize(16).text(rec.passport ? 'Passport copy' : `${UNI} student ID`, { align: 'center' }).moveDown();
     d.fontSize(11);
     d.text(`Name: ${s.lastName.toUpperCase()}, ${s.firstName}`);
     d.text(rec.passport ? `Passport No: ${s.externalId}` : `ID number: ${s.externalId}`);
@@ -135,8 +120,8 @@ const englishPdf = (s, score) =>
   for (let i = 0; i < ROSTER.length; i++) {
     const [firstName, lastName, nationality, idType] = ROSTER[i];
     const prog = programs[i % programs.length];
-    const own = shuffle(byProgram[prog.name]).slice(0, 4 + Math.floor(rand() * 2)); // 4-5 of the program's 5 courses
-    const general = shuffle(generalPool.filter((c) => c.programName !== prog.name)).slice(0, 2 + Math.floor(rand() * 2));
+    const own = shuffle(byProgram[prog.name]).slice(0, OWN[0] + Math.floor(rand() * (OWN[1] - OWN[0] + 1)));
+    const general = shuffle(generalPool.filter((c) => c.programName !== prog.name)).slice(0, GEN[0] + Math.floor(rand() * (GEN[1] - GEN[0] + 1)));
     const chosen = [...own, ...general].sort((a, b) => level(a.code) - level(b.code));
 
     let weighted = 0;
@@ -160,22 +145,22 @@ const englishPdf = (s, score) =>
     const externalId =
       idType === 'passport' ? `${ascii(nationality).slice(0, 1).toUpperCase()}${pad(7000000 + i * 137, 8)}`
       : idType === 'national_id' ? `NID-${pad(40000000 + i * 911, 9)}`
-      : idType === 'other' ? `ALT-PRU-${num}`
-      : `PRU-2023-${num}`;
+      : idType === 'other' ? `ALT-${CODE}-${num}`
+      : `${CODE}-2023-${num}`;
     const gpa = Math.round((weighted / Math.max(1, gradedCredits)) * 100) / 100;
     const conc = pick(CONCENTRATION[prog.name]);
     const birthYear = 2002 + (i % 4);
 
     const s = {
-      universityCode: 'PRU',
-      universityName: 'Pacific Ridge University',
+      universityCode: CODE,
+      universityName: UNI,
       externalId,
       idType,
-      email: `${ascii(firstName)}.${ascii(lastName)}@students.pacificridge.example`,
+      email: `${ascii(firstName)}.${ascii(lastName)}@${SET.emailDomain}`,
       firstName,
       lastName,
       dateOfBirth: `${birthYear}-${pad(1 + ((i * 5) % 12), 2)}-${pad(1 + ((i * 7) % 28), 2)}`,
-      phone: `+1-${['206', '253', '503', '541', '916', '408'][i % 6]}-555-01${pad(i, 2)}`, // US numbers (555-01xx is the reserved fictional range)
+      phone: `+1-${SET.phoneAreaCodes[i % SET.phoneAreaCodes.length]}-555-01${pad(i, 2)}`, // US numbers (555-01xx is the reserved fictional range)
       country: 'United States', // where the student lives now; countryOfOrigin is where they are from
       countryOfOrigin: nationality ?? 'United States',
       city,
@@ -185,7 +170,7 @@ const englishPdf = (s, score) =>
       fieldOfStudy: `${prog.name} - ${conc}`,
       gpa,
       graduationYear: 2027 + (i % 2),
-      creditsCompleted: earned + 12 + (i % 4) * 6, // plus credits from before PRU (AP, dual enrollment)
+      creditsCompleted: earned + 12 + (i % 4) * 6, // plus credits from before this university (AP, dual enrollment)
       calendar: 'semester',
       courses,
       documents: [],
@@ -201,14 +186,14 @@ const englishPdf = (s, score) =>
     students.push(s);
   }
 
-  const withDocs = { note: 'Pacific Ridge University student profiles (30, with documents)', students };
+  const withDocs = { note: `${UNI} student profiles (${students.length}, with documents)`, students };
   const noDocs = {
-    note: 'Pacific Ridge University student profiles (30, no documents)',
+    note: `${UNI} student profiles (${students.length}, no documents)`,
     students: students.map(({ documents, ...rest }) => rest),
   };
-  fs.writeFileSync(path.join(dir, 'pacific-ridge-students.json'), JSON.stringify(withDocs, null, 2) + '\n');
-  fs.writeFileSync(path.join(dir, 'pacific-ridge-students-no-documents.json'), JSON.stringify(noDocs, null, 2) + '\n');
-  const kb = Math.round(fs.statSync(path.join(dir, 'pacific-ridge-students.json')).size / 1024);
+  fs.writeFileSync(path.join(dir, 'students.json'), JSON.stringify(withDocs, null, 2) + '\n');
+  fs.writeFileSync(path.join(dir, 'students-no-documents.json'), JSON.stringify(noDocs, null, 2) + '\n');
+  const kb = Math.round(fs.statSync(path.join(dir, 'students.json')).size / 1024);
   const docCount = students.reduce((n, s) => n + s.documents.length, 0);
   console.log(`Wrote ${students.length} students, ${students.reduce((n, s) => n + s.courses.length, 0)} courses, ${docCount} documents (${kb} KB with documents).`);
 })().catch((e) => { console.error(e); process.exit(1); });

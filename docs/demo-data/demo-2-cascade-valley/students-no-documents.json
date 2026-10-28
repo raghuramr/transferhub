@@ -1,0 +1,2211 @@
+{
+  "note": "Cascade Valley University student profiles (30, no documents)",
+  "students": [
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0001",
+      "idType": "student_id",
+      "email": "harper.lindgren@students.cascadevalley.example",
+      "firstName": "Harper",
+      "lastName": "Lindgren",
+      "dateOfBirth": "2002-01-01",
+      "phone": "+1-509-555-0100",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Spokane",
+      "state": "Washington",
+      "programName": "Nursing",
+      "degree": "BS",
+      "fieldOfStudy": "Nursing - Adult and Gerontological Nursing",
+      "gpa": 2.89,
+      "graduationYear": 2027,
+      "creditsCompleted": 37,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "NURS 210",
+          "title": "Health Assessment",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "NURS 220",
+          "title": "Pharmacology for Nursing",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "NURS 310",
+          "title": "Adult Health Nursing I",
+          "credits": 5,
+          "grade": "A",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "NURS 330",
+          "title": "Maternal and Child Nursing",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0002",
+      "idType": "student_id",
+      "email": "tyrell.washington@students.cascadevalley.example",
+      "firstName": "Tyrell",
+      "lastName": "Washington",
+      "dateOfBirth": "2003-06-08",
+      "phone": "+1-208-555-0101",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Boise",
+      "state": "Idaho",
+      "programName": "Public Health",
+      "degree": "BS",
+      "fieldOfStudy": "Public Health - Epidemiology and Biostatistics",
+      "gpa": 3.13,
+      "graduationYear": 2028,
+      "creditsCompleted": 39,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SOC 101",
+          "title": "Introduction to Sociology",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PH 210",
+          "title": "Epidemiology",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PH 220",
+          "title": "Biostatistics for Health Sciences",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "PH 330",
+          "title": "Community Health Education",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0003",
+      "idType": "student_id",
+      "email": "marisol.quintero@students.cascadevalley.example",
+      "firstName": "Marisol",
+      "lastName": "Quintero",
+      "dateOfBirth": "2004-11-15",
+      "phone": "+1-541-555-0102",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Bend",
+      "state": "Oregon",
+      "programName": "History",
+      "degree": "BA",
+      "fieldOfStudy": "History - United States History",
+      "gpa": 3.19,
+      "graduationYear": 2027,
+      "creditsCompleted": 43,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "HIST 201",
+          "title": "United States History to 1877",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "HIST 301",
+          "title": "Historiography and Research Methods",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "HIST 340",
+          "title": "Modern European History",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0004",
+      "idType": "student_id",
+      "email": "declan.murphy@students.cascadevalley.example",
+      "firstName": "Declan",
+      "lastName": "Murphy",
+      "dateOfBirth": "2005-04-22",
+      "phone": "+1-406-555-0103",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Missoula",
+      "state": "Montana",
+      "programName": "English Literature",
+      "degree": "BA",
+      "fieldOfStudy": "English Literature - Literary Theory and Criticism",
+      "gpa": 2.92,
+      "graduationYear": 2028,
+      "creditsCompleted": 54,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "ENGL 110",
+          "title": "Introduction to Literary Studies",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "ENGL 220",
+          "title": "British Literature to 1800",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "ENGL 320",
+          "title": "American Literature since 1865",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "ENGL 350",
+          "title": "Literary Criticism and Theory",
+          "credits": 3,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0005",
+      "idType": "student_id",
+      "email": "naomi.eisenberg@students.cascadevalley.example",
+      "firstName": "Naomi",
+      "lastName": "Eisenberg",
+      "dateOfBirth": "2002-09-01",
+      "phone": "+1-775-555-0104",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Reno",
+      "state": "Nevada",
+      "programName": "Political Science",
+      "degree": "BA",
+      "fieldOfStudy": "Political Science - International Relations",
+      "gpa": 3.46,
+      "graduationYear": 2027,
+      "creditsCompleted": 37,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SOC 101",
+          "title": "Introduction to Sociology",
+          "credits": 3,
+          "grade": "P",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "P",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "P",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "POLS 150",
+          "title": "Introduction to Comparative Politics",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "POLS 210",
+          "title": "International Relations",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "POLS 301",
+          "title": "Research Methods in Political Science",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "POLS 340",
+          "title": "Public Policy Analysis",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0006",
+      "idType": "student_id",
+      "email": "kai.kealoha@students.cascadevalley.example",
+      "firstName": "Kai",
+      "lastName": "Kealoha",
+      "dateOfBirth": "2003-02-08",
+      "phone": "+1-530-555-0105",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Redding",
+      "state": "California",
+      "programName": "Sociology",
+      "degree": "BA",
+      "fieldOfStudy": "Sociology - Criminology and Social Control",
+      "gpa": 3.54,
+      "graduationYear": 2028,
+      "creditsCompleted": 44,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "SOC 101",
+          "title": "Introduction to Sociology",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "SOC 210",
+          "title": "Social Inequality",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "SOC 220",
+          "title": "Social Research Methods",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "SOC 310",
+          "title": "Sociological Theory",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "SOC 340",
+          "title": "Sociology of Health and Medicine",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0007",
+      "idType": "student_id",
+      "email": "brielle.santoro@students.cascadevalley.example",
+      "firstName": "Brielle",
+      "lastName": "Santoro",
+      "dateOfBirth": "2004-07-15",
+      "phone": "+1-509-555-0106",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Spokane",
+      "state": "Washington",
+      "programName": "Chemistry",
+      "degree": "BS",
+      "fieldOfStudy": "Chemistry - Biochemistry",
+      "gpa": 3.52,
+      "graduationYear": 2027,
+      "creditsCompleted": 49,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "CHEM 111",
+          "title": "General Chemistry I",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "CHEM 112",
+          "title": "General Chemistry II",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CHEM 211",
+          "title": "Organic Chemistry I",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CHEM 310",
+          "title": "Analytical Chemistry",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CHEM 340",
+          "title": "Physical Chemistry I",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0008",
+      "idType": "student_id",
+      "email": "rowan.blackfeather@students.cascadevalley.example",
+      "firstName": "Rowan",
+      "lastName": "Blackfeather",
+      "dateOfBirth": "2005-12-22",
+      "phone": "+1-208-555-0107",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Boise",
+      "state": "Idaho",
+      "programName": "Physics",
+      "degree": "BS",
+      "fieldOfStudy": "Physics - Condensed Matter",
+      "gpa": 3.28,
+      "graduationYear": 2028,
+      "creditsCompleted": 54,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PHYS 201",
+          "title": "Classical Mechanics",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PHYS 202",
+          "title": "Electricity and Magnetism",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PHYS 301",
+          "title": "Modern Physics",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "PHYS 330",
+          "title": "Mathematical Methods for Physics",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0009",
+      "idType": "student_id",
+      "email": "elijah.thornton@students.cascadevalley.example",
+      "firstName": "Elijah",
+      "lastName": "Thornton",
+      "dateOfBirth": "2002-05-01",
+      "phone": "+1-541-555-0108",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Bend",
+      "state": "Oregon",
+      "programName": "Civil Engineering",
+      "degree": "BS",
+      "fieldOfStudy": "Civil Engineering - Geotechnical Engineering",
+      "gpa": 3.54,
+      "graduationYear": 2027,
+      "creditsCompleted": 33,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CE 101",
+          "title": "Introduction to Civil Engineering",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CE 220",
+          "title": "Mechanics of Materials",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CE 310",
+          "title": "Structural Analysis",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CE 330",
+          "title": "Geotechnical Engineering",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0010",
+      "idType": "student_id",
+      "email": "tessa.vandermeer@students.cascadevalley.example",
+      "firstName": "Tessa",
+      "lastName": "Vandermeer",
+      "dateOfBirth": "2003-10-08",
+      "phone": "+1-406-555-0109",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Missoula",
+      "state": "Montana",
+      "programName": "Graphic Design",
+      "degree": "BFA",
+      "fieldOfStudy": "Graphic Design - Interactive Design",
+      "gpa": 3.4,
+      "graduationYear": 2028,
+      "creditsCompleted": 38,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "GD 110",
+          "title": "Design Fundamentals",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "GD 120",
+          "title": "Drawing for Designers",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "GD 310",
+          "title": "Branding and Identity Design",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "GD 330",
+          "title": "Interactive and Web Design",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0011",
+      "idType": "student_id",
+      "email": "andre.delacroix@students.cascadevalley.example",
+      "firstName": "Andre",
+      "lastName": "Delacroix",
+      "dateOfBirth": "2004-03-15",
+      "phone": "+1-775-555-0110",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Reno",
+      "state": "Nevada",
+      "programName": "Nursing",
+      "degree": "BS",
+      "fieldOfStudy": "Nursing - Adult and Gerontological Nursing",
+      "gpa": 2.62,
+      "graduationYear": 2027,
+      "creditsCompleted": 46,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "NURS 210",
+          "title": "Health Assessment",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "NURS 220",
+          "title": "Pharmacology for Nursing",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "NURS 310",
+          "title": "Adult Health Nursing I",
+          "credits": 5,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "NURS 330",
+          "title": "Maternal and Child Nursing",
+          "credits": 4,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0012",
+      "idType": "student_id",
+      "email": "willa.hartman@students.cascadevalley.example",
+      "firstName": "Willa",
+      "lastName": "Hartman",
+      "dateOfBirth": "2005-08-22",
+      "phone": "+1-530-555-0111",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Redding",
+      "state": "California",
+      "programName": "Public Health",
+      "degree": "BS",
+      "fieldOfStudy": "Public Health - Health Policy and Management",
+      "gpa": 3.42,
+      "graduationYear": 2028,
+      "creditsCompleted": 54,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PH 210",
+          "title": "Epidemiology",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PH 220",
+          "title": "Biostatistics for Health Sciences",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PH 310",
+          "title": "Health Policy and Management",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "PH 330",
+          "title": "Community Health Education",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0013",
+      "idType": "student_id",
+      "email": "mohammed.siddiqui@students.cascadevalley.example",
+      "firstName": "Mohammed",
+      "lastName": "Siddiqui",
+      "dateOfBirth": "2002-01-01",
+      "phone": "+1-509-555-0112",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Spokane",
+      "state": "Washington",
+      "programName": "History",
+      "degree": "BA",
+      "fieldOfStudy": "History - Global and Comparative History",
+      "gpa": 3.26,
+      "graduationYear": 2027,
+      "creditsCompleted": 35,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "HIST 102",
+          "title": "World History since 1500",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "HIST 201",
+          "title": "United States History to 1877",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "HIST 301",
+          "title": "Historiography and Research Methods",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "HIST 340",
+          "title": "Modern European History",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0014",
+      "idType": "student_id",
+      "email": "ingrid.solberg@students.cascadevalley.example",
+      "firstName": "Ingrid",
+      "lastName": "Solberg",
+      "dateOfBirth": "2003-06-08",
+      "phone": "+1-208-555-0113",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Boise",
+      "state": "Idaho",
+      "programName": "English Literature",
+      "degree": "BA",
+      "fieldOfStudy": "English Literature - American Literature",
+      "gpa": 3.2,
+      "graduationYear": 2028,
+      "creditsCompleted": 42,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SOC 101",
+          "title": "Introduction to Sociology",
+          "credits": 3,
+          "grade": "P",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "P",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "P",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "ENGL 110",
+          "title": "Introduction to Literary Studies",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "ENGL 220",
+          "title": "British Literature to 1800",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "ENGL 320",
+          "title": "American Literature since 1865",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "ENGL 350",
+          "title": "Literary Criticism and Theory",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0015",
+      "idType": "student_id",
+      "email": "cody.ramirez@students.cascadevalley.example",
+      "firstName": "Cody",
+      "lastName": "Ramirez",
+      "dateOfBirth": "2004-11-15",
+      "phone": "+1-541-555-0114",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Bend",
+      "state": "Oregon",
+      "programName": "Political Science",
+      "degree": "BA",
+      "fieldOfStudy": "Political Science - International Relations",
+      "gpa": 3.27,
+      "graduationYear": 2027,
+      "creditsCompleted": 47,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SOC 101",
+          "title": "Introduction to Sociology",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "POLS 150",
+          "title": "Introduction to Comparative Politics",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "POLS 210",
+          "title": "International Relations",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "POLS 301",
+          "title": "Research Methods in Political Science",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0016",
+      "idType": "student_id",
+      "email": "savannah.whitaker@students.cascadevalley.example",
+      "firstName": "Savannah",
+      "lastName": "Whitaker",
+      "dateOfBirth": "2005-04-22",
+      "phone": "+1-406-555-0115",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Missoula",
+      "state": "Montana",
+      "programName": "Sociology",
+      "degree": "BA",
+      "fieldOfStudy": "Sociology - Inequality and Social Justice",
+      "gpa": 3.01,
+      "graduationYear": 2028,
+      "creditsCompleted": 56,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "SOC 101",
+          "title": "Introduction to Sociology",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "SOC 210",
+          "title": "Social Inequality",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "SOC 220",
+          "title": "Social Research Methods",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "SOC 310",
+          "title": "Sociological Theory",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "SOC 340",
+          "title": "Sociology of Health and Medicine",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0017",
+      "idType": "student_id",
+      "email": "dmitri.volkov@students.cascadevalley.example",
+      "firstName": "Dmitri",
+      "lastName": "Volkov",
+      "dateOfBirth": "2002-09-01",
+      "phone": "+1-775-555-0116",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Reno",
+      "state": "Nevada",
+      "programName": "Chemistry",
+      "degree": "BS",
+      "fieldOfStudy": "Chemistry - Biochemistry",
+      "gpa": 2.95,
+      "graduationYear": 2027,
+      "creditsCompleted": 40,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "CHEM 111",
+          "title": "General Chemistry I",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CHEM 112",
+          "title": "General Chemistry II",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CHEM 211",
+          "title": "Organic Chemistry I",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CHEM 310",
+          "title": "Analytical Chemistry",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CHEM 340",
+          "title": "Physical Chemistry I",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0018",
+      "idType": "student_id",
+      "email": "lucia.ferreira@students.cascadevalley.example",
+      "firstName": "Lucia",
+      "lastName": "Ferreira",
+      "dateOfBirth": "2003-02-08",
+      "phone": "+1-530-555-0117",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Redding",
+      "state": "California",
+      "programName": "Physics",
+      "degree": "BS",
+      "fieldOfStudy": "Physics - Applied Optics",
+      "gpa": 3,
+      "graduationYear": 2028,
+      "creditsCompleted": 38,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PHYS 201",
+          "title": "Classical Mechanics",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PHYS 301",
+          "title": "Modern Physics",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "PHYS 330",
+          "title": "Mathematical Methods for Physics",
+          "credits": 3,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0019",
+      "idType": "student_id",
+      "email": "trevor.nakagawa@students.cascadevalley.example",
+      "firstName": "Trevor",
+      "lastName": "Nakagawa",
+      "dateOfBirth": "2004-07-15",
+      "phone": "+1-509-555-0118",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Spokane",
+      "state": "Washington",
+      "programName": "Civil Engineering",
+      "degree": "BS",
+      "fieldOfStudy": "Civil Engineering - Geotechnical Engineering",
+      "gpa": 3.58,
+      "graduationYear": 2027,
+      "creditsCompleted": 43,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CE 101",
+          "title": "Introduction to Civil Engineering",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CE 210",
+          "title": "Statics",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CE 220",
+          "title": "Mechanics of Materials",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CE 310",
+          "title": "Structural Analysis",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0020",
+      "idType": "student_id",
+      "email": "jasmine.okoye@students.cascadevalley.example",
+      "firstName": "Jasmine",
+      "lastName": "Okoye",
+      "dateOfBirth": "2005-12-22",
+      "phone": "+1-208-555-0119",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Boise",
+      "state": "Idaho",
+      "programName": "Graphic Design",
+      "degree": "BFA",
+      "fieldOfStudy": "Graphic Design - Brand Identity",
+      "gpa": 3.21,
+      "graduationYear": 2028,
+      "creditsCompleted": 52,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "GD 110",
+          "title": "Design Fundamentals",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "GD 120",
+          "title": "Drawing for Designers",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "GD 210",
+          "title": "Typography I",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "GD 310",
+          "title": "Branding and Identity Design",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "GD 330",
+          "title": "Interactive and Web Design",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "CVU-2023-0021",
+      "idType": "student_id",
+      "email": "henry.castellanos@students.cascadevalley.example",
+      "firstName": "Henry",
+      "lastName": "Castellanos",
+      "dateOfBirth": "2002-05-01",
+      "phone": "+1-541-555-0120",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Bend",
+      "state": "Oregon",
+      "programName": "Nursing",
+      "degree": "BS",
+      "fieldOfStudy": "Nursing - Pediatric Nursing",
+      "gpa": 2.97,
+      "graduationYear": 2027,
+      "creditsCompleted": 33,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "NURS 101",
+          "title": "Foundations of Nursing Practice",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "NURS 210",
+          "title": "Health Assessment",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "NURS 220",
+          "title": "Pharmacology for Nursing",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "NURS 310",
+          "title": "Adult Health Nursing I",
+          "credits": 5,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "K07002877",
+      "idType": "passport",
+      "email": "wanjiru.kamau@students.cascadevalley.example",
+      "firstName": "Wanjiru",
+      "lastName": "Kamau",
+      "dateOfBirth": "2003-10-08",
+      "phone": "+1-406-555-0121",
+      "country": "United States",
+      "countryOfOrigin": "Kenya",
+      "city": "Missoula",
+      "state": "Montana",
+      "programName": "Public Health",
+      "degree": "BS",
+      "fieldOfStudy": "Public Health - Epidemiology and Biostatistics",
+      "gpa": 3.22,
+      "graduationYear": 2028,
+      "creditsCompleted": 42,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PH 210",
+          "title": "Epidemiology",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PH 220",
+          "title": "Biostatistics for Health Sciences",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PH 310",
+          "title": "Health Policy and Management",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "PH 330",
+          "title": "Community Health Education",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "P07003014",
+      "idType": "passport",
+      "email": "katarzyna.wisniewski@students.cascadevalley.example",
+      "firstName": "Katarzyna",
+      "lastName": "Wisniewski",
+      "dateOfBirth": "2004-03-15",
+      "phone": "+1-775-555-0122",
+      "country": "United States",
+      "countryOfOrigin": "Poland",
+      "city": "Reno",
+      "state": "Nevada",
+      "programName": "History",
+      "degree": "BA",
+      "fieldOfStudy": "History - Global and Comparative History",
+      "gpa": 2.71,
+      "graduationYear": 2027,
+      "creditsCompleted": 50,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "P",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "P",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "HIST 102",
+          "title": "World History since 1500",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "HIST 201",
+          "title": "United States History to 1877",
+          "credits": 3,
+          "grade": "C",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "P",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "HIST 301",
+          "title": "Historiography and Research Methods",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "HIST 340",
+          "title": "Modern European History",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "C07003151",
+      "idType": "passport",
+      "email": "santiago.restrepo@students.cascadevalley.example",
+      "firstName": "Santiago",
+      "lastName": "Restrepo",
+      "dateOfBirth": "2005-08-22",
+      "phone": "+1-530-555-0123",
+      "country": "United States",
+      "countryOfOrigin": "Colombia",
+      "city": "Redding",
+      "state": "California",
+      "programName": "English Literature",
+      "degree": "BA",
+      "fieldOfStudy": "English Literature - Literary Theory and Criticism",
+      "gpa": 3.05,
+      "graduationYear": 2028,
+      "creditsCompleted": 51,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SOC 101",
+          "title": "Introduction to Sociology",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "ENGL 110",
+          "title": "Introduction to Literary Studies",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "ENGL 220",
+          "title": "British Literature to 1800",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "ENGL 320",
+          "title": "American Literature since 1865",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "ENGL 350",
+          "title": "Literary Criticism and Theory",
+          "credits": 3,
+          "grade": "C",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "NID-040021864",
+      "idType": "national_id",
+      "email": "mariaclara.delacruz@students.cascadevalley.example",
+      "firstName": "Maria Clara",
+      "lastName": "Dela Cruz",
+      "dateOfBirth": "2002-01-01",
+      "phone": "+1-509-555-0124",
+      "country": "United States",
+      "countryOfOrigin": "Philippines",
+      "city": "Spokane",
+      "state": "Washington",
+      "programName": "Political Science",
+      "degree": "BA",
+      "fieldOfStudy": "Political Science - Public Policy",
+      "gpa": 2.77,
+      "graduationYear": 2027,
+      "creditsCompleted": 38,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SOC 101",
+          "title": "Introduction to Sociology",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "POLS 150",
+          "title": "Introduction to Comparative Politics",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "POLS 210",
+          "title": "International Relations",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "POLS 301",
+          "title": "Research Methods in Political Science",
+          "credits": 4,
+          "grade": "C",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "POLS 340",
+          "title": "Public Policy Analysis",
+          "credits": 3,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "T07003425",
+      "idType": "passport",
+      "email": "emre.yilmaz@students.cascadevalley.example",
+      "firstName": "Emre",
+      "lastName": "Yilmaz",
+      "dateOfBirth": "2003-06-08",
+      "phone": "+1-208-555-0125",
+      "country": "United States",
+      "countryOfOrigin": "Turkey",
+      "city": "Boise",
+      "state": "Idaho",
+      "programName": "Sociology",
+      "degree": "BA",
+      "fieldOfStudy": "Sociology - Inequality and Social Justice",
+      "gpa": 3.53,
+      "graduationYear": 2028,
+      "creditsCompleted": 38,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SOC 210",
+          "title": "Social Inequality",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "SOC 220",
+          "title": "Social Research Methods",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "SOC 310",
+          "title": "Sociological Theory",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "SOC 340",
+          "title": "Sociology of Health and Medicine",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "I07003562",
+      "idType": "passport",
+      "email": "aarav.deshmukh@students.cascadevalley.example",
+      "firstName": "Aarav",
+      "lastName": "Deshmukh",
+      "dateOfBirth": "2004-11-15",
+      "phone": "+1-541-555-0126",
+      "country": "United States",
+      "countryOfOrigin": "India",
+      "city": "Bend",
+      "state": "Oregon",
+      "programName": "Chemistry",
+      "degree": "BS",
+      "fieldOfStudy": "Chemistry - Biochemistry",
+      "gpa": 3.78,
+      "graduationYear": 2027,
+      "creditsCompleted": 47,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "CHEM 111",
+          "title": "General Chemistry I",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "CHEM 112",
+          "title": "General Chemistry II",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CHEM 211",
+          "title": "Organic Chemistry I",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CHEM 310",
+          "title": "Analytical Chemistry",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "NID-040024597",
+      "idType": "national_id",
+      "email": "linh.pham@students.cascadevalley.example",
+      "firstName": "Linh",
+      "lastName": "Pham",
+      "dateOfBirth": "2005-04-22",
+      "phone": "+1-406-555-0127",
+      "country": "United States",
+      "countryOfOrigin": "Vietnam",
+      "city": "Missoula",
+      "state": "Montana",
+      "programName": "Physics",
+      "degree": "BS",
+      "fieldOfStudy": "Physics - Condensed Matter",
+      "gpa": 3.2,
+      "graduationYear": 2028,
+      "creditsCompleted": 54,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SOC 101",
+          "title": "Introduction to Sociology",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PHYS 201",
+          "title": "Classical Mechanics",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PHYS 202",
+          "title": "Electricity and Magnetism",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PHYS 210",
+          "title": "Waves, Optics and Thermal Physics",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "PHYS 301",
+          "title": "Modern Physics",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "ALT-CVU-0029",
+      "idType": "other",
+      "email": "chidi.eze@students.cascadevalley.example",
+      "firstName": "Chidi",
+      "lastName": "Eze",
+      "dateOfBirth": "2002-09-01",
+      "phone": "+1-775-555-0128",
+      "country": "United States",
+      "countryOfOrigin": "Nigeria",
+      "city": "Reno",
+      "state": "Nevada",
+      "programName": "Civil Engineering",
+      "degree": "BS",
+      "fieldOfStudy": "Civil Engineering - Water Resources",
+      "gpa": 3.15,
+      "graduationYear": 2027,
+      "creditsCompleted": 34,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CE 101",
+          "title": "Introduction to Civil Engineering",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "HIST 101",
+          "title": "World History to 1500",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SOC 101",
+          "title": "Introduction to Sociology",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CE 210",
+          "title": "Statics",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CE 310",
+          "title": "Structural Analysis",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CE 330",
+          "title": "Geotechnical Engineering",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "CVU",
+      "universityName": "Cascade Valley University",
+      "externalId": "S07003973",
+      "idType": "passport",
+      "email": "jiwoo.han@students.cascadevalley.example",
+      "firstName": "Ji-woo",
+      "lastName": "Han",
+      "dateOfBirth": "2003-02-08",
+      "phone": "+1-530-555-0129",
+      "country": "United States",
+      "countryOfOrigin": "South Korea",
+      "city": "Redding",
+      "state": "California",
+      "programName": "Graphic Design",
+      "degree": "BFA",
+      "fieldOfStudy": "Graphic Design - Interactive Design",
+      "gpa": 2.97,
+      "graduationYear": 2028,
+      "creditsCompleted": 40,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "POLS 101",
+          "title": "Introduction to American Government",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PH 101",
+          "title": "Introduction to Public Health",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENGL 101",
+          "title": "College Writing and Rhetoric",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "GD 110",
+          "title": "Design Fundamentals",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "GD 120",
+          "title": "Drawing for Designers",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "GD 210",
+          "title": "Typography I",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "GD 310",
+          "title": "Branding and Identity Design",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    }
+  ]
+}

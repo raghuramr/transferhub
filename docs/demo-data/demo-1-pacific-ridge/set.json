@@ -1,0 +1,100 @@
+{
+  "universityCode": "PRU",
+  "universityName": "Pacific Ridge University",
+  "emailDomain": "students.pacificridge.example",
+  "seed": 20261028,
+  "cities": [
+    [
+      "Seattle",
+      "Washington"
+    ],
+    [
+      "Tacoma",
+      "Washington"
+    ],
+    [
+      "Portland",
+      "Oregon"
+    ],
+    [
+      "Eugene",
+      "Oregon"
+    ],
+    [
+      "Sacramento",
+      "California"
+    ],
+    [
+      "San Jose",
+      "California"
+    ]
+  ],
+  "phoneAreaCodes": [
+    "206",
+    "253",
+    "503",
+    "541",
+    "916",
+    "408"
+  ],
+  "concentrations": {
+    "Computer Science": [
+      "Software Engineering",
+      "Artificial Intelligence",
+      "Systems"
+    ],
+    "Data Science": [
+      "Machine Learning",
+      "Applied Statistics",
+      "Data Engineering"
+    ],
+    "Mathematics": [
+      "Applied Mathematics",
+      "Statistics",
+      "Pure Mathematics"
+    ],
+    "Business Administration": [
+      "Marketing",
+      "Finance",
+      "Operations"
+    ],
+    "Economics": [
+      "Quantitative Economics",
+      "Behavioral Economics",
+      "Policy"
+    ],
+    "Psychology": [
+      "Cognitive Science",
+      "Clinical Psychology",
+      "Developmental Psychology"
+    ],
+    "Biology": [
+      "Genetics",
+      "Ecology",
+      "Cell Biology"
+    ],
+    "Electrical Engineering": [
+      "Embedded Systems",
+      "Signal Processing",
+      "Digital Design"
+    ],
+    "Communication": [
+      "Strategic Communication",
+      "Digital Media",
+      "Intercultural Communication"
+    ],
+    "Environmental Science": [
+      "Climate Policy",
+      "Sustainable Energy",
+      "Geospatial Analysis"
+    ]
+  },
+  "generalCourseCodes": [
+    "PSY 101",
+    "ECON 101",
+    "COM 101",
+    "MATH 111",
+    "BUS 101",
+    "ENV 101"
+  ]
+}

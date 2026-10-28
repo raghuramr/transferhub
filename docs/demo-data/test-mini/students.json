@@ -1,0 +1,184 @@
+{
+  "note": "Harborview Test College student profiles (3, with documents)",
+  "students": [
+    {
+      "universityCode": "HTC",
+      "universityName": "Harborview Test College",
+      "externalId": "HTC-2023-0001",
+      "idType": "student_id",
+      "email": "tess.marlow@students.harborview-test.example",
+      "firstName": "Tess",
+      "lastName": "Marlow",
+      "dateOfBirth": "2002-01-01",
+      "phone": "+1-218-555-0100",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Duluth",
+      "state": "Minnesota",
+      "programName": "Computing Basics",
+      "degree": "BS",
+      "fieldOfStudy": "Computing Basics - Software",
+      "gpa": 3.11,
+      "graduationYear": 2027,
+      "creditsCompleted": 21,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CMP 101",
+          "title": "Introduction to Programming",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "WRT 101",
+          "title": "College Writing",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CMP 102",
+          "title": "Data Structures",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "documents": [
+        {
+          "docType": "transcript",
+          "fileName": "transcript-marlow-0001.pdf",
+          "contentBase64": "JVBERi0xLjMKJf////8KNyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDEgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9Db250ZW50cyA1IDAgUgovUmVzb3VyY2VzIDYgMCBSCj4+CmVuZG9iago2IDAgb2JqCjw8Ci9Qcm9jU2V0IFsvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJXQovRm9udCA8PAovRjEgOCAwIFIKL0YyIDkgMCBSCj4+Cj4+CmVuZG9iago1IDAgb2JqCjw8Ci9MZW5ndGggNTM1Ci9GaWx0ZXIgL0ZsYXRlRGVjb2RlCj4+CnN0cmVhbQp4nJ2UvarbQBCFez/FvsDdzO8ZLRgVgaRIF3AXUiSW1d0i79+EWcmxHTkYBYMQi7zzzZlzhgsVKm9cqESTcn4//Drw5uzjaT3kItyqkpUQVGcpp/fDh89cGOU0H74dbQCHQDCHjOVNqRwDaPCxSL6H0FicytFtLJxH8NAwIVPMOOMMR+Tn9L2cvhw+nQ5fXyIJVwvyEswVhD9MvDIxFAyDY0KDCoUlHWd1xiUU2mnZyxEtKHFkSKzw/rdLnkAxB42l99Sk7UF0KxhQh3YTjBY4f6iiPxZ1nqukQjalvlfWM+ax5FvEXprwqvqCRsia3THZ4GYqk4qSiuYb9R/vrQ6tEZvqZuAwuBBmQAiC1pu1lNww3FA6Aql0BF6eeyFcqvBWAgrBjFj8ceeT6U6I9OoUFB6GhgtCyAQcmv7KOclg4rrfJEYVvhUm/ZvJuMDW+acLb0Cu3dw9SvD8YF9Z5hrXsnIriyW1vfh5FV10VzjdirdWh2dN2eQkpNxHSNbSc1389KB2aWdcMq6Yhf49mB7rPgTNiIj83Es4DFWeZDNclry73XE+LKpMatrT436F2CPQXpyg2rbjcI2U4HrzMgzsvdtbpRfDEKE1ipzWWrZlb22ZS3hIeu1/21Ovbbt7TPNWWMqXd2MNWSqdroY9xH9v3F2s6pOdo+GYVk85zr3tFun8HKULWTitW9j4DkHlovwXxm/SGX8LCmVuZHN0cmVhbQplbmRvYmoKMTEgMCBvYmoKKFBERktpdCkKZW5kb2JqCjEyIDAgb2JqCihQREZLaXQpCmVuZG9iagoxMyAwIG9iagooRDoyMDI2MTAwMTAwMDAwMFopCmVuZG9iagoxNCAwIG9iagooSGFyYm9ydmlldyBUZXN0IENvbGxlZ2UpCmVuZG9iagoxNSAwIG9iagooSGFyYm9ydmlldyBUZXN0IENvbGxlZ2UpCmVuZG9iagoxMCAwIG9iago8PAovUHJvZHVjZXIgMTEgMCBSCi9DcmVhdG9yIDEyIDAgUgovQ3JlYXRpb25EYXRlIDEzIDAgUgovVGl0bGUgMTQgMCBSCi9BdXRob3IgMTUgMCBSCj4+CmVuZG9iago4IDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9CYXNlRm9udCAvSGVsdmV0aWNhCi9TdWJ0eXBlIC9UeXBlMQovRW5jb2RpbmcgL1dpbkFuc2lFbmNvZGluZwo+PgplbmRvYmoKOSAwIG9iago8PAovVHlwZSAvRm9udAovQmFzZUZvbnQgL0hlbHZldGljYS1Cb2xkCi9TdWJ0eXBlIC9UeXBlMQovRW5jb2RpbmcgL1dpbkFuc2lFbmNvZGluZwo+PgplbmRvYmoKNCAwIG9iago8PAo+PgplbmRvYmoKMyAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMSAwIFIKL05hbWVzIDIgMCBSCj4+CmVuZG9iagoxIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovQ291bnQgMQovS2lkcyBbNyAwIFJdCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9EZXN0cyA8PAogIC9OYW1lcyBbCl0KPj4KPj4KZW5kb2JqCnhyZWYKMCAxNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDEzODIgMDAwMDAgbiAKMDAwMDAwMTQzOSAwMDAwMCBuIAowMDAwMDAxMzIwIDAwMDAwIG4gCjAwMDAwMDEyOTkgMDAwMDAgbiAKMDAwMDAwMDIxOCAwMDAwMCBuIAowMDAwMDAwMTE5IDAwMDAwIG4gCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMTEwMCAwMDAwMCBuIAowMDAwMDAxMTk3IDAwMDAwIG4gCjAwMDAwMDA5OTUgMDAwMDAgbiAKMDAwMDAwMDgyNSAwMDAwMCBuIAowMDAwMDAwODUwIDAwMDAwIG4gCjAwMDAwMDA4NzUgMDAwMDAgbiAKMDAwMDAwMDkxMSAwMDAwMCBuIAowMDAwMDAwOTUzIDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgMTYKL1Jvb3QgMyAwIFIKL0luZm8gMTAgMCBSCi9JRCBbPDdhNTI1OTVkNzhmZjRjYzViOWUxNThkZTNlZWIzYmU4PiA8N2E1MjU5NWQ3OGZmNGNjNWI5ZTE1OGRlM2VlYjNiZTg+XQo+PgpzdGFydHhyZWYKMTQ4NgolJUVPRgo="
+        },
+        {
+          "docType": "id_document",
+          "fileName": "student-id-marlow-0001.pdf",
+          "contentBase64": "JVBERi0xLjMKJf////8KNyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDEgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9Db250ZW50cyA1IDAgUgovUmVzb3VyY2VzIDYgMCBSCj4+CmVuZG9iago2IDAgb2JqCjw8Ci9Qcm9jU2V0IFsvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJXQovRm9udCA8PAovRjEgOCAwIFIKPj4KPj4KZW5kb2JqCjUgMCBvYmoKPDwKL0xlbmd0aCAzMDUKL0ZpbHRlciAvRmxhdGVEZWNvZGUKPj4Kc3RyZWFtCnicldK9asNADAfw3U+hF4irz798EG4otEO3grfSodjxlqHvv5RzQlLiQjEHxyEN+kk6ISamgxBTFqXp3H13sok9j9egkAzcQ0Cp6EOUxnP39CokoHHpPo4+QFKhWFIrHYzpmEBBVNL2TuVKwXQMryQthEhLV3bDggkTAolQbtEMOAKnNV/cK/EnjW/dy9i9/wcNJxTrRW5EuRJPEMwI+7pIlH12CfXJl0pNHFlpaJnpb63tdQzcW/ENpLgr41RJ2mgCMxRxm9sv3xDuprOpsam1F69H9kKQPXLYQByS3oaOBVCGoqwMby7HcKesBDZdCXK59yLC+wLdIAxLrru+/5xyLxyBE0pTwpXD8mrevwzXXh2P5QOVsi1YMKG0GhcMCqaH9tVybXzQ2eyh/R/Dta4QCmVuZHN0cmVhbQplbmRvYmoKMTAgMCBvYmoKKFBERktpdCkKZW5kb2JqCjExIDAgb2JqCihQREZLaXQpCmVuZG9iagoxMiAwIG9iagooRDoyMDI2MTAwMTAwMDAwMFopCmVuZG9iagoxMyAwIG9iagooSGFyYm9ydmlldyBUZXN0IENvbGxlZ2UpCmVuZG9iagoxNCAwIG9iagooSGFyYm9ydmlldyBUZXN0IENvbGxlZ2UpCmVuZG9iago5IDAgb2JqCjw8Ci9Qcm9kdWNlciAxMCAwIFIKL0NyZWF0b3IgMTEgMCBSCi9DcmVhdGlvbkRhdGUgMTIgMCBSCi9UaXRsZSAxMyAwIFIKL0F1dGhvciAxNCAwIFIKPj4KZW5kb2JqCjggMCBvYmoKPDwKL1R5cGUgL0ZvbnQKL0Jhc2VGb250IC9IZWx2ZXRpY2EKL1N1YnR5cGUgL1R5cGUxCi9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nCj4+CmVuZG9iago0IDAgb2JqCjw8Cj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9DYXRhbG9nCi9QYWdlcyAxIDAgUgovTmFtZXMgMiAwIFIKPj4KZW5kb2JqCjEgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9Db3VudCAxCi9LaWRzIFs3IDAgUl0KPj4KZW5kb2JqCjIgMCBvYmoKPDwKL0Rlc3RzIDw8CiAgL05hbWVzIFsKXQo+Pgo+PgplbmRvYmoKeHJlZgowIDE1CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMTAzOSAwMDAwMCBuIAowMDAwMDAxMDk2IDAwMDAwIG4gCjAwMDAwMDA5NzcgMDAwMDAgbiAKMDAwMDAwMDk1NiAwMDAwMCBuIAowMDAwMDAwMjA4IDAwMDAwIG4gCjAwMDAwMDAxMTkgMDAwMDAgbiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwODU5IDAwMDAwIG4gCjAwMDAwMDA3NTUgMDAwMDAgbiAKMDAwMDAwMDU4NSAwMDAwMCBuIAowMDAwMDAwNjEwIDAwMDAwIG4gCjAwMDAwMDA2MzUgMDAwMDAgbiAKMDAwMDAwMDY3MSAwMDAwMCBuIAowMDAwMDAwNzEzIDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgMTUKL1Jvb3QgMyAwIFIKL0luZm8gOSAwIFIKL0lEIFs8N2E1MjU5NWQ3OGZmNGNjNWI5ZTE1OGRlM2VlYjNiZTg+IDw3YTUyNTk1ZDc4ZmY0Y2M1YjllMTU4ZGUzZWViM2JlOD5dCj4+CnN0YXJ0eHJlZgoxMTQzCiUlRU9GCg=="
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "HTC",
+      "universityName": "Harborview Test College",
+      "externalId": "I07000137",
+      "idType": "passport",
+      "email": "ravi.menon@students.harborview-test.example",
+      "firstName": "Ravi",
+      "lastName": "Menon",
+      "dateOfBirth": "2003-06-08",
+      "phone": "+1-814-555-0101",
+      "country": "United States",
+      "countryOfOrigin": "India",
+      "city": "Erie",
+      "state": "Pennsylvania",
+      "programName": "Writing Basics",
+      "degree": "BA",
+      "fieldOfStudy": "Writing Basics - Rhetoric",
+      "gpa": 3.11,
+      "graduationYear": 2028,
+      "creditsCompleted": 27,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "WRT 101",
+          "title": "College Writing",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CMP 101",
+          "title": "Introduction to Programming",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "WRT 102",
+          "title": "Rhetoric and Argument",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "documents": [
+        {
+          "docType": "transcript",
+          "fileName": "transcript-menon-0002.pdf",
+          "contentBase64": "JVBERi0xLjMKJf////8KNyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDEgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9Db250ZW50cyA1IDAgUgovUmVzb3VyY2VzIDYgMCBSCj4+CmVuZG9iago2IDAgb2JqCjw8Ci9Qcm9jU2V0IFsvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJXQovRm9udCA8PAovRjEgOCAwIFIKL0YyIDkgMCBSCj4+Cj4+CmVuZG9iago1IDAgb2JqCjw8Ci9MZW5ndGggNTMzCi9GaWx0ZXIgL0ZsYXRlRGVjb2RlCj4+CnN0cmVhbQp4nKVVPavbQBDs9SvuD7zLfs7qwLgIJEW6gLuQIkhW94r3/5uwJzuWo4QXEQzGHGfN7OzMiAsVKi9cqESTMr0ObwPvzj5ebodchFtVshKC6izl8jp8+MyFUS7L8O1kIzgEgiXkXF6UyimABj8Xyd8hdC5O5eR2LpxH8NAwIVMsmDDBEXmdvpfLl+HTZfj6LiXhakFegrmC8IsT3zgxFAyDY0aDCoUlO050xjUU2tmylxNaUNKRMWmF979d8wSKJehc+kxN2hGKbgUj6tgegtFKzp9Q9MeqjpAL+KYZ0IRszhtYcD2KG15V38EVsmYbdGtKGkr9w6oaR1GhNWKHagYOgwthAYQgaF16y0EN44OCSgdXmZUU/Xs8SsKlCu9HpxAsiNUBGyfMD/RzSUYeW18YGq4IIRNwaFopNJ1iYnzcD0YVvlcorTr1XadW9xBtjKHdxz018LxwDJa5xh1WHrBYzdbBp5v6oody6Fa8tTruh/JwWYPjJmkoUv498e9orpq6y3yU0DhW2afO1GanDZWWKei2yFRox11wzarAIvR3y/RK+S+GQbXtF+IaiXl/9roOHH22t0r/tA7pjTPCc97NArItsyORFZHNHtHdt5ZGH5mPklKvbV9IpiHIQmphGausW8xB6Y90OuypG44WkotV/UMhac5zW6tj6vXUItOQ87uQhdPtVWW8oaByVdbn4X8C6Il/RQplbmRzdHJlYW0KZW5kb2JqCjExIDAgb2JqCihQREZLaXQpCmVuZG9iagoxMiAwIG9iagooUERGS2l0KQplbmRvYmoKMTMgMCBvYmoKKEQ6MjAyNjEwMDEwMDAwMDBaKQplbmRvYmoKMTQgMCBvYmoKKEhhcmJvcnZpZXcgVGVzdCBDb2xsZWdlKQplbmRvYmoKMTUgMCBvYmoKKEhhcmJvcnZpZXcgVGVzdCBDb2xsZWdlKQplbmRvYmoKMTAgMCBvYmoKPDwKL1Byb2R1Y2VyIDExIDAgUgovQ3JlYXRvciAxMiAwIFIKL0NyZWF0aW9uRGF0ZSAxMyAwIFIKL1RpdGxlIDE0IDAgUgovQXV0aG9yIDE1IDAgUgo+PgplbmRvYmoKOCAwIG9iago8PAovVHlwZSAvRm9udAovQmFzZUZvbnQgL0hlbHZldGljYQovU3VidHlwZSAvVHlwZTEKL0VuY29kaW5nIC9XaW5BbnNpRW5jb2RpbmcKPj4KZW5kb2JqCjkgMCBvYmoKPDwKL1R5cGUgL0ZvbnQKL0Jhc2VGb250IC9IZWx2ZXRpY2EtQm9sZAovU3VidHlwZSAvVHlwZTEKL0VuY29kaW5nIC9XaW5BbnNpRW5jb2RpbmcKPj4KZW5kb2JqCjQgMCBvYmoKPDwKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDEgMCBSCi9OYW1lcyAyIDAgUgo+PgplbmRvYmoKMSAwIG9iago8PAovVHlwZSAvUGFnZXMKL0NvdW50IDEKL0tpZHMgWzcgMCBSXQo+PgplbmRvYmoKMiAwIG9iago8PAovRGVzdHMgPDwKICAvTmFtZXMgWwpdCj4+Cj4+CmVuZG9iagp4cmVmCjAgMTYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAxMzgwIDAwMDAwIG4gCjAwMDAwMDE0MzcgMDAwMDAgbiAKMDAwMDAwMTMxOCAwMDAwMCBuIAowMDAwMDAxMjk3IDAwMDAwIG4gCjAwMDAwMDAyMTggMDAwMDAgbiAKMDAwMDAwMDExOSAwMDAwMCBuIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDEwOTggMDAwMDAgbiAKMDAwMDAwMTE5NSAwMDAwMCBuIAowMDAwMDAwOTkzIDAwMDAwIG4gCjAwMDAwMDA4MjMgMDAwMDAgbiAKMDAwMDAwMDg0OCAwMDAwMCBuIAowMDAwMDAwODczIDAwMDAwIG4gCjAwMDAwMDA5MDkgMDAwMDAgbiAKMDAwMDAwMDk1MSAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDE2Ci9Sb290IDMgMCBSCi9JbmZvIDEwIDAgUgovSUQgWzw3YTUyNTk1ZDc4ZmY0Y2M1YjllMTU4ZGUzZWViM2JlOD4gPDdhNTI1OTVkNzhmZjRjYzViOWUxNThkZTNlZWIzYmU4Pl0KPj4Kc3RhcnR4cmVmCjE0ODQKJSVFT0YK"
+        },
+        {
+          "docType": "id_document",
+          "fileName": "passport-menon-0002.pdf",
+          "contentBase64": "JVBERi0xLjMKJf////8KNyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDEgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9Db250ZW50cyA1IDAgUgovUmVzb3VyY2VzIDYgMCBSCj4+CmVuZG9iago2IDAgb2JqCjw8Ci9Qcm9jU2V0IFsvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJXQovRm9udCA8PAovRjEgOCAwIFIKPj4KPj4KZW5kb2JqCjUgMCBvYmoKPDwKL0xlbmd0aCAyNjAKL0ZpbHRlciAvRmxhdGVEZWNvZGUKPj4Kc3RyZWFtCniclZG7asNAFER7fcX9AW/uc64WjIpAUqQLqAspgiV1Lvz/TZBsHMUqjFhY2GnOmR0hJqaDEFNWpdO5uTSyyV77WyikESVCKRUlRKk/Ny/vQgLqp+brGNyRMx0haWnJmFI7OsxRujIMU3JHNr9rR/xN/Ufz1jefz7jhhGpF5E6UK9FHCAaE/XQUTEdlHzx89MlHPSmHQjrSGQjsRrZcrPoj80lLHzGtdKqxpfFyxMxyrwSyINtNcYekI5QxAcpQ1JUG2j8F0wVuOhgblrvdKxFeKnQjMQ8aGNMX9HXXdXeMcNR5gn0416KODS6yTb71vMKUcfuIh75mcu9rxv8EfgEzlZslCmVuZHN0cmVhbQplbmRvYmoKMTAgMCBvYmoKKFBERktpdCkKZW5kb2JqCjExIDAgb2JqCihQREZLaXQpCmVuZG9iagoxMiAwIG9iagooRDoyMDI2MTAwMTAwMDAwMFopCmVuZG9iagoxMyAwIG9iagooSGFyYm9ydmlldyBUZXN0IENvbGxlZ2UpCmVuZG9iagoxNCAwIG9iagooSGFyYm9ydmlldyBUZXN0IENvbGxlZ2UpCmVuZG9iago5IDAgb2JqCjw8Ci9Qcm9kdWNlciAxMCAwIFIKL0NyZWF0b3IgMTEgMCBSCi9DcmVhdGlvbkRhdGUgMTIgMCBSCi9UaXRsZSAxMyAwIFIKL0F1dGhvciAxNCAwIFIKPj4KZW5kb2JqCjggMCBvYmoKPDwKL1R5cGUgL0ZvbnQKL0Jhc2VGb250IC9IZWx2ZXRpY2EKL1N1YnR5cGUgL1R5cGUxCi9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nCj4+CmVuZG9iago0IDAgb2JqCjw8Cj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9DYXRhbG9nCi9QYWdlcyAxIDAgUgovTmFtZXMgMiAwIFIKPj4KZW5kb2JqCjEgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9Db3VudCAxCi9LaWRzIFs3IDAgUl0KPj4KZW5kb2JqCjIgMCBvYmoKPDwKL0Rlc3RzIDw8CiAgL05hbWVzIFsKXQo+Pgo+PgplbmRvYmoKeHJlZgowIDE1CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDk5NCAwMDAwMCBuIAowMDAwMDAxMDUxIDAwMDAwIG4gCjAwMDAwMDA5MzIgMDAwMDAgbiAKMDAwMDAwMDkxMSAwMDAwMCBuIAowMDAwMDAwMjA4IDAwMDAwIG4gCjAwMDAwMDAxMTkgMDAwMDAgbiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwODE0IDAwMDAwIG4gCjAwMDAwMDA3MTAgMDAwMDAgbiAKMDAwMDAwMDU0MCAwMDAwMCBuIAowMDAwMDAwNTY1IDAwMDAwIG4gCjAwMDAwMDA1OTAgMDAwMDAgbiAKMDAwMDAwMDYyNiAwMDAwMCBuIAowMDAwMDAwNjY4IDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgMTUKL1Jvb3QgMyAwIFIKL0luZm8gOSAwIFIKL0lEIFs8N2E1MjU5NWQ3OGZmNGNjNWI5ZTE1OGRlM2VlYjNiZTg+IDw3YTUyNTk1ZDc4ZmY0Y2M1YjllMTU4ZGUzZWViM2JlOD5dCj4+CnN0YXJ0eHJlZgoxMDk4CiUlRU9GCg=="
+        },
+        {
+          "docType": "english_test",
+          "fileName": "toefl-menon-0002.pdf",
+          "contentBase64": "JVBERi0xLjMKJf////8KNyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDEgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9Db250ZW50cyA1IDAgUgovUmVzb3VyY2VzIDYgMCBSCj4+CmVuZG9iago2IDAgb2JqCjw8Ci9Qcm9jU2V0IFsvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJXQovRm9udCA8PAovRjEgOCAwIFIKPj4KPj4KZW5kb2JqCjUgMCBvYmoKPDwKL0xlbmd0aCAzMDUKL0ZpbHRlciAvRmxhdGVEZWNvZGUKPj4Kc3RyZWFtCniclZI9bsMwDIV3n4IXiEtS5KMFGB4KtEO3At6KDo1/tgy9/1JYTpMgblB4kACRkt5H8gkxMR2EmCIrDafqu5JN7Lk/B4UkmlphFIraRak/VU+vQgLq5+qjdevImFqbzQ02KCObuil35EwlL8rUwiPFH2HBsaPzBVX2hIQ5FK7sCg9eTh0dFpGwjviT+rfqpa/e/yN3I+RUi1yYZWW2BMEEQ4ZBwhYtTBCM8PS1AhZ1WckCyMo2wjFhxrQXouE6Zbun2HTmF+aKkDQtK+mYuOySmr3iiBrRPBafwyAYlOPS+RuAnGSvoFudoRtBhUNKzydEKc2VlW1AXsovvb3msOQ8BZdXx/tXq+c8ijPEqUWO26+xF9q0VsMGGh3FatJhMYtyOKaiNGym5A+n9APFM7XyCmVuZHN0cmVhbQplbmRvYmoKMTAgMCBvYmoKKFBERktpdCkKZW5kb2JqCjExIDAgb2JqCihQREZLaXQpCmVuZG9iagoxMiAwIG9iagooRDoyMDI2MTAwMTAwMDAwMFopCmVuZG9iagoxMyAwIG9iagooSGFyYm9ydmlldyBUZXN0IENvbGxlZ2UpCmVuZG9iagoxNCAwIG9iagooSGFyYm9ydmlldyBUZXN0IENvbGxlZ2UpCmVuZG9iago5IDAgb2JqCjw8Ci9Qcm9kdWNlciAxMCAwIFIKL0NyZWF0b3IgMTEgMCBSCi9DcmVhdGlvbkRhdGUgMTIgMCBSCi9UaXRsZSAxMyAwIFIKL0F1dGhvciAxNCAwIFIKPj4KZW5kb2JqCjggMCBvYmoKPDwKL1R5cGUgL0ZvbnQKL0Jhc2VGb250IC9IZWx2ZXRpY2EKL1N1YnR5cGUgL1R5cGUxCi9FbmNvZGluZyAvV2luQW5zaUVuY29kaW5nCj4+CmVuZG9iago0IDAgb2JqCjw8Cj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9DYXRhbG9nCi9QYWdlcyAxIDAgUgovTmFtZXMgMiAwIFIKPj4KZW5kb2JqCjEgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9Db3VudCAxCi9LaWRzIFs3IDAgUl0KPj4KZW5kb2JqCjIgMCBvYmoKPDwKL0Rlc3RzIDw8CiAgL05hbWVzIFsKXQo+Pgo+PgplbmRvYmoKeHJlZgowIDE1CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMTAzOSAwMDAwMCBuIAowMDAwMDAxMDk2IDAwMDAwIG4gCjAwMDAwMDA5NzcgMDAwMDAgbiAKMDAwMDAwMDk1NiAwMDAwMCBuIAowMDAwMDAwMjA4IDAwMDAwIG4gCjAwMDAwMDAxMTkgMDAwMDAgbiAKMDAwMDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwODU5IDAwMDAwIG4gCjAwMDAwMDA3NTUgMDAwMDAgbiAKMDAwMDAwMDU4NSAwMDAwMCBuIAowMDAwMDAwNjEwIDAwMDAwIG4gCjAwMDAwMDA2MzUgMDAwMDAgbiAKMDAwMDAwMDY3MSAwMDAwMCBuIAowMDAwMDAwNzEzIDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgMTUKL1Jvb3QgMyAwIFIKL0luZm8gOSAwIFIKL0lEIFs8N2E1MjU5NWQ3OGZmNGNjNWI5ZTE1OGRlM2VlYjNiZTg+IDw3YTUyNTk1ZDc4ZmY0Y2M1YjllMTU4ZGUzZWViM2JlOD5dCj4+CnN0YXJ0eHJlZgoxMTQzCiUlRU9GCg=="
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "HTC",
+      "universityName": "Harborview Test College",
+      "externalId": "ALT-HTC-0003",
+      "idType": "other",
+      "email": "pia.lund@students.harborview-test.example",
+      "firstName": "Pia",
+      "lastName": "Lund",
+      "dateOfBirth": "2004-11-15",
+      "phone": "+1-218-555-0102",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Duluth",
+      "state": "Minnesota",
+      "programName": "Computing Basics",
+      "degree": "BS",
+      "fieldOfStudy": "Computing Basics - Data",
+      "gpa": 2.89,
+      "graduationYear": 2027,
+      "creditsCompleted": 33,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CMP 101",
+          "title": "Introduction to Programming",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "WRT 101",
+          "title": "College Writing",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CMP 102",
+          "title": "Data Structures",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "documents": [
+        {
+          "docType": "transcript",
+          "fileName": "transcript-lund-0003.pdf",
+          "contentBase64": "JVBERi0xLjMKJf////8KNyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDEgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9Db250ZW50cyA1IDAgUgovUmVzb3VyY2VzIDYgMCBSCj4+CmVuZG9iago2IDAgb2JqCjw8Ci9Qcm9jU2V0IFsvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJXQovRm9udCA8PAovRjEgOCAwIFIKL0YyIDkgMCBSCj4+Cj4+CmVuZG9iago1IDAgb2JqCjw8Ci9MZW5ndGggNTM5Ci9GaWx0ZXIgL0ZsYXRlRGVjb2RlCj4+CnN0cmVhbQp4nJVVu6rbQBDt/RX7A3czzzNaMC4CSZEu4C6kSPTobpH/b8Ks5FjGDhdhMGaQ95w9jxEXKlTeuFCJJmV8P/058dPs83UbchFuVclKCKqzlOv76dNXLoxyXU4/zjaAQyBYQi7lTamcA2jwS5H8HUKX4lTObpfCOYKHhgmZYsGIEY7Ix+lnuX47fbmevn9ISbhakJdgriD848QbJ4aCYXBMaFChsGTHic6YQ6GdLXs5owUlHRmSVnj/25wTKJagS+l3atKOUHQrGFCHdheMVnL+gKK/VnWEnNDAQjaGY4YdRQuvqh+gCVmzHaaxjZfCfLPHcjrZ4GYqk1L/6FEm0BrxxMQMHAYXwgIIQdC6CQkahuFOS6UDm0zKyv37UD6ShEsVfpaDQrAg1izsMjHtRMlcTkHhYWiYEUIm4NDMUmhGxcT1eCCMKvxZmMxqtmBGSnRr0S4Z2oPcawPPB47BMte4wcodFmtDO/i4iS6HhfbW6vDqUjY5CSkraaa6Zf66+JlH7dIumLOaWDL9/zOmV7iboJrmyO+jDIehyosehsvabbcdz4ellLsr4+mxXxf2QOioHR5U27MdrpES3E5ezcDRs71V+sAMEdqqyBmtdTP2q62+hIdk1m7XO663em3Pm8g0z4WlgHk6tpql1plr7PaS6uGt42JVX2wdDce0pcox9ou3yOynmS5k4bS9mYz3O0hmHfSx438BxuN73wplbmRzdHJlYW0KZW5kb2JqCjExIDAgb2JqCihQREZLaXQpCmVuZG9iagoxMiAwIG9iagooUERGS2l0KQplbmRvYmoKMTMgMCBvYmoKKEQ6MjAyNjEwMDEwMDAwMDBaKQplbmRvYmoKMTQgMCBvYmoKKEhhcmJvcnZpZXcgVGVzdCBDb2xsZWdlKQplbmRvYmoKMTUgMCBvYmoKKEhhcmJvcnZpZXcgVGVzdCBDb2xsZWdlKQplbmRvYmoKMTAgMCBvYmoKPDwKL1Byb2R1Y2VyIDExIDAgUgovQ3JlYXRvciAxMiAwIFIKL0NyZWF0aW9uRGF0ZSAxMyAwIFIKL1RpdGxlIDE0IDAgUgovQXV0aG9yIDE1IDAgUgo+PgplbmRvYmoKOCAwIG9iago8PAovVHlwZSAvRm9udAovQmFzZUZvbnQgL0hlbHZldGljYQovU3VidHlwZSAvVHlwZTEKL0VuY29kaW5nIC9XaW5BbnNpRW5jb2RpbmcKPj4KZW5kb2JqCjkgMCBvYmoKPDwKL1R5cGUgL0ZvbnQKL0Jhc2VGb250IC9IZWx2ZXRpY2EtQm9sZAovU3VidHlwZSAvVHlwZTEKL0VuY29kaW5nIC9XaW5BbnNpRW5jb2RpbmcKPj4KZW5kb2JqCjQgMCBvYmoKPDwKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDEgMCBSCi9OYW1lcyAyIDAgUgo+PgplbmRvYmoKMSAwIG9iago8PAovVHlwZSAvUGFnZXMKL0NvdW50IDEKL0tpZHMgWzcgMCBSXQo+PgplbmRvYmoKMiAwIG9iago8PAovRGVzdHMgPDwKICAvTmFtZXMgWwpdCj4+Cj4+CmVuZG9iagp4cmVmCjAgMTYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAxMzg2IDAwMDAwIG4gCjAwMDAwMDE0NDMgMDAwMDAgbiAKMDAwMDAwMTMyNCAwMDAwMCBuIAowMDAwMDAxMzAzIDAwMDAwIG4gCjAwMDAwMDAyMTggMDAwMDAgbiAKMDAwMDAwMDExOSAwMDAwMCBuIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDExMDQgMDAwMDAgbiAKMDAwMDAwMTIwMSAwMDAwMCBuIAowMDAwMDAwOTk5IDAwMDAwIG4gCjAwMDAwMDA4MjkgMDAwMDAgbiAKMDAwMDAwMDg1NCAwMDAwMCBuIAowMDAwMDAwODc5IDAwMDAwIG4gCjAwMDAwMDA5MTUgMDAwMDAgbiAKMDAwMDAwMDk1NyAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDE2Ci9Sb290IDMgMCBSCi9JbmZvIDEwIDAgUgovSUQgWzw3YTUyNTk1ZDc4ZmY0Y2M1YjllMTU4ZGUzZWViM2JlOD4gPDdhNTI1OTVkNzhmZjRjYzViOWUxNThkZTNlZWIzYmU4Pl0KPj4Kc3RhcnR4cmVmCjE0OTAKJSVFT0YK"
+        },
+        {
+          "docType": "id_document",
+          "fileName": "student-id-lund-0003.pdf",
+          "contentBase64": "JVBERi0xLjMKJf////8KNyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDEgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9Db250ZW50cyA1IDAgUgovUmVzb3VyY2VzIDYgMCBSCj4+CmVuZG9iago2IDAgb2JqCjw8Ci9Qcm9jU2V0IFsvUERGIC9UZXh0IC9JbWFnZUIgL0ltYWdlQyAvSW1hZ2VJXQovRm9udCA8PAovRjEgOCAwIFIKPj4KPj4KZW5kb2JqCjUgMCBvYmoKPDwKL0xlbmd0aCAzMDkKL0ZpbHRlciAvRmxhdGVEZWNvZGUKPj4Kc3RyZWFtCniclZK9asQwEIR7P8W+wDn7O2vB4SKQFOkC7kKKINtdirx/E+S73CXnIhwCoR2B5tPsCjExHYSYsijVz+6rk532OJ1FIRm4h4BS0YcoTZ/dw7OQgKa1ezv6AEmFYk0d6WBMxwQKYiRt51QeKZiO4SNJkxBp6cpuWFFREUiEclMz4Ags231xH4nfaXrpnqbu9T/QcEKxXuSCKGfEBYIZYR8nEmWvEb6057PVVTkYBXKv3cC9Fd/5FXdlLCNJSyAwQxGXeH5hiNeRRH7S8abOPoS76Wy8LbsXCtkjhx2UQ9JbzlgBZSjKhtRM0zFcsUw3Y9fZxGTb416I8L5AdxCGNbf2XoelXI0jsKA0SrhyWJ6Z8+4MXHt13NoHTg2HoKI0jxMMCurN99Vy68Cgs5n9HYxvUherkQplbmRzdHJlYW0KZW5kb2JqCjEwIDAgb2JqCihQREZLaXQpCmVuZG9iagoxMSAwIG9iagooUERGS2l0KQplbmRvYmoKMTIgMCBvYmoKKEQ6MjAyNjEwMDEwMDAwMDBaKQplbmRvYmoKMTMgMCBvYmoKKEhhcmJvcnZpZXcgVGVzdCBDb2xsZWdlKQplbmRvYmoKMTQgMCBvYmoKKEhhcmJvcnZpZXcgVGVzdCBDb2xsZWdlKQplbmRvYmoKOSAwIG9iago8PAovUHJvZHVjZXIgMTAgMCBSCi9DcmVhdG9yIDExIDAgUgovQ3JlYXRpb25EYXRlIDEyIDAgUgovVGl0bGUgMTMgMCBSCi9BdXRob3IgMTQgMCBSCj4+CmVuZG9iago4IDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9CYXNlRm9udCAvSGVsdmV0aWNhCi9TdWJ0eXBlIC9UeXBlMQovRW5jb2RpbmcgL1dpbkFuc2lFbmNvZGluZwo+PgplbmRvYmoKNCAwIG9iago8PAo+PgplbmRvYmoKMyAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMSAwIFIKL05hbWVzIDIgMCBSCj4+CmVuZG9iagoxIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovQ291bnQgMQovS2lkcyBbNyAwIFJdCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9EZXN0cyA8PAogIC9OYW1lcyBbCl0KPj4KPj4KZW5kb2JqCnhyZWYKMCAxNQowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDEwNDMgMDAwMDAgbiAKMDAwMDAwMTEwMCAwMDAwMCBuIAowMDAwMDAwOTgxIDAwMDAwIG4gCjAwMDAwMDA5NjAgMDAwMDAgbiAKMDAwMDAwMDIwOCAwMDAwMCBuIAowMDAwMDAwMTE5IDAwMDAwIG4gCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDg2MyAwMDAwMCBuIAowMDAwMDAwNzU5IDAwMDAwIG4gCjAwMDAwMDA1ODkgMDAwMDAgbiAKMDAwMDAwMDYxNCAwMDAwMCBuIAowMDAwMDAwNjM5IDAwMDAwIG4gCjAwMDAwMDA2NzUgMDAwMDAgbiAKMDAwMDAwMDcxNyAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDE1Ci9Sb290IDMgMCBSCi9JbmZvIDkgMCBSCi9JRCBbPDdhNTI1OTVkNzhmZjRjYzViOWUxNThkZTNlZWIzYmU4PiA8N2E1MjU5NWQ3OGZmNGNjNWI5ZTE1OGRlM2VlYjNiZTg+XQo+PgpzdGFydHhyZWYKMTE0NwolJUVPRgo="
+        }
+      ],
+      "invite": false
+    }
+  ]
+}

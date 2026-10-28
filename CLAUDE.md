@@ -1148,3 +1148,14 @@ No migrations were added this session. Still to apply by the user: seed 020 (and
   programs/courses/topics. Unknown FK -> rollback + 409. Audit `DATA_PURGED`. UI: `components/shared/PermanentDeleteDialog.tsx` (preview + type DELETE) wired on Universities, Programs, Course Database,
   Topics editor, row + bulk. Test: `scripts/test-purge.ts` (stubbed DB). The delete SQL is untested against a live database - try a throwaway university first.
 - **Demo students** (`docs/demo-data/`): `pacific-ridge-students.json` (30 PRU students, all importer fields, 207 courses from the PRU catalogue, 72 text-layer PDFs: transcript, ID/passport, TOEFL for international) and a no-documents variant, generated deterministically by `build-students.js`; Postman "Students" folder. Checked with the importer's real `checkRow` by `src/api/scripts/test-demo-students.ts`. Imported profiles are NOT accounts - they are "ready to claim" at `/intake` (the claim link is only returned in the response for mock profiles, so use a real mailbox email for the live claim demo). The purge cascade for a university also deletes its unclaimed `StudentSourceProfiles` (matched by InstitutionCode) and blocks on claimed ones.
+
+## Session 2026-10-28 (c): university header branding + three demo data sets (branch `claude/university-branding-and-demo-sets`, NOT merged; no migrations)
+- **Header branding**: `GET /account/university-brand` (admin/faculty only) returns the universities from the user's `UserScopeUniversities` rows (name, code, logo, banner);
+  `components/layout/UniversityHeader.tsx` (rendered in `AppLayout` above `<main>`) shows banner background, logo (or initials), name, `CODE - Faculty|Administration`, and a
+  switcher when the user has several universities. Logos/banners are uploaded per University on the Universities page (`ImageSourceField`). Root cause fixed along the way: uploaded
+  `/uploads/public/:id` URLs never loaded because the API lives under `/api` - `assetUrl()` in `lib/api.ts` prefixes it (also used in the upload preview); public uploads now send
+  `Cross-Origin-Resource-Policy: cross-origin`. A user with no scope rows (unrestricted) sees no university header.
+- **Demo data is now one folder per set** under `docs/demo-data/` (index in its README): `test-mini/` (HTC, 2 programs/4 courses/3 students), `demo-1-pacific-ridge/` (PRU), `demo-2-cascade-valley/` (CVU).
+  Files per set: `catalogue.json`, `students.json`, `students-no-documents.json`, `postman.collection.json`, `roster.json`, `set.json`. Shared generic tools in `docs/demo-data/tools/`
+  (`validate.js`, `build-students.js`, `build-postman.js`, each takes the set folder); regenerating PRU is byte-identical to the earlier output. `scripts/test-demo-students.ts` checks all sets.
+  The old root paths (`pacific-ridge-*.json`, `build-*.js`) no longer exist; anything above that mentions them means the PRU folder.

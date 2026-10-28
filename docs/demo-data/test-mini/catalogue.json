@@ -1,0 +1,136 @@
+{
+  "note": "Harborview Test College (throw-away test set): 1 university, 2 programs, 4 courses with topics",
+  "universities": [
+    {
+      "code": "HTC",
+      "name": "Harborview Test College",
+      "type": "university",
+      "calendar": "semester",
+      "website": "https://www.harborview-test.example"
+    }
+  ],
+  "programs": [
+    {
+      "universityCode": "HTC",
+      "name": "Computing Basics",
+      "area": "Computer Science",
+      "degree": "BS",
+      "school": "School of Testing",
+      "description": "Tiny test program: introductory programming and data structures."
+    },
+    {
+      "universityCode": "HTC",
+      "name": "Writing Basics",
+      "area": "English",
+      "degree": "BA",
+      "school": "School of Testing",
+      "description": "Tiny test program: academic writing and rhetoric."
+    }
+  ],
+  "courses": [
+    {
+      "universityCode": "HTC",
+      "code": "CMP 101",
+      "name": "Introduction to Programming",
+      "credits": 3,
+      "programName": "Computing Basics",
+      "department": "Computing",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Variables, control flow, functions and simple problem solving in Python.",
+      "learningOutcomes": "Write and test small programs; trace code by hand.",
+      "topics": [
+        {
+          "title": "Variables and control flow",
+          "description": "Types, expressions, conditionals and loops.",
+          "referenceLinks": [
+            {
+              "label": "Python tutorial",
+              "url": "https://docs.python.org/3/tutorial/"
+            }
+          ]
+        },
+        {
+          "title": "Functions",
+          "description": "Defining, calling and testing functions."
+        },
+        {
+          "title": "Lists and dictionaries",
+          "description": "Working with the core collection types."
+        }
+      ]
+    },
+    {
+      "universityCode": "HTC",
+      "code": "CMP 102",
+      "name": "Data Structures",
+      "credits": 3,
+      "programName": "Computing Basics",
+      "department": "Computing",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Stacks, queues, linked lists, trees and the cost of operations on each.",
+      "learningOutcomes": "Implement core structures; compare their running time.",
+      "topics": [
+        {
+          "title": "Stacks and queues",
+          "description": "Array and linked implementations."
+        },
+        {
+          "title": "Trees",
+          "description": "Binary search trees and traversals."
+        }
+      ]
+    },
+    {
+      "universityCode": "HTC",
+      "code": "WRT 101",
+      "name": "College Writing",
+      "credits": 3,
+      "programName": "Writing Basics",
+      "department": "English",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Thesis-driven essays, revision and citation.",
+      "learningOutcomes": "Draft, revise and cite a short argumentative essay.",
+      "topics": [
+        {
+          "title": "Thesis and structure",
+          "description": "Claims, evidence and paragraph structure."
+        },
+        {
+          "title": "Revision and citation",
+          "description": "Peer review and citing sources.",
+          "referenceLinks": [
+            {
+              "label": "Purdue OWL",
+              "url": "https://owl.purdue.edu/"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "HTC",
+      "code": "WRT 102",
+      "name": "Rhetoric and Argument",
+      "credits": 3,
+      "programName": "Writing Basics",
+      "department": "English",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Rhetorical analysis and research-based argument.",
+      "learningOutcomes": "Analyse an argument; write a researched position paper.",
+      "topics": [
+        {
+          "title": "Rhetorical appeals",
+          "description": "Ethos, pathos and logos in real texts."
+        },
+        {
+          "title": "Research argument",
+          "description": "Finding and weighing sources."
+        }
+      ]
+    }
+  ]
+}
