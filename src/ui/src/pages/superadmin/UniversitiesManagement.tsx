@@ -117,13 +117,13 @@ function UniversityFields({
         This is the receiving institution (BU)
       </label>
       <ImageSourceField
-        label="Logo"
+        label="Logo (shown in the header)"
         value={form.logoUrl}
         onChange={(url) => onChange({ ...form, logoUrl: url })}
         entityType="university_logo"
       />
       <ImageSourceField
-        label="Hero image"
+        label="Banner image (header for this university's admins and faculty)"
         value={form.heroImageUrl}
         onChange={(url) => onChange({ ...form, heroImageUrl: url })}
         entityType="university_hero"

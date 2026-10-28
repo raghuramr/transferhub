@@ -341,6 +341,30 @@ export class AccountService {
     return { ok: true };
   }
 
+  /**
+   * The university (or universities) a staff member belongs to, for the branded header: an admin's or faculty
+   * member's visibility scope (UserScopeUniversities). Empty for everyone else and for unrestricted staff,
+   * who simply see the TransferHub header. Never throws: branding must not break the app shell.
+   */
+  async universityBrand(user: { id: string; role: string }) {
+    if (!['admin', 'faculty'].includes(user.role)) return { universities: [] };
+    try {
+      if (!(await this.schema.has('UserScopeUniversities', 'InstitutionId'))) return { universities: [] };
+      const hasImages = await this.schema.has('Institutions', 'LogoUrl');
+      const r = await this.db.query<{ Id: number; Code: string; Name: string; LogoUrl: string | null; HeroImageUrl: string | null }>(
+        `SELECT i.Id, i.Code, i.Name, ${hasImages ? 'i.LogoUrl, i.HeroImageUrl' : 'CAST(NULL AS NVARCHAR(500)) AS LogoUrl, CAST(NULL AS NVARCHAR(500)) AS HeroImageUrl'}
+         FROM UserScopeUniversities s JOIN Institutions i ON i.Id = s.InstitutionId
+         WHERE s.UserId = @u AND i.IsActive = 1 ORDER BY i.Name`,
+        [{ name: 'u', type: sql.UniqueIdentifier, value: user.id }],
+      );
+      return {
+        universities: r.recordset.map((x) => ({ id: x.Id, code: x.Code, name: x.Name, logoUrl: x.LogoUrl ?? null, heroImageUrl: x.HeroImageUrl ?? null })),
+      };
+    } catch {
+      return { universities: [] };
+    }
+  }
+
   /** What the profile page shows under "University & program" (read-only). */
   async studentOverview(userId: string) {
     const res = await this.db.query<{

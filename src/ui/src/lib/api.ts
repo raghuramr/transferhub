@@ -9,6 +9,15 @@ import type {
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api';
 
+/**
+ * Turns a stored image value into a URL the browser can load. Uploaded files are saved as `/uploads/public/:id`,
+ * which is served by the API (under `BASE`), not by the web app; pasted external URLs are returned unchanged.
+ */
+export function assetUrl(value: string | null | undefined): string {
+  if (!value) return '';
+  return value.startsWith('/uploads/') ? `${BASE.replace(/\/+$/, '')}${value}` : value;
+}
+
 export const api = axios.create({
   baseURL: BASE,
   headers: { 'Content-Type': 'application/json' },
@@ -566,10 +575,13 @@ export const accountApi = {
   setTarget: (institutionId: number, programId?: number) =>
     api.put<{ ok: boolean; warning: string | null }>('/account/target', { institutionId, ...(programId ? { programId } : {}) }),
   studentOverview: () => api.get<StudentOverview>('/account/student-overview'),
+  /** The signed-in admin's / faculty member's university (name, logo, banner) for the header. */
+  universityBrand: () => api.get<{ universities: UniversityBrand[] }>('/account/university-brand'),
   updateStudentProfile: (patch: { currentInstitution?: string | null; currentProgram?: string | null }) =>
     api.put<{ ok: boolean }>('/account/student-profile', patch),
 };
 
+export interface UniversityBrand { id: number; code: string; name: string; logoUrl: string | null; heroImageUrl: string | null }
 export interface TargetUniversityOption {
   id: number; code: string; name: string;
   programs: { id: number; name: string; degree: string | null }[];

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Upload, Loader2, Link as LinkIcon, X } from 'lucide-react';
-import { uploadsApi } from '../../lib/api';
+import { assetUrl, uploadsApi } from '../../lib/api';
 
 /**
  * A Logo/Hero image field that lets an admin either upload a file (stored
@@ -69,7 +69,7 @@ export function ImageSourceField({
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
           {value && (
             <div className="flex items-center gap-2">
-              <img src={value} alt="" className="h-8 w-8 rounded object-cover border border-gray-200" />
+              <img src={assetUrl(value)} alt="" className="h-10 w-10 rounded object-contain bg-white border border-gray-200" />
               <button type="button" onClick={() => onChange('')} className="text-gray-400 hover:text-red-500">
                 <X size={14} />
               </button>

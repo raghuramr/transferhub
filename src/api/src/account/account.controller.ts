@@ -62,6 +62,13 @@ export class AccountController {
     return this.account.setTarget(req.user, dto.institutionId, dto.programId ?? null);
   }
 
+  /** Branding (name, logo, banner) of the signed-in admin's / faculty member's university, for the header. */
+  @Get('university-brand')
+  @UseGuards(JwtAuthGuard)
+  universityBrand(@Req() req: AuthenticatedRequest) {
+    return this.account.universityBrand(req.user);
+  }
+
   @Get('student-overview')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('student')
