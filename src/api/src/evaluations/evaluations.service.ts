@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { EventBus } from '../events/event-bus.service';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { DecideEvaluationDto, AssignEvaluationDto } from './dto/create-evaluation.dto';
@@ -40,7 +41,22 @@ interface AiCandidateRow {
 
 @Injectable()
 export class EvaluationsService {
-  constructor(private db: DatabaseService, private mappings: CourseMappingsService) {}
+  constructor(private db: DatabaseService, private mappings: CourseMappingsService, @Optional() private bus?: EventBus) {}
+
+  /** Live-tracker event for an evaluation change. Best-effort: never throws, never delays the response. */
+  private emitEvaluation(evaluationId: string, type: 'evaluation_decided' | 'evaluation_posted', text: string) {
+    if (!this.bus) return;
+    void this.db
+      .query<{ TranscriptId: string }>(
+        `SELECT tc.TranscriptId FROM Evaluations e JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId WHERE e.Id = @id`,
+        [{ name: 'id', type: sql.UniqueIdentifier, value: evaluationId }],
+      )
+      .then((r) => {
+        const t = r.recordset[0]?.TranscriptId;
+        if (t) this.bus?.emit({ type, transcriptId: t, text });
+      })
+      .catch(() => undefined);
+  }
 
   /**
    * assignedToMe=true + userId means "my queue": evaluations already
@@ -147,6 +163,7 @@ export class EvaluationsService {
     const multi = dto.mappings?.length ? dto.mappings : dto.buCourseIds?.map((buCourseId) => ({ buCourseId }));
     if (multi && multi.length > 1) {
       const r = await this.mappings.recordMultiDecision(id, decidedBy, dto.outcome, multi, dto.notes ?? null);
+      this.emitEvaluation(id, 'evaluation_decided', 'A course decision was recorded');
       return { message: 'Decision recorded', total: r.total, mappings: r.mappings };
     }
     const only = multi?.[0]; // a one-element list is just the single-course path
@@ -161,6 +178,7 @@ export class EvaluationsService {
     ]);
 
     await this.mappings.clearDecisionMappings(id).catch(() => undefined);
+    this.emitEvaluation(id, 'evaluation_decided', 'A course decision was recorded');
     return { message: 'Decision recorded' };
   }
 
@@ -199,6 +217,7 @@ export class EvaluationsService {
       [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
     );
 
+    this.emitEvaluation(id, 'evaluation_posted', 'A course result was posted');
     return { message: 'Evaluation posted' };
   }
 }

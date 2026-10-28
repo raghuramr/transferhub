@@ -50,6 +50,8 @@ export interface TimelineStage {
   activatedAt: string | null;
   dueAt: string | null;
   completedAt: string | null;
+  /** Average minutes this stage takes (last 180 days, >= 3 samples) - null when unknown. */
+  avgMinutes?: number | null;
   overdue: boolean;
   decidedBy: { name: string; role: string } | null;
   approvers: string[];

@@ -1,4 +1,5 @@
-import { ForbiddenException, HttpException, Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ForbiddenException, HttpException, Injectable, Logger, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
+import { EventBus } from '../events/event-bus.service';
 import * as sql from 'mssql';
 import { SchemaService } from '../policy/schema.service';
 import { TransferPolicyService } from '../policy/transfer-policy.service';
@@ -33,6 +34,7 @@ export class RequestsService {
     private policy: TransferPolicyService,
     private scopeSvc: ScopeService,
     private deadlines: CreditDeadlineService,
+    @Optional() private bus?: EventBus,
   ) {}
 
   /** Application details a reviewer needs (migration 015): applicant type, school, term, English, history, exams. */
@@ -183,6 +185,8 @@ export class RequestsService {
       [{ name: 't', type: sql.UniqueIdentifier, value: transcriptId }],
     );
 
+    const avgMinutes = t.workflowId && t.workflowStatus === 'active' ? await this.stageAverages(t.workflowId) : new Map<number, number>();
+
     const approverRows = t.workflowId
       ? (
           await this.db.query(
@@ -295,6 +299,7 @@ export class RequestsService {
         activatedAt: s.ActivatedAt,
         dueAt: s.DueAt,
         completedAt: s.CompletedAt,
+        avgMinutes: s.WorkflowStageId != null ? avgMinutes.get(s.WorkflowStageId) ?? null : null,
         overdue: s.Status === 'active' && !!s.DueAt && new Date(s.DueAt).getTime() < now,
         decidedBy: s.DecidedByName ? { name: staff ? s.DecidedByName : s.DecidedByRole === 'faculty' ? 'Faculty reviewer' : 'Administrator', role: s.DecidedByRole } : null,
         approvers: s.StageType === 'system' ? [] : approverLabels(s.WorkflowStageId),
@@ -337,6 +342,28 @@ export class RequestsService {
         emailConfigured: this.email.isConfigured,
       },
     };
+  }
+
+  /**
+   * Average minutes a stage of this workflow took over the last 180 days (completed requests, at least 3 samples),
+   * used for the student's "estimated finish". Aggregate only - no individual request data. Best-effort.
+   */
+  private async stageAverages(workflowId: number): Promise<Map<number, number>> {
+    const out = new Map<number, number>();
+    try {
+      const r = await this.db.query<{ WorkflowStageId: number; Mins: number; N: number }>(
+        `SELECT ts.WorkflowStageId, AVG(CAST(DATEDIFF(MINUTE, ts.ActivatedAt, ts.CompletedAt) AS FLOAT)) AS Mins, COUNT(*) AS N
+         FROM TranscriptStages ts JOIN WorkflowStages ws ON ws.Id = ts.WorkflowStageId
+         WHERE ws.WorkflowId = @w AND ts.Status IN ('approved','bypassed') AND ts.ActivatedAt IS NOT NULL AND ts.CompletedAt IS NOT NULL
+           AND ts.CompletedAt > DATEADD(DAY, -180, SYSUTCDATETIME())
+         GROUP BY ts.WorkflowStageId`,
+        [{ name: 'w', type: sql.Int, value: workflowId }],
+      );
+      for (const row of r.recordset) if (row.N >= 3 && row.Mins != null) out.set(row.WorkflowStageId, Math.max(0, Math.round(row.Mins)));
+    } catch {
+      // estimate is optional
+    }
+    return out;
   }
 
   // ── queue ───────────────────────────────────────────────────
@@ -470,6 +497,7 @@ export class RequestsService {
       ],
     );
     await this.engine.addNote(transcriptId, null, 'internal', 'system', null, null, `${viewer.role === 'student' || viewer.role === 'agency' ? 'The student' : 'Staff'} added a document: ${up.fileName}.`);
+    this.bus?.emit({ type: 'document_added', transcriptId, text: 'A document was added to the request' });
     return this.getTimeline(transcriptId, viewer);
   }
 
@@ -575,6 +603,7 @@ export class RequestsService {
         { name: 'ok', type: sql.Bit, value: this.email.isConfigured ? 1 : 0 },
       ],
     );
+    this.bus?.emit({ type: 'reminder_sent', transcriptId, audience: direction === 'update_student' ? 'all' : 'staff', text: 'A status reminder was sent' });
     return { sent: recipients, direction, emailConfigured: this.email.isConfigured };
   }
 
