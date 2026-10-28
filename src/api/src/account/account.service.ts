@@ -347,22 +347,47 @@ export class AccountService {
    * who simply see the TransferHub header. Never throws: branding must not break the app shell.
    */
   async universityBrand(user: { id: string; role: string }) {
-    if (!['admin', 'faculty'].includes(user.role)) return { universities: [] };
+    if (!['admin', 'faculty', 'agency'].includes(user.role)) return { universities: [] };
     try {
+      const u = [{ name: 'u', type: sql.UniqueIdentifier, value: user.id }];
+      if (user.role === 'agency') return { universities: await this.agencyBrand(user.id) };
+
       if (!(await this.schema.has('UserScopeUniversities', 'InstitutionId'))) return { universities: [] };
       const hasImages = await this.schema.has('Institutions', 'LogoUrl');
       const r = await this.db.query<{ Id: number; Code: string; Name: string; LogoUrl: string | null; HeroImageUrl: string | null }>(
         `SELECT i.Id, i.Code, i.Name, ${hasImages ? 'i.LogoUrl, i.HeroImageUrl' : 'CAST(NULL AS NVARCHAR(500)) AS LogoUrl, CAST(NULL AS NVARCHAR(500)) AS HeroImageUrl'}
          FROM UserScopeUniversities s JOIN Institutions i ON i.Id = s.InstitutionId
          WHERE s.UserId = @u AND i.IsActive = 1 ORDER BY i.Name`,
-        [{ name: 'u', type: sql.UniqueIdentifier, value: user.id }],
+        u,
       );
+      let department: string | null = null;
+      if (user.role === 'faculty') {
+        const d = await this.db.query<{ Name: string }>(`SELECT d.Name FROM Users x JOIN Departments d ON d.Id = x.DepartmentId WHERE x.Id = @u`, u).catch(() => null);
+        department = d?.recordset[0]?.Name ?? null;
+      }
       return {
-        universities: r.recordset.map((x) => ({ id: x.Id, code: x.Code, name: x.Name, logoUrl: x.LogoUrl ?? null, heroImageUrl: x.HeroImageUrl ?? null })),
+        universities: r.recordset.map((x) => ({ id: x.Id, code: x.Code, name: x.Name, logoUrl: x.LogoUrl ?? null, heroImageUrl: x.HeroImageUrl ?? null, kind: 'university' as const, department })),
       };
     } catch {
       return { universities: [] };
     }
+  }
+
+  /** An agency user's own agency (Users.AgencyId, else the agencies in their scope, else a match on the free-text AgencyName). */
+  private async agencyBrand(userId: string) {
+    const hasImages = await this.schema.has('Agencies', 'LogoUrl');
+    const cols = hasImages ? 'a.LogoUrl, a.HeroImageUrl' : 'CAST(NULL AS NVARCHAR(500)) AS LogoUrl, CAST(NULL AS NVARCHAR(500)) AS HeroImageUrl';
+    const u = [{ name: 'u', type: sql.UniqueIdentifier, value: userId }];
+    type Row = { Id: number; Name: string; LogoUrl: string | null; HeroImageUrl: string | null };
+    const direct = await this.db.query<Row>(`SELECT a.Id, a.Name, ${cols} FROM Users x JOIN Agencies a ON a.Id = x.AgencyId WHERE x.Id = @u AND a.IsActive = 1`, u);
+    let rows = direct.recordset;
+    if (!rows.length && (await this.schema.has('UserScopeAgencies', 'AgencyId'))) {
+      rows = (await this.db.query<Row>(`SELECT a.Id, a.Name, ${cols} FROM UserScopeAgencies s JOIN Agencies a ON a.Id = s.AgencyId WHERE s.UserId = @u AND a.IsActive = 1 ORDER BY a.Name`, u)).recordset;
+    }
+    if (!rows.length) {
+      rows = (await this.db.query<Row>(`SELECT TOP 1 a.Id, a.Name, ${cols} FROM Users x JOIN Agencies a ON a.Name = x.AgencyName WHERE x.Id = @u AND a.IsActive = 1`, u)).recordset;
+    }
+    return rows.map((x) => ({ id: x.Id, code: '', name: x.Name, logoUrl: x.LogoUrl ?? null, heroImageUrl: x.HeroImageUrl ?? null, kind: 'agency' as const, department: null }));
   }
 
   /** What the profile page shows under "University & program" (read-only). */

@@ -635,7 +635,7 @@ export const accountApi = {
     api.put<{ ok: boolean }>('/account/student-profile', patch),
 };
 
-export interface UniversityBrand { id: number; code: string; name: string; logoUrl: string | null; heroImageUrl: string | null }
+export interface UniversityBrand { id: number; code: string; name: string; logoUrl: string | null; heroImageUrl: string | null; kind?: 'university' | 'agency'; department?: string | null }
 export interface TargetUniversityOption {
   id: number; code: string; name: string;
   programs: { id: number; name: string; degree: string | null }[];

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
+import { SchemaService } from '../policy/schema.service';
 import * as sql from 'mssql';
 import { CreateAgencyDto } from './dto/create-agency.dto';
 import { UpdateAgencyDto } from './dto/update-agency.dto';
@@ -14,6 +15,8 @@ interface AgencyRow {
   IsActive: boolean;
   CreatedAt: Date;
   UpdatedAt: Date;
+  LogoUrl?: string | null;
+  HeroImageUrl?: string | null;
 }
 
 function mapAgency(row: AgencyRow) {
@@ -26,6 +29,8 @@ function mapAgency(row: AgencyRow) {
     isActive: !!row.IsActive,
     createdAt: row.CreatedAt,
     updatedAt: row.UpdatedAt,
+    logoUrl: row.LogoUrl ?? null,
+    heroImageUrl: row.HeroImageUrl ?? null,
   };
 }
 
@@ -33,7 +38,12 @@ const EXPORT_COLUMNS = ['id', 'name', 'contactEmail', 'contactPhone', 'country',
 
 @Injectable()
 export class AgenciesService {
-  constructor(private db: DatabaseService) {}
+  constructor(private db: DatabaseService, private schema: SchemaService) {}
+
+  /** Branding columns exist only once migration 030 is applied. */
+  private async imgCols(): Promise<string> {
+    return (await this.schema.has('Agencies', 'LogoUrl')) ? ', LogoUrl, HeroImageUrl' : '';
+  }
 
   async findAll(filters: { search?: string; isActive?: boolean } = {}) {
     let where = '1=1';
@@ -48,7 +58,7 @@ export class AgenciesService {
     }
 
     const res = await this.db.query<AgencyRow>(
-      `SELECT Id, Name, ContactEmail, ContactPhone, Country, IsActive, CreatedAt, UpdatedAt
+      `SELECT Id, Name, ContactEmail, ContactPhone, Country, IsActive, CreatedAt, UpdatedAt${await this.imgCols()}
        FROM Agencies WHERE ${where} ORDER BY Name`,
       inputs,
     );
@@ -57,7 +67,7 @@ export class AgenciesService {
 
   async findById(id: number) {
     const res = await this.db.query<AgencyRow>(
-      `SELECT Id, Name, ContactEmail, ContactPhone, Country, IsActive, CreatedAt, UpdatedAt
+      `SELECT Id, Name, ContactEmail, ContactPhone, Country, IsActive, CreatedAt, UpdatedAt${await this.imgCols()}
        FROM Agencies WHERE Id = @id`,
       [{ name: 'id', type: sql.Int, value: id }],
     );
@@ -67,7 +77,7 @@ export class AgenciesService {
 
   async findByName(name: string) {
     const res = await this.db.query<AgencyRow>(
-      `SELECT Id, Name, ContactEmail, ContactPhone, Country, IsActive, CreatedAt, UpdatedAt
+      `SELECT Id, Name, ContactEmail, ContactPhone, Country, IsActive, CreatedAt, UpdatedAt${await this.imgCols()}
        FROM Agencies WHERE Name = @name`,
       [{ name: 'name', type: sql.NVarChar(200), value: name }],
     );
@@ -90,7 +100,18 @@ export class AgenciesService {
         { name: 'active', type: sql.Bit, value: dto.isActive !== false ? 1 : 0 },
       ],
     );
+    if (dto.logoUrl || dto.heroImageUrl) await this.setImages(res.recordset[0].Id, dto);
     return this.findById(res.recordset[0].Id);
+  }
+
+  /** Saves logo / banner when migration 030 is applied (silently ignored before that). */
+  private async setImages(id: number, dto: { logoUrl?: string; heroImageUrl?: string }) {
+    if (!(await this.schema.has('Agencies', 'LogoUrl'))) return;
+    const sets: string[] = [];
+    const inputs: QueryInput[] = [{ name: 'id', type: sql.Int, value: id }];
+    if (dto.logoUrl !== undefined) { sets.push('LogoUrl = @logo'); inputs.push({ name: 'logo', type: sql.NVarChar(500), value: dto.logoUrl || null }); }
+    if (dto.heroImageUrl !== undefined) { sets.push('HeroImageUrl = @hero'); inputs.push({ name: 'hero', type: sql.NVarChar(500), value: dto.heroImageUrl || null }); }
+    if (sets.length) await this.db.query(`UPDATE Agencies SET ${sets.join(', ')} WHERE Id = @id`, inputs);
   }
 
   async update(id: number, dto: UpdateAgencyDto) {
@@ -120,6 +141,7 @@ export class AgenciesService {
     }
 
     await this.db.query(`UPDATE Agencies SET ${sets.join(', ')} WHERE Id = @id`, inputs);
+    await this.setImages(id, dto);
     return this.findById(id);
   }
 
