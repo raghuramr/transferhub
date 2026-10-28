@@ -1,11 +1,15 @@
 #!/usr/bin/env node
-// Dependency-free check of pacific-ridge-catalogue.json against the importer's rules
-// (src/api/src/import/import.service.ts: KNOWN_FIELDS + checkRow). Usage: node docs/demo-data/validate.js
+// Dependency-free check of a data set's catalogue.json against the importer's rules
+// (src/api/src/import/import.service.ts: KNOWN_FIELDS + checkRow).
+// Usage: node docs/demo-data/tools/validate.js <set-folder>   (set.json may hold "expect": {programs, coursesPerProgram, topics: [min, max]})
 const fs = require('fs');
 const path = require('path');
 
-const file = path.join(__dirname, 'pacific-ridge-catalogue.json');
-const body = JSON.parse(fs.readFileSync(file, 'utf8'));
+const dir = path.resolve(process.argv[2] || '.');
+const body = JSON.parse(fs.readFileSync(path.join(dir, 'catalogue.json'), 'utf8'));
+const SET = JSON.parse(fs.readFileSync(path.join(dir, 'set.json'), 'utf8'));
+const CODE = SET.universityCode;
+const EXPECT = Object.assign({ programs: 10, coursesPerProgram: 5, topics: [3, 4] }, SET.expect || {});
 
 const KNOWN = {
   body: ['note', 'universities', 'programs', 'courses'],
@@ -30,8 +34,8 @@ const unknown = (where, obj, list) => {
 
 unknown('body', body, KNOWN.body);
 if (!Array.isArray(body.universities) || body.universities.length !== 1) err('expected exactly 1 university');
-if (!Array.isArray(body.programs) || body.programs.length !== 10) err('expected exactly 10 programs');
-if (!Array.isArray(body.courses) || body.courses.length !== 50) err('expected exactly 50 courses');
+if (!Array.isArray(body.programs) || body.programs.length !== EXPECT.programs) err(`expected exactly ${EXPECT.programs} programs`);
+if (!Array.isArray(body.courses) || body.courses.length !== EXPECT.programs * EXPECT.coursesPerProgram) err(`expected exactly ${EXPECT.programs * EXPECT.coursesPerProgram} courses`);
 const unis = body.universities || [], progs = body.programs || [], courses = body.courses || [];
 
 unis.forEach((u) => {
@@ -41,7 +45,7 @@ unis.forEach((u) => {
   if (u.type && !['university', 'community_college'].includes(u.type)) err(`${w}: bad type`);
   if (u.calendar && !['semester', 'quarter'].includes(u.calendar)) err(`${w}: bad calendar`);
   if (u.website && !isUrl(u.website)) err(`${w}: website is not http(s)`);
-  if (u.code !== 'PRU') err(`${w}: code must be PRU`);
+  if (u.code !== CODE) err(`${w}: code must be ${CODE}`);
 });
 
 const progNames = new Set();
@@ -50,7 +54,7 @@ progs.forEach((p) => {
   unknown(w, p, KNOWN.programs);
   need(w, 'universityCode', p.universityCode, 20); need(w, 'name', p.name, 200);
   opt(w, 'area', p.area, 100); opt(w, 'degree', p.degree, 10); opt(w, 'school', p.school, 200);
-  if (p.universityCode !== 'PRU') err(`${w}: universityCode must be PRU`);
+  if (p.universityCode !== CODE) err(`${w}: universityCode must be ${CODE}`);
   if (progNames.has(p.name)) err(`${w}: duplicate program name`);
   progNames.add(p.name);
 });
@@ -63,7 +67,7 @@ courses.forEach((c) => {
   unknown(w, c, KNOWN.courses);
   need(w, 'universityCode', c.universityCode, 20); need(w, 'code', c.code, 30); need(w, 'name', c.name || c.title, 300);
   opt(w, 'department', c.department, 100); opt(w, 'requirementType', c.requirementType, 100); opt(w, 'source', c.source, 500);
-  if (c.universityCode !== 'PRU') err(`${w}: universityCode must be PRU`);
+  if (c.universityCode !== CODE) err(`${w}: universityCode must be ${CODE}`);
   const cr = Number(c.credits);
   if (c.credits === undefined || c.credits === null || c.credits === '') err(`${w}: credits is required`);
   else if (!Number.isFinite(cr) || cr <= 0 || cr > 30) err(`${w}: credits must be > 0 and <= 30`);
@@ -77,7 +81,7 @@ courses.forEach((c) => {
   if (!progNames.has(c.programName)) err(`${w}: programName "${c.programName}" not found in programs`);
   perProgram[c.programName] = (perProgram[c.programName] || 0) + 1;
   if (!Array.isArray(c.topics)) { err(`${w}: topics must be a list`); return; }
-  if (c.topics.length < 3 || c.topics.length > 4) err(`${w}: expected 3 or 4 topics, found ${c.topics.length}`);
+  if (c.topics.length < EXPECT.topics[0] || c.topics.length > EXPECT.topics[1]) err(`${w}: expected ${EXPECT.topics[0]}-${EXPECT.topics[1]} topics, found ${c.topics.length}`);
   c.topics.forEach((t, i) => {
     topicCount++;
     if (!t || !str(t.title)) err(`${w}: topic ${i + 1} needs a title`);
@@ -91,7 +95,7 @@ courses.forEach((c) => {
     }
   });
 });
-progs.forEach((p) => { if (perProgram[p.name] !== 5) err(`program ${p.name}: expected 5 courses, found ${perProgram[p.name] || 0}`); });
+progs.forEach((p) => { if (perProgram[p.name] !== EXPECT.coursesPerProgram) err(`program ${p.name}: expected ${EXPECT.coursesPerProgram} courses, found ${perProgram[p.name] || 0}`); });
 
 console.log(`universities: ${unis.length}`);
 console.log(`programs:     ${progs.length}`);

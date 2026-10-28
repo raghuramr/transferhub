@@ -1,0 +1,143 @@
+{
+  "note": "Harborview Test College student profiles (3, no documents)",
+  "students": [
+    {
+      "universityCode": "HTC",
+      "universityName": "Harborview Test College",
+      "externalId": "HTC-2023-0001",
+      "idType": "student_id",
+      "email": "tess.marlow@students.harborview-test.example",
+      "firstName": "Tess",
+      "lastName": "Marlow",
+      "dateOfBirth": "2002-01-01",
+      "phone": "+1-218-555-0100",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Duluth",
+      "state": "Minnesota",
+      "programName": "Computing Basics",
+      "degree": "BS",
+      "fieldOfStudy": "Computing Basics - Software",
+      "gpa": 3.11,
+      "graduationYear": 2027,
+      "creditsCompleted": 21,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CMP 101",
+          "title": "Introduction to Programming",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "WRT 101",
+          "title": "College Writing",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CMP 102",
+          "title": "Data Structures",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "HTC",
+      "universityName": "Harborview Test College",
+      "externalId": "I07000137",
+      "idType": "passport",
+      "email": "ravi.menon@students.harborview-test.example",
+      "firstName": "Ravi",
+      "lastName": "Menon",
+      "dateOfBirth": "2003-06-08",
+      "phone": "+1-814-555-0101",
+      "country": "United States",
+      "countryOfOrigin": "India",
+      "city": "Erie",
+      "state": "Pennsylvania",
+      "programName": "Writing Basics",
+      "degree": "BA",
+      "fieldOfStudy": "Writing Basics - Rhetoric",
+      "gpa": 3.11,
+      "graduationYear": 2028,
+      "creditsCompleted": 27,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "WRT 101",
+          "title": "College Writing",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CMP 101",
+          "title": "Introduction to Programming",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "WRT 102",
+          "title": "Rhetoric and Argument",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "HTC",
+      "universityName": "Harborview Test College",
+      "externalId": "ALT-HTC-0003",
+      "idType": "other",
+      "email": "pia.lund@students.harborview-test.example",
+      "firstName": "Pia",
+      "lastName": "Lund",
+      "dateOfBirth": "2004-11-15",
+      "phone": "+1-218-555-0102",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Duluth",
+      "state": "Minnesota",
+      "programName": "Computing Basics",
+      "degree": "BS",
+      "fieldOfStudy": "Computing Basics - Data",
+      "gpa": 2.89,
+      "graduationYear": 2027,
+      "creditsCompleted": 33,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CMP 101",
+          "title": "Introduction to Programming",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "WRT 101",
+          "title": "College Writing",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CMP 102",
+          "title": "Data Structures",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    }
+  ]
+}

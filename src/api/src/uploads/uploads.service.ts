@@ -168,7 +168,9 @@ export class UploadsService {
       );
     }
 
-    return { id, url: opts.isPublic ? `/uploads/public/${id}` : `/uploads/${id}`, documentType };
+    // Public files are loaded straight from Azure Storage when its public container allows it; otherwise via the API route.
+    const direct = opts.isPublic && provider === 'blob' ? await this.storage.publicUrl(blobName).catch(() => null) : null;
+    return { id, url: direct ?? (opts.isPublic ? `/uploads/public/${id}` : `/uploads/${id}`), documentType };
   }
 
   private async findById(id: string) {

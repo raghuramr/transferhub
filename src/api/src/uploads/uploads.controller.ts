@@ -79,6 +79,8 @@ export class UploadsController {
   @Get('public/:id')
   async downloadPublic(@Param('id') id: string, @Res() res: Response) {
     const file = await this.uploadsService.getPublic(id);
+    // Public logos/banners are embedded by the UI, which may be served from another host than the API.
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     await this.send(file, res, 'inline');
   }
 

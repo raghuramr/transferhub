@@ -1,0 +1,54 @@
+{
+  "universityCode": "HTC",
+  "universityName": "Harborview Test College",
+  "emailDomain": "students.harborview-test.example",
+  "seed": 20261030,
+  "cities": [
+    [
+      "Duluth",
+      "Minnesota"
+    ],
+    [
+      "Erie",
+      "Pennsylvania"
+    ]
+  ],
+  "phoneAreaCodes": [
+    "218",
+    "814"
+  ],
+  "concentrations": {
+    "Computing Basics": [
+      "Software",
+      "Data"
+    ],
+    "Writing Basics": [
+      "Rhetoric",
+      "Professional Writing"
+    ]
+  },
+  "generalCourseCodes": [
+    "CMP 101",
+    "WRT 101"
+  ],
+  "ownCourses": [
+    2,
+    2
+  ],
+  "generalCourses": [
+    1,
+    1
+  ],
+  "terms": [
+    "Fall 2025",
+    "Spring 2026"
+  ],
+  "expect": {
+    "programs": 2,
+    "coursesPerProgram": 2,
+    "topics": [
+      2,
+      4
+    ]
+  }
+}

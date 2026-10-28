@@ -7,6 +7,7 @@ import { LogoFull, LogoMark } from '../shared/Logo';
 import { authApi, pagesApi } from '../../lib/api';
 import { PageTransition } from '../ui/PageTransition';
 import { Avatar } from '../shared/Avatar';
+import { UniversityHeader } from './UniversityHeader';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
@@ -228,6 +229,8 @@ export default function AppLayout() {
           </button>
           <LogoFull height={44} className="shrink-0" />
         </div>
+
+        <UniversityHeader />
 
         <main className="flex-1 overflow-auto">
           <AnimatePresence mode="wait" initial={false}>
