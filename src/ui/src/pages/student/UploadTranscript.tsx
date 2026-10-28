@@ -468,7 +468,7 @@ export default function UploadTranscript() {
       </form>
 
       {/* ── Sticky summary + submit bar (offset past the desktop sidebar so it never covers it) ── */}
-      <div className="fixed bottom-0 left-0 right-0 md:left-[var(--sidebar-w,16rem)] z-20 border-t border-gray-200 bg-white/95 backdrop-blur">
+      <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 md:left-[var(--sidebar-w,16rem)] z-20 border-t border-gray-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8">
           <div className="text-sm">
             <span className="font-semibold text-gray-900">{filledCourses.length}</span>

@@ -5,7 +5,7 @@ import { AiSettingsService } from '../ai/ai-settings.service';
 import { AiUsageService } from '../ai/ai-usage.service';
 import { estimateCostUsd } from '../ai/ai-pricing';
 import {
-  DOC_TYPES, ExtractedData, REVIEW_THRESHOLD, normalizeExtraction, parseModelJson, sanitizeForPrompt,
+  DOC_TYPES, DocLayout, ExtractedData, REVIEW_THRESHOLD, normalizeExtraction, parseModelJson, sanitizeForPrompt,
 } from './document-types';
 
 export interface ReadInput {
@@ -22,6 +22,8 @@ export interface ReadResult {
   outputTokens: number;
   costUsd: number;
   escalated: boolean;
+  /** Optional word positions (OCR readers only). Stored beside the extracted fields. */
+  layout?: DocLayout;
 }
 
 export interface Availability {

@@ -106,7 +106,7 @@ export default function StudentDashboard() {
 
       {/* Transcripts */}
       <Reveal index={3}>
-      <div className="bg-white rounded-2xl border border-brand-100/60">
+      <div id="requests" className="bg-white rounded-2xl border border-brand-100/60 scroll-mt-16">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">My Transcripts</h2>
         </div>
