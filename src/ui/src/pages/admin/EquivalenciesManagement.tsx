@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftRight, Plus, Power } from 'lucide-react';
+import { ArrowLeftRight, Globe2, Plus, Power } from 'lucide-react';
 import type { AxiosError } from 'axios';
 import { coursesApi, equivalenciesApi } from '../../lib/api';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { usePermissions } from '../../hooks/usePermissions';
 import type { ApiError } from '../../types';
+import NetworkOverview from '../../components/workflow/NetworkOverview';
 
 interface Equivalency {
   id: number;
@@ -122,6 +123,7 @@ const emptyDetail = { outcome: 'equivalent', buCredits: '', matchLevel: '', rati
 export default function EquivalenciesManagement() {
   const qc = useQueryClient();
   const { can } = usePermissions();
+  const [tab, setTab] = useState<'mappings' | 'network'>('mappings');
   const [showCreate, setShowCreate] = useState(false);
   const [extId, setExtId] = useState('');
   const [buId, setBuId] = useState('');
@@ -217,6 +219,16 @@ export default function EquivalenciesManagement() {
         )}
       </div>
 
+      <div className="mb-5 flex gap-1 border-b border-gray-200" role="tablist">
+        {([['mappings', 'Mappings', ArrowLeftRight], ['network', 'Network', Globe2]] as const).map(([k, label, Icon]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
+            className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium ${tab === k ? 'border-brand-800 text-brand-800' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+            <Icon size={15} /> {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'network' ? <NetworkOverview /> : (<>
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
       {showCreate && (
@@ -252,6 +264,7 @@ export default function EquivalenciesManagement() {
         emptyMessage="No equivalencies found."
         renderExpanded={(r) => <EditRow row={r} canEdit={can('courses', 'edit')} saving={updateMutation.isPending} onSave={(d) => updateMutation.mutate({ id: r.id, d })} />}
       />
+      </>)}
     </div>
   );
 }
