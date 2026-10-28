@@ -248,7 +248,7 @@ export class DocumentsService {
           { name: 't', type: sql.VarChar(40), value: e.docType },
           { name: 'c', type: sql.Decimal(4, 3), value: e.confidence },
           { name: 'sum', type: sql.NVarChar(500), value: e.summary },
-          { name: 'j', type: sql.NVarChar(sql.MAX), value: JSON.stringify(e) },
+          { name: 'j', type: sql.NVarChar(sql.MAX), value: JSON.stringify(result.layout ? { ...e, layout: result.layout } : e) },
           { name: 'm', type: sql.NVarChar(100), value: result.model },
           { name: 'i', type: sql.Int, value: result.inputTokens },
           { name: 'o', type: sql.Int, value: result.outputTokens },
@@ -288,7 +288,12 @@ export class DocumentsService {
       `SELECT TOP 200 ${COLUMNS} FROM DocumentIntakes WHERE UserId = @u ORDER BY CreatedAt DESC`,
       [{ name: 'u', type: sql.UniqueIdentifier, value: target }],
     );
-    return res.recordset.map((r) => this.map(r));
+    return res.recordset.map((r) => {
+      const m = this.map(r);
+      // Word positions can be large; only the single-document view needs them.
+      if (m.extracted && m.extracted.layout) m.extracted = { ...m.extracted, layout: undefined };
+      return m;
+    });
   }
 
   async get(id: string, viewer: Viewer) {
@@ -331,7 +336,7 @@ export class DocumentsService {
         { name: 't', type: sql.VarChar(40), value: merged.docType },
         { name: 'c', type: sql.Decimal(4, 3), value: merged.confidence },
         { name: 'sum', type: sql.NVarChar(500), value: merged.summary },
-        { name: 'j', type: sql.NVarChar(sql.MAX), value: JSON.stringify(merged) },
+        { name: 'j', type: sql.NVarChar(sql.MAX), value: JSON.stringify(current?.layout && !retyped ? { ...merged, layout: current.layout } : merged) },
       ],
     );
     if (wasConfirmed && (await this.schema.has('Uploads', 'DocumentType'))) {

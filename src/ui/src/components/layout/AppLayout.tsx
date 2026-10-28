@@ -8,6 +8,7 @@ import { authApi, pagesApi } from '../../lib/api';
 import { PageTransition } from '../ui/PageTransition';
 import { Avatar } from '../shared/Avatar';
 import { UniversityHeader } from './UniversityHeader';
+import { StudentTabBar } from './StudentTabBar';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
@@ -305,7 +306,7 @@ export default function AppLayout() {
 
         <UniversityHeader />
 
-        <main className="flex-1 overflow-auto">
+        <main className={`flex-1 overflow-auto${user?.role === 'student' ? ' student-app' : ''}`}>
           <AnimatePresence mode="wait" initial={false}>
             <PageTransition key={location.pathname}>
               <Outlet />
@@ -313,6 +314,7 @@ export default function AppLayout() {
           </AnimatePresence>
         </main>
       </div>
+      {user?.role === 'student' && <StudentTabBar />}
     </div>
   );
 }

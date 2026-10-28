@@ -4,8 +4,9 @@ import { AiService } from '../ai/ai.service';
 import { AiUsageService } from '../ai/ai-usage.service';
 import { AiSettingsService } from '../ai/ai-settings.service';
 import { estimateCostUsd } from '../ai/ai-pricing';
+import { buildLayout, DiAnalyzeResult } from './di-layout';
 import { Availability, BASE_PROMPT, DocumentReader, PAUSED_REASON, ReadInput, ReadResult } from './document-reader';
-import { normalizeExtraction, parseModelJson, sanitizeForPrompt } from './document-types';
+import { DocLayout, normalizeExtraction, parseModelJson, sanitizeForPrompt } from './document-types';
 import { extractFromText } from './rules-helpers';
 
 const MAX_BYTES = 50_000_000; // DI handles larger files than the inline-base64 LLM path
@@ -46,7 +47,7 @@ export class AzureDocumentIntelligenceReader implements DocumentReader {
       throw new Error('This file is too large for Document Intelligence.');
     }
     const c = await this.providers.getConfig();
-    const content = await this.ocr(c.azureDocEndpoint!, c.azureDocKey!, input.bytes);
+    const { content, layout } = await this.ocr(c.azureDocEndpoint!, c.azureDocKey!, input.bytes);
 
     // Prefer the chat provider to turn OCR text into structured fields; else fall back to the rules extractor.
     if (await this.ai.hasChatProvider()) {
@@ -73,6 +74,7 @@ export class AzureDocumentIntelligenceReader implements DocumentReader {
           outputTokens: call.usage.output,
           costUsd: call.costUsd,
           escalated: false,
+          layout,
         };
       }
       this.logger.warn('Chat provider returned no usable JSON from DI text; falling back to rules on the OCR text.');
@@ -83,7 +85,7 @@ export class AzureDocumentIntelligenceReader implements DocumentReader {
       operation: 'read', model: 'azure-di+rules', inputTokens: 0, outputTokens: 0, estimatedCostUsd: 0,
       durationMs: 0, requestedByUserId: input.userId,
     }).catch(() => {});
-    return { extracted, model: 'azure-di+rules', inputTokens: 0, outputTokens: 0, costUsd: 0, escalated: false };
+    return { extracted, model: 'azure-di+rules', inputTokens: 0, outputTokens: 0, costUsd: 0, escalated: false, layout };
   }
 
   /** Base prompt plus the administrator-edited 'Document reading' skills, so these providers follow the playbook too. */
@@ -100,7 +102,7 @@ export class AzureDocumentIntelligenceReader implements DocumentReader {
   }
 
   /** Submit the file to DI prebuilt-read and poll until the analysis finishes; returns the full text content. */
-  private async ocr(endpoint: string, key: string, bytes: Buffer): Promise<string> {
+  private async ocr(endpoint: string, key: string, bytes: Buffer): Promise<{ content: string; layout?: DocLayout }> {
     const base = endpoint.replace(/\/+$/, '');
     const url = `${base}/documentintelligence/documentModels/prebuilt-read:analyze?api-version=2024-11-30`;
     const submit = await fetch(url, {
@@ -122,8 +124,8 @@ export class AzureDocumentIntelligenceReader implements DocumentReader {
         const body = await poll.text().catch(() => '');
         throw new Error(`Document Intelligence poll failed (${poll.status}): ${body.slice(0, 200)}`);
       }
-      const data = (await poll.json()) as { status?: string; analyzeResult?: { content?: string } };
-      if (data.status === 'succeeded') return data.analyzeResult?.content ?? '';
+      const data = (await poll.json()) as { status?: string; analyzeResult?: DiAnalyzeResult };
+      if (data.status === 'succeeded') return { content: data.analyzeResult?.content ?? '', layout: buildLayout(data.analyzeResult) };
       if (data.status === 'failed') throw new Error('Document Intelligence could not analyse this file.');
     }
     throw new Error('Document Intelligence analysis timed out.');

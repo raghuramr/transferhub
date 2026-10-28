@@ -23,6 +23,13 @@ export interface ExtractedData {
   confidence: number;
   summary: string;
   fields: Record<string, unknown>;
+  /** Word positions from an OCR reader (Azure Document Intelligence). Optional; lets the UI highlight values on scans/photos. */
+  layout?: DocLayout;
+}
+
+/** Word boxes per page, normalised to 0..1 of the page, top-left origin: b = [x, y, width, height]. */
+export interface DocLayout {
+  pages: { page: number; words: { t: string; b: [number, number, number, number] }[] }[];
 }
 
 export interface TranscriptCourseField {

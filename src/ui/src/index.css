@@ -58,3 +58,38 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #e5c9ce; border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: #d9a7b0; }
+
+/* Scan view: highlight boxes pop in as the scan line reaches them */
+@keyframes scanpop {
+  from { opacity: 0; transform: scale(1.12); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/*
+ * Student app on phones (class set on <main> by AppLayout for the student role): inputs at 16px so iOS does not
+ * zoom on focus, 44px touch targets, no sideways scroll, room for the bottom tab bar + home-indicator inset.
+ */
+@media (max-width: 767px) {
+  .student-app {
+    overflow-x: clip;
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+  .student-app input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  .student-app select,
+  .student-app textarea {
+    font-size: 16px !important;
+  }
+  .student-app button,
+  .student-app select,
+  .student-app input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+    min-height: 44px;
+  }
+  .student-app button[data-hl] {
+    min-height: 0;
+  }
+  .student-app img,
+  .student-app canvas,
+  .student-app pre {
+    max-width: 100%;
+  }
+}
