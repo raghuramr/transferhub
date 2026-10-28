@@ -1,4 +1,4 @@
-import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class SaveAiSettingsDto {
   /** null/omitted = the global row; a number = that university's override. */
@@ -40,4 +40,9 @@ export class CustomProviderDto {
 
 export class TestProviderDto {
   @IsString() @MaxLength(60) provider: string;
+}
+
+export class RunBenchmarkDto {
+  @IsOptional() @IsArray() @ArrayMaxSize(3) @IsString({ each: true }) studentIds?: string[];
+  @IsOptional() @IsArray() @ArrayMaxSize(8) @IsString({ each: true }) engines?: string[];
 }

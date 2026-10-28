@@ -503,6 +503,9 @@ export const aiControlsApi = {
   addCustomProvider: (d: CustomProviderInput) => api.post<AiProviderPublic>('/ai-controls/providers/custom', d),
   updateCustomProvider: (id: string, d: CustomProviderInput) => api.put<AiProviderPublic>(`/ai-controls/providers/custom/${id}`, d),
   deleteCustomProvider: (id: string) => api.delete<AiProviderPublic>(`/ai-controls/providers/custom/${id}`),
+  benchmarkEngines: () => api.get<BenchEngine[]>('/ai-controls/benchmark/engines'),
+  benchmarkStudents: () => api.get<{ students: BenchStudent[]; defaults: string[] }>('/ai-controls/benchmark/students'),
+  runBenchmark: (d: { studentIds: string[]; engines: string[] }) => api.post<BenchResult>('/ai-controls/benchmark/run', d, { timeout: 240_000 }),
   testProvider: (provider: ChatProviderId) => api.post<{ ok: boolean; ms?: number; reply?: string; error?: string }>('/ai-controls/providers/test', { provider }),
 };
 
@@ -521,6 +524,8 @@ export interface AiProviderPublic {
   chatProvider: ChatProviderId;
   anthropicKeySet: boolean;
   anthropicBaseUrl: string | null;
+  temperature: number;
+  timeoutSec: number;
   customProviders: CustomProviderPublic[];
   azureOpenAiEndpoint: string | null;
   azureOpenAiKeySet: boolean;
@@ -534,6 +539,8 @@ export interface AiProviderSave {
   chatProvider: ChatProviderId;
   anthropicKey: string;
   anthropicBaseUrl: string;
+  temperature: string;
+  timeoutSec: string;
   azureOpenAiEndpoint: string;
   azureOpenAiKey: string;
   azureOpenAiDeployment: string;
@@ -541,6 +548,28 @@ export interface AiProviderSave {
   docProvider: 'none' | 'azure_document_intelligence';
   azureDocEndpoint: string;
   azureDocKey: string;
+}
+export interface BenchEngine { id: string; label: string; ready: boolean; model: string; note?: string }
+export interface BenchStudent { id: string; name: string; courses: number; known: number }
+export interface BenchCaseRow {
+  engine: string; engineLabel: string; model: string; studentId: string; studentName: string; courseCode: string; courseTitle: string; institution: string;
+  expected: { buCode: string; source: 'equivalency' | 'scenario' } | null; picks: { buCode: string; confidence: number }[];
+  rank: number | null; hit1: boolean | null; hit3: boolean | null; topConfidence: number | null;
+  shortlistMs: number; callMs: number; parseMs: number; totalMs: number; costUsd: number; error?: string;
+  usage: { input: number; output: number } | null;
+}
+export interface BenchSummary {
+  engine: string; label: string; model: string; courses: number; answered: number; failed: number; withTruth: number;
+  top1: number | null; top3: number | null; avgConfidenceRight: number | null; avgConfidenceWrong: number | null;
+  autoApplied: number; autoWrong: number; avgMs: number; p95Ms: number; tokensIn: number; tokensOut: number; costUsd: number;
+  costPerCorrect: number | null; correctPerMinute: number | null; scores: { accuracy: number; speed: number; cost: number; overall: number };
+}
+export interface BenchResult {
+  generatedAt: string; target: string; dryRun: boolean;
+  settings: { matchModel: string; prefilterTopN: number; maxOutputTokens: number; autoApplyThreshold: number; catalogSize: number; temperature: number };
+  engines: { id: string; label: string; model: string }[]; skipped: { id: string; label: string; reason: string }[];
+  students: { id: string; name: string; courses: number; withTruth: number }[];
+  summary: BenchSummary[]; perStudent: { studentId: string; name: string; summary: BenchSummary[] }[]; cases: BenchCaseRow[]; notes: string[];
 }
 export interface CustomProviderInput { name: string; baseUrl: string; model: string; apiKey?: string; authStyle?: 'bearer' | 'api-key' }
 

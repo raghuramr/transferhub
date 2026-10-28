@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bot, ChevronUp, Coins, Database, Gauge, Loader2, Plug, Plus, Save, Server, Sparkles, Trash2, Zap } from 'lucide-react';
-import { aiControlsApi, universitiesApi, type AiProviderPublic, type AiProviderSave, type ChatProviderId, type CustomProviderPublic } from '../../lib/api';
+import { BarChart3, Bot, ChevronUp, Download, FlaskConical, Coins, Database, Gauge, Loader2, Plug, Plus, Save, Server, Sparkles, Trash2, Zap } from 'lucide-react';
+import { aiControlsApi, universitiesApi, type BenchResult, type BenchSummary, type AiProviderPublic, type AiProviderSave, type ChatProviderId, type CustomProviderPublic } from '../../lib/api';
 import { usePermissions } from '../../hooks/usePermissions';
 import { cn } from '../../lib/cn';
 import ReadinessCard from '../../components/workflow/ReadinessCard';
 import MatcherAccuracyCard from '../../components/workflow/MatcherAccuracyCard';
 import type { AgentSkill, AiSettings } from '../../types/workflow';
 
-type Tab = 'usage' | 'settings' | 'providers' | 'playbook' | 'requests';
+type Tab = 'usage' | 'settings' | 'providers' | 'playbook' | 'requests' | 'benchmark';
 
 const errMsg = (e: unknown, fallback: string) => {
   const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
@@ -552,13 +553,13 @@ function ExpandedCard({ icon, title, blurb, active, configured, canEdit, canTogg
     <div className={cn('col-span-full rounded-xl border bg-white p-5 shadow-sm', active ? 'border-brand-400 ring-2 ring-brand-500/30' : 'border-gray-200')}>
       <div className="flex items-start gap-3">
         <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', active ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-500')}>{icon}</span>
-        <div className="min-w-0 flex-1">
+        <button type="button" onClick={onClose} title="Click to collapse" className="min-w-0 flex-1 text-left">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-base font-semibold text-gray-900">{title}</span>
             {configured != null && <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', configured ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500')}>{configured ? 'Configured' : 'Not configured'}</span>}
           </div>
           {blurb && <p className="mt-0.5 text-xs text-gray-500">{blurb}</p>}
-        </div>
+        </button>
         {canToggle && (
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <span className={active ? 'font-medium text-brand-800' : 'text-gray-500'}>{toggling ? 'Saving…' : active ? 'Active' : 'Inactive'}</span>
@@ -615,7 +616,25 @@ const SaveButton = ({ busy, label = 'Save', disabled }: { busy: boolean; label?:
   </button>
 );
 
-function AnthropicForm({ d, canEdit, onClose, active, toggling, onToggle }: { d: AiProviderPublic; canEdit: boolean; onClose: () => void; active: boolean; toggling: boolean; onToggle: (v: boolean) => void }) {
+/** "What will actually be called" box shown inside a provider card. */
+function ModelBox({ rows, note }: { rows: [string, string][]; note?: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-brand-100 bg-brand-50/40 p-3 text-sm">
+      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-brand-800">Model &amp; parameters in use</p>
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+        {rows.map(([k, v]) => (<div key={k} className="flex justify-between gap-3"><dt className="text-gray-500">{k}</dt><dd className="text-right font-medium text-gray-900">{v}</dd></div>))}
+      </dl>
+      {note && <p className="mt-2 text-xs text-gray-500">{note}</p>}
+    </div>
+  );
+}
+const paramRows = (d: AiProviderPublic, gs: AiSettings | null): [string, string][] => [
+  ['Temperature', String(d.temperature)],
+  ['Request timeout', `${d.timeoutSec} s`],
+  ...(gs ? ([['Max output tokens', String(gs.maxOutputTokens)], ['Shortlist size sent', `${gs.prefilterTopN} courses`], ['Auto-apply threshold', `${Math.round(gs.autoLikelyThreshold * 100)}%`]] as [string, string][]) : []),
+];
+
+function AnthropicForm({ d, gs, canEdit, onClose, active, toggling, onToggle }: { d: AiProviderPublic; gs: AiSettings | null; canEdit: boolean; onClose: () => void; active: boolean; toggling: boolean; onToggle: (v: boolean) => void }) {
   const { msg, setMsg, testing, test, refresh } = useProviderActions('anthropic');
   const [key, setKey] = useState('');
   const [url, setUrl] = useState(d.anthropicBaseUrl ?? '');
@@ -631,6 +650,8 @@ function AnthropicForm({ d, canEdit, onClose, active, toggling, onToggle }: { d:
     <form onSubmit={save} className="col-span-full">
       <ExpandedCard icon={<Bot size={18} />} title="Anthropic (Claude)" blurb="Claude models via the Anthropic API." active={active} configured={d.anthropicKeySet} canEdit={canEdit} toggling={toggling} onToggle={onToggle} onClose={onClose}
         footer={<>{canEdit && <SaveButton busy={busy} />}<TestButton onClick={test} busy={testing} disabled={!d.anthropicKeySet} /><Result msg={msg} /></>}>
+        <ModelBox rows={[['Matching model', gs?.matchModel ?? '-'], ['Escalation model', gs?.escalationModel ? `${gs.escalationModel} (below ${Math.round((gs.escalateBelowConfidence ?? 0) * 100)}% confidence)` : 'none'], ...paramRows(d, gs)]}
+          note={<>Models and limits are set under the <strong>Settings</strong> tab; temperature and timeout under <strong>Model parameters</strong> below.</>} />
         <SecretField label="API key" isSet={d.anthropicKeySet} value={key} onChange={setKey} disabled={!canEdit} />
         <TextField label="Base URL (optional)" hint="Leave blank for api.anthropic.com. Set it to use a gateway or proxy (https only)." value={url} onChange={setUrl} placeholder="https://api.anthropic.com" disabled={!canEdit} />
       </ExpandedCard>
@@ -638,7 +659,7 @@ function AnthropicForm({ d, canEdit, onClose, active, toggling, onToggle }: { d:
   );
 }
 
-function AzureOpenAiForm({ d, canEdit, onClose, active, toggling, onToggle }: { d: AiProviderPublic; canEdit: boolean; onClose: () => void; active: boolean; toggling: boolean; onToggle: (v: boolean) => void }) {
+function AzureOpenAiForm({ d, gs, canEdit, onClose, active, toggling, onToggle }: { d: AiProviderPublic; gs: AiSettings | null; canEdit: boolean; onClose: () => void; active: boolean; toggling: boolean; onToggle: (v: boolean) => void }) {
   const { msg, setMsg, testing, test, refresh } = useProviderActions('azure_openai');
   const [key, setKey] = useState('');
   const [f, setF] = useState({ endpoint: d.azureOpenAiEndpoint ?? '', deployment: d.azureOpenAiDeployment ?? '', version: d.azureOpenAiApiVersion ?? '2024-06-01' });
@@ -655,6 +676,7 @@ function AzureOpenAiForm({ d, canEdit, onClose, active, toggling, onToggle }: { 
     <form onSubmit={save} className="col-span-full">
       <ExpandedCard icon={<Zap size={18} />} title="Azure OpenAI" blurb="GPT models through your Azure AI Foundry / Azure OpenAI deployment." active={active} configured={configured} canEdit={canEdit} toggling={toggling} onToggle={onToggle} onClose={onClose}
         footer={<>{canEdit && <SaveButton busy={busy} />}<TestButton onClick={test} busy={testing} disabled={!configured} /><Result msg={msg} /></>}>
+ <ModelBox rows={[['Deployment (model)', f.deployment || '-'], ['API version', f.version], ...paramRows(d, gs)]} note="The deployment name is the model that answers; Azure ignores the Claude model names from Settings." />
         <TextField label="Endpoint (base URL)" hint="The resource URL, without /openai/v1." value={f.endpoint} onChange={(v) => setF((s) => ({ ...s, endpoint: v }))} placeholder="https://my-resource.openai.azure.com" disabled={!canEdit} />
         <SecretField label="API key" isSet={d.azureOpenAiKeySet} value={key} onChange={setKey} disabled={!canEdit} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -666,14 +688,13 @@ function AzureOpenAiForm({ d, canEdit, onClose, active, toggling, onToggle }: { 
   );
 }
 
-function CustomForm({ d, item, canEdit, onClose, active, toggling, onToggle, onSaved }: {
-  d: AiProviderPublic; item: CustomProviderPublic | null; canEdit: boolean; onClose: () => void; active: boolean; toggling: boolean; onToggle: (v: boolean) => void; onSaved: (id: string | null) => void;
+function CustomForm({ d, gs, item, canEdit, onClose, active, toggling, onToggle, onSaved }: {
+  d: AiProviderPublic; gs: AiSettings | null; item: CustomProviderPublic | null; canEdit: boolean; onClose: () => void; active: boolean; toggling: boolean; onToggle: (v: boolean) => void; onSaved: (id: string | null) => void;
 }) {
   const { msg, setMsg, testing, test, refresh } = useProviderActions(item ? (`custom:${item.id}` as ChatProviderId) : null);
   const [f, setF] = useState({ name: item?.name ?? '', baseUrl: item?.baseUrl ?? '', model: item?.model ?? '', authStyle: item?.authStyle ?? ('bearer' as 'bearer' | 'api-key') });
   const [key, setKey] = useState('');
   const [busy, setBusy] = useState(false);
-  void d;
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setMsg(null);
     try {
@@ -699,6 +720,7 @@ function CustomForm({ d, item, canEdit, onClose, active, toggling, onToggle, onS
           {item && canEdit && <button type="button" onClick={del} disabled={busy} className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"><Trash2 size={14} /> Remove</button>}
           <Result msg={msg} />
         </>}>
+        {item && <ModelBox rows={[['Model', item.model], ['Base URL', item.baseUrl.replace(/^https:\/\//, '')], ...paramRows(d, gs)]} />}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <TextField label="Name" value={f.name} onChange={(v) => setF((s) => ({ ...s, name: v }))} placeholder="OpenAI" disabled={!canEdit} />
           <TextField label="Model" hint="The model or deployment name sent with each request." value={f.model} onChange={(v) => setF((s) => ({ ...s, model: v }))} placeholder="gpt-4.1-mini" disabled={!canEdit} />
@@ -739,6 +761,47 @@ function DocAzureForm({ d, canEdit, onClose, active, toggling, onToggle }: { d: 
   );
 }
 
+/** Global model parameters applied to every chat call, plus a read-only summary of the matching limits kept in Settings. */
+function ParamsPanel({ d, gs, canEdit }: { d: AiProviderPublic; gs: AiSettings | null; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const [temp, setTemp] = useState(String(d.temperature));
+  const [timeout, setTimeoutSec] = useState(String(d.timeoutSec));
+  const [msg, setMsg] = useState<Msg>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setTemp(String(d.temperature)); setTimeoutSec(String(d.timeoutSec)); }, [d.temperature, d.timeoutSec]);
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault(); setBusy(true); setMsg(null);
+    try { await aiControlsApi.saveProviders({ temperature: temp, timeoutSec: timeout }); setMsg({ ok: true, text: 'Saved. Applies to every provider within ~15 seconds.' }); void qc.invalidateQueries({ queryKey: ['ai-providers'] }); }
+    catch (er) { setMsg({ ok: false, text: errMsg(er, 'Could not save.') }); } finally { setBusy(false); }
+  };
+  return (
+    <form onSubmit={save} className="rounded-xl border border-gray-200 bg-white p-4">
+      <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Gauge size={15} /> Model parameters</h3>
+      <p className="mb-3 text-xs text-gray-500">Sent with every model call, whichever provider is Active. Matching is a classification job, so temperature 0 (the most repeatable answer) is recommended.</p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Field label={`Temperature: ${temp}`} hint="0 = deterministic, 1 = more varied.">
+          <input type="range" min={0} max={1} step={0.1} value={temp} onChange={(e) => setTemp(e.target.value)} disabled={!canEdit} className="mt-2 w-full accent-brand-800" />
+        </Field>
+        <Field label="Request timeout (seconds)" hint="A call slower than this is abandoned (the rules engine then answers).">
+          <input type="number" min={5} max={300} value={timeout} onChange={(e) => setTimeoutSec(e.target.value)} disabled={!canEdit} className={inputCls} />
+        </Field>
+        <div className="text-sm">
+          <p className="font-medium text-gray-800">From Settings (read-only here)</p>
+          <dl className="mt-1 space-y-0.5 text-xs text-gray-600">
+            <div className="flex justify-between"><dt>Max output tokens</dt><dd className="font-medium">{gs?.maxOutputTokens ?? '-'}</dd></div>
+            <div className="flex justify-between"><dt>Courses sent per match</dt><dd className="font-medium">{gs?.prefilterTopN ?? '-'}</dd></div>
+            <div className="flex justify-between"><dt>Escalate below</dt><dd className="font-medium">{gs ? `${Math.round(gs.escalateBelowConfidence * 100)}%` : '-'}</dd></div>
+            <div className="flex justify-between"><dt>Auto-apply at</dt><dd className="font-medium">{gs ? `${Math.round(gs.autoLikelyThreshold * 100)}%` : '-'}</dd></div>
+            <div className="flex justify-between"><dt>Prompt caching</dt><dd className="font-medium">{gs ? (gs.usePromptCaching ? 'on' : 'off') : '-'}</dd></div>
+            <div className="flex justify-between"><dt>Monthly token budget</dt><dd className="font-medium">{gs?.monthlyTokenBudget ? gs.monthlyTokenBudget.toLocaleString() : 'none'}</dd></div>
+          </dl>
+        </div>
+      </div>
+      {canEdit && <div className="mt-3 flex flex-wrap items-center gap-2"><SaveButton busy={busy} /><Result msg={msg} /></div>}
+    </form>
+  );
+}
+
 function ProvidersTab() {
   const qc = useQueryClient();
   const { can } = usePermissions();
@@ -748,6 +811,8 @@ function ProvidersTab() {
   const [open, setOpen] = useState<string | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
   const [msg, setMsg] = useState<Msg>(null);
+  const settingsQ = useQuery({ queryKey: ['ai-settings-global'], queryFn: () => aiControlsApi.settings() });
+  const gs: AiSettings | null = settingsQ.data?.data.find((x) => x.institutionId == null) ?? null;
 
   // The Active switch saves straight away: ON selects this provider, OFF leaves the category with no cloud provider (rules engine only).
   const setActive = async (id: string, choice: Partial<AiProviderSave>) => {
@@ -766,7 +831,12 @@ function ProvidersTab() {
   const azureOk = d.azureOpenAiKeySet && !!d.azureOpenAiEndpoint && !!d.azureOpenAiDeployment;
   const closeBtn = () => setOpen(null);
 
-  const slot = (id: string, small: React.ReactNode, big: React.ReactNode) => (open === id ? big : small);
+  // Each provider keeps its place in the grid: the small card grows into the large one right where it was (animated), and a click on it collapses it again.
+  const slot = (id: string, small: React.ReactNode, big: React.ReactNode) => (
+    <motion.div key={id} layout transition={{ type: 'spring', stiffness: 420, damping: 40 }} className={open === id ? 'col-span-full' : ''}>
+      {open === id ? big : small}
+    </motion.div>
+  );
 
   return (
     <div className="space-y-6">
@@ -778,24 +848,26 @@ function ProvidersTab() {
         <p className="mb-3 text-xs text-gray-500">Open a card to set its key and URL. Only one provider is Active at a time; the built-in rules engine covers everything when none is.</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {slot('anthropic',
-            <SmallCard key="anthropic" icon={<Bot size={18} />} title="Anthropic (Claude)" active={chat === 'anthropic'} configured={d.anthropicKeySet} onOpen={() => setOpen('anthropic')} />,
-            <AnthropicForm key="anthropic" d={d} canEdit={canEdit} onClose={closeBtn} active={chat === 'anthropic'} toggling={toggling === 'anthropic'} onToggle={(v) => { void setActive('anthropic', { chatProvider: v ? 'anthropic' : 'none' }); }} />)}
+            <SmallCard key="anthropic" icon={<Bot size={18} />} title="Anthropic (Claude)" sub={gs?.matchModel} active={chat === 'anthropic'} configured={d.anthropicKeySet} onOpen={() => setOpen('anthropic')} />,
+            <AnthropicForm key="anthropic" d={d} gs={gs} canEdit={canEdit} onClose={closeBtn} active={chat === 'anthropic'} toggling={toggling === 'anthropic'} onToggle={(v) => { void setActive('anthropic', { chatProvider: v ? 'anthropic' : 'none' }); }} />)}
           {slot('azure_openai',
-            <SmallCard key="azure" icon={<Zap size={18} />} title="Azure OpenAI" active={chat === 'azure_openai'} configured={azureOk} onOpen={() => setOpen('azure_openai')} />,
-            <AzureOpenAiForm key="azure" d={d} canEdit={canEdit} onClose={closeBtn} active={chat === 'azure_openai'} toggling={toggling === 'azure_openai'} onToggle={(v) => { void setActive('azure_openai', { chatProvider: v ? 'azure_openai' : 'none' }); }} />)}
+            <SmallCard key="azure" icon={<Zap size={18} />} title="Azure OpenAI" sub={d.azureOpenAiDeployment ?? undefined} active={chat === 'azure_openai'} configured={azureOk} onOpen={() => setOpen('azure_openai')} />,
+            <AzureOpenAiForm key="azure" d={d} gs={gs} canEdit={canEdit} onClose={closeBtn} active={chat === 'azure_openai'} toggling={toggling === 'azure_openai'} onToggle={(v) => { void setActive('azure_openai', { chatProvider: v ? 'azure_openai' : 'none' }); }} />)}
           {d.customProviders.map((cp) => {
             const id = `custom:${cp.id}` as ChatProviderId;
             return slot(id,
               <SmallCard key={id} icon={<Server size={18} />} title={cp.name} sub={cp.model} active={chat === id} configured={!!cp.baseUrl && !!cp.model} onOpen={() => setOpen(id)} />,
-              <CustomForm key={id} d={d} item={cp} canEdit={canEdit} onClose={closeBtn} active={chat === id} toggling={toggling === id} onToggle={(v) => { void toggleChat(id)(v); }} onSaved={() => undefined} />);
+              <CustomForm key={id} d={d} gs={gs} item={cp} canEdit={canEdit} onClose={closeBtn} active={chat === id} toggling={toggling === id} onToggle={(v) => { void toggleChat(id)(v); }} onSaved={() => undefined} />);
           })}
           {canEdit && slot('new',
             <button key="new" type="button" onClick={() => setOpen('new')} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white p-3 text-sm font-medium text-gray-600 hover:border-brand-400 hover:text-brand-800">
               <Plus size={16} /> Add provider
             </button>,
-            <CustomForm key="new" d={d} item={null} canEdit={canEdit} onClose={closeBtn} active={false} toggling={false} onToggle={() => undefined} onSaved={() => setOpen(null)} />)}
+            <CustomForm key="new" d={d} gs={gs} item={null} canEdit={canEdit} onClose={closeBtn} active={false} toggling={false} onToggle={() => undefined} onSaved={() => setOpen(null)} />)}
         </div>
       </div>
+
+      <ParamsPanel d={d} gs={gs} canEdit={canEdit} />
 
       <div>
         <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Database size={15} /> Document reading</h3>
@@ -811,12 +883,214 @@ function ProvidersTab() {
   );
 }
 
+// ── Benchmark: the same transfer through each engine, measured ──
+const fmtMs = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
+const fmtUsd = (n: number | null) => (n == null ? '-' : n === 0 ? '$0' : n < 0.01 ? `$${n.toFixed(5)}` : `$${n.toFixed(3)}`);
+const pct = (n: number | null) => (n == null ? '-' : `${n}%`);
+
+function ScoreBar({ v, tone }: { v: number; tone?: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-2 w-20 overflow-hidden rounded-full bg-gray-100"><div className={cn('h-full rounded-full', tone ?? 'bg-brand-700')} style={{ width: `${Math.max(2, Math.min(100, v))}%` }} /></div>
+      <span className="w-8 text-xs font-medium text-gray-700">{v}</span>
+    </div>
+  );
+}
+
+function SummaryTable({ rows, best }: { rows: BenchSummary[]; best?: string }) {
+  const th = 'px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500';
+  return (
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+      <table className="min-w-full text-sm">
+        <thead className="bg-gray-50"><tr>
+          <th className={th}>Engine</th><th className={th}>Top-1</th><th className={th}>Top-3</th><th className={th}>Avg / p95 time</th><th className={th}>Tokens in / out</th>
+          <th className={th}>Cost</th><th className={th}>Cost per correct</th><th className={th}>Auto-apply (wrong)</th><th className={th}>Failed</th>
+        </tr></thead>
+        <tbody className="divide-y divide-gray-100">
+          {rows.map((r) => (
+            <tr key={r.engine} className={r.engine === best ? 'bg-green-50/50' : ''}>
+              <td className="px-3 py-2"><span className="font-medium text-gray-900">{r.label}</span>{r.engine === best && <span className="ml-2 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">Best overall</span>}<span className="block text-xs text-gray-500">{r.model}</span></td>
+              <td className="px-3 py-2 font-medium">{pct(r.top1)}<span className="block text-xs font-normal text-gray-500">of {r.withTruth} known</span></td>
+              <td className="px-3 py-2">{pct(r.top3)}</td>
+              <td className="px-3 py-2">{fmtMs(r.avgMs)} <span className="text-gray-400">/ {fmtMs(r.p95Ms)}</span></td>
+              <td className="px-3 py-2">{r.tokensIn.toLocaleString()} / {r.tokensOut.toLocaleString()}</td>
+              <td className="px-3 py-2">{fmtUsd(r.costUsd)}</td>
+              <td className="px-3 py-2">{fmtUsd(r.costPerCorrect)}</td>
+              <td className="px-3 py-2">{r.autoApplied} <span className={r.autoWrong ? 'font-medium text-red-600' : 'text-gray-400'}>({r.autoWrong})</span></td>
+              <td className={cn('px-3 py-2', r.failed ? 'font-medium text-red-600' : 'text-gray-400')}>{r.failed}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BenchmarkTab() {
+  const { can } = usePermissions();
+  const canRun = can('ai_controls', 'edit');
+  const engines = useQuery({ queryKey: ['bench-engines'], queryFn: () => aiControlsApi.benchmarkEngines() });
+  const students = useQuery({ queryKey: ['bench-students'], queryFn: () => aiControlsApi.benchmarkStudents() });
+  const [pickedStudents, setPickedStudents] = useState<string[] | null>(null);
+  const [pickedEngines, setPickedEngines] = useState<string[] | null>(null);
+  const [result, setResult] = useState<BenchResult | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [openStudent, setOpenStudent] = useState<string | null>(null);
+
+  const engList = engines.data?.data ?? [];
+  const stuList = students.data?.data.students ?? [];
+  const selStudents = pickedStudents ?? students.data?.data.defaults ?? [];
+  const selEngines = pickedEngines ?? engList.filter((e) => e.ready).map((e) => e.id);
+  const nCourses = stuList.filter((s) => selStudents.includes(s.id)).reduce((n, s) => n + s.courses, 0);
+  const toggle = (list: string[], id: string, max = 99) => (list.includes(id) ? list.filter((x) => x !== id) : list.length >= max ? list : [...list, id]);
+
+  const run = async () => {
+    if (!window.confirm(`Run ${selEngines.length} engine${selEngines.length === 1 ? '' : 's'} over about ${nCourses} courses? Cloud engines use real tokens (typically a few cents in total). Nothing is saved.`)) return;
+    setBusy(true); setErr(null);
+    try { setResult((await aiControlsApi.runBenchmark({ studentIds: selStudents, engines: selEngines })).data); setOpenStudent(null); }
+    catch (e) { setErr(errMsg(e, 'The benchmark failed.')); } finally { setBusy(false); }
+  };
+  const download = () => {
+    if (!result) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' }));
+    const a = document.createElement('a'); a.href = url; a.download = `ai-benchmark-${result.generatedAt.slice(0, 19).replace(/[:T]/g, '-')}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+  };
+  const best = useMemo(() => (result ? [...result.summary].sort((a, b) => b.scores.overall - a.scores.overall)[0]?.engine : undefined), [result]);
+  const caseKeys = useMemo(() => (result ? [...new Set(result.cases.map((c) => `${c.studentId}|${c.institution}|${c.courseCode}`))] : []), [result]);
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-gray-900"><FlaskConical size={15} /> Compare engines on a real transfer into Boston University</h3>
+        <p className="mt-1 text-xs text-gray-500">
+          Runs each chosen student&apos;s courses through the real matching step (shortlist, model call, answer check) for every selected engine, then scores the answers against past equivalency decisions
+          (and the scripted reference answers for the Maya demo). It is a dry run: nothing is saved, cached or added to the usage log.
+        </p>
+        <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div>
+            <p className="mb-1 text-sm font-medium text-gray-800">Students (up to 3)</p>
+            {students.isLoading && <p className="text-xs text-gray-400">Loading…</p>}
+            {!students.isLoading && !stuList.length && <p className="text-xs text-amber-700">No student with courses going to Boston University and known answers yet. Run the Maya demo scenario first (Demo scenario page).</p>}
+            <div className="max-h-52 space-y-1 overflow-y-auto">
+              {stuList.map((s) => (
+                <label key={s.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-gray-50">
+                  <input type="checkbox" checked={selStudents.includes(s.id)} onChange={() => setPickedStudents(toggle(selStudents, s.id, 3))} />
+                  <span className="font-medium text-gray-900">{s.name}</span><span className="text-xs text-gray-500">{s.courses} courses, {s.known} with a known answer</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-1 text-sm font-medium text-gray-800">Engines</p>
+            <div className="space-y-1">
+              {engList.map((e) => (
+                <label key={e.id} className={cn('flex items-center gap-2 rounded-md px-2 py-1 text-sm', e.ready ? 'cursor-pointer hover:bg-gray-50' : 'opacity-50')}>
+                  <input type="checkbox" disabled={!e.ready} checked={e.ready && selEngines.includes(e.id)} onChange={() => setPickedEngines(toggle(selEngines, e.id))} />
+                  <span className="font-medium text-gray-900">{e.label}</span><span className="text-xs text-gray-500">{e.ready ? e.model : e.note}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        {canRun && (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button type="button" onClick={run} disabled={busy || !selStudents.length || !selEngines.length} className="inline-flex items-center gap-2 rounded-lg bg-brand-800 px-5 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50">
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <BarChart3 size={16} />} {busy ? 'Running… (can take a minute)' : 'Run benchmark'}
+            </button>
+            {result && <button type="button" onClick={download} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Download size={14} /> Download results (JSON)</button>}
+          </div>
+        )}
+        {err && <p className="mt-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">{err}</p>}
+      </div>
+
+      {result && (
+        <>
+          <div className="text-xs text-gray-500">
+            Target: {result.target} · catalogue {result.settings.catalogSize} courses · {result.settings.prefilterTopN} sent per match · temperature {result.settings.temperature} · auto-apply at {Math.round(result.settings.autoApplyThreshold * 100)}% ·
+            {' '}{result.students.map((s) => `${s.name} (${s.courses} courses)`).join(', ')} · {new Date(result.generatedAt).toLocaleString()}
+            {result.skipped.length > 0 && <span className="text-amber-700"> · skipped: {result.skipped.map((s) => `${s.label} (${s.reason})`).join(', ')}</span>}
+          </div>
+
+          <div>
+            <h4 className="mb-2 text-sm font-semibold text-gray-900">Overall</h4>
+            <SummaryTable rows={result.summary} best={best} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {result.summary.map((r) => (
+              <div key={r.engine} className={cn('rounded-xl border bg-white p-4', r.engine === best ? 'border-green-400 ring-2 ring-green-200' : 'border-gray-200')}>
+                <p className="font-semibold text-gray-900">{r.label}</p>
+                <p className="mb-3 text-3xl font-bold text-brand-800">{r.scores.overall}<span className="text-sm font-normal text-gray-400"> / 100</span></p>
+                <div className="space-y-1.5 text-xs text-gray-600">
+                  <div className="flex items-center justify-between"><span>Accuracy</span><ScoreBar v={r.scores.accuracy} /></div>
+                  <div className="flex items-center justify-between"><span>Speed</span><ScoreBar v={r.scores.speed} tone="bg-sky-600" /></div>
+                  <div className="flex items-center justify-between"><span>Cost efficiency</span><ScoreBar v={r.scores.cost} tone="bg-emerald-600" /></div>
+                </div>
+                <p className="mt-3 text-xs text-gray-500">{r.correctPerMinute != null ? `${r.correctPerMinute} correct matches per minute` : ''}{r.avgConfidenceRight != null ? ` · confidence when right ${Math.round(r.avgConfidenceRight * 100)}%` : ''}{r.avgConfidenceWrong != null ? `, when wrong ${Math.round(r.avgConfidenceWrong * 100)}%` : ''}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">Score = 50% accuracy (60% top-1 + 40% top-3) + 25% speed (relative to the fastest engine) + 25% cost (100 = free). &ldquo;Auto-apply (wrong)&rdquo; counts answers confident enough to be applied automatically and, in brackets, how many of those disagreed with the known answer: the number that matters most for safety.</p>
+
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-gray-900">By student</h4>
+            {result.perStudent.map((p) => (
+              <div key={p.studentId}>
+                <button type="button" onClick={() => setOpenStudent(openStudent === p.studentId ? null : p.studentId)} className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-800" aria-expanded={openStudent === p.studentId}>
+                  <ChevronUp size={14} className={cn('transition-transform', openStudent === p.studentId ? '' : 'rotate-180')} /> {p.name}
+                </button>
+                <SummaryTable rows={p.summary} />
+                {openStudent === p.studentId && (
+                  <div className="mt-2 overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-gray-50 text-left text-gray-500"><tr><th className="px-3 py-2">Course</th><th className="px-3 py-2">Known answer</th>{result.engines.map((e) => <th key={e.id} className="px-3 py-2">{e.label}</th>)}</tr></thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {caseKeys.filter((k) => k.startsWith(`${p.studentId}|`)).map((k) => {
+                          const rows = result.cases.filter((c) => `${c.studentId}|${c.institution}|${c.courseCode}` === k);
+                          const f = rows[0];
+                          return (
+                            <tr key={k}>
+                              <td className="px-3 py-2"><span className="font-medium text-gray-900">{f.institution} {f.courseCode}</span><span className="block text-gray-500">{f.courseTitle}</span></td>
+                              <td className="px-3 py-2">{f.expected ? <>{f.expected.buCode}<span className="block text-[10px] text-gray-400">{f.expected.source === 'scenario' ? 'demo reference' : 'past decision'}</span></> : <span className="text-gray-400">unknown</span>}</td>
+                              {result.engines.map((e) => {
+                                const c = rows.find((x) => x.engine === e.id);
+                                if (!c) return <td key={e.id} />;
+                                return (
+                                  <td key={e.id} className="px-3 py-2">
+                                    {c.error ? <span className="text-red-600">{c.error}</span> : (
+                                      <>
+                                        <span className={cn('font-medium', c.hit1 === true ? 'text-green-700' : c.hit1 === false ? 'text-red-600' : 'text-gray-700')}>{c.hit1 === true ? '✓ ' : c.hit1 === false ? '✗ ' : ''}{c.picks[0]?.buCode ?? 'no match'}</span>
+                                        {c.picks[0] && <span className="text-gray-400"> {Math.round(c.picks[0].confidence * 100)}%</span>}
+                                        <span className="block text-gray-400">{fmtMs(c.totalMs)}{c.usage ? ` · ${c.usage.input + c.usage.output} tok` : ''}{c.costUsd ? ` · ${fmtUsd(c.costUsd)}` : ''}{c.hit1 === false && c.rank ? ` · answer was #${c.rank}` : ''}</span>
+                                      </>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <ul className="list-disc space-y-0.5 pl-5 text-xs text-gray-500">{result.notes.map((n) => <li key={n}>{n}</li>)}</ul>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function AiControls() {
   const [tab, setTab] = useState<Tab>('usage');
   const [days, setDays] = useState(30);
   const tabs: { key: Tab; label: string }[] = [
     { key: 'usage', label: 'Usage' }, { key: 'requests', label: 'By request' },
-    { key: 'settings', label: 'Settings' }, { key: 'providers', label: 'Providers' }, { key: 'playbook', label: 'Agent playbook' },
+    { key: 'settings', label: 'Settings' }, { key: 'providers', label: 'Providers' }, { key: 'benchmark', label: 'Benchmark' }, { key: 'playbook', label: 'Agent playbook' },
   ];
   return (
     <div className="mx-auto w-[95%] max-w-6xl p-4 sm:p-6">
@@ -841,6 +1115,7 @@ export default function AiControls() {
       {tab === 'requests' && <RequestsTab days={days} />}
       {tab === 'settings' && <SettingsTab />}
       {tab === 'providers' && <ProvidersTab />}
+      {tab === 'benchmark' && <BenchmarkTab />}
       {tab === 'playbook' && <PlaybookTab />}
     </div>
   );

@@ -6,11 +6,12 @@ import type { AuthenticatedRequest } from '../auth/authenticated-request.interfa
 import { AiSettingsService, AiSettingsInput } from './ai-settings.service';
 import { AiProvidersService, SaveAiProvidersInput, type ChatProvider } from './ai-providers.service';
 import { AiService } from './ai.service';
+import { BenchmarkService } from './benchmark.service';
 import { AiLearningService } from './ai-learning.service';
 import { AiUsageService } from './ai-usage.service';
 import { ReadinessService } from './readiness.service';
 import { BacktestService } from './backtest.service';
-import { SaveAiSettingsDto, SaveSkillDto, CustomProviderDto, TestProviderDto } from './dto/ai-controls.dto';
+import { SaveAiSettingsDto, SaveSkillDto, CustomProviderDto, TestProviderDto, RunBenchmarkDto } from './dto/ai-controls.dto';
 
 /** Everything the "AI Controls" admin page needs: spend switches, the agent playbook, and token accounting. */
 @Controller('ai-controls')
@@ -24,6 +25,7 @@ export class AiControlsController {
     private providers: AiProvidersService,
     private learning: AiLearningService,
     private ai: AiService,
+    private benchmark: BenchmarkService,
   ) {}
 
   /** Playbook rules suggested by patterns in faculty decisions (nothing is saved until an admin adds one). */
@@ -70,6 +72,27 @@ export class AiControlsController {
   @Permission('ai_controls', 'edit')
   testProvider(@Body() dto: TestProviderDto) {
     return this.ai.testProvider(dto.provider as ChatProvider);
+  }
+
+  /** Engines available to benchmark (Anthropic, Azure OpenAI, custom providers, built-in rules) and which are configured. */
+  @Get('benchmark/engines')
+  @Permission('ai_controls', 'view')
+  benchmarkEngines() {
+    return this.benchmark.engines();
+  }
+
+  /** Students whose courses go to Boston University and have known answers; `defaults` = the two pre-selected. */
+  @Get('benchmark/students')
+  @Permission('ai_controls', 'view')
+  benchmarkStudents() {
+    return this.benchmark.students();
+  }
+
+  /** Dry-run the transfer matching for the chosen students through each chosen engine and measure accuracy, speed and cost. */
+  @Post('benchmark/run')
+  @Permission('ai_controls', 'edit')
+  runBenchmark(@Body() dto: RunBenchmarkDto) {
+    return this.benchmark.run(dto);
   }
 
   /** Is the installation ready to run requests end to end? (keys, migrations, approvers, stalled automation) */
