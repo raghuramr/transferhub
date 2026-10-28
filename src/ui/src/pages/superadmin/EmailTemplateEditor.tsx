@@ -38,13 +38,10 @@ const errText = (e: unknown) => {
 
 const input = 'w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500';
 
-export function EmailTemplateEditor({ to }: { to: string }) {
+/** Editor for one built-in template, shown inside its expanded row in the template list. */
+export function BuiltinTemplateEditor({ item, to, ready }: { item: EmailTemplateItem; to: string; ready: boolean }) {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ['email-overrides'], queryFn: () => emailApi.overrides() });
-  const items: EmailTemplateItem[] = q.data?.data.items ?? [];
-  const ready = q.data?.data.ready ?? true;
-  const [key, setKey] = useState('');
-  const cur = items.find((i) => i.key === key) ?? items[0];
+  const cur = item;
   const [form, setForm] = useState<Form>(EMPTY);
   const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -90,27 +87,11 @@ export function EmailTemplateEditor({ to }: { to: string }) {
   const d = cur?.defaults;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white lg:col-span-2">
-      <header className="border-b border-gray-100 px-4 py-3">
-        <h2 className="text-sm font-semibold text-gray-900">Edit email text &amp; recipients</h2>
-        <p className="text-xs text-gray-500">
-          Change the subject, headline, body and button text of any email, switch it off, or copy extra addresses on it. A blank field keeps the built-in text.
-          Colours, layout and the detail card stay as designed.
-        </p>
-      </header>
-      {q.isLoading && <p className="px-4 py-3 text-sm text-gray-400">Loading…</p>}
-      {q.isError && <p className="px-4 py-3 text-sm text-red-600">Could not load the templates.</p>}
+    <div>
       {!ready && <p className="mx-4 mt-3 rounded-lg bg-amber-50 p-2 text-sm text-amber-800">Saving needs migration 023 (AppSettings) to be applied. You can still preview.</p>}
       {cur && d && (
         <div className="grid gap-0 lg:grid-cols-[1fr_1fr]">
           <div className="space-y-3 border-b border-gray-100 p-4 lg:border-b-0 lg:border-r">
-            <label className="block text-sm">
-              <span className="mb-1 block text-xs font-medium text-gray-600">Email</span>
-              <select value={cur.key} onChange={(e) => { setKey(e.target.value); test.reset(); }} className={input}>
-                {items.map((i) => <option key={i.key} value={i.key}>{i.name}{i.override ? '  ✎' : ''} — to {i.audience}</option>)}
-              </select>
-            </label>
-
             <label className="block text-sm">
               <span className="mb-1 block text-xs font-medium text-gray-600">Subject</span>
               <input value={form.subject} onChange={(e) => set('subject', e.target.value)} placeholder={d.subject} maxLength={200} className={input} />
@@ -200,6 +181,6 @@ export function EmailTemplateEditor({ to }: { to: string }) {
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }

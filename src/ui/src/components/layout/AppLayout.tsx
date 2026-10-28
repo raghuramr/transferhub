@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth';
@@ -12,7 +12,7 @@ import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
   Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ScanText, ShieldQuestion, ScanLine, ArrowRightLeft,
-  Presentation, Compass, PanelLeftClose, PanelLeftOpen,
+  Presentation, Compass, PanelLeftClose, PanelLeftOpen, ChevronDown,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -63,11 +63,6 @@ const navItems: Record<Role, NavEntry[]> = {
   ],
   super_admin: [
     { to: '/superadmin', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-    // Master Data
-    { to: '/superadmin/universities', label: 'Universities', icon: <Building2 size={18} />, group: 'Master Data' },
-    { to: '/superadmin/institutions', label: 'Institutions', icon: <School size={18} /> },
-    { to: '/superadmin/programs', label: 'Programs', icon: <GraduationCap size={18} /> },
-    { to: '/superadmin/agencies', label: 'Agencies', icon: <Handshake size={18} /> },
     // Operations
     { to: '/requests', label: 'Approval queue', icon: <Inbox size={18} />, group: 'Operations' },
     { to: '/transfers', label: 'Transfers', icon: <ArrowRightLeft size={18} /> },
@@ -83,13 +78,19 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/superadmin/users', label: 'Users', icon: <Users size={18} />, group: 'Users' },
     // Reports
     { to: '/superadmin/audit', label: 'Audit Log', icon: <ScrollText size={18} />, group: 'Reports' },
+    // Master Data (sits just before Settings)
+    { to: '/superadmin/universities', label: 'Universities', icon: <Building2 size={18} />, group: 'Master Data' },
+    { to: '/superadmin/institutions', label: 'Institutions', icon: <School size={18} /> },
+    { to: '/superadmin/programs', label: 'Programs', icon: <GraduationCap size={18} /> },
+    { to: '/superadmin/agencies', label: 'Agencies', icon: <Handshake size={18} /> },
     // Settings
     { to: '/superadmin/settings', label: 'Settings', icon: <Settings size={18} />, group: 'Settings' },
     { to: '/superadmin/settings/roles-permissions', label: 'Roles & Permissions', icon: <ShieldCheck size={18} /> },
     { to: '/superadmin/settings/workflows', label: 'Workflows', icon: <GitBranch size={18} /> },
     { to: '/superadmin/settings/ai-controls', label: 'AI Controls', icon: <Bot size={18} /> },
     { to: '/superadmin/settings/import', label: 'Data Import', icon: <Upload size={18} /> },
-    { to: '/superadmin/settings/demo-scenario', label: 'Demo scenario', icon: <Presentation size={18} /> },
+    // Demo (presenter tools, kept apart from real settings)
+    { to: '/superadmin/settings/demo-scenario', label: 'Demo scenario', icon: <Presentation size={18} />, group: 'Demo' },
     { to: '/superadmin/settings/demo-documents', label: 'Demo documents', icon: <ScanText size={18} /> },
   ],
 };
@@ -102,6 +103,15 @@ export default function AppLayout() {
   // Desktop sidebar can shrink to an icon rail; the choice is remembered per browser.
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('th.sidebar.collapsed') === '1'; } catch { return false; }
+  });
+  // Menu sections (Operations, Users, ...) fold up to their heading; the choice is remembered per browser.
+  const [foldedGroups, setFoldedGroups] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('th.nav.folded') || '[]') as string[]; } catch { return []; }
+  });
+  const toggleGroup = (g: string) => setFoldedGroups((cur) => {
+    const next = cur.includes(g) ? cur.filter((x) => x !== g) : [...cur, g];
+    try { localStorage.setItem('th.nav.folded', JSON.stringify(next)); } catch { /* ignore */ }
+    return next;
   });
   const toggleCollapsed = () => setCollapsed((c) => {
     try { localStorage.setItem('th.sidebar.collapsed', c ? '0' : '1'); } catch { /* ignore */ }
@@ -134,35 +144,65 @@ export default function AppLayout() {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
+  // Navigating into a folded section (e.g. from a link on a page) opens it.
+  useEffect(() => {
+    let group: string | undefined;
+    let best = -1;
+    for (const it of items) {
+      if (it.group) group = it.group;
+      const on = location.pathname === it.to || location.pathname.startsWith(it.to + '/');
+      if (on && it.to.length > best && group) { best = it.to.length; setFoldedGroups((cur) => (cur.includes(group!) ? cur.filter((x) => x !== group) : cur)); }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  const dashboardPath = items[0]?.to ?? '/';
+
   const renderNavItems = (entries: NavEntry[], compact: boolean) => {
-    const rendered: React.ReactNode[] = [];
-    let currentGroup: string | undefined = undefined;
-    entries.forEach((item, i) => {
-      if (item.group && item.group !== currentGroup) {
-        currentGroup = item.group;
-        rendered.push(
-          compact ? (
-            <div key={`group-${i}`} className="mx-3 mt-3 mb-1 border-t border-brand-100/60" />
-          ) : (
-            <p
-              key={`group-${i}`}
-              className="px-3 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider"
-            >
-              {item.group}
-            </p>
-          )
-        );
-      }
-      rendered.push(<NavItem key={item.to} to={item.to} label={item.label} icon={item.icon} compact={compact} />);
-    });
-    return rendered;
+    // Split into the ungrouped lead items and one section per group.
+    const lead: NavEntry[] = [];
+    const sections: { group: string; items: NavEntry[] }[] = [];
+    for (const item of entries) {
+      if (item.group) sections.push({ group: item.group, items: [item] });
+      else if (sections.length) sections[sections.length - 1].items.push(item);
+      else lead.push(item);
+    }
+    const row = (item: NavEntry) => <NavItem key={item.to} to={item.to} label={item.label} icon={item.icon} compact={compact} />;
+    return (
+      <>
+        {lead.map(row)}
+        {sections.map((sec) => {
+          const open = compact || !foldedGroups.includes(sec.group);
+          return (
+            <div key={sec.group}>
+              {compact ? (
+                <div className="mx-3 mt-3 mb-1 border-t border-brand-100/60" />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(sec.group)}
+                  aria-expanded={open}
+                  className="flex w-full items-center justify-between px-3 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider hover:text-brand-800"
+                >
+                  <span>{sec.group}</span>
+                  <ChevronDown size={13} className={`transition-transform ${open ? '' : '-rotate-90'}`} />
+                </button>
+              )}
+              {open && sec.items.map(row)}
+            </div>
+          );
+        })}
+      </>
+    );
   };
 
   const renderSidebar = (compact: boolean) => (
     <>
       {/* Logo */}
       <div className={`flex items-center border-b border-brand-100/60 ${compact ? 'justify-center px-2 py-3' : 'gap-3 px-4 py-3'}`}>
-        {compact ? <LogoMark size={36} className="shrink-0" /> : <LogoFull height={88} className="shrink-0" />}
+        <Link to={dashboardPath} aria-label="TransferHub dashboard" title="Go to dashboard" className="shrink-0">
+          {compact ? <LogoMark size={36} className="shrink-0" /> : <LogoFull height={88} className="shrink-0" />}
+        </Link>
         <button
           onClick={() => setMobileNavOpen(false)}
           className="ml-auto md:hidden text-gray-400 hover:text-gray-700 p-1"
@@ -260,7 +300,7 @@ export default function AppLayout() {
           >
             <Menu size={22} />
           </button>
-          <LogoFull height={44} className="shrink-0" />
+          <Link to={dashboardPath} aria-label="TransferHub dashboard" className="shrink-0"><LogoFull height={44} className="shrink-0" /></Link>
         </div>
 
         <UniversityHeader />

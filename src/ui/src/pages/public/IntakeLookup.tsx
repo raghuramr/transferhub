@@ -17,7 +17,7 @@ export function IntakeShell({ title, subtitle, children, wide }: { title: string
       <motion.div className="absolute -bottom-40 -right-20 h-[36rem] w-[36rem] rounded-full bg-brand-500/30 blur-3xl" animate={{ x: [0, -30, 0], y: [0, -40, 0] }} transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }} />
       <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className={`relative w-full ${wide ? 'max-w-3xl' : 'max-w-md'}`}>
         <div className="mb-6 text-center">
-          <LogoTile width={220} className="mb-3" />
+          <Link to="/" aria-label="TransferHub home"><LogoTile width={220} className="mb-3" /></Link>
           <h1 className="text-2xl font-bold text-white">{title}</h1>
           {subtitle && <p className="mt-1 text-brand-200">{subtitle}</p>}
         </div>

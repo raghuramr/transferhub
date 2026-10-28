@@ -30,8 +30,8 @@ export class WorkflowsController {
 
   @Get('workflows/insights')
   @Permission('workflows', 'view')
-  insights(@Query('days') days?: string) {
-    return this.workflows.insights(days ? Number(days) : 90);
+  insights(@Query('days') days?: string, @Query('from') from?: string, @Query('to') to?: string) {
+    return this.workflows.insights(days ? Number(days) : 90, from, to);
   }
 
   @Get('workflows/:id')

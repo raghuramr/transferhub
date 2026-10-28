@@ -343,6 +343,11 @@ export interface EmailTemplateItem {
   defaults: { subject: string; headline: string; paragraphs: string[]; ctaLabel: string; hasCta: boolean; placeholders: string[] };
   override: EmailTemplateOverride | null;
 }
+export interface CustomEmailTemplate {
+  id: string; name: string; audience: string; subject: string; headline: string; paragraphs: string[];
+  ctaLabel?: string; ctaUrl?: string; enabled: boolean;
+}
+export type CustomEmailDraft = Partial<Omit<CustomEmailTemplate, 'id'>>;
 export interface EmailStatus {
   configured: boolean;
   fromAddress: string;
@@ -385,6 +390,16 @@ export const emailApi = {
   saveOverride: (key: string, o: EmailTemplateOverride) => api.put<{ override: EmailTemplateOverride }>(`/email/overrides/${key}`, o),
   resetOverride: (key: string) => api.delete(`/email/overrides/${key}`),
   previewOverride: (key: string, draft: EmailTemplateOverride) => api.post<{ subject: string; html: string }>(`/email/overrides/${key}/preview`, { draft }),
+  // custom (super-admin created) templates + bulk actions
+  customList: () => api.get<{ ready: boolean; placeholders: string[]; items: CustomEmailTemplate[] }>('/email/custom'),
+  customCreate: (d: CustomEmailDraft) => api.post<CustomEmailTemplate>('/email/custom', d),
+  customUpdate: (id: string, d: CustomEmailDraft) => api.put<CustomEmailTemplate>(`/email/custom/${id}`, d),
+  customDelete: (id: string) => api.delete(`/email/custom/${id}`),
+  customPreview: (draft: CustomEmailDraft, vars?: Record<string, string>) => api.post<{ subject: string; html: string }>('/email/custom/preview', { draft, vars }),
+  customTest: (draft: CustomEmailDraft, to?: string) => api.post<EmailAttempt>('/email/custom/test', { draft, ...(to ? { to } : {}) }),
+  customSend: (id: string, to: string[], vars?: Record<string, string>) => api.post<{ sent: number; results: { to: string; ok: boolean; error?: string }[] }>(`/email/custom/${id}/send`, { to, vars }),
+  bulk: (builtin: string[], custom: string[], action: 'activate' | 'deactivate' | 'delete') =>
+    api.post<{ done: number; skipped: { id: string; reason: string }[] }>('/email/custom/bulk', { builtin, custom, action }),
   testOverride: (key: string, draft: EmailTemplateOverride, to?: string) => api.post<EmailAttempt>(`/email/overrides/${key}/test`, { draft, ...(to ? { to } : {}) }),
 };
 
@@ -455,7 +470,7 @@ export interface SaveWorkflowPayload {
   requiredDocs: { docTypeKey: string; isRequired: boolean }[];
 }
 export const workflowsApi = {
-  insights: (days: number) => api.get<WorkflowInsights>('/workflows/insights', { params: { days } }),
+  insights: (days: number, range?: { from?: string; to?: string }) => api.get<WorkflowInsights>('/workflows/insights', { params: { days, ...(range?.from ? { from: range.from } : {}), ...(range?.to ? { to: range.to } : {}) } }),
   list: () => api.get<WorkflowSummary[]>('/workflows'),
   get: (id: number) => api.get<WorkflowDetail>(`/workflows/${id}`),
   lookups: () =>

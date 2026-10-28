@@ -273,9 +273,19 @@ function GroupsTab({ groups, staff, canEdit }: { groups: ApproverGroup[]; staff:
 
 function InsightsTab() {
   const [days, setDays] = useState(90);
-  const q = useQuery({ queryKey: ['workflow-insights', days], queryFn: () => workflowsApi.insights(days) });
+  const [custom, setCustom] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const [from, setFrom] = useState(() => new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10));
+  const [to, setTo] = useState(today);
+  const rangeOk = !custom || (!!from && !!to && from <= to);
+  const q = useQuery({
+    queryKey: ['workflow-insights', custom ? `${from}..${to}` : days],
+    queryFn: () => workflowsApi.insights(days, custom ? { from, to } : undefined),
+    enabled: rangeOk,
+    placeholderData: (prev) => prev,
+  });
   const d = q.data?.data;
-  if (q.isLoading || !d) return <p className="text-gray-400">Loading…</p>;
+  if (!d) return <p className="text-gray-400">{rangeOk ? 'Loading…' : 'Pick a valid date range.'}</p>;
   const maxHours = Math.max(1, ...d.stages.map((s) => s.avgHours ?? 0));
   const fmtHours = (h: number | null) => (h == null ? '—' : h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${h.toFixed(1)} h` : `${(h / 24).toFixed(1)} days`);
   const stat = (label: string, value: string | number, tone = 'text-gray-900') => (
@@ -288,10 +298,25 @@ function InsightsTab() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">How requests move through your stages, so you can see where they wait.</p>
-        <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
-          {[30, 90, 180, 365].map((v) => <option key={v} value={v}>Last {v} days</option>)}
-        </select>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <select
+            value={custom ? 'custom' : String(days)}
+            onChange={(e) => { if (e.target.value === 'custom') setCustom(true); else { setCustom(false); setDays(Number(e.target.value)); } }}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+          >
+            {[30, 90, 180, 365].map((v) => <option key={v} value={v}>Last {v} days</option>)}
+            <option value="custom">Custom range…</option>
+          </select>
+          {custom && (
+            <>
+              <input type="date" value={from} max={to || today} onChange={(e) => setFrom(e.target.value)} className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm" aria-label="From date" />
+              <span className="text-xs text-gray-500">to</span>
+              <input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm" aria-label="To date" />
+            </>
+          )}
+        </div>
       </div>
+      {!rangeOk && <p className="text-sm text-red-600">Pick a start date that is on or before the end date.</p>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
         {stat('Requests', d.totals.requests)}
         {stat('In progress', d.totals.active, 'text-brand-800')}

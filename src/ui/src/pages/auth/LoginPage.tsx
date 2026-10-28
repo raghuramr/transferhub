@@ -99,7 +99,7 @@ export default function LoginPage() {
           transition={{ delay: 0.1, duration: 0.4 }}
           className="text-center mb-8"
         >
-          <LogoTile width={240} className="mb-4" />
+          <Link to="/" aria-label="TransferHub home"><LogoTile width={240} className="mb-4" /></Link>
           <h1 className="sr-only">TransferHub</h1>
           <p className="text-brand-200 mt-1 text-lg">Transfer Credit Portal</p>
         </motion.div>
