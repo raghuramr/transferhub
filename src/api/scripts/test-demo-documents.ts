@@ -27,6 +27,13 @@ const colleges: DocCollegeRecord[] = [{
     assert.equal(r.extracted.docType, d.docType, `${d.fileName} read as ${r.extracted.docType}`);
     if (d.docType === 'transcript') assert.equal((r.extracted.fields as any).courses.length, 2);
   }
+  // Passport MRZ: the reader must accept it with valid check digits.
+  const pass = docs.find((d) => d.docType === 'id_document')!;
+  const pr = await reader.read({ fileName: pass.fileName, mimeType: 'application/pdf', bytes: pass.bytes, userId: 'u' });
+  assert.equal((pr.extracted.fields as any).idLast4, '0137');
+  assert.equal((pr.extracted.fields as any).dateOfBirth, '2003-05-02');
+  assert.ok(pr.extracted.confidence >= 0.85, `passport confidence ${pr.extracted.confidence}`);
+  assert.match(docs[0].fileName, /^Priya Raman - /, 'files are named after the student');
   const english = await buildStudentDocuments({ ...s, english: undefined }, colleges, ['english_test']);
   assert.equal(english.length, 0, 'no English test for native speakers');
 

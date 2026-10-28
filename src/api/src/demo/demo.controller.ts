@@ -38,7 +38,8 @@ export class DemoController {
   async generateDocs(@Body() body: { studentIds?: string[]; kinds?: DemoDocKind[] }, @Res() res: Response) {
     const out = await this.docs.generate(Array.isArray(body?.studentIds) ? body.studentIds : [], Array.isArray(body?.kinds) ? body.kinds : []);
     res.setHeader('Content-Type', out.mime);
-    res.setHeader('Content-Disposition', `attachment; filename="${out.fileName}"`);
+    const ascii = out.fileName.normalize('NFKD').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '');
+    res.setHeader('Content-Disposition', `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(out.fileName)}`);
     res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
     res.send(out.bytes);
   }

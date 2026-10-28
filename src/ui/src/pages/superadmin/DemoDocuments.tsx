@@ -42,7 +42,9 @@ export default function DemoDocuments() {
     mutationFn: async () => {
       const r = await api.post('/demo/documents/generate', { studentIds: [...selected], kinds: [...kinds] }, { responseType: 'blob' });
       const cd = String(r.headers['content-disposition'] ?? '');
-      const name = /filename="?([^";]+)"?/.exec(cd)?.[1] ?? 'demo-documents.zip';
+      const star = /filename\*=UTF-8''([^;]+)/i.exec(cd)?.[1];
+      let name = /filename="?([^";]+)"?/.exec(cd)?.[1] ?? 'Demo documents.zip';
+      if (star) { try { name = decodeURIComponent(star); } catch { /* keep ascii name */ } }
       const url = URL.createObjectURL(r.data as Blob);
       const a = document.createElement('a');
       a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
