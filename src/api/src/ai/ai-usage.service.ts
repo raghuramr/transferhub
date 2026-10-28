@@ -104,6 +104,13 @@ export class AiUsageService {
     );
   }
 
+  /** SQL Server returns BIGINT sums as strings; "3234" + "724" then concatenates in the UI. Convert the named columns to numbers. */
+  private num<T extends Record<string, unknown>>(row: T | undefined, keys: string[]): Record<string, number> & T {
+    const out: Record<string, unknown> = { ...(row ?? {}) };
+    for (const k of keys) out[k] = Number(out[k] ?? 0);
+    return out as Record<string, number> & T;
+  }
+
   async summary(days: number) {
     const since = { name: 'days', type: sql.Int, value: days };
     const totals = await this.db.query(
@@ -115,7 +122,10 @@ export class AiUsageService {
               ISNULL(SUM(CAST(CacheWriteTokens AS BIGINT)), 0) AS cacheWriteTokens,
               ISNULL(SUM(EstimatedCostUsd), 0) AS costUsd,
               ISNULL(SUM(CAST(EstTokensSaved AS BIGINT)), 0) AS tokensSaved,
-              COUNT(DISTINCT TranscriptId) AS requests
+              COUNT(DISTINCT TranscriptId) AS requests,
+              COUNT(CASE WHEN SkipReason = 'cache_hit' THEN 1 END) AS cacheHits,
+              ISNULL(AVG(CASE WHEN Skipped = 0 THEN CAST(DurationMs AS BIGINT) END), 0) AS avgMs,
+              ISNULL(MAX(CASE WHEN Skipped = 0 THEN DurationMs END), 0) AS maxMs
        FROM AiUsageLog WHERE CreatedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME())`,
       [since],
     );
@@ -131,8 +141,17 @@ export class AiUsageService {
     const byOperation = await this.db.query(
       `SELECT Operation AS operation, COUNT(CASE WHEN Skipped = 0 THEN 1 END) AS calls,
               ISNULL(SUM(CAST(InputTokens + OutputTokens + CacheReadTokens + CacheWriteTokens AS BIGINT)), 0) AS tokens,
-              ISNULL(SUM(EstimatedCostUsd), 0) AS costUsd
+              ISNULL(SUM(EstimatedCostUsd), 0) AS costUsd,
+              ISNULL(AVG(CASE WHEN Skipped = 0 THEN CAST(DurationMs AS BIGINT) END), 0) AS avgMs
        FROM AiUsageLog WHERE CreatedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME()) GROUP BY Operation`,
+      [since],
+    );
+    const byModel = await this.db.query(
+      `SELECT ISNULL(Model, 'n/a') AS model, COUNT(*) AS calls,
+              ISNULL(SUM(CAST(InputTokens + OutputTokens + CacheReadTokens + CacheWriteTokens AS BIGINT)), 0) AS tokens,
+              ISNULL(SUM(EstimatedCostUsd), 0) AS costUsd,
+              ISNULL(AVG(CAST(DurationMs AS BIGINT)), 0) AS avgMs
+       FROM AiUsageLog WHERE Skipped = 0 AND CreatedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME()) GROUP BY Model ORDER BY SUM(CAST(InputTokens + OutputTokens AS BIGINT)) DESC`,
       [since],
     );
     const bySkip = await this.db.query(
@@ -145,14 +164,34 @@ export class AiUsageService {
        FROM AiUsageLog WHERE Skipped = 0 AND CreatedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME())`,
       [since],
     );
+    const t = this.num(totals.recordset[0], ['calls', 'skippedCalls', 'inputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens', 'costUsd', 'tokensSaved', 'requests', 'cacheHits', 'avgMs', 'maxMs']);
+    const prefilterTokensSaved = Number(prefilter.recordset[0]?.tokensSaved ?? 0);
+    const spent = t.inputTokens + t.outputTokens;
+    const saved = t.tokensSaved + prefilterTokensSaved;
+    const attempts = t.calls + t.skippedCalls;
+    // Efficiency indicators for the super admin: how much work the AI did, how cheaply, and how often it was avoided.
+    const kpis = {
+      tokensPerCall: t.calls ? Math.round(spent / t.calls) : 0,
+      tokensPerRequest: t.requests ? Math.round(spent / t.requests) : 0,
+      costPerRequestUsd: t.requests ? t.costUsd / t.requests : 0,
+      cacheHitRate: attempts ? t.cacheHits / attempts : 0,
+      callsAvoidedRate: attempts ? t.skippedCalls / attempts : 0,
+      savingsRate: spent + saved ? saved / (spent + saved) : 0,
+      cachedTokenShare: spent + t.cacheReadTokens ? t.cacheReadTokens / (spent + t.cacheReadTokens) : 0,
+      avgLatencyMs: Math.round(t.avgMs),
+      maxLatencyMs: t.maxMs,
+    };
+    const cols = ['calls', 'tokens', 'costUsd', 'avgMs'];
     return {
       days,
-      totals: totals.recordset[0],
-      byDay: byDay.recordset,
-      byOperation: byOperation.recordset,
-      skippedBy: bySkip.recordset,
-      prefilterTokensSaved: Number(prefilter.recordset[0]?.tokensSaved ?? 0),
-      monthTokens: await this.tokensThisMonth(),
+      totals: t,
+      kpis,
+      byDay: byDay.recordset.map((r) => this.num(r, ['tokens', 'costUsd', 'tokensSaved'])),
+      byOperation: byOperation.recordset.map((r) => this.num(r, cols)),
+      byModel: byModel.recordset.map((r) => this.num(r, cols)),
+      skippedBy: bySkip.recordset.map((r) => this.num(r, ['n', 'tokensSaved'])),
+      prefilterTokensSaved,
+      monthTokens: Number(await this.tokensThisMonth()),
     };
   }
 
@@ -178,7 +217,7 @@ export class AiUsageService {
        ORDER BY SUM(CAST(l.InputTokens + l.OutputTokens + l.CacheReadTokens + l.CacheWriteTokens AS BIGINT)) DESC`,
       [{ name: 'days', type: sql.Int, value: days }],
     );
-    return res.recordset;
+    return res.recordset.map((r) => this.num(r, ['calls', 'cacheHits', 'inputTokens', 'outputTokens', 'cacheTokens', 'costUsd', 'tokensSaved']));
   }
 
   async forTranscript(transcriptId: string) {

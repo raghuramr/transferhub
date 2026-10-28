@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, Bot, ChevronUp, Download, FlaskConical, Coins, Database, Gauge, Loader2, Plug, Plus, Save, Server, Sparkles, Trash2, Zap } from 'lucide-react';
+import { BarChart3, Bot, ChevronDown, ChevronUp, Download, FlaskConical, Coins, Database, Gauge, Loader2, Plug, Plus, Save, Server, Sparkles, Trash2, Zap } from 'lucide-react';
 import { aiControlsApi, universitiesApi, type BenchResult, type BenchSummary, type AiProviderPublic, type AiProviderSave, type ChatProviderId, type CustomProviderPublic } from '../../lib/api';
 import { usePermissions } from '../../hooks/usePermissions';
 import { cn } from '../../lib/cn';
@@ -18,6 +18,8 @@ const errMsg = (e: unknown, fallback: string) => {
   return m ? [m].flat().join(' ') : fallback;
 };
 const fmt = (n: number | null | undefined) => (n ?? 0).toLocaleString();
+const pctOf = (n: number) => `${Math.round((n ?? 0) * 100)}%`;
+const ms = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)} s` : `${Math.round(n ?? 0)} ms`);
 const usd = (n: number | null | undefined) => `$${(n ?? 0).toFixed(n && n < 1 ? 4 : 2)}`;
 
 const MODELS = [
@@ -92,10 +94,10 @@ function UsageTab({ days }: { days: number }) {
   const budget = settingsQ.data?.data.find((r) => r.institutionId == null)?.monthlyTokenBudget ?? null;
   const s = data?.data;
   if (isLoading || !s) return <p className="text-gray-400">Loading…</p>;
-  const spent = s.totals.inputTokens + s.totals.outputTokens;
+  const spent = Number(s.totals.inputTokens) + Number(s.totals.outputTokens);
   const budgetPct = budget ? Math.min(100, Math.round((s.monthTokens / budget) * 100)) : null;
-  const saved = s.totals.tokensSaved + s.prefilterTokensSaved;
-  const maxDay = Math.max(1, ...s.byDay.map((d) => d.tokens + d.tokensSaved));
+  const saved = Number(s.totals.tokensSaved) + Number(s.prefilterTokensSaved);
+  const maxDay = Math.max(1, ...s.byDay.map((d) => Number(d.tokens) + Number(d.tokensSaved)));
 
   return (
     <div className="space-y-6">
@@ -105,6 +107,13 @@ function UsageTab({ days }: { days: number }) {
         <Stat icon={<Gauge size={13} />} label="Estimated cost" value={usd(s.totals.costUsd)} hint={`${fmt(s.totals.requests)} requests`} />
         <Stat icon={<Sparkles size={13} />} label="Tokens saved" value={fmt(saved)} hint="cache hits, skipped calls, catalogue shortlist" />
         <Stat icon={<Zap size={13} />} label="This month" value={fmt(s.monthTokens)} hint={`${fmt(s.totals.calls)} AI calls · ${fmt(s.totals.skippedCalls)} skipped`} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" data-testid="ai-kpis">
+        <Stat icon={<Gauge size={13} />} label="Tokens per request" value={fmt(s.kpis.tokensPerRequest)} hint={`${fmt(s.kpis.tokensPerCall)} per AI call`} />
+        <Stat icon={<Coins size={13} />} label="Cost per request" value={usd(s.kpis.costPerRequestUsd)} hint="estimated" />
+        <Stat icon={<Sparkles size={13} />} label="Share of tokens avoided" value={pctOf(s.kpis.savingsRate)} hint={`${pctOf(s.kpis.callsAvoidedRate)} of calls skipped · ${pctOf(s.kpis.cacheHitRate)} cache hits`} />
+        <Stat icon={<Zap size={13} />} label="Average response time" value={ms(s.kpis.avgLatencyMs)} hint={`slowest ${ms(s.kpis.maxLatencyMs)} · ${pctOf(s.kpis.cachedTokenShare)} prompt-cached`} />
       </div>
 
       {budgetPct !== null && budget && (
@@ -138,15 +147,37 @@ function UsageTab({ days }: { days: number }) {
         </div>
       </div>
 
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <h3 className="mb-2 text-sm font-semibold text-gray-900">By model</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[28rem] text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-gray-400"><tr><th className="py-1">Model</th><th className="py-1 text-right">Calls</th><th className="py-1 text-right">Avg time</th><th className="py-1 text-right">Tokens</th><th className="py-1 text-right">Cost</th></tr></thead>
+            <tbody>
+              {s.byModel.map((m) => (
+                <tr key={m.model} className="border-t border-gray-100">
+                  <td className="py-1.5 text-gray-700">{m.model}</td>
+                  <td className="py-1.5 text-right text-gray-500">{fmt(m.calls)}</td>
+                  <td className="py-1.5 text-right text-gray-500">{ms(m.avgMs)}</td>
+                  <td className="py-1.5 text-right font-medium text-gray-900">{fmt(m.tokens)}</td>
+                  <td className="py-1.5 text-right text-gray-700">{usd(m.costUsd)}</td>
+                </tr>
+              ))}
+              {s.byModel.length === 0 && <tr><td colSpan={5} className="py-2 text-gray-400">No AI calls yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <h3 className="mb-2 text-sm font-semibold text-gray-900">By operation</h3>
+          <h3 className="mb-2 text-sm font-semibold text-gray-900">By operation <span className="font-normal text-gray-400">(calls · avg time · tokens)</span></h3>
           <table className="w-full text-sm">
             <tbody>
               {s.byOperation.map((o) => (
                 <tr key={o.operation} className="border-t border-gray-100 first:border-0">
                   <td className="py-1.5 capitalize text-gray-700">{o.operation.replace(/_/g, ' ')}</td>
                   <td className="py-1.5 text-right text-gray-500">{fmt(o.calls)} calls</td>
+                  <td className="py-1.5 text-right text-gray-400">{ms(o.avgMs)}</td>
                   <td className="py-1.5 text-right font-medium text-gray-900">{fmt(o.tokens)}</td>
                 </tr>
               ))}
@@ -503,7 +534,7 @@ function RequestsTab({ days }: { days: number }) {
               <td className="px-4 py-2.5 text-gray-600">{r.institutionName}</td>
               <td className="px-4 py-2.5 text-right">{fmt(r.calls)}</td>
               <td className="px-4 py-2.5 text-right">{fmt(r.cacheHits)}</td>
-              <td className="px-4 py-2.5 text-right font-medium">{fmt(r.inputTokens + r.outputTokens)}</td>
+              <td className="px-4 py-2.5 text-right font-medium">{fmt(Number(r.inputTokens) + Number(r.outputTokens))}</td>
               <td className="px-4 py-2.5 text-right text-emerald-700">{fmt(r.tokensSaved)}</td>
               <td className="px-4 py-2.5 text-right">{usd(r.costUsd)}</td>
             </tr>
@@ -529,10 +560,10 @@ function Switch({ on, onChange, disabled, label }: { on: boolean; onChange: (v: 
   );
 }
 
-function SmallCard({ icon, title, sub, active, configured, onOpen }: { icon: React.ReactNode; title: string; sub?: string; active: boolean; configured?: boolean; onOpen: () => void }) {
+function SmallCard({ icon, title, sub, active, configured, onOpen, open }: { icon: React.ReactNode; title: string; sub?: string; active: boolean; configured?: boolean; onOpen: () => void; open?: boolean }) {
   return (
-    <button type="button" onClick={onOpen}
-      className={cn('flex items-center gap-3 rounded-xl border bg-white p-3 text-left transition hover:border-brand-300 hover:shadow-sm', active ? 'border-brand-400 ring-2 ring-brand-500/30' : 'border-gray-200')}>
+    <button type="button" onClick={onOpen} aria-expanded={open}
+      className={cn('flex w-full items-center gap-3 rounded-xl border bg-white p-3 text-left transition hover:border-brand-300 hover:shadow-sm', open ? 'border-brand-500 ring-2 ring-brand-500/40' : active ? 'border-brand-400 ring-2 ring-brand-500/30' : 'border-gray-200')}>
       <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', active ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-500')}>{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold text-gray-900">{title}</span>
@@ -542,6 +573,7 @@ function SmallCard({ icon, title, sub, active, configured, onOpen }: { icon: Rea
           {sub && <span className="truncate text-gray-400">· {sub}</span>}
         </span>
       </span>
+      {open !== undefined && <ChevronDown size={16} className={cn('shrink-0 text-gray-400 transition-transform', open && 'rotate-180 text-brand-700')} />}
     </button>
   );
 }
@@ -551,10 +583,10 @@ function ExpandedCard({ icon, title, blurb, active, configured, canEdit, canTogg
   onToggle: (v: boolean) => void; onClose: () => void; toggling?: boolean; children?: React.ReactNode; footer?: React.ReactNode;
 }) {
   return (
-    <div className={cn('col-span-full rounded-xl border bg-white p-5 shadow-sm', active ? 'border-brand-400 ring-2 ring-brand-500/30' : 'border-gray-200')}>
+    <div className={cn('rounded-xl border border-brand-400 bg-white p-5 shadow-sm', active && 'ring-2 ring-brand-500/30')}>
       <div className="flex items-start gap-3">
         <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', active ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-500')}>{icon}</span>
-        <button type="button" onClick={onClose} title="Click to collapse" className="min-w-0 flex-1 text-left">
+        <button type="button" onClick={onClose} title="Click to close" className="min-w-0 flex-1 text-left">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-base font-semibold text-gray-900">{title}</span>
             {configured != null && <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', configured ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500')}>{configured ? 'Configured' : 'Not configured'}</span>}
@@ -803,6 +835,48 @@ function ParamsPanel({ d, gs, canEdit }: { d: AiProviderPublic; gs: AiSettings |
   );
 }
 
+/**
+ * A row of small provider cards. Clicking a small card toggles its full card open directly underneath (the other small cards stay put),
+ * joined to the small card by a notch so it is clear which one is open; clicking the same small card again closes it.
+ */
+interface GridItem { id: string; small: (open: boolean, toggle: () => void) => React.ReactNode; big: React.ReactNode | null }
+function ConnectedGrid({ items, open, setOpen }: { items: GridItem[]; open: string | null; setOpen: (id: string | null) => void }) {
+  const wrap = useRef<HTMLDivElement>(null);
+  const [notch, setNotch] = useState<number | null>(null);
+  const current = items.find((i) => i.id === open && i.big) ?? null;
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (!current || !wrap.current) { setNotch(null); return; }
+      const card = wrap.current.querySelector<HTMLElement>(`[data-slot="${CSS.escape(current.id)}"]`);
+      if (!card) { setNotch(null); return; }
+      const w = wrap.current.getBoundingClientRect();
+      const c = card.getBoundingClientRect();
+      setNotch(c.left - w.left + c.width / 2);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [current?.id, items.length]);
+
+  return (
+    <div ref={wrap} className="relative">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((it) => (
+          <div key={it.id} data-slot={it.id}>{it.small(open === it.id, () => setOpen(open === it.id ? null : it.id))}</div>
+        ))}
+      </div>
+      <AnimatePresence initial={false}>
+        {current && (
+          <motion.div key={current.id} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }} className="relative mt-3">
+            {notch != null && <span aria-hidden className="absolute -top-[7px] z-10 h-3.5 w-3.5 -translate-x-1/2 rotate-45 border-l border-t border-brand-400 bg-white" style={{ left: notch }} />}
+            {current.big}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function ProvidersTab() {
   const qc = useQueryClient();
   const { can } = usePermissions();
@@ -832,13 +906,6 @@ function ProvidersTab() {
   const azureOk = d.azureOpenAiKeySet && !!d.azureOpenAiEndpoint && !!d.azureOpenAiDeployment;
   const closeBtn = () => setOpen(null);
 
-  // Each provider keeps its place in the grid: the small card grows into the large one right where it was (animated), and a click on it collapses it again.
-  const slot = (id: string, small: React.ReactNode, big: React.ReactNode) => (
-    <motion.div key={id} layout transition={{ type: 'spring', stiffness: 420, damping: 40 }} className={open === id ? 'col-span-full' : ''}>
-      {open === id ? big : small}
-    </motion.div>
-  );
-
   return (
     <div className="space-y-6">
       {!d.ready && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Migration 023 (AppSettings) is not applied yet, so provider settings cannot be saved.</div>}
@@ -847,25 +914,35 @@ function ProvidersTab() {
       <div>
         <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Sparkles size={15} /> Course matching &amp; chat</h3>
         <p className="mb-3 text-xs text-gray-500">Open a card to set its key and URL. Only one provider is Active at a time; the built-in rules engine covers everything when none is.</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {slot('anthropic',
-            <SmallCard key="anthropic" icon={<Bot size={18} />} title="Anthropic (Claude)" sub={gs?.matchModel} active={chat === 'anthropic'} configured={d.anthropicKeySet} onOpen={() => setOpen('anthropic')} />,
-            <AnthropicForm key="anthropic" d={d} gs={gs} canEdit={canEdit} onClose={closeBtn} active={chat === 'anthropic'} toggling={toggling === 'anthropic'} onToggle={(v) => { void setActive('anthropic', { chatProvider: v ? 'anthropic' : 'none' }); }} />)}
-          {slot('azure_openai',
-            <SmallCard key="azure" icon={<Zap size={18} />} title="Azure OpenAI" sub={d.azureOpenAiDeployment ?? undefined} active={chat === 'azure_openai'} configured={azureOk} onOpen={() => setOpen('azure_openai')} />,
-            <AzureOpenAiForm key="azure" d={d} gs={gs} canEdit={canEdit} onClose={closeBtn} active={chat === 'azure_openai'} toggling={toggling === 'azure_openai'} onToggle={(v) => { void setActive('azure_openai', { chatProvider: v ? 'azure_openai' : 'none' }); }} />)}
-          {d.customProviders.map((cp) => {
+        <ConnectedGrid open={open} setOpen={setOpen} items={[
+          {
+            id: 'anthropic',
+            small: (o, t) => <SmallCard icon={<Bot size={18} />} title="Anthropic (Claude)" sub={gs?.matchModel} active={chat === 'anthropic'} configured={d.anthropicKeySet} open={o} onOpen={t} />,
+            big: <AnthropicForm d={d} gs={gs} canEdit={canEdit} onClose={closeBtn} active={chat === 'anthropic'} toggling={toggling === 'anthropic'} onToggle={(v) => { void setActive('anthropic', { chatProvider: v ? 'anthropic' : 'none' }); }} />,
+          },
+          {
+            id: 'azure_openai',
+            small: (o, t) => <SmallCard icon={<Zap size={18} />} title="Azure OpenAI" sub={d.azureOpenAiDeployment ?? undefined} active={chat === 'azure_openai'} configured={azureOk} open={o} onOpen={t} />,
+            big: <AzureOpenAiForm d={d} gs={gs} canEdit={canEdit} onClose={closeBtn} active={chat === 'azure_openai'} toggling={toggling === 'azure_openai'} onToggle={(v) => { void setActive('azure_openai', { chatProvider: v ? 'azure_openai' : 'none' }); }} />,
+          },
+          ...d.customProviders.map((cp): GridItem => {
             const id = `custom:${cp.id}` as ChatProviderId;
-            return slot(id,
-              <SmallCard key={id} icon={<Server size={18} />} title={cp.name} sub={cp.model} active={chat === id} configured={!!cp.baseUrl && !!cp.model} onOpen={() => setOpen(id)} />,
-              <CustomForm key={id} d={d} gs={gs} item={cp} canEdit={canEdit} onClose={closeBtn} active={chat === id} toggling={toggling === id} onToggle={(v) => { void toggleChat(id)(v); }} onSaved={() => undefined} />);
-          })}
-          {canEdit && slot('new',
-            <button key="new" type="button" onClick={() => setOpen('new')} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white p-3 text-sm font-medium text-gray-600 hover:border-brand-400 hover:text-brand-800">
-              <Plus size={16} /> Add provider
-            </button>,
-            <CustomForm key="new" d={d} gs={gs} item={null} canEdit={canEdit} onClose={closeBtn} active={false} toggling={false} onToggle={() => undefined} onSaved={() => setOpen(null)} />)}
-        </div>
+            return {
+              id,
+              small: (o, t) => <SmallCard icon={<Server size={18} />} title={cp.name} sub={cp.model} active={chat === id} configured={!!cp.baseUrl && !!cp.model} open={o} onOpen={t} />,
+              big: <CustomForm d={d} gs={gs} item={cp} canEdit={canEdit} onClose={closeBtn} active={chat === id} toggling={toggling === id} onToggle={(v) => { void toggleChat(id)(v); }} onSaved={() => undefined} />,
+            };
+          }),
+          ...(canEdit ? [{
+            id: 'new',
+            small: (o: boolean, t: () => void) => (
+              <button type="button" onClick={t} aria-expanded={o} className={cn('flex w-full items-center justify-center gap-2 rounded-xl border border-dashed bg-white p-3 text-sm font-medium hover:border-brand-400 hover:text-brand-800', o ? 'border-brand-500 text-brand-800' : 'border-gray-300 text-gray-600')}>
+                <Plus size={16} /> Add provider
+              </button>
+            ),
+            big: <CustomForm d={d} gs={gs} item={null} canEdit={canEdit} onClose={closeBtn} active={false} toggling={false} onToggle={() => undefined} onSaved={() => setOpen(null)} />,
+          }] : []),
+        ]} />
       </div>
 
       <ParamsPanel d={d} gs={gs} canEdit={canEdit} />
@@ -873,12 +950,14 @@ function ProvidersTab() {
       <div>
         <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Database size={15} /> Document reading</h3>
         <p className="mb-3 text-xs text-gray-500">Reads transcripts, IDs and score reports in Smart Upload. The built-in rules reader needs no cloud service.</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <SmallCard icon={<Database size={18} />} title="Built-in rules reader" sub="no key needed" active={d.docProvider === 'none'} onOpen={() => setActive('doc_none', { docProvider: 'none' })} />
-          {slot('doc_azure',
-            <SmallCard key="doc" icon={<Sparkles size={18} />} title="Azure Document Intelligence" active={d.docProvider === 'azure_document_intelligence'} configured={d.azureDocKeySet && !!d.azureDocEndpoint} onOpen={() => setOpen('doc_azure')} />,
-            <DocAzureForm key="doc" d={d} canEdit={canEdit} onClose={closeBtn} active={d.docProvider === 'azure_document_intelligence'} toggling={toggling === 'doc_azure'} onToggle={toggleDoc} />)}
-        </div>
+        <ConnectedGrid open={open} setOpen={setOpen} items={[
+          { id: 'doc_none', small: () => <SmallCard icon={<Database size={18} />} title="Built-in rules reader" sub="no key needed" active={d.docProvider === 'none'} onOpen={() => setActive('doc_none', { docProvider: 'none' })} />, big: null },
+          {
+            id: 'doc_azure',
+            small: (o, t) => <SmallCard icon={<Sparkles size={18} />} title="Azure Document Intelligence" active={d.docProvider === 'azure_document_intelligence'} configured={d.azureDocKeySet && !!d.azureDocEndpoint} open={o} onOpen={t} />,
+            big: <DocAzureForm d={d} canEdit={canEdit} onClose={closeBtn} active={d.docProvider === 'azure_document_intelligence'} toggling={toggling === 'doc_azure'} onToggle={toggleDoc} />,
+          },
+        ]} />
       </div>
     </div>
   );
