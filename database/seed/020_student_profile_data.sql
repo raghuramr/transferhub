@@ -259,10 +259,11 @@ SELECT COUNT(*) AS Students,
                   OR NULLIF(LTRIM(RTRIM(sp.EmergencyContactPhone)), '') IS NULL THEN 1 ELSE 0 END)      AS NoEmergencyContact,
        SUM(CASE WHEN sp.TargetInstitutionId IS NULL THEN 1 ELSE 0 END)                                   AS NoTargetUniversity,
        SUM(CASE WHEN sp.TargetProgramId IS NULL THEN 1 ELSE 0 END)                                       AS NoTargetProgram,
-       SUM(CASE WHEN NOT EXISTS (SELECT 1 FROM StudentEducation se WHERE se.UserId = u.Id) THEN 1 ELSE 0 END) AS NoEducationRow
+       SUM(CASE WHEN se.UserId IS NULL THEN 1 ELSE 0 END)                                                AS NoEducationRow
 FROM Users u
 JOIN Roles r ON r.Id = u.RoleId AND r.Name = 'student'
-LEFT JOIN StudentProfiles sp ON sp.UserId = u.Id;
+LEFT JOIN StudentProfiles sp ON sp.UserId = u.Id
+LEFT JOIN (SELECT DISTINCT UserId FROM StudentEducation) se ON se.UserId = u.Id;  -- a join, not a subquery inside SUM (SQL Server error 130)
 GO
 
 DROP TABLE #S;
