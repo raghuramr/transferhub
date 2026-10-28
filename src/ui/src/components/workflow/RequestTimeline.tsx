@@ -215,3 +215,20 @@ export function GeneralNotes({ notes }: { notes: TimelineNote[] }) {
     </div>
   );
 }
+
+/** Notes only, grouped under the step they were written on (the steps themselves are shown by the progress tracker). */
+export function NotesByStage({ stages, general }: { stages: TimelineStage[]; general: TimelineNote[] }) {
+  const withNotes = stages.filter((s) => s.notes.length);
+  if (!withNotes.length && !general.length) return <p className="text-sm text-gray-500">No notes yet.</p>;
+  return (
+    <div className="space-y-4">
+      {withNotes.map((s) => (
+        <div key={s.id}>
+          <h3 className="mb-1 text-sm font-semibold text-gray-700">{s.name}</h3>
+          <NoteList notes={s.notes} />
+        </div>
+      ))}
+      <GeneralNotes notes={general} />
+    </div>
+  );
+}
