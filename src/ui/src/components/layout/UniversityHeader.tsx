@@ -11,13 +11,13 @@ function Initials({ name }: { name: string }) {
 }
 
 /**
- * A band across the top of the app for admins and faculty who belong to a university: its banner image as the
+ * A band across the top of the app for admins and faculty who belong to a university, and for agency users (their own agency): its banner image as the
  * background, its logo and its name. Shown only when the user is scoped to at least one university (set under
  * Users); everyone else keeps the plain TransferHub shell. With several universities the user picks which one to show.
  */
 export function UniversityHeader() {
   const user = useAuthStore((s) => s.user);
-  const enabled = user?.role === 'admin' || user?.role === 'faculty';
+  const enabled = user?.role === 'admin' || user?.role === 'faculty' || user?.role === 'agency';
   const { data } = useQuery({
     queryKey: ['university-brand', user?.id],
     queryFn: async () => (await accountApi.universityBrand()).data.universities,
@@ -54,12 +54,12 @@ export function UniversityHeader() {
       <div className="relative min-w-0 flex-1 basis-40">
         <p className="text-base font-bold leading-tight drop-shadow sm:truncate sm:text-xl">{uni.name}</p>
         <p className="truncate text-xs text-white/80 sm:text-sm">
-          {uni.code} · {user?.role === 'faculty' ? 'Faculty' : 'Administration'}
+          {[uni.code, user?.role === 'faculty' ? 'Faculty' : user?.role === 'agency' ? 'Partner agency' : 'Administration', user?.role === 'faculty' ? uni.department : null].filter(Boolean).join(' · ')}
         </p>
       </div>
       {list.length > 1 && (
         <label className="relative w-full shrink-0 text-xs text-white/90 sm:w-auto">
-          <span className="sr-only">Switch university</span>
+          <span className="sr-only">{user?.role === 'agency' ? 'Switch agency' : 'Switch university'}</span>
           <select
             value={uni.id}
             onChange={(e) => {

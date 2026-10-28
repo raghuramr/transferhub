@@ -4,6 +4,7 @@ import { agenciesApi } from '../../lib/api';
 import { Handshake, Plus, Upload, Power } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { usePermissions } from '../../hooks/usePermissions';
+import { ImageSourceField } from '../../components/shared/ImageSourceField';
 
 interface Agency {
   id: number;
@@ -12,6 +13,8 @@ interface Agency {
   contactPhone: string | null;
   country: string | null;
   isActive: boolean;
+  logoUrl?: string | null;
+  heroImageUrl?: string | null;
 }
 
 type AgencyForm = {
@@ -19,9 +22,11 @@ type AgencyForm = {
   contactEmail: string;
   contactPhone: string;
   country: string;
+  logoUrl: string;
+  heroImageUrl: string;
 };
 
-const emptyForm: AgencyForm = { name: '', contactEmail: '', contactPhone: '', country: '' };
+const emptyForm: AgencyForm = { name: '', contactEmail: '', contactPhone: '', country: '', logoUrl: '', heroImageUrl: '' };
 
 interface ImportResult {
   created: number;
@@ -73,6 +78,10 @@ function AgencyEditForm({
             />
           </div>
         ))}
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <ImageSourceField label="Logo (shown in the header for this agency's users)" value={form.logoUrl} onChange={(url) => setForm((f) => ({ ...f, logoUrl: url }))} entityType="agency_logo" />
+        <ImageSourceField label="Banner image (header background)" value={form.heroImageUrl} onChange={(url) => setForm((f) => ({ ...f, heroImageUrl: url }))} entityType="agency_hero" />
       </div>
       <div className="flex gap-3 mt-4">
         <button
@@ -280,6 +289,8 @@ export default function AgenciesManagement() {
               contactEmail: a.contactEmail ?? '',
               contactPhone: a.contactPhone ?? '',
               country: a.country ?? '',
+              logoUrl: a.logoUrl ?? '',
+              heroImageUrl: a.heroImageUrl ?? '',
             }}
             saving={saveMutation.isPending}
             onSave={(form) => saveMutation.mutate({ id: a.id, form })}
