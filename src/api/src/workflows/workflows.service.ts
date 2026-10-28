@@ -154,9 +154,16 @@ export class WorkflowsService {
 
 
   /** Where requests spend their time: per-stage turnaround, backlog and lateness over the last `days`. */
-  async insights(days: number) {
+  async insights(days: number, fromDate?: string, toDate?: string) {
     const d = Math.min(Math.max(Math.floor(days) || 90, 1), 730);
-    const inputs = [{ name: 'd', type: sql.Int, value: d }];
+    // A custom range (yyyy-mm-dd, inclusive) wins over `days`; the window is [from, to + 1 day).
+    const iso = /^\d{4}-\d{2}-\d{2}$/;
+    const from = fromDate && iso.test(fromDate) && !Number.isNaN(+new Date(fromDate)) ? new Date(`${fromDate}T00:00:00Z`) : null;
+    const to = toDate && iso.test(toDate) && !Number.isNaN(+new Date(toDate)) ? new Date(`${toDate}T00:00:00Z`) : null;
+    const start = from ?? new Date(Date.now() - d * 86_400_000);
+    const end = new Date((to ?? new Date()).getTime() + (to ? 86_400_000 : 0));
+    if (from && to && +from > +to) throw new BadRequestException('The start date must be on or before the end date.');
+    const inputs = [{ name: 'from', type: sql.DateTime2, value: start }, { name: 'to', type: sql.DateTime2, value: to ? end : new Date(Date.now() + 86_400_000) }];
     const stages = await this.db.query(
       `SELECT ts.StageKey AS stageKey, MIN(ts.StageOrder) AS stageOrder, MAX(ts.StageName) AS name, MAX(ts.StageType) AS stageType,
               SUM(CASE WHEN ts.Status IN ('approved','bypassed','rejected') AND ts.CompletedAt IS NOT NULL THEN 1 ELSE 0 END) AS completed,
@@ -167,7 +174,7 @@ export class WorkflowsService {
               SUM(CASE WHEN ts.CompletedAt IS NOT NULL AND ts.DueAt IS NOT NULL AND ts.CompletedAt > ts.DueAt THEN 1 ELSE 0 END) AS late,
               SUM(CASE WHEN ts.Status = 'bypassed' THEN 1 ELSE 0 END) AS skipped
        FROM TranscriptStages ts JOIN Transcripts t ON t.Id = ts.TranscriptId
-       WHERE t.ReceivedAt >= DATEADD(DAY, -@d, SYSUTCDATETIME()) AND ts.StageType <> 'system'
+       WHERE t.ReceivedAt >= @from AND t.ReceivedAt < @to AND ts.StageType <> 'system'
        GROUP BY ts.StageKey ORDER BY MIN(ts.StageOrder)`,
       inputs,
     );
@@ -179,14 +186,14 @@ export class WorkflowsService {
               SUM(CASE WHEN WorkflowStatus = 'bypassed' THEN 1 ELSE 0 END) AS bypassed,
               AVG(CASE WHEN WorkflowStatus IN ('approved','bypassed') AND ProcessedAt IS NOT NULL
                        THEN CAST(DATEDIFF(MINUTE, ReceivedAt, ProcessedAt) AS FLOAT) END) / 1440.0 AS avgDaysToComplete
-       FROM Transcripts WHERE WorkflowId IS NOT NULL AND ReceivedAt >= DATEADD(DAY, -@d, SYSUTCDATETIME())`,
+       FROM Transcripts WHERE WorkflowId IS NOT NULL AND ReceivedAt >= @from AND ReceivedAt < @to`,
       inputs,
     );
     let autoApproved = 0;
     try {
       const a = await this.db.query<{ N: number }>(
         `SELECT COUNT(*) AS N FROM TranscriptStages ts JOIN Transcripts t ON t.Id = ts.TranscriptId
-         WHERE ts.AutoApproved = 1 AND t.ReceivedAt >= DATEADD(DAY, -@d, SYSUTCDATETIME())`,
+         WHERE ts.AutoApproved = 1 AND t.ReceivedAt >= @from AND t.ReceivedAt < @to`,
         inputs,
       );
       autoApproved = a.recordset[0].N;
@@ -196,6 +203,8 @@ export class WorkflowsService {
     const t = totals.recordset[0] ?? {};
     return {
       days: d,
+      from: start.toISOString().slice(0, 10),
+      to: new Date(+end - 86_400_000).toISOString().slice(0, 10),
       totals: {
         requests: t.requests ?? 0,
         active: t.active ?? 0,

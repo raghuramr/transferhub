@@ -232,7 +232,7 @@ function render(ctx: EmailContext, l: Layout): Email {
   }
   const support = ctx.support;
   const mail = `<a href="mailto:${esc(support)}" style="color:${RED};font-weight:bold;">${esc(support)}</a>`;
-  const ctaUrl = l.cta ? `${ctx.appBaseUrl}${l.cta.path}` : '';
+  const ctaUrl = l.cta ? (/^https?:\/\//i.test(l.cta.path) ? l.cta.path : `${ctx.appBaseUrl}${l.cta.path}`) : '';
   const chip = CHIP[l.chip.tone];
   const body =
     (l.greetingName !== undefined ? para(`Hello ${esc(first(l.greetingName))},`) : '') +
@@ -933,4 +933,72 @@ export function sanitizeOverride(key: string, raw: TemplateOverride): TemplateOv
   // Switching off is only recorded for e-mails that may be switched off.
   if (raw.enabled === false && !NON_DISABLEABLE.has(key)) out.enabled = false;
   return out;
+}
+
+
+// ── custom (super-admin created) templates ─────────────────────
+// Free-form e-mails the super admin writes in System Settings > Email and sends by hand to chosen recipients. They use
+// the same layout as the built-in e-mails; there is no automatic trigger behind them.
+
+export interface CustomTemplate {
+  id: string;
+  name: string;
+  audience: string;
+  subject: string;
+  headline: string;
+  paragraphs: string[];
+  ctaLabel?: string;
+  /** A site path ("/login") or a full https URL. */
+  ctaUrl?: string;
+  enabled: boolean;
+}
+
+export const CUSTOM_PLACEHOLDERS = ['firstName', 'lastName', 'fullName', 'email', 'universityName', 'supportEmail', 'appBaseUrl'];
+
+/** Validates a custom template coming from the API. Throws Error(message) on bad input. */
+export function sanitizeCustom(raw: Partial<CustomTemplate>): Omit<CustomTemplate, 'id'> {
+  const str = (v: unknown, max: number, label: string, required = false) => {
+    const t = String(v ?? '').trim();
+    if (required && !t) throw new Error(`${label} is required.`);
+    if (t.length > max) throw new Error(`${label} is too long (max ${max} characters).`);
+    return t;
+  };
+  const paragraphs = (raw.paragraphs ?? []).map((p) => str(p, 1200, 'A paragraph')).filter(Boolean);
+  if (!paragraphs.length) throw new Error('Write at least one paragraph of body text.');
+  if (paragraphs.length > 8) throw new Error('At most 8 paragraphs.');
+  const ctaLabel = str(raw.ctaLabel, 60, 'Button label');
+  const ctaUrl = str(raw.ctaUrl, 500, 'Button link');
+  if (ctaUrl && !/^(\/[^\s]*|https:\/\/[^\s]+)$/i.test(ctaUrl)) throw new Error('The button link must start with / (a page on this site) or https://.');
+  if (ctaLabel && !ctaUrl) throw new Error('Add a button link, or clear the button label.');
+  return {
+    name: str(raw.name, 100, 'Name', true),
+    audience: str(raw.audience, 60, 'Audience') || 'Anyone',
+    subject: str(raw.subject, 200, 'Subject', true),
+    headline: str(raw.headline, 200, 'Headline', true),
+    paragraphs,
+    ...(ctaLabel && ctaUrl ? { ctaLabel, ctaUrl } : {}),
+    enabled: raw.enabled !== false,
+  };
+}
+
+/** Renders a custom template with the given placeholder values ({{firstName}} etc.; unknown names become empty). */
+export function renderCustom(ctx: EmailContext, t: Omit<CustomTemplate, 'id'>, vars: Record<string, string>): Email {
+  const v: Record<string, string> = { supportEmail: ctx.support, appBaseUrl: ctx.appBaseUrl, ...vars };
+  if (!v.fullName) v.fullName = [v.firstName, v.lastName].filter(Boolean).join(' ');
+  const f = (x: string) => fillPlaceholders(x, v);
+  const prev = current;
+  current = null; // built-in overrides never apply to a custom template
+  try {
+    return render(ctx, {
+      subject: f(t.subject).replace(/[\r\n]+/g, ' ').trim() || t.name,
+      preheader: f(t.headline),
+      chip: { label: 'Message from TransferHub', tone: 'info' },
+      headline: f(t.headline),
+      greetingName: v.firstName ? v.firstName : undefined,
+      paragraphs: t.paragraphs.map(f),
+      ...(t.ctaLabel && t.ctaUrl ? { cta: { label: f(t.ctaLabel), path: f(t.ctaUrl) } } : {}),
+    });
+  } finally {
+    current = prev;
+  }
 }

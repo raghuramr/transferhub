@@ -5,7 +5,7 @@ import RolesPermissions from './RolesPermissions';
 import { Link } from 'react-router-dom';
 import { api, emailApi, demoLoginApi, usersApi } from '../../lib/api';
 import { DemoLoginBox } from '../../components/auth/DemoLoginBox';
-import { EmailTemplateEditor } from './EmailTemplateEditor';
+import { EmailTemplateManager } from './EmailTemplateManager';
 import { useAuthStore } from '../../store/auth';
 
 // ── General settings ─────────────────────────────────────────────
@@ -402,7 +402,7 @@ function EmailTab() {
           </ul>
         </div>
       </section>
-      <EmailTemplateEditor to={to} />
+      <EmailTemplateManager to={to} />
       <TemplateGallery to={to} />
     </div>
   );

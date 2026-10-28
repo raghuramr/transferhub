@@ -296,7 +296,7 @@ export default function RegisterPage() {
 
       <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative w-full max-w-4xl">
         <div className="mb-6 text-center">
-          <LogoTile width={220} className="mb-3" />
+          <Link to="/" aria-label="TransferHub home"><LogoTile width={220} className="mb-3" /></Link>
           <h1 className="sr-only">TransferHub</h1>
           <p className="mt-1 text-lg text-brand-200">Create your student account</p>
         </div>
