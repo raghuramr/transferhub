@@ -52,11 +52,11 @@ export class StudentJourneyService {
 
   async universities() {
     const hasLogo = await this.schema.has('Institutions', 'LogoUrl');
-    const r = await this.db.query<{ Id: number; Code: string; Name: string; Logo: string | null }>(
-      `SELECT Id, Code, Name, ${hasLogo ? 'LogoUrl' : 'CAST(NULL AS NVARCHAR(500))'} AS Logo
-       FROM Institutions WHERE IsActive = 1 AND Type = 'university' ORDER BY Name`,
+    const r = await this.db.query<{ Id: number; Code: string; Name: string; Type: string; Logo: string | null }>(
+      `SELECT Id, Code, Name, Type, ${hasLogo ? 'LogoUrl' : 'CAST(NULL AS NVARCHAR(500))'} AS Logo
+       FROM Institutions WHERE IsActive = 1 AND Type IN ('university','community_college') ORDER BY Name`,
     );
-    return r.recordset.map((u) => ({ id: u.Id, code: u.Code, name: u.Name, logoUrl: u.Logo ?? null }));
+    return r.recordset.map((u) => ({ id: u.Id, code: u.Code, name: u.Name, type: u.Type, logoUrl: u.Logo ?? null }));
   }
 
   // ── overview ("where I am now") ────────────────────────────────
@@ -85,7 +85,7 @@ export class StudentJourneyService {
        FROM TranscriptCourses tc
        JOIN Transcripts t ON t.Id = tc.TranscriptId
        JOIN Institutions i ON i.Id = t.InstitutionId
-       WHERE t.StudentUserId = @u
+       WHERE t.StudentUserId = @u AND t.Status <> 'cancelled'
        ORDER BY t.ReceivedAt DESC, tc.SortOrder, tc.CourseCode`, u);
 
     const buckets = new Map<string, { bucket: string; low: number; high: number }>();
@@ -189,7 +189,7 @@ export class StudentJourneyService {
   async compare(studentUserId: string, ids: number[]) {
     // 1. Universities (must be active receiving universities).
     const inst = await this.db.query<{ Id: number; Code: string; Name: string }>(
-      `SELECT Id, Code, Name FROM Institutions WHERE IsActive = 1 AND Type = 'university' AND Id IN (${intList(ids)})`);
+      `SELECT Id, Code, Name FROM Institutions WHERE IsActive = 1 AND Type IN ('university','community_college') AND Id IN (${intList(ids)})`);
     const found = new Map(inst.recordset.map((i) => [i.Id, i] as const));
     const missing = ids.filter((i) => !found.has(i));
     if (missing.length) throw new NotFoundException(`University not found: ${missing.join(', ')}`);
@@ -293,7 +293,7 @@ export class StudentJourneyService {
        JOIN Transcripts t ON t.Id = tc.TranscriptId
        JOIN Institutions i ON i.Id = t.InstitutionId
        LEFT JOIN Courses ec ON ec.InstitutionId = t.InstitutionId AND ec.Code = tc.CourseCode
-       WHERE t.StudentUserId = @u
+       WHERE t.StudentUserId = @u AND t.Status <> 'cancelled'
        ORDER BY t.ReceivedAt DESC, tc.SortOrder, tc.CourseCode`,
       [{ name: 'u', type: sql.UniqueIdentifier, value: studentUserId }]);
     const extIds = [...new Set(rows.recordset.map((r) => r.ExtId).filter((x: number | null) => x != null))] as number[];
@@ -334,7 +334,7 @@ export class StudentJourneyService {
     const latest = await this.db.query<{ Id: string; InstId: number; Code: string; Name: string; Calendar: string | null }>(
       `SELECT TOP 1 t.Id, t.InstitutionId AS InstId, i.Code, i.Name, i.Calendar
        FROM Transcripts t JOIN Institutions i ON i.Id = t.InstitutionId
-       WHERE t.StudentUserId = @u ORDER BY t.ReceivedAt DESC`,
+       WHERE t.StudentUserId = @u AND t.Status <> 'cancelled' ORDER BY t.ReceivedAt DESC`,
       [{ name: 'u', type: sql.UniqueIdentifier, value: studentUserId }]);
     const source = latest.recordset[0];
     if (!source) {
@@ -350,7 +350,7 @@ export class StudentJourneyService {
 
     // Only active receiving universities can be applied to.
     const inst = await this.db.query<{ Id: number; Name: string }>(
-      `SELECT Id, Name FROM Institutions WHERE IsActive = 1 AND Type = 'university' AND Id IN (${intList(ids)})`);
+      `SELECT Id, Name FROM Institutions WHERE IsActive = 1 AND Type IN ('university','community_college') AND Id IN (${intList(ids)})`);
     const found = new Map(inst.recordset.map((i) => [i.Id, i.Name] as const));
 
     // Universities the student already has an active (non-preview) request for — skip those.
@@ -360,7 +360,7 @@ export class StudentJourneyService {
       const hasKind = await this.schema.has('Transcripts', 'EvaluationKind');
       const ex = await this.db.query<{ TargetInstitutionId: number }>(
         `SELECT DISTINCT TargetInstitutionId FROM Transcripts
-         WHERE StudentUserId = @u AND TargetInstitutionId IS NOT NULL
+         WHERE StudentUserId = @u AND Status <> 'cancelled' AND TargetInstitutionId IS NOT NULL
            AND TargetInstitutionId IN (${intList(ids)})
            ${hasKind ? `AND ISNULL(EvaluationKind, 'official') <> 'preview'` : ''}`,
         [{ name: 'u', type: sql.UniqueIdentifier, value: studentUserId }]);

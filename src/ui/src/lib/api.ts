@@ -269,6 +269,7 @@ export const transcriptsApi = {
   status: (id: string) => api.get(`/transcripts/${id}/status`),
   submit: (data: unknown) => api.post('/transcripts', data),
   updateCourse: (courseId: string, data: Record<string, unknown>) => api.patch(`/transcripts/courses/${courseId}`, data),
+  cancel: (id: string, data: { reason: string; note?: string }) => api.post(`/transcripts/${id}/cancel`, data),
   document: (id: string) => api.get(`/transcripts/${id}/document`, { responseType: 'blob' }),
 };
 

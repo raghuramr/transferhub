@@ -78,7 +78,7 @@ export class ProgressService {
       `SELECT t.Id, t.Status, t.ReceivedAt, i.Name AS InstitutionName, i.Calendar
               ${policyReady ? ', t.EvaluationKind' : ''}
        FROM Transcripts t JOIN Institutions i ON i.Id = t.InstitutionId
-       WHERE t.StudentUserId = @u ORDER BY t.ReceivedAt DESC`,
+       WHERE t.StudentUserId = @u AND t.Status <> 'cancelled' ORDER BY t.ReceivedAt DESC`,
       u,
     );
 
@@ -96,7 +96,7 @@ export class ProgressService {
            OUTER APPLY (SELECT TOP 1 * FROM Evaluations ev WHERE ev.TranscriptCourseId = tc.Id ORDER BY ev.CreatedAt DESC) e
            LEFT JOIN Courses dc ON dc.Id = e.DecidedBUCourseId
            LEFT JOIN Courses ac ON ac.Id = e.AISuggestedCourseId
-           WHERE t.StudentUserId = @u
+           WHERE t.StudentUserId = @u AND t.Status <> 'cancelled'
            ORDER BY tc.SortOrder, tc.CourseCode`,
           u,
         )

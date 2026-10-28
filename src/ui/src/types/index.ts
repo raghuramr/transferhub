@@ -114,8 +114,19 @@ export interface TranscriptSummary {
   institution?: { id: number; code: string; name: string };
   courseCount?: number;
   courses?: TranscriptCourse[];
-  status: 'received' | 'processing' | 'complete';
+  status: 'received' | 'processing' | 'complete' | 'cancelled';
   receivedAt: string;
+  /** Receiving university and the approval stage the request is at now (when known). */
+  targetInstitutionName?: string | null;
+  currentStage?: string | null;
+}
+
+/** Snapshot kept when a request is cancelled: how far it had got. */
+export interface CancellationInfo {
+  cancelledAt: string;
+  reason: string | null;
+  note: string | null;
+  progress: { coursesTotal: number; coursesDecided: number; creditsAwarded: number; stagesCompleted: number; stagesTotal: number; stoppedAt: string | null } | null;
 }
 
 export interface Transcript {
@@ -126,7 +137,8 @@ export interface Transcript {
   targetInstitutionName?: string | null;
   fromCredits?: number;
   toCredits?: number;
-  status: 'received' | 'processing' | 'complete';
+  status: 'received' | 'processing' | 'complete' | 'cancelled';
+  cancellation?: CancellationInfo | null;
   receivedAt: string;
   processedAt?: string;
   documentFileName?: string | null;

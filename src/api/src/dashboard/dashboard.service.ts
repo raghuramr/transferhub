@@ -91,7 +91,7 @@ export class DashboardService {
     const counts = await this.safe('student counts', async () => {
       const r = await this.rows(
         `SELECT COUNT(*) AS total,
-                SUM(CASE WHEN t.Status <> 'complete' THEN 1 ELSE 0 END) AS inProgress,
+                SUM(CASE WHEN t.Status NOT IN ('complete','cancelled') THEN 1 ELSE 0 END) AS inProgress,
                 SUM(CASE WHEN t.Status = 'complete' THEN 1 ELSE 0 END) AS completed
          ${T}`,
         [me],
@@ -260,7 +260,7 @@ export class DashboardService {
       const inputs: QueryInput[] = [d];
       const r = await this.rows(
         `SELECT COUNT(*) AS total,
-                SUM(CASE WHEN t.Status <> 'complete' THEN 1 ELSE 0 END) AS inProgress,
+                SUM(CASE WHEN t.Status NOT IN ('complete','cancelled') THEN 1 ELSE 0 END) AS inProgress,
                 SUM(CASE WHEN t.Status = 'complete' THEN 1 ELSE 0 END) AS completed,
                 AVG(CASE WHEN t.Status = 'complete' AND t.ProcessedAt IS NOT NULL THEN DATEDIFF(HOUR, t.ReceivedAt, t.ProcessedAt) / 24.0 END) AS avgDays
          FROM Transcripts t WHERE ${since}${tScope(inputs)}`,
