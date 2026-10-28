@@ -238,10 +238,15 @@ export interface UsageSummary {
   days: number;
   totals: {
     calls: number; skippedCalls: number; inputTokens: number; outputTokens: number; cacheReadTokens: number;
-    cacheWriteTokens: number; costUsd: number; tokensSaved: number; requests: number;
+    cacheWriteTokens: number; costUsd: number; tokensSaved: number; requests: number; cacheHits: number; avgMs: number; maxMs: number;
   };
+  kpis: {
+    tokensPerCall: number; tokensPerRequest: number; costPerRequestUsd: number; cacheHitRate: number; callsAvoidedRate: number;
+    savingsRate: number; cachedTokenShare: number; avgLatencyMs: number; maxLatencyMs: number;
+  };
+  byModel: { model: string; calls: number; tokens: number; costUsd: number; avgMs: number }[];
   byDay: { day: string; tokens: number; costUsd: number; tokensSaved: number }[];
-  byOperation: { operation: string; calls: number; tokens: number; costUsd: number }[];
+  byOperation: { operation: string; calls: number; tokens: number; costUsd: number; avgMs: number }[];
   skippedBy: { reason: string; n: number; tokensSaved: number }[];
   prefilterTokensSaved: number;
   monthTokens: number;

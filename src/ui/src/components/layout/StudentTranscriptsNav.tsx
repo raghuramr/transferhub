@@ -44,9 +44,10 @@ export function StudentTranscriptsNav() {
                   className={({ isActive }) => `flex items-start gap-2 rounded-lg px-3 py-2 text-xs transition-colors ${isActive ? 'bg-brand-50' : 'hover:bg-gray-50'}`}>
                   <FileText size={15} className="mt-0.5 shrink-0 text-gray-400" />
                   <span className="min-w-0 flex-1">
-                    <span className={`block truncate font-medium ${t.status === 'cancelled' ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
-                      {t.institution?.name ?? 'Transcript'}{t.targetInstitutionName ? ` → ${t.targetInstitutionName}` : ''}
+                    <span className={`block break-words font-medium leading-tight ${t.status === 'cancelled' ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                      {t.institution?.name ?? 'Transcript'}
                     </span>
+                    {t.targetInstitutionName && <span className="block break-words leading-tight text-gray-500">→ {t.targetInstitutionName}</span>}
                     <span className="mt-0.5 flex items-center gap-1.5">
                       <span className={`max-w-full truncate rounded-full px-1.5 py-0.5 text-[10px] font-medium ${st.cls}`}>{st.label}</span>
                       <span className="text-[10px] text-gray-400">{new Date(t.receivedAt).toLocaleDateString()}</span>

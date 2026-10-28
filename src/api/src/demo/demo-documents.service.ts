@@ -22,7 +22,7 @@ export class DemoDocumentsService {
   async listStudents(q?: string) {
     const term = (q ?? '').trim();
     const r = await this.db.query(
-      `SELECT TOP 80 u.Id, u.FirstName, u.LastName, u.Email, u.StudentId,
+      `SELECT TOP 1000 u.Id, u.FirstName, u.LastName, u.Email, u.StudentId,
               (SELECT COUNT(*) FROM Transcripts t WHERE t.StudentUserId = u.Id) AS Requests,
               (SELECT COUNT(*) FROM Transcripts t JOIN TranscriptCourses c ON c.TranscriptId = t.Id WHERE t.StudentUserId = u.Id) AS CourseCount,
               (SELECT TOP 1 i.Name FROM Transcripts t JOIN Institutions i ON i.Id = t.InstitutionId WHERE t.StudentUserId = u.Id ORDER BY t.ReceivedAt) AS FromCollege,
