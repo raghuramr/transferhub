@@ -37,8 +37,11 @@ async function bootstrap() {
   // Partner data submissions can carry thousands of rows; Express' 100kb default would reject them.
   app.useBodyParser('json', { limit: '6mb' });
 
+  // CORS_ORIGIN may list several origins (comma separated, e.g. the azurewebsites host and the custom domain). A trailing slash
+  // is ignored: browsers send the Origin header without one, so "https://site/" would otherwise never match.
+  const corsOrigins = config.get<string>('CORS_ORIGIN', 'http://localhost:5173').split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean);
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN', 'http://localhost:5173'),
+    origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
     credentials: true,
   });
 

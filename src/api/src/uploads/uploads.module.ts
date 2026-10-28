@@ -8,6 +8,6 @@ import { AuthModule } from '../auth/auth.module';
   imports: [AuthModule],
   providers: [UploadsService, BlobStorageService],
   controllers: [UploadsController],
-  exports: [UploadsService],
+  exports: [UploadsService, BlobStorageService],
 })
 export class UploadsModule {}

@@ -54,6 +54,26 @@ export class BlobStorageService {
   }
 
   private publicReadable: Promise<boolean> | null = null;
+  private publicCheckedAt = 0;
+
+  /** True when the public container allows anonymous blob reads; tries to switch an existing private container to blob access first. */
+  private async ensurePublicAccess(): Promise<boolean> {
+    try {
+      const c = await this.container(this.publicContainer);
+      let access = (await c.getAccessPolicy()).blobPublicAccess;
+      if (access !== 'blob' && access !== 'container') {
+        try {
+          await c.setAccessPolicy('blob');
+          access = (await c.getAccessPolicy()).blobPublicAccess;
+        } catch (e) {
+          this.logger.warn(`Public container is private and could not be opened for blob reads (${(e as { code?: string })?.code}); images are served via the API`);
+        }
+      }
+      return access === 'blob' || access === 'container';
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * Direct URL of a public blob (served by Azure Storage / a CDN, not the API), or null when it is not available:
@@ -63,16 +83,30 @@ export class BlobStorageService {
   async publicUrl(blobName: string): Promise<string | null> {
     if (!this.service) return null;
     const override = process.env.PUBLIC_ASSET_BASE_URL?.replace(/\/+$/, '');
-    if (!this.publicReadable) {
-      this.publicReadable = this.container(this.publicContainer)
-        .then((c) => c.getAccessPolicy())
-        .then((p) => p.blobPublicAccess === 'blob' || p.blobPublicAccess === 'container')
-        .catch(() => false);
+    if (!this.publicReadable || (this.publicCheckedAt && !(await this.publicReadable) && Date.now() - this.publicCheckedAt > 60_000)) {
+      this.publicCheckedAt = Date.now();
+      this.publicReadable = this.ensurePublicAccess();
     }
     if (!(await this.publicReadable)) return null;
     if (override) return `${override}/${encodeURIComponent(blobName)}`;
     const client = (await this.container(this.publicContainer)).getBlobClient(blobName);
     return client.url;
+  }
+
+  /** Diagnostics for the super-admin storage check: where files go and whether public images can load straight from Storage. */
+  async status() {
+    const base = { provider: this.provider, privateContainer: this.privateContainer, publicContainer: this.publicContainer, assetBaseUrl: process.env.PUBLIC_ASSET_BASE_URL || null };
+    if (!this.service) return { ...base, connected: false, publicReadable: false, publicUrlExample: null, problem: 'AZURE_STORAGE_CONNECTION_STRING is not set: uploads go to the server disk, which is wiped on every deploy/restart.' };
+    try {
+      await this.ensurePublicAccess();
+      const publicAccess = (await (await this.container(this.publicContainer)).getAccessPolicy()).blobPublicAccess ?? null;
+      await this.container(this.privateContainer);
+      const example = await this.publicUrl('example.webp');
+      return { ...base, connected: true, publicAccess, publicReadable: publicAccess === 'blob' || publicAccess === 'container', publicUrlExample: example,
+        problem: example ? null : 'The public container is private. Enable "Allow Blob anonymous access" on the storage account (Configuration), then set the container access level to Blob.' };
+    } catch (e) {
+      return { ...base, connected: false, publicReadable: false, publicUrlExample: null, problem: `Could not reach Storage: ${(e as { code?: string; message?: string })?.code || (e as Error)?.message}` };
+    }
   }
 
   async put(container: string, blobName: string, data: Buffer, contentType?: string | null): Promise<void> {

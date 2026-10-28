@@ -7,6 +7,7 @@ import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import { BlobStorageService, type StorageProvider } from './blob-storage.service';
 import { SchemaService } from '../policy/schema.service';
 import { ScopeService } from '../policy/scope.service';
+import { compressImage } from '../common/image-compress';
 
 const STAFF_ROLES = ['admin', 'super_admin', 'faculty'];
 
@@ -91,6 +92,8 @@ export class UploadsService {
     file: UploadedFileLike,
     opts: { ownerUserId: string; role: string; entityType: string; entityId?: string; isPublic: boolean; documentType?: string; transfer?: TransferUploadContext },
   ) {
+    // Logos/banners fit within 1920px; document photos keep enough resolution (2400px) to stay readable.
+    file = await compressImage(file, opts.isPublic ? 1920 : 2400, opts.isPublic ? 80 : 85, opts.isPublic ? 'webp' : 'jpeg');
     const tr = opts.transfer;
     const hasTransferColumns = tr ? await this.schema.has('Uploads', 'TranscriptId') : false;
     if (tr && !hasTransferColumns) throw new ServiceUnavailableException('Transfer exchange migration (022) has not been applied yet');
