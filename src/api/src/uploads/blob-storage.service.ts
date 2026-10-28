@@ -98,12 +98,13 @@ export class BlobStorageService {
     const base = { provider: this.provider, privateContainer: this.privateContainer, publicContainer: this.publicContainer, assetBaseUrl: process.env.PUBLIC_ASSET_BASE_URL || null };
     if (!this.service) return { ...base, connected: false, publicReadable: false, publicUrlExample: null, problem: 'AZURE_STORAGE_CONNECTION_STRING is not set: uploads go to the server disk, which is wiped on every deploy/restart.' };
     try {
-      await this.ensurePublicAccess();
+      this.publicCheckedAt = Date.now();
+      const readable = await (this.publicReadable = this.ensurePublicAccess());
       const publicAccess = (await (await this.container(this.publicContainer)).getAccessPolicy()).blobPublicAccess ?? null;
       await this.container(this.privateContainer);
-      const example = await this.publicUrl('example.webp');
-      return { ...base, connected: true, publicAccess, publicReadable: publicAccess === 'blob' || publicAccess === 'container', publicUrlExample: example,
-        problem: example ? null : 'The public container is private. Enable "Allow Blob anonymous access" on the storage account (Configuration), then set the container access level to Blob.' };
+      const example = readable ? await this.publicUrl('example.webp') : null;
+      return { ...base, connected: true, publicAccess, publicReadable: readable, publicUrlExample: example,
+        problem: readable ? null : 'The public container is private. Enable "Allow Blob anonymous access" on the storage account (Configuration), then set the container access level to Blob.' };
     } catch (e) {
       return { ...base, connected: false, publicReadable: false, publicUrlExample: null, problem: `Could not reach Storage: ${(e as { code?: string; message?: string })?.code || (e as Error)?.message}` };
     }

@@ -1,4 +1,4 @@
-import PDFDocument from 'pdfkit';
+import PDFDocument = require('pdfkit');
 import type { SourceCourse, SourceProfile } from './source-connector';
 
 const INK = '#1f1a1b';

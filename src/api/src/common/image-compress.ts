@@ -12,7 +12,8 @@ const COMPRESSIBLE = ['image/jpeg', 'image/png', 'image/webp'];
 export async function compressImage(file: UploadedFileLike, maxEdge: number, quality = 80, format: 'webp' | 'jpeg' = 'webp'): Promise<UploadedFileLike> {
   if (!COMPRESSIBLE.includes(file.mimetype)) return file;
   try {
-    const sharp = (await import('sharp')).default;
+    const mod: any = await import('sharp'); // CommonJS build (no esModuleInterop): the module itself is the function
+    const sharp = mod.default ?? mod;
     const out = await sharp(file.buffer, { failOn: 'none' })
       .rotate()
       .resize({ width: maxEdge, height: maxEdge, fit: 'inside', withoutEnlargement: true })

@@ -62,6 +62,18 @@ export function esc(s: unknown): string {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 
+/** Escaped text with line breaks kept as <br> (Outlook ignores white-space:pre-wrap). */
+function escBr(s: unknown): string {
+  return esc(s).replace(/\r?\n/g, '<br>');
+}
+
+/** A value that is just a URL becomes a short "Open link" anchor, so long (or security-gateway-rewritten) URLs never blow up the layout. */
+function valueHtml(v: string): string {
+  return /^https?:\/\/\S+$/i.test(v.trim())
+    ? `<a href="${esc(v.trim())}" style="color:${RED};font-weight:bold;text-decoration:underline;">Open link</a>`
+    : escBr(v);
+}
+
 /** Short reference for a request: the first 8 hex characters of its id, upper case. */
 export function refOf(id: string): string {
   return String(id ?? '').replace(/-/g, '').slice(0, 8).toUpperCase();
@@ -89,27 +101,28 @@ function callout(label: string, text: string, tone: Tone): string {
     `<td width="4" bgcolor="${c.bar}" style="width:4px;background-color:${c.bar};">&nbsp;</td>` +
     `<td bgcolor="${c.bg}" style="background-color:${c.bg};padding:12px 16px;font-family:Arial,Helvetica,sans-serif;">` +
     (label ? `<div style="font-size:12px;line-height:18px;font-weight:bold;letter-spacing:.5px;text-transform:uppercase;color:${MUTED};">${esc(label)}</div>` : '') +
-    `<div style="font-size:15px;line-height:23px;color:${INK};white-space:pre-wrap;word-break:break-word;">${esc(text)}</div></td></tr></table>`;
+    `<div style="font-size:15px;line-height:23px;color:${INK};word-break:break-word;">${escBr(text)}</div></td></tr></table>`;
 }
 
 function rowsHtml(rows: Row[]): string {
   return rows.map((r) =>
     `<tr><td class="lbl" valign="top" style="padding:9px 12px 9px 0;border-top:1px solid ${LINE};font-size:13px;line-height:18px;color:${MUTED};width:38%;word-break:break-word;">${esc(r.label)}</td>` +
-    `<td valign="top" style="padding:9px 0;border-top:1px solid ${LINE};font-size:14px;line-height:20px;color:${INK};font-weight:600;word-break:break-word;white-space:pre-wrap;">${esc(r.value)}</td></tr>`,
+    `<td valign="top" style="padding:9px 0;border-top:1px solid ${LINE};font-size:14px;line-height:20px;color:${INK};font-weight:600;word-break:break-word;">${valueHtml(r.value)}</td></tr>`,
   ).join('');
 }
 
 function button(label: string, url: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 20px 0;"><tr>` +
-    `<td bgcolor="${RED}" style="background-color:${RED};border-radius:8px;">` +
-    `<a href="${esc(url)}" style="display:inline-block;padding:12px 26px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:8px;">${esc(label)}</a>` +
+    // Padding sits on the cell, not the link: Outlook ignores padding on inline links, which collapsed the button.
+    `<td bgcolor="${RED}" align="center" style="background-color:${RED};border-radius:8px;padding:12px 26px;">` +
+    `<a href="${esc(url)}" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">${esc(label)}</a>` +
     `</td></tr></table>`;
 }
 
 function codeBlock(label: string, text: string): string {
   return `<div style="font-size:12px;line-height:18px;font-weight:bold;letter-spacing:.5px;text-transform:uppercase;color:${MUTED};padding:4px 0 6px 0;">${esc(label)}</div>` +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px 0;"><tr>` +
-    `<td bgcolor="#1f1a1b" style="background-color:#1f1a1b;border-radius:8px;padding:14px 16px;font-family:Consolas,'Courier New',monospace;font-size:12px;line-height:19px;color:#f5eded;white-space:pre-wrap;word-break:break-all;">${esc(text)}</td>` +
+    `<td bgcolor="#1f1a1b" style="background-color:#1f1a1b;border-radius:8px;padding:14px 16px;font-family:Consolas,'Courier New',monospace;font-size:12px;line-height:19px;color:#f5eded;word-break:break-all;">${escBr(text)}</td>` +
     `</tr></table>`;
 }
 
@@ -649,9 +662,9 @@ const baseTemplates = {
         `TransferHub has set up data submission access for ${d.university}. Use the details below to send universities, programs and courses to us, either through the partner portal or the API.`,
         'Everything you send is reviewed by an administrator before it is added.',
       ],
-      code: { label: 'Instructions and API key (shown only in this e-mail - keep it secret)', text: d.instructions },
+      code: { label: 'Instructions and API key (shown only in this e-mail - keep it secret)', text: `${d.instructions}\nEndpoint    : ${d.endpoint}` },
       cta: { label: 'Open the partner portal', path: '/partner' },
-      card: { title: 'Your access', rows: [{ label: 'University', value: d.university }, { label: 'University code', value: d.code }, { label: 'Endpoint', value: d.endpoint }] },
+      card: { title: 'Your access', rows: [{ label: 'University', value: d.university }, { label: 'University code', value: d.code }] },
     });
   },
 
