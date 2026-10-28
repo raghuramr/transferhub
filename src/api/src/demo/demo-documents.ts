@@ -1,4 +1,4 @@
-import PDFDocument from 'pdfkit';
+import PDFDocument = require('pdfkit');
 
 /**
  * Renders the sample documents a student would upload (transcript, ID / passport, English test, syllabus, enrolment
