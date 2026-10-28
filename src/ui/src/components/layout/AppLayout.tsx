@@ -12,7 +12,7 @@ import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
   Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ScanText, ShieldQuestion, ScanLine, ArrowRightLeft,
-  Presentation, Compass,
+  Presentation, Compass, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
 
@@ -99,6 +99,18 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Desktop sidebar can shrink to an icon rail; the choice is remembered per browser.
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('th.sidebar.collapsed') === '1'; } catch { return false; }
+  });
+  const toggleCollapsed = () => setCollapsed((c) => {
+    try { localStorage.setItem('th.sidebar.collapsed', c ? '0' : '1'); } catch { /* ignore */ }
+    return !c;
+  });
+  useEffect(() => {
+    // Fixed bars that sit beside the sidebar (e.g. the submit-transcript action bar) read this.
+    document.documentElement.style.setProperty('--sidebar-w', collapsed ? '4rem' : '16rem');
+  }, [collapsed]);
 
   const { data: navPagesData } = useQuery({
     queryKey: ['pages', 'nav'],
@@ -122,31 +134,35 @@ export default function AppLayout() {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
-  const renderNavItems = (entries: NavEntry[]) => {
+  const renderNavItems = (entries: NavEntry[], compact: boolean) => {
     const rendered: React.ReactNode[] = [];
     let currentGroup: string | undefined = undefined;
     entries.forEach((item, i) => {
       if (item.group && item.group !== currentGroup) {
         currentGroup = item.group;
         rendered.push(
-          <p
-            key={`group-${i}`}
-            className="px-3 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider"
-          >
-            {item.group}
-          </p>
+          compact ? (
+            <div key={`group-${i}`} className="mx-3 mt-3 mb-1 border-t border-brand-100/60" />
+          ) : (
+            <p
+              key={`group-${i}`}
+              className="px-3 pt-4 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider"
+            >
+              {item.group}
+            </p>
+          )
         );
       }
-      rendered.push(<NavItem key={item.to} to={item.to} label={item.label} icon={item.icon} />);
+      rendered.push(<NavItem key={item.to} to={item.to} label={item.label} icon={item.icon} compact={compact} />);
     });
     return rendered;
   };
 
-  const sidebarContent = (
+  const renderSidebar = (compact: boolean) => (
     <>
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-brand-100/60">
-        <LogoFull height={88} className="shrink-0" />
+      <div className={`flex items-center border-b border-brand-100/60 ${compact ? 'justify-center px-2 py-3' : 'gap-3 px-4 py-3'}`}>
+        {compact ? <LogoMark size={36} className="shrink-0" /> : <LogoFull height={88} className="shrink-0" />}
         <button
           onClick={() => setMobileNavOpen(false)}
           className="ml-auto md:hidden text-gray-400 hover:text-gray-700 p-1"
@@ -155,22 +171,35 @@ export default function AppLayout() {
           <X size={20} />
         </button>
       </div>
+      <div className={`hidden md:flex ${compact ? 'justify-center' : 'justify-end pr-3'} pt-2`}>
+        <button
+          onClick={toggleCollapsed}
+          className="text-gray-400 hover:text-brand-800 hover:bg-brand-50 rounded-lg p-1.5"
+          aria-label={compact ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={compact ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {compact ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+        </button>
+      </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        {renderNavItems(items)}
+      <nav className={`flex-1 py-2 overflow-y-auto overflow-x-hidden ${compact ? 'px-2' : 'px-3'}`}>
+        {renderNavItems(items, compact)}
 
         {navPages.length > 0 && (
           <div className="pt-4 mt-2 border-t border-brand-100/60">
-            <p className="px-3 pb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-              Resources
-            </p>
+            {!compact && (
+              <p className="px-3 pb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                Resources
+              </p>
+            )}
             {navPages.map((p) => (
               <NavItem
                 key={p.slug}
                 to={`/pages/${p.slug}`}
                 label={p.navLabel || p.title}
                 icon={<FileQuestion size={18} />}
+                compact={compact}
               />
             ))}
           </div>
@@ -178,13 +207,14 @@ export default function AppLayout() {
       </nav>
 
       {/* User + logout */}
-      <div className="border-t border-brand-100/60 px-4 py-4 shrink-0">
+      <div className={`border-t border-brand-100/60 py-4 shrink-0 ${compact ? 'px-2' : 'px-4'}`}>
         <NavLink
           to="/profile"
-          className="flex items-center gap-3 mb-3 w-full text-left rounded-lg px-1 -mx-1 py-1 hover:bg-brand-50 transition-colors"
+          className={`flex items-center mb-3 w-full text-left rounded-lg py-1 hover:bg-brand-50 transition-colors ${compact ? 'justify-center' : 'gap-3 px-1 -mx-1'}`}
+          title={compact ? `${user?.firstName} ${user?.lastName}` : undefined}
         >
           <Avatar userId={user?.id} firstName={user?.firstName} lastName={user?.lastName} hasPhoto={user?.hasAvatar} size="sm" />
-          <div className="flex-1 min-w-0">
+          <div className={`flex-1 min-w-0 ${compact ? 'hidden' : ''}`}>
             <p className="text-sm font-medium text-gray-900 truncate">
               {user?.firstName} {user?.lastName}
             </p>
@@ -195,10 +225,12 @@ export default function AppLayout() {
         </NavLink>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-600 hover:text-brand-800 hover:bg-brand-50 rounded-lg transition-colors"
+          className={`flex items-center w-full py-2 text-sm text-gray-600 hover:text-brand-800 hover:bg-brand-50 rounded-lg transition-colors ${compact ? 'justify-center' : 'gap-2 px-3'}`}
+          title={compact ? 'Sign out' : undefined}
+          aria-label="Sign out"
         >
           <LogOut size={16} />
-          Sign out
+          {!compact && 'Sign out'}
         </button>
       </div>
     </>
@@ -206,15 +238,15 @@ export default function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-[#faf7f8]">
-      <aside className="hidden md:flex w-64 h-screen sticky top-0 bg-white border-r border-brand-100/60 flex-col shrink-0">
-        {sidebarContent}
+      <aside className={`hidden md:flex h-screen sticky top-0 bg-white border-r border-brand-100/60 flex-col shrink-0 transition-[width] duration-200 ${collapsed ? 'w-16' : 'w-64'}`}>
+        {renderSidebar(collapsed)}
       </aside>
 
       {mobileNavOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileNavOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white flex flex-col shadow-xl">
-            {sidebarContent}
+            {renderSidebar(false)}
           </aside>
         </div>
       )}
@@ -245,12 +277,14 @@ export default function AppLayout() {
   );
 }
 
-function NavItem({ to, label, icon }: { to: string; label: string; icon: React.ReactNode }) {
+function NavItem({ to, label, icon, compact = false }: { to: string; label: string; icon: React.ReactNode; compact?: boolean }) {
   return (
     <NavLink
       to={to}
       end={to.split('/').length <= 2}
-      className="relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors group"
+      title={compact ? label : undefined}
+      aria-label={label}
+      className={`relative flex items-center rounded-lg text-sm font-medium transition-colors group ${compact ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2'}`}
     >
       {({ isActive }) => (
         <>
@@ -264,9 +298,11 @@ function NavItem({ to, label, icon }: { to: string; label: string; icon: React.R
           <span className={`relative z-10 ${isActive ? 'text-brand-800' : 'text-gray-500 group-hover:text-gray-800'}`}>
             {icon}
           </span>
-          <span className={`relative z-10 ${isActive ? 'text-brand-800' : 'text-gray-600 group-hover:text-gray-900'}`}>
-            {label}
-          </span>
+          {!compact && (
+            <span className={`relative z-10 ${isActive ? 'text-brand-800' : 'text-gray-600 group-hover:text-gray-900'}`}>
+              {label}
+            </span>
+          )}
         </>
       )}
     </NavLink>
