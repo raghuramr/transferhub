@@ -130,6 +130,23 @@ export class UsersService {
     private schema: SchemaService,
   ) {}
 
+  /**
+   * Links an agency user to an Agencies row. An explicit agencyId wins; otherwise a free-text agencyName that
+   * matches an agency exactly is linked too (so the header branding resolves). Unknown ids are rejected.
+   */
+  private async resolveAgency(agencyId?: number | null, agencyName?: string | null): Promise<{ id: number | null; name: string | null }> {
+    if (agencyId) {
+      const r = await this.db.query<{ Id: number; Name: string }>(`SELECT Id, Name FROM Agencies WHERE Id = @id`, [{ name: 'id', type: sql.Int, value: agencyId }]);
+      if (!r.recordset[0]) throw new NotFoundException('Agency not found');
+      return { id: r.recordset[0].Id, name: r.recordset[0].Name };
+    }
+    if (agencyName) {
+      const r = await this.db.query<{ Id: number; Name: string }>(`SELECT Id, Name FROM Agencies WHERE Name = @n`, [{ name: 'n', type: sql.NVarChar(200), value: agencyName }]);
+      if (r.recordset[0]) return { id: r.recordset[0].Id, name: r.recordset[0].Name };
+    }
+    return { id: null, name: agencyName ?? null };
+  }
+
   async findById(id: string) {
     const extra = (await this.schema.has('Users', 'EmailVerified')) ? ', u.EmailVerified, u.AvatarUploadId' : '';
     const res = await this.db.query<UserRow>(
@@ -225,6 +242,7 @@ export class UsersService {
     const roleId = roleRes.recordset[0]?.Id;
     if (!roleId) throw new NotFoundException('Role not found');
 
+    const agency = dto.role === 'agency' ? await this.resolveAgency(dto.agencyId, dto.agencyName) : { id: null, name: dto.agencyName ?? null };
     const res = await this.db.query<{ Id: string }>(
       `INSERT INTO Users (Email, PasswordHash, FirstName, LastName, RoleId, DepartmentId, StudentId, AgencyName, CreatedBy, MustChangePass)
        OUTPUT inserted.Id
@@ -237,12 +255,18 @@ export class UsersService {
         { name: 'roleId', type: sql.Int, value: roleId },
         { name: 'dept', type: sql.Int, value: dto.departmentId || null },
         { name: 'sid', type: sql.NVarChar(50), value: dto.studentId || null },
-        { name: 'agency', type: sql.NVarChar(200), value: dto.agencyName || null },
+        { name: 'agency', type: sql.NVarChar(200), value: agency.name || null },
         { name: 'createdBy', type: sql.UniqueIdentifier, value: createdBy },
       ],
     );
 
     const newId = res.recordset[0].Id;
+    if (agency.id) {
+      await this.db.query(`UPDATE Users SET AgencyId = @aid WHERE Id = @id`, [
+        { name: 'aid', type: sql.Int, value: agency.id },
+        { name: 'id', type: sql.UniqueIdentifier, value: newId },
+      ]);
+    }
     await this.audit(createdBy, 'USER_CREATED', 'User', newId, null, JSON.stringify({ email: dto.email, role: dto.role }));
 
     try {
@@ -299,9 +323,11 @@ export class UsersService {
       sets.push('StudentId = @sid');
       inputs.push({ name: 'sid', type: sql.NVarChar(50), value: dto.studentId });
     }
-    if (dto.agencyName !== undefined) {
-      sets.push('AgencyName = @agency');
-      inputs.push({ name: 'agency', type: sql.NVarChar(200), value: dto.agencyName });
+    if (dto.agencyName !== undefined || dto.agencyId !== undefined) {
+      const agency = await this.resolveAgency(dto.agencyId, dto.agencyName);
+      sets.push('AgencyName = @agency', 'AgencyId = @agencyId');
+      inputs.push({ name: 'agency', type: sql.NVarChar(200), value: agency.name });
+      inputs.push({ name: 'agencyId', type: sql.Int, value: agency.id });
     }
     if (dto.mobile !== undefined) {
       sets.push('Mobile = @mobile');

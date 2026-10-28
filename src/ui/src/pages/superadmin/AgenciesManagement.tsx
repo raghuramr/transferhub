@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { agenciesApi } from '../../lib/api';
-import { Handshake, Plus, Upload, Power } from 'lucide-react';
+import { agenciesApi, getErrorMessage } from '../../lib/api';
+import { Handshake, Plus, Upload, Power, Trash2 } from 'lucide-react';
+import { useAuthStore } from '../../store/auth';
+import { PermanentDeleteDialog } from '../../components/shared/PermanentDeleteDialog';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { usePermissions } from '../../hooks/usePermissions';
 import { ImageSourceField } from '../../components/shared/ImageSourceField';
@@ -56,11 +58,15 @@ function AgencyEditForm({
   onSave,
   onCancel,
   saving,
+  error,
+  saved,
 }: {
   initial: AgencyForm;
   onSave: (form: AgencyForm) => void;
   onCancel: () => void;
   saving: boolean;
+  error?: string;
+  saved?: boolean;
 }) {
   const [form, setForm] = useState<AgencyForm>(initial);
 
@@ -83,6 +89,8 @@ function AgencyEditForm({
         <ImageSourceField label="Logo (shown in the header for this agency's users)" value={form.logoUrl} onChange={(url) => setForm((f) => ({ ...f, logoUrl: url }))} entityType="agency_logo" />
         <ImageSourceField label="Banner image (header background)" value={form.heroImageUrl} onChange={(url) => setForm((f) => ({ ...f, heroImageUrl: url }))} entityType="agency_hero" />
       </div>
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {saved && !error && <p className="mt-3 text-sm text-green-600">Saved.</p>}
       <div className="flex gap-3 mt-4">
         <button
           onClick={() => onSave(form)}
@@ -106,6 +114,9 @@ export default function AgenciesManagement() {
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [addForm, setAddForm] = useState<AgencyForm>(emptyForm);
   const [autoExpandId, setAutoExpandId] = useState<number | null>(null);
+  const isSuperAdmin = useAuthStore((s) => s.user?.role) === 'super_admin';
+  const [purgeQueue, setPurgeQueue] = useState<Agency[]>([]);
+  const [savedId, setSavedId] = useState<number | null | 'new'>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['agencies'],
@@ -116,8 +127,12 @@ export default function AgenciesManagement() {
   const saveMutation = useMutation({
     mutationFn: ({ id, form }: { id: number | null; form: AgencyForm }) =>
       id ? agenciesApi.update(id, form) : agenciesApi.create(form),
-    onSuccess: (res) => {
+    onSuccess: (res, vars) => {
       qc.invalidateQueries({ queryKey: ['agencies'] });
+      qc.invalidateQueries({ queryKey: ['scope-agencies'] });
+      qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['university-brand'] });
+      setSavedId(vars.id ?? 'new');
       const createdId = (res?.data as { id?: number } | undefined)?.id;
       if (createdId != null) setAutoExpandId(createdId);
       setShowAddPanel(false);
@@ -185,6 +200,14 @@ export default function AgenciesManagement() {
               <Power size={12} /> Deactivate
             </button>
           )}
+          {isSuperAdmin && (
+            <button
+              onClick={() => setPurgeQueue([a])}
+              className="flex items-center gap-1 text-xs text-red-700 hover:underline"
+            >
+              <Trash2 size={12} /> Delete permanently
+            </button>
+          )}
           {!a.isActive && can('agencies', 'edit') && (
             <button
               onClick={() => bulkActivateMutation.mutate([a.id])}
@@ -249,10 +272,27 @@ export default function AgenciesManagement() {
           <AgencyEditForm
             initial={addForm}
             saving={saveMutation.isPending}
-            onSave={(form) => saveMutation.mutate({ id: null, form })}
+            error={saveMutation.isError && saveMutation.variables?.id == null ? getErrorMessage(saveMutation.error, 'Could not create the agency.') : undefined}
+            onSave={(form) => { setSavedId(null); saveMutation.mutate({ id: null, form }); }}
             onCancel={() => setShowAddPanel(false)}
           />
         </div>
+      )}
+
+      {isSuperAdmin && purgeQueue.length > 0 && (
+        <PermanentDeleteDialog
+          key={purgeQueue[0].id}
+          entity="agencies"
+          id={purgeQueue[0].id}
+          fallbackLabel={`${purgeQueue[0].name}${purgeQueue.length > 1 ? ` (1 of ${purgeQueue.length})` : ''}`}
+          onClose={() => setPurgeQueue([])}
+          onDeleted={() => {
+            setPurgeQueue((q) => q.slice(1));
+            qc.invalidateQueries({ queryKey: ['agencies'] });
+            qc.invalidateQueries({ queryKey: ['scope-agencies'] });
+            qc.invalidateQueries({ queryKey: ['users'] });
+          }}
+        />
       )}
 
       <DataTable<Agency>
@@ -278,6 +318,9 @@ export default function AgenciesManagement() {
           ...(can('agencies', 'delete')
             ? [{ label: 'Deactivate', onClick: (selected: Agency[]) => bulkDeactivateMutation.mutate(selected.map((a) => a.id)), danger: true }]
             : []),
+          ...(isSuperAdmin
+            ? [{ label: 'Delete permanently', onClick: (selected: Agency[]) => setPurgeQueue(selected), danger: true }]
+            : []),
         ]}
         onExport={() => handleExport()}
         showExport={can('agencies', 'export')}
@@ -293,7 +336,9 @@ export default function AgenciesManagement() {
               heroImageUrl: a.heroImageUrl ?? '',
             }}
             saving={saveMutation.isPending}
-            onSave={(form) => saveMutation.mutate({ id: a.id, form })}
+            error={saveMutation.isError && saveMutation.variables?.id === a.id ? getErrorMessage(saveMutation.error, 'Could not save the agency.') : undefined}
+            saved={savedId === a.id && saveMutation.isSuccess}
+            onSave={(form) => { setSavedId(null); saveMutation.mutate({ id: a.id, form }); }}
             onCancel={() => {}}
           />
         )}

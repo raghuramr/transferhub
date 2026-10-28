@@ -33,6 +33,19 @@ function make(counts: Counts, opts: { isBU?: boolean; existingTables?: string[] 
 }
 
 (async () => {
+  // Agency: users who submitted requests block; linked users are detached (accounts kept); scopes go with it.
+  {
+    const { svc } = make({ Transcripts: 2, Agencies: 1 });
+    const r = await svc.impact('agencies', 3);
+    assert.equal(r.canDelete, false);
+    assert.ok(r.blockers.some((b) => /submitted/.test(b.label) && b.count === 2));
+    const ok = make({ Users: 4, UserScopeAgencies: 1, Agencies: 1 });
+    const r2 = await ok.svc.impact('agencies', 3);
+    assert.equal(r2.canDelete, true);
+    assert.ok(r2.willDetach.some((d) => /users linked/.test(d.label) && d.count === 4));
+    assert.ok(r2.willDelete.some((d) => d.label === 'agencies'));
+  }
+
   // A clean topic: deletable, nothing blocks.
   {
     const { svc } = make({ CourseTopics: 1 });

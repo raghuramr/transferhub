@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import { SchemaService } from '../policy/schema.service';
 import * as sql from 'mssql';
@@ -84,9 +84,24 @@ export class AgenciesService {
     return res.recordset[0] ? mapAgency(res.recordset[0]) : null;
   }
 
+  /** Contact e-mail identifies the agency, so two agencies may not share one (case-insensitive). */
+  private async assertEmailFree(email: string | undefined | null, exceptId?: number) {
+    const e = (email ?? '').trim();
+    if (!e) return;
+    const r = await this.db.query<{ Id: number; Name: string }>(
+      `SELECT TOP 1 Id, Name FROM Agencies WHERE LOWER(ContactEmail) = LOWER(@e) AND (@ex IS NULL OR Id <> @ex)`,
+      [
+        { name: 'e', type: sql.NVarChar(254), value: e },
+        { name: 'ex', type: sql.Int, value: exceptId ?? null },
+      ],
+    );
+    if (r.recordset[0]) throw new ConflictException(`The contact email ${e} is already used by the agency "${r.recordset[0].Name}"`);
+  }
+
   async create(dto: CreateAgencyDto) {
     const existing = await this.findByName(dto.name);
     if (existing) throw new ConflictException('An agency with this name already exists');
+    await this.assertEmailFree(dto.contactEmail);
 
     const res = await this.db.query<{ Id: number }>(
       `INSERT INTO Agencies (Name, ContactEmail, ContactPhone, Country, IsActive)
@@ -115,13 +130,23 @@ export class AgenciesService {
   }
 
   async update(id: number, dto: UpdateAgencyDto) {
-    await this.findById(id);
+    const current = await this.findById(id);
     const sets: string[] = ['UpdatedAt = SYSUTCDATETIME()'];
     const inputs: QueryInput[] = [{ name: 'id', type: sql.Int, value: id }];
 
+    const newName = dto.name?.trim();
+    if (dto.name !== undefined && !newName) throw new BadRequestException('Agency name cannot be empty');
+    if (newName && newName !== current.name) {
+      const clash = await this.findByName(newName);
+      if (clash && clash.id !== id) throw new ConflictException('An agency with this name already exists');
+    }
+    if (dto.contactEmail && dto.contactEmail.toLowerCase() !== (current.contactEmail ?? '').toLowerCase()) {
+      await this.assertEmailFree(dto.contactEmail, id);
+    }
+
     if (dto.name !== undefined) {
       sets.push('Name = @name');
-      inputs.push({ name: 'name', type: sql.NVarChar(200), value: dto.name });
+      inputs.push({ name: 'name', type: sql.NVarChar(200), value: newName });
     }
     if (dto.contactEmail !== undefined) {
       sets.push('ContactEmail = @email');
@@ -142,6 +167,14 @@ export class AgenciesService {
 
     await this.db.query(`UPDATE Agencies SET ${sets.join(', ')} WHERE Id = @id`, inputs);
     await this.setImages(id, dto);
+    // Agency users carry the name as free text too; keep it in step so nothing is left pointing at the old name.
+    if (newName && newName !== current.name) {
+      await this.db.query(`UPDATE Users SET AgencyName = @name WHERE AgencyId = @id OR AgencyName = @old`, [
+        { name: 'name', type: sql.NVarChar(200), value: newName },
+        { name: 'id', type: sql.Int, value: id },
+        { name: 'old', type: sql.NVarChar(200), value: current.name },
+      ]);
+    }
     return this.findById(id);
   }
 
