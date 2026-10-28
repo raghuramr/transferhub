@@ -1,5 +1,5 @@
 import { CourseMappingsService } from '../policy/course-mappings.service';
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
 import { WorkflowsService } from '../workflows/workflows.service';
@@ -10,6 +10,7 @@ import { SchemaService } from '../policy/schema.service';
 import { TransferPolicyService, parseFlags, type PolicyFlag } from '../policy/transfer-policy.service';
 import { CreditDeadlineService } from '../policy/credit-deadline.service';
 import { ExamCreditService } from '../policy/exam-credit.service';
+import { EventBus, type LiveEventInput } from '../events/event-bus.service';
 import { conditionalDocApplies, type DocConditionContext } from '../policy/exam-credit';
 
 export interface Actor {
@@ -66,7 +67,17 @@ export class WorkflowEngineService {
     private deadlines: CreditDeadlineService,
     private examCredit: ExamCreditService,
     private courseMappings: CourseMappingsService,
+    @Optional() private bus?: EventBus,
   ) {}
+
+  /** Live-tracker event: fire-and-forget, can never break the pipeline. */
+  private live(e: LiveEventInput) {
+    try {
+      this.bus?.emit(e);
+    } catch {
+      // ignore
+    }
+  }
 
   // ── starting ────────────────────────────────────────────────
 
@@ -252,9 +263,15 @@ export class WorkflowEngineService {
       { name: 'o', type: sql.Int, value: s.StageOrder },
       { name: 't', type: sql.UniqueIdentifier, value: s.TranscriptId },
     ]);
+    this.live({
+      type: 'stage_activated',
+      transcriptId: s.TranscriptId,
+      stage: { order: s.StageOrder, name: s.StageName, status: 'active' },
+      text: `Now at "${s.StageName}"`,
+    });
   }
 
-  private async completeStage(stageId: number, status: string, decidedBy: string | null) {
+  private async completeStage(stageId: number, status: string, decidedBy: string | null, auto = false) {
     await this.db.query(
       `UPDATE TranscriptStages SET Status = @s, CompletedAt = SYSUTCDATETIME(), DecidedByUserId = @u WHERE Id = @id`,
       [
@@ -263,6 +280,29 @@ export class WorkflowEngineService {
         { name: 'id', type: sql.Int, value: stageId },
       ],
     );
+    void this.emitStageDone(stageId, status, auto);
+  }
+
+  /** Looks the stage up after the fact (system stages included) so the pipeline never waits on or fails because of it. */
+  private async emitStageDone(stageId: number, status: string, auto: boolean) {
+    try {
+      const r = await this.db.query<{ TranscriptId: string; StageName: string; StageOrder: number }>(
+        `SELECT TranscriptId, StageName, StageOrder FROM TranscriptStages WHERE Id = @id`,
+        [{ name: 'id', type: sql.Int, value: stageId }],
+      );
+      const row = r.recordset[0];
+      if (!row) return;
+      this.emitStage(row.TranscriptId, row.StageOrder, row.StageName, status, auto);
+    } catch {
+      // live updates are best-effort
+    }
+  }
+
+  private emitStage(transcriptId: string, order: number, name: string, status: string, auto = false) {
+    const type = auto ? 'stage_auto_approved' : status === 'approved' ? 'stage_approved' : status === 'rejected' ? 'stage_rejected' : status === 'returned' ? 'stage_returned' : status === 'bypassed' ? 'stage_bypassed' : null;
+    if (!type) return;
+    const verb = auto ? 'completed automatically' : status;
+    this.live({ type, transcriptId, stage: { order, name, status }, text: `Stage "${name}" ${verb}` });
   }
 
   // ── agent tasks ─────────────────────────────────────────────
@@ -410,7 +450,7 @@ export class WorkflowEngineService {
       return false;
     }
 
-    await this.completeStage(stage.Id, 'approved', null);
+    await this.completeStage(stage.Id, 'approved', null, true);
     try {
       await this.db.query(`UPDATE TranscriptStages SET AutoApproved = 1 WHERE Id = @id`, [{ name: 'id', type: sql.Int, value: stage.Id }]);
     } catch {
@@ -510,6 +550,7 @@ export class WorkflowEngineService {
       ],
     );
     if (!changed.rowsAffected[0]) throw new BadRequestException('Someone else already decided this stage.');
+    this.emitStage(transcriptId, stage.StageOrder, stage.StageName, verb);
     await this.addDecisionNotes(transcriptId, stage.Id, actor, `${stage.StageName} ${verb}. ${internal}`.trim(), forStudent);
 
     if (dto.decision === 'reject') {
@@ -524,6 +565,7 @@ export class WorkflowEngineService {
           { name: 't', type: sql.UniqueIdentifier, value: transcriptId },
         ],
       );
+      this.live({ type: 'request_completed', transcriptId, text: 'Request closed' });
       await this.emailStudent(transcriptId, 'rejected', forStudent || internal, stage.StageName);
       return { message: 'Request rejected', workflowStatus: 'rejected' };
     }
@@ -568,6 +610,7 @@ export class WorkflowEngineService {
         { name: 't', type: sql.UniqueIdentifier, value: transcriptId },
       ],
     );
+    this.emitStage(transcriptId, stage.StageOrder, stage.StageName, 'bypassed');
     await this.addNote(transcriptId, stage.Id, 'internal', 'decision', actor.id, actor.role,
       `Request accepted directly by an admin, bypassing the remaining stages: ${reason.trim()}`);
     await this.advance(transcriptId, stage.StageOrder, actor.id, 'bypassed');
@@ -613,6 +656,7 @@ export class WorkflowEngineService {
         { name: 't', type: sql.UniqueIdentifier, value: transcriptId },
       ],
     );
+    this.live({ type: 'request_completed', transcriptId, text: outcome === 'approved' ? 'Your request is complete' : 'Request completed' });
     const undecided = await this.db.query<{ N: number }>(
       `SELECT COUNT(*) AS N FROM Evaluations e JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId
        WHERE tc.TranscriptId = @t AND e.Status IN ('queued','in_progress')`,
@@ -726,6 +770,12 @@ export class WorkflowEngineService {
         { name: 'b', type: sql.NVarChar(sql.MAX), value: body },
       ],
     );
+    this.live({
+      type: 'note_added',
+      transcriptId,
+      audience: audience === 'internal' ? 'staff' : 'all',
+      text: audience === 'internal' ? 'New internal note' : 'New update on the request',
+    });
   }
 
   private async addDecisionNotes(transcriptId: string, stageId: number, actor: Actor, internal: string, forStudent: string) {

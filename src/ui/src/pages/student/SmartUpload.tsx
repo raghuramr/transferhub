@@ -1,12 +1,17 @@
-import { useCallback, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, ChevronDown, FileText, Info, Link2, Lock, Pause, RefreshCw, Trash2, UploadCloud } from 'lucide-react';
+import { Check, ChevronDown, Eye, EyeOff, FileText, Info, Link2, Lock, Pause, RefreshCw, Trash2, UploadCloud } from 'lucide-react';
 import { documentsApi, getErrorMessage, transcriptsApi, type ExtractedDocument, type IntakeItem } from '../../lib/api';
 import { DocumentEditor } from '../../components/documents/DocumentEditor';
 import { ConfidenceBar, StatusChip } from '../../components/documents/StatusChip';
 import { cn } from '../../lib/cn';
+import { CaptureFlow } from '../../components/capture/CaptureFlow';
+import type { ScanLayout } from '../../lib/api-scan';
+
+// pdf.js is heavy: the scan viewer (and pdf.js with it) is only fetched when a card actually shows it.
+const ScanViewer = lazy(() => import('../../components/scan/ScanViewer'));
 
 const MAX_BYTES = 15 * 1024 * 1024;
 
@@ -43,6 +48,7 @@ function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; 
   const confirmed = item.status === 'confirmed';
   const busy = item.status === 'uploaded' || item.status === 'reading';
   const [attachTo, setAttachTo] = useState('');
+  const [scanOpen, setScanOpen] = useState(item.status === 'read' || item.status === 'needs_review');
   const refresh = () => qc.invalidateQueries({ queryKey: ['documents', 'intakes'] });
 
   const detail = useQuery({
@@ -50,6 +56,15 @@ function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; 
     queryFn: async () => (await documentsApi.get(item.id)).data,
     enabled: open && !busy,
   });
+
+  // While the document is being read, show the page itself with a scanning line (needs the upload id from the detail).
+  const preview = useQuery({
+    queryKey: ['documents', 'intake-preview', item.id],
+    queryFn: async () => (await documentsApi.get(item.id)).data,
+    enabled: busy,
+    staleTime: 60_000,
+  });
+  const scanExtracted = detail.data?.extracted ? { fields: detail.data.extracted.fields, layout: (detail.data.extracted as { layout?: ScanLayout }).layout } : null;
 
   const typeMut = useMutation({
     mutationFn: (docType: string) => documentsApi.update(item.id, { docType }),
@@ -113,13 +128,20 @@ function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; 
             </div>
           )}
           {item.error && <p className="mt-1 text-sm text-red-600">{item.error}</p>}
+          {busy && preview.data && (
+            <div className="mt-3">
+              <Suspense fallback={<p className="text-xs text-gray-400">Opening the document…</p>}>
+                <ScanViewer uploadId={preview.data.uploadId} mimeType={preview.data.mimeType} extracted={null} reading compact />
+              </Suspense>
+            </div>
+          )}
         </div>
-        <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
           {canPickType && (
             <select
               value={item.docType ?? ''}
               onChange={(e) => e.target.value && typeMut.mutate(e.target.value)}
-              className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="min-w-0 max-w-full flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 sm:flex-none"
               aria-label="Document type"
             >
               <option value="">Choose type…</option>
@@ -155,6 +177,18 @@ function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; 
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t border-gray-100">
             <div className="space-y-4 p-4">
               {detail.isLoading && <p className="text-sm text-gray-400">Loading details…</p>}
+              {detail.data && (
+                <div>
+                  <button type="button" onClick={() => setScanOpen((o) => !o)} className="mb-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-gray-300 px-3 text-sm text-gray-700 hover:bg-gray-50 sm:min-h-0 sm:py-1.5">
+                    {scanOpen ? <EyeOff size={14} /> : <Eye size={14} />} {scanOpen ? 'Hide the scan view' : 'Watch how we read it'}
+                  </button>
+                  {scanOpen && (
+                    <Suspense fallback={<p className="text-sm text-gray-400">Opening the document…</p>}>
+                      <ScanViewer uploadId={detail.data.uploadId} mimeType={detail.data.mimeType} extracted={scanExtracted} />
+                    </Suspense>
+                  )}
+                </div>
+              )}
               {detail.data && (
                 <DocumentEditor detail={detail.data} readOnly={busy} saving={saveMut.isPending} onSave={(x) => saveMut.mutate(x)} />
               )}
@@ -249,6 +283,8 @@ export default function SmartUpload() {
         </div>
       )}
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+      <CaptureFlow intakes={items} onUploaded={() => qc.invalidateQueries({ queryKey: ['documents', 'intakes'] })} />
 
       <motion.div
         animate={{ scale: drag ? 1.01 : 1 }}

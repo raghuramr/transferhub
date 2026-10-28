@@ -1,4 +1,5 @@
-import { BadRequestException, ForbiddenException, HttpException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, Injectable, Logger, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { EventBus } from '../events/event-bus.service';
 import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
 import { SchemaService } from '../policy/schema.service';
@@ -61,6 +62,7 @@ export class ExchangeService {
     private engine: WorkflowEngineService,
     private requests: RequestsService,
     private perms: RolePermissionsCacheService,
+    @Optional() private bus?: EventBus,
   ) {}
 
   // ── access helpers ──────────────────────────────────────────
@@ -356,6 +358,7 @@ export class ExchangeService {
     const id = ins.recordset[0].Id;
     const byName = partyName(by, this.names(t));
     await this.note(t, by, from, `${byName} asked ${partyName(from, this.names(t))} for a document: ${title}.`);
+    this.bus?.emit({ type: 'document_requested', transcriptId, text: 'A document was requested' });
     await this.audit(viewer, 'DOCUMENT_REQUEST_CREATED', transcriptId, { id, by, from, title });
 
     // E-mail the asked side. Delivery problems never block the request.
@@ -480,6 +483,7 @@ export class ExchangeService {
 
     const who = partyName(party, this.names(t));
     await this.engine.addNote(transcriptId, null, 'student', 'system', null, null, `${who} added a document: ${file.originalname}${req ? ` (for "${req.Title}")` : ''}.`).catch(() => undefined);
+    this.bus?.emit({ type: 'document_added', transcriptId, text: 'A document was added to the request' });
     await this.audit(viewer, 'TRANSFER_DOCUMENT_UPLOADED', transcriptId, { uploadId: saved.id, party, docType, requestId: req?.Id ?? null });
 
     if (req) {
@@ -569,6 +573,7 @@ export class ExchangeService {
       ],
     );
     await this.note(t, from, to, `${fromName} sent ${partyName(to, this.names(t))} a reminder: ${subjectLine}${text ? ` - ${text}` : '.'}`);
+    this.bus?.emit({ type: 'reminder_sent', transcriptId, audience: 'staff', text: 'A reminder was sent' });
     await this.audit(viewer, 'PARTY_REMINDER_SENT', transcriptId, { from, to, requestId: req?.Id ?? null });
     return { sent, emailConfigured: this.email.isConfigured, exchange: await this.exchange(transcriptId, viewer) };
   }

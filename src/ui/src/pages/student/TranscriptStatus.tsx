@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { requestsApi, transcriptsApi } from '../../lib/api';
 import { GeneralNotes, RequestTimeline } from '../../components/workflow/RequestTimeline';
+import { ProgressTracker } from '../../components/workflow/ProgressTracker';
 import { DocumentsPanel, NoteComposer, ReminderPanel } from '../../components/workflow/RequestPanels';
 import type { RequestTimeline as TimelineData } from '../../types/workflow';
 import { CheckCircle, Clock, AlertCircle, BookOpen, Sparkles, FileDown, FileCheck2, ArrowRight, ArrowDown, Lightbulb } from 'lucide-react';
@@ -127,8 +128,17 @@ export default function TranscriptStatus() {
                 </span>
               )}
             </div>
-            <RequestTimeline stages={timeline.stages} />
-            <div className="mt-6"><GeneralNotes notes={timeline.generalNotes} /></div>
+            <ProgressTracker stages={timeline.stages} workflowStatus={timeline.transcript.workflowStatus} />
+            <details className="group mt-6 rounded-lg border border-gray-100" data-testid="history-details">
+              <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900">
+                History and notes
+                <span className="ml-1 text-gray-400">({timeline.stages.reduce((n, s) => n + s.notes.length, 0) + timeline.generalNotes.length})</span>
+              </summary>
+              <div className="border-t border-gray-100 p-4">
+                <RequestTimeline stages={timeline.stages} />
+                <div className="mt-6"><GeneralNotes notes={timeline.generalNotes} /></div>
+              </div>
+            </details>
           </>
         ) : (
           <TransferWorkflowStepper currentStatus={transcript.status} steps={TRANSCRIPT_STEPS} />

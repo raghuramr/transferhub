@@ -11,6 +11,7 @@ import { CreditHubCard, EvaluationKindBanner, FlagList } from '../../components/
 import DeadlineBadge, { formatDeadlineDate } from '../../components/policy/DeadlineBadge';
 import StudentProfileCard from '../../components/policy/StudentProfileCard';
 import CourseComparison from '../../components/workflow/CourseComparison';
+import NetworkPanel from '../../components/workflow/NetworkPanel';
 import ExchangePanel, { OpenRequestsBanner } from '../../components/transfers/ExchangePanel';
 import type { RequestTimeline as TimelineData, StageBrief, TimelineStage } from '../../types/workflow';
 
@@ -173,6 +174,7 @@ function Brief({ brief, evalBase, requestId, canAct, onDone, syllabusCourseIds }
                   <td colSpan={6} className="p-0 pb-3">
                     <div className="sticky left-0" style={{ width: wrapW > 0 ? wrapW : undefined }}>
                       <CourseComparison evaluationId={c.evaluationId} requestId={requestId} canDecide={canAct} />
+                      <div className="mt-3"><NetworkPanel evaluationId={c.evaluationId} requestId={requestId} canDecide={canAct} /></div>
                     </div>
                   </td>
                 </tr>

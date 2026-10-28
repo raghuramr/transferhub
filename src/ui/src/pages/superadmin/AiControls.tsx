@@ -7,10 +7,11 @@ import { aiControlsApi, universitiesApi, type BenchResult, type BenchSummary, ty
 import { usePermissions } from '../../hooks/usePermissions';
 import { cn } from '../../lib/cn';
 import ReadinessCard from '../../components/workflow/ReadinessCard';
+import LearningTab from '../../components/ai/LearningTab';
 import MatcherAccuracyCard from '../../components/workflow/MatcherAccuracyCard';
 import type { AgentSkill, AiSettings } from '../../types/workflow';
 
-type Tab = 'usage' | 'settings' | 'providers' | 'playbook' | 'requests' | 'benchmark';
+type Tab = 'usage' | 'settings' | 'providers' | 'playbook' | 'requests' | 'benchmark' | 'learning';
 
 const errMsg = (e: unknown, fallback: string) => {
   const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
@@ -1090,7 +1091,7 @@ export default function AiControls() {
   const [days, setDays] = useState(30);
   const tabs: { key: Tab; label: string }[] = [
     { key: 'usage', label: 'Usage' }, { key: 'requests', label: 'By request' },
-    { key: 'settings', label: 'Settings' }, { key: 'providers', label: 'Providers' }, { key: 'benchmark', label: 'Benchmark' }, { key: 'playbook', label: 'Agent playbook' },
+    { key: 'settings', label: 'Settings' }, { key: 'providers', label: 'Providers' }, { key: 'benchmark', label: 'Benchmark' }, { key: 'learning', label: 'Learning' }, { key: 'playbook', label: 'Agent playbook' },
   ];
   return (
     <div className="mx-auto w-[95%] max-w-6xl p-4 sm:p-6">
@@ -1116,6 +1117,7 @@ export default function AiControls() {
       {tab === 'settings' && <SettingsTab />}
       {tab === 'providers' && <ProvidersTab />}
       {tab === 'benchmark' && <BenchmarkTab />}
+      {tab === 'learning' && <LearningTab />}
       {tab === 'playbook' && <PlaybookTab />}
     </div>
   );

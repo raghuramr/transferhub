@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsEmail } from 'class-validator';
+import { MaxLength, IsString, IsOptional, IsBoolean, IsEmail } from 'class-validator';
 
 export class CreateAgencyDto {
   @IsString() name: string;
@@ -6,4 +6,6 @@ export class CreateAgencyDto {
   @IsOptional() @IsString() contactPhone?: string;
   @IsOptional() @IsString() country?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
+  @IsOptional() @IsString() @MaxLength(500) logoUrl?: string;
+  @IsOptional() @IsString() @MaxLength(500) heroImageUrl?: string;
 }

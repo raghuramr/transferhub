@@ -21,7 +21,7 @@ const TARGET_CODE = 'BU';
 
 interface CourseRow {
   StudentId: string; FirstName: string; LastName: string; CourseCode: string; CourseTitle: string; OriginalCredits: number; NormalisedCredits: number | null;
-  InstName: string; InstCode: string; Calendar: string | null; ExtId: number | null; ExtDescription: string | null; ExpectedBu: string | null;
+  InstId: number; InstName: string; InstCode: string; Calendar: string | null; ExtId: number | null; ExtDescription: string | null; ExpectedBu: string | null;
 }
 
 /**
@@ -60,7 +60,7 @@ export class BenchmarkService {
     }
     const r = await this.db.query<CourseRow>(
       `SELECT TOP 3000 u.Id AS StudentId, u.FirstName, u.LastName, tc.CourseCode, tc.CourseTitle, tc.OriginalCredits, tc.NormalisedCredits,
-              i.Name AS InstName, i.Code AS InstCode, i.Calendar, ec.Id AS ExtId, ec.Description AS ExtDescription,
+              i.Id AS InstId, i.Name AS InstName, i.Code AS InstCode, i.Calendar, ec.Id AS ExtId, ec.Description AS ExtDescription,
               (SELECT TOP 1 bc.Code FROM Equivalencies eq JOIN Courses bc ON bc.Id = eq.BUCourseId
                 WHERE eq.ExternalCourseId = ec.Id AND eq.IsActive = 1 AND eq.Outcome = 'equivalent' AND bc.InstitutionId = @bu ORDER BY eq.Id) AS ExpectedBu
        FROM Transcripts t
@@ -120,7 +120,7 @@ export class BenchmarkService {
         const res = await this.ai.dryMatch(eng.id, {
           code: r.CourseCode, title: r.CourseTitle, credits: credits == null ? null : Number(credits), description: r.ExtDescription,
           topics: r.ExtId && settings.useTopics ? topics.get(r.ExtId) ?? [] : [], institutionName: r.InstName, calendar: r.Calendar ?? 'semester',
-        }, catalog, settings);
+        }, catalog, settings, { extInstitutionId: r.InstId, targetInstitutionId: bu });
         cases.push(scoreCase({
           engine: eng.id, engineLabel: eng.label, model: res.model || eng.model, studentId: r.StudentId, studentName: `${r.FirstName} ${r.LastName}`,
           courseCode: r.CourseCode, courseTitle: r.CourseTitle, institution: r.InstCode,

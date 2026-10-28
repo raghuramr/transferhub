@@ -33,6 +33,8 @@ import { SettingsModule } from './settings/settings.module';
 import { EmailTemplatesModule } from './common/email-templates.module';
 import { DemoModule } from './demo/demo.module';
 import { StudentJourneyModule } from './student-journey/student-journey.module';
+import { EventsModule } from './events/events.module';
+import { NetworkModule } from './network/network.module';
 import { AuditController } from './common/audit.controller';
 import { HealthController } from './common/health.controller';
 
@@ -80,6 +82,8 @@ const envFilePath =
     EmailTemplatesModule,
     DemoModule,
     StudentJourneyModule,
+    EventsModule,
+    NetworkModule,
   ],
   controllers: [AuditController, HealthController],
 })

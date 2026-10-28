@@ -8,6 +8,8 @@ import { authApi, pagesApi } from '../../lib/api';
 import { PageTransition } from '../ui/PageTransition';
 import { Avatar } from '../shared/Avatar';
 import { UniversityHeader } from './UniversityHeader';
+import { LiveEventsProvider } from '../live/LiveEventsProvider';
+import { StudentTabBar } from './StudentTabBar';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
@@ -277,6 +279,7 @@ export default function AppLayout() {
   );
 
   return (
+    <LiveEventsProvider>
     <div className="flex min-h-screen bg-[#faf7f8]">
       <aside className={`hidden md:flex h-screen sticky top-0 bg-white border-r border-brand-100/60 flex-col shrink-0 transition-[width] duration-200 ${collapsed ? 'w-16' : 'w-64'}`}>
         {renderSidebar(collapsed)}
@@ -305,7 +308,7 @@ export default function AppLayout() {
 
         <UniversityHeader />
 
-        <main className="flex-1 overflow-auto">
+        <main className={`flex-1 overflow-auto${user?.role === 'student' ? ' student-app' : ''}`}>
           <AnimatePresence mode="wait" initial={false}>
             <PageTransition key={location.pathname}>
               <Outlet />
@@ -313,7 +316,9 @@ export default function AppLayout() {
           </AnimatePresence>
         </main>
       </div>
+      {user?.role === 'student' && <StudentTabBar />}
     </div>
+    </LiveEventsProvider>
   );
 }
 

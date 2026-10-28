@@ -11,10 +11,11 @@ import { ReadinessService } from './readiness.service';
 import { BacktestService } from './backtest.service';
 import { EmailService } from '../common/email.service';
 import { EmailController } from '../common/email.controller';
+import { NetworkModule } from '../network/network.module';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, NetworkModule],
   providers: [AiService, AiSettingsService, AiProvidersService, BenchmarkService, AiLearningService, AiUsageService, ReadinessService, BacktestService, EmailService],
   controllers: [AiController, AiControlsController, EmailController],
   exports: [AiService, AiSettingsService, AiProvidersService, AiUsageService],

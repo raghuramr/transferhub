@@ -8,6 +8,7 @@ import { cn } from '../../lib/cn';
 import { durationLabel, formatDateTime } from '../../components/workflow/RequestTimeline';
 import DeadlineBadge from '../../components/policy/DeadlineBadge';
 import type { Recommendation } from '../../types/workflow';
+import { LiveIndicator } from '../../components/live/LiveIndicator';
 
 const REC: Record<Recommendation, { label: string; cls: string }> = {
   approve: { label: 'AI: ready to approve', cls: 'bg-emerald-50 text-emerald-700' },
@@ -56,7 +57,7 @@ export default function RequestsQueue() {
     <div className="mx-auto w-[95%] max-w-6xl p-4 sm:p-6">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900"><Inbox size={24} /> Approval queue</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900"><Inbox size={24} /> Approval queue <LiveIndicator className="ml-1 align-middle" /></h1>
           <p className="mt-1 text-gray-500">Requests waiting for your decision. Each one already has the matching and a summary prepared.</p>
         </div>
         {isAdmin && (
