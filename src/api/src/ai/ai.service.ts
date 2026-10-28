@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import { DatabaseService } from '../database/database.service';
@@ -8,7 +8,9 @@ import { AiProvidersService, isChatReady, type ChatProvider, type CustomProvider
 import { AiUsageService, SkipReason } from './ai-usage.service';
 import { estimateCostUsd, estimateTokens, TokenUsage } from './ai-pricing';
 import { CatalogCourse, normalizeKey, shortlist } from './course-prefilter';
-import { rulesMatch } from './rules-matcher';
+import { rulesMatch, RULES_MAX_CONFIDENCE } from './rules-matcher';
+import { NetworkService } from '../network/network.service';
+import { applyNetworkBoost, OVERALL_CAP } from '../network/network.logic';
 
 export interface CourseMatchResult {
   buCourseId: number;
@@ -89,7 +91,29 @@ export class AiService {
     private settingsService: AiSettingsService,
     private usage: AiUsageService,
     private providers: AiProvidersService,
+    @Optional() private network?: NetworkService,
   ) {}
+
+  /**
+   * OPTIONAL, switchable (AppSettings `ai.network_boost`, default OFF) adjustment: candidates that other universities also accepted
+   * as equivalent get a small bounded confidence boost and a labelled rationale suffix. Never throws; returns the input unchanged
+   * when off, when there is no network data, or on any error.
+   */
+  private async withNetwork<T extends { buTitle: string; confidenceScore: number; rationale: string; rank: number }>(
+    candidates: T[],
+    ext: { institutionId?: number | null; code: string; title: string },
+    targetId: number | null,
+    cap: number,
+  ): Promise<T[]> {
+    if (!this.network || !candidates.length) return candidates;
+    try {
+      if (!(await this.network.isBoostEnabled())) return candidates;
+      return applyNetworkBoost(candidates, await this.network.supportFor(ext, targetId), cap);
+    } catch (err) {
+      this.logger.warn(`Network boost skipped: ${(err as Error).message}`);
+      return candidates;
+    }
+  }
 
   /** Is a usable chat provider configured right now (Anthropic key, or a complete Azure OpenAI setup)? */
   private async hasApiKey(): Promise<boolean> {
@@ -218,13 +242,15 @@ export class AiService {
     ext: { code: string; title: string; credits: number | null; description: string | null; topics: string[]; institutionName: string; calendar: string },
     catalog: CatalogCourse[],
     settings: AiSettings,
+    net?: { extInstitutionId: number | null; targetInstitutionId: number | null },
   ): Promise<DryMatchResult> {
     const t0 = Date.now();
     const base = { engine, catalogSize: catalog.length } as const;
     const facts = { code: ext.code, title: ext.title, credits: ext.credits, text: `${ext.description ?? ''} ${ext.topics.join(' ')}` };
     try {
       if (engine === 'rules') {
-        const found = rulesMatch(facts, catalog, 3).map((c) => ({ buCourseId: c.courseId, buCode: c.code, buTitle: c.title, rank: c.rank, confidenceScore: c.confidence, rationale: c.rationale }));
+        const raw = rulesMatch(facts, catalog, 3).map((c) => ({ buCourseId: c.courseId, buCode: c.code, buTitle: c.title, rank: c.rank, confidenceScore: c.confidence, rationale: c.rationale }));
+        const found = net ? await this.withNetwork(raw, { institutionId: net.extInstitutionId, code: ext.code, title: ext.title }, net.targetInstitutionId, RULES_MAX_CONFIDENCE) : raw;
         const ms = Date.now() - t0;
         return { ...base, model: 'built-in rules', candidates: found as CourseMatchResult[], shortlistSize: catalog.length, shortlistMs: 0, callMs: 0, parseMs: ms, totalMs: ms, usage: null, costUsd: 0 };
       }
@@ -254,6 +280,7 @@ export class AiService {
       } catch (e) {
         parseError = (e as Error).message;
       }
+      if (net) candidates = await this.withNetwork(candidates, { institutionId: net.extInstitutionId, code: ext.code, title: ext.title }, net.targetInstitutionId, OVERALL_CAP);
       const parseMs = Date.now() - p0;
       return { ...base, model, candidates, shortlistSize: picked.length, shortlistMs, callMs, parseMs, totalMs: Date.now() - t0, usage: call.usage, costUsd: call.costUsd, ...(parseError ? { error: `Unreadable answer: ${parseError}` } : {}) };
     } catch (e) {
@@ -425,7 +452,7 @@ export class AiService {
           await this.db.query(`UPDATE AiMatchCache SET HitCount = HitCount + 1, LastHitAt = SYSUTCDATETIME() WHERE Id = @id`, [
             { name: 'id', type: sql.Int, value: hit.recordset[0].Id },
           ]);
-          const cached = JSON.parse(hit.recordset[0].CandidatesJson) as CourseMatchResult[];
+          const cached = await this.withNetwork(JSON.parse(hit.recordset[0].CandidatesJson) as CourseMatchResult[], { institutionId: ctx.ExternalInstitutionId, code: ctx.CourseCode, title: ctx.CourseTitle }, targetId, OVERALL_CAP);
           await this.usage.log({
             ...baseLog,
             operation: 'match',
@@ -483,10 +510,12 @@ export class AiService {
       credits: credits == null ? null : Number(credits),
       text: `${ctx.ExtDescription ?? ''} ${extTopics.join(' ')}`,
     };
+    const netExt = { institutionId: ctx.ExternalInstitutionId, code: ctx.CourseCode, title: ctx.CourseTitle };
     const byRules = async () => {
-      const found = rulesMatch(extFacts, catalog, 3).map((c) => ({
+      const raw = rulesMatch(extFacts, catalog, 3).map((c) => ({
         buCourseId: c.courseId, buCode: c.code, buTitle: c.title, rank: c.rank, confidenceScore: c.confidence, rationale: c.rationale,
       }));
+      const found = await this.withNetwork(raw, netExt, targetId, RULES_MAX_CONFIDENCE);
       await this.usage.log({ ...baseLog, operation: 'match', model: 'built-in rules', catalogSize: catalog.length, candidatesSent: found.length });
       if (found.length) await this.persist(evaluationId, ctx.TcId, found, settings.autoLikelyThreshold);
       return { candidates: found, fromCache: false };
@@ -574,6 +603,8 @@ export class AiService {
       }
     }
 
+    // The cache above keeps the pure model answer; the network boost is applied per request on top of it.
+    candidates = await this.withNetwork(candidates, netExt, targetId, OVERALL_CAP);
     await this.persist(evaluationId, ctx.TcId, candidates, settings.autoLikelyThreshold);
     return { candidates, fromCache: false };
   }
