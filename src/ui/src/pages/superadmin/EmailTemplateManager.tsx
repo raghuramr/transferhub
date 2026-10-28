@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Mail, Plus, Power, PowerOff, Save, Search, Send, Trash2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, ChevronDown, Loader2, ChevronRight, Mail, Plus, Power, PowerOff, Save, Search, Send, Trash2 } from 'lucide-react';
 import { emailApi, type CustomEmailDraft, type CustomEmailTemplate, type EmailTemplateItem } from '../../lib/api';
 import { BuiltinTemplateEditor } from './EmailTemplateEditor';
 
@@ -197,6 +197,27 @@ export function EmailTemplateManager({ to }: { to: string }) {
     },
     onError: (e) => setNote({ ok: false, text: errText(e) }),
   });
+  // "Send test": each selected template (as currently saved, with sample data) goes to the test address above.
+  const [testing, setTesting] = useState(false);
+  const sendTests = async () => {
+    const picked = rows.filter((r) => sel.has(r.key));
+    const target = to.trim();
+    if (!isEmail(target)) { setNote({ ok: false, text: 'Enter a valid test address in "Send a test email" above first.' }); return; }
+    if (picked.length > 25) { setNote({ ok: false, text: 'Select at most 25 templates at a time.' }); return; }
+    if (!window.confirm(`Send ${picked.length} test email${picked.length === 1 ? '' : 's'} to ${target}?`)) return;
+    setTesting(true); setNote(null);
+    const failed: string[] = [];
+    for (const r of picked) {
+      try {
+        const res = r.kind === 'builtin'
+          ? await emailApi.testOverride(r.id, items.find((i) => i.key === r.id)?.override ?? {}, target)
+          : await emailApi.customTest(toDraft(toForm(customs.find((c) => c.id === r.id)!)), target);
+        if (!res.data.ok) failed.push(`${r.name} (${res.data.error})`);
+      } catch (e) { failed.push(`${r.name} (${errText(e)})`); }
+    }
+    setTesting(false);
+    setNote(failed.length ? { ok: false, text: `Sent ${picked.length - failed.length} of ${picked.length}. Not sent: ${failed.join('; ')}` } : { ok: true, text: `Sent ${picked.length} test email${picked.length === 1 ? '' : 's'} to ${target}.` });
+  };
   const run = (action: 'activate' | 'deactivate' | 'delete') => {
     const picked = rows.filter((r) => sel.has(r.key));
     if (action === 'delete') {
@@ -231,6 +252,7 @@ export function EmailTemplateManager({ to }: { to: string }) {
         {sel.size > 0 && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-gray-700">{sel.size} selected</span>
+            <button type="button" disabled={testing || bulk.isPending} onClick={() => void sendTests()} className="flex items-center gap-1 rounded-lg border border-brand-800 px-2.5 py-1 text-sm font-medium text-brand-800 hover:bg-brand-50 disabled:opacity-50">{testing ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}Send test to {to || 'me'}</button>
             <button type="button" disabled={bulk.isPending} onClick={() => run('activate')} className="flex items-center gap-1 rounded-lg border border-green-300 px-2.5 py-1 text-sm text-green-700 hover:bg-green-50 disabled:opacity-50"><Power size={13} />Activate</button>
             <button type="button" disabled={bulk.isPending} onClick={() => run('deactivate')} className="flex items-center gap-1 rounded-lg border border-gray-300 px-2.5 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"><PowerOff size={13} />Deactivate</button>
             <button type="button" disabled={bulk.isPending} onClick={() => run('delete')} className="flex items-center gap-1 rounded-lg border border-red-300 px-2.5 py-1 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"><Trash2 size={13} />Delete</button>

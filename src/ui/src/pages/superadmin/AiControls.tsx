@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bot, Coins, Database, Gauge, Loader2, Plus, Save, Sparkles, Trash2, Zap } from 'lucide-react';
-import { aiControlsApi, universitiesApi } from '../../lib/api';
+import { Bot, ChevronUp, Coins, Database, Gauge, Loader2, Plug, Plus, Save, Server, Sparkles, Trash2, Zap } from 'lucide-react';
+import { aiControlsApi, universitiesApi, type AiProviderPublic, type AiProviderSave, type ChatProviderId, type CustomProviderPublic } from '../../lib/api';
 import { usePermissions } from '../../hooks/usePermissions';
 import { cn } from '../../lib/cn';
 import ReadinessCard from '../../components/workflow/ReadinessCard';
@@ -513,35 +513,229 @@ function RequestsTab({ days }: { days: number }) {
   );
 }
 
-// ── Providers (Anthropic + Azure OpenAI / Document Intelligence) ──
-// One provider card. Declared at module level (NOT inside ProvidersTab) so typing in its fields does not remount it and drop focus.
-function ProviderCard({ active, onActivate, activating, icon, title, blurb, configured, canEdit, children }: {
-  active: boolean; onActivate: () => void; activating?: boolean; icon: React.ReactNode; title: string; blurb?: string;
-  configured?: boolean; canEdit: boolean; children?: React.ReactNode;
+// ── Providers ──
+// Small cards (name + status) that open into a larger card with every option for that provider; closing returns to the small cards.
+// All components below are declared at module level (NOT inside ProvidersTab) so typing in a field never remounts it and drops focus.
+type Msg = { ok: boolean; text: string } | null;
+
+function Switch({ on, onChange, disabled, label }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean; label: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={() => onChange(!on)}
+      className={cn('relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition disabled:opacity-50', on ? 'bg-brand-800' : 'bg-gray-300')}>
+      <span className={cn('inline-block h-5 w-5 transform rounded-full bg-white shadow transition', on ? 'translate-x-5' : 'translate-x-0.5')} />
+    </button>
+  );
+}
+
+function SmallCard({ icon, title, sub, active, configured, onOpen }: { icon: React.ReactNode; title: string; sub?: string; active: boolean; configured?: boolean; onOpen: () => void }) {
+  return (
+    <button type="button" onClick={onOpen}
+      className={cn('flex items-center gap-3 rounded-xl border bg-white p-3 text-left transition hover:border-brand-300 hover:shadow-sm', active ? 'border-brand-400 ring-2 ring-brand-500/30' : 'border-gray-200')}>
+      <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', active ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-500')}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-gray-900">{title}</span>
+        <span className="flex items-center gap-1.5 text-[11px]">
+          <span className={active ? 'font-medium text-brand-800' : 'text-gray-400'}>{active ? 'Active' : 'Inactive'}</span>
+          {configured != null && <span className={configured ? 'text-green-600' : 'text-gray-400'}>· {configured ? 'Configured' : 'Not configured'}</span>}
+          {sub && <span className="truncate text-gray-400">· {sub}</span>}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function ExpandedCard({ icon, title, blurb, active, configured, canEdit, canToggle = true, onToggle, onClose, toggling, children, footer }: {
+  icon: React.ReactNode; title: string; blurb?: string; active: boolean; configured?: boolean; canEdit: boolean; canToggle?: boolean;
+  onToggle: (v: boolean) => void; onClose: () => void; toggling?: boolean; children?: React.ReactNode; footer?: React.ReactNode;
 }) {
   return (
-    <div className={cn('rounded-xl border bg-white p-4 transition', active ? 'border-brand-400 ring-2 ring-brand-500/40' : 'border-gray-200')}>
+    <div className={cn('col-span-full rounded-xl border bg-white p-5 shadow-sm', active ? 'border-brand-400 ring-2 ring-brand-500/30' : 'border-gray-200')}>
       <div className="flex items-start gap-3">
-        <span className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', active ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-500')}>{icon}</span>
+        <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', active ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-500')}>{icon}</span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-gray-900">{title}</span>
-            {active && <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-800">Active</span>}
-            {configured != null && (
-              <span className={cn('ml-auto text-[11px]', configured ? 'text-green-600' : 'text-gray-400')}>{configured ? 'Configured' : 'Not configured'}</span>
-            )}
+            <span className="text-base font-semibold text-gray-900">{title}</span>
+            {configured != null && <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', configured ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500')}>{configured ? 'Configured' : 'Not configured'}</span>}
           </div>
           {blurb && <p className="mt-0.5 text-xs text-gray-500">{blurb}</p>}
         </div>
+        {canToggle && (
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <span className={active ? 'font-medium text-brand-800' : 'text-gray-500'}>{toggling ? 'Saving…' : active ? 'Active' : 'Inactive'}</span>
+            <Switch on={active} onChange={onToggle} disabled={!canEdit || toggling} label={`${title} active`} />
+          </label>
+        )}
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"><ChevronUp size={18} /></button>
       </div>
-      {children && <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">{children}</div>}
-      {canEdit && !active && (
-        <button type="button" onClick={onActivate} disabled={activating}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-800 hover:bg-brand-100 disabled:opacity-60">
-          {activating ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />} Make active
-        </button>
-      )}
+      <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">{children}</div>
+      {footer && <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">{footer}</div>}
     </div>
+  );
+}
+
+function SecretField({ label, isSet, value, onChange, disabled }: { label: string; isSet: boolean; value: string; onChange: (v: string) => void; disabled: boolean }) {
+  return (
+    <Field label={label} hint={isSet ? 'A value is saved. Leave blank to keep it, or type a new one to replace it.' : 'Not set yet.'}>
+      <input type="password" autoComplete="off" value={value} onChange={(e) => onChange(e.target.value)} placeholder={isSet ? '•••••••• (saved)' : 'Paste the key'} className={inputCls} disabled={disabled} />
+    </Field>
+  );
+}
+function TextField({ label, hint, value, onChange, placeholder, disabled }: { label: string; hint?: string; value: string; onChange: (v: string) => void; placeholder?: string; disabled: boolean }) {
+  return <Field label={label} hint={hint}><input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={inputCls} disabled={disabled} /></Field>;
+}
+
+function Result({ msg }: { msg: Msg }) {
+  return msg ? <p className={cn('basis-full rounded-lg p-2 text-sm', msg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')}>{msg.text}</p> : null;
+}
+
+function useProviderActions(provider: ChatProviderId | null) {
+  const qc = useQueryClient();
+  const [msg, setMsg] = useState<Msg>(null);
+  const [testing, setTesting] = useState(false);
+  const refresh = () => { void qc.invalidateQueries({ queryKey: ['ai-providers'] }); void qc.invalidateQueries({ queryKey: ['ai-readiness'] }); };
+  const test = async () => {
+    if (!provider) return;
+    setTesting(true); setMsg(null);
+    try {
+      const r = (await aiControlsApi.testProvider(provider)).data;
+      setMsg(r.ok ? { ok: true, text: `Connected: the provider answered in ${r.ms} ms${r.reply ? ` ("${r.reply}")` : ''}.` } : { ok: false, text: r.error ?? 'The test failed.' });
+    } catch (e) { setMsg({ ok: false, text: errMsg(e, 'The test failed.') }); } finally { setTesting(false); }
+  };
+  return { msg, setMsg, testing, test, refresh };
+}
+
+const TestButton = ({ onClick, busy, disabled }: { onClick: () => void; busy: boolean; disabled?: boolean }) => (
+  <button type="button" onClick={onClick} disabled={busy || disabled} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+    {busy ? <Loader2 size={14} className="animate-spin" /> : <Plug size={14} />} Test connection
+  </button>
+);
+const SaveButton = ({ busy, label = 'Save', disabled }: { busy: boolean; label?: string; disabled?: boolean }) => (
+  <button type="submit" disabled={busy || disabled} className="inline-flex items-center gap-1.5 rounded-lg bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50">
+    <Save size={14} /> {busy ? 'Saving…' : label}
+  </button>
+);
+
+function AnthropicForm({ d, canEdit, onClose, active, toggling, onToggle }: { d: AiProviderPublic; canEdit: boolean; onClose: () => void; active: boolean; toggling: boolean; onToggle: (v: boolean) => void }) {
+  const { msg, setMsg, testing, test, refresh } = useProviderActions('anthropic');
+  const [key, setKey] = useState('');
+  const [url, setUrl] = useState(d.anthropicBaseUrl ?? '');
+  const [busy, setBusy] = useState(false);
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault(); setBusy(true); setMsg(null);
+    try {
+      await aiControlsApi.saveProviders({ anthropicBaseUrl: url.trim(), ...(key ? { anthropicKey: key } : {}) });
+      setKey(''); setMsg({ ok: true, text: 'Saved. New calls use it within ~15 seconds.' }); refresh();
+    } catch (er) { setMsg({ ok: false, text: errMsg(er, 'Could not save.') }); } finally { setBusy(false); }
+  };
+  return (
+    <form onSubmit={save} className="col-span-full">
+      <ExpandedCard icon={<Bot size={18} />} title="Anthropic (Claude)" blurb="Claude models via the Anthropic API." active={active} configured={d.anthropicKeySet} canEdit={canEdit} toggling={toggling} onToggle={onToggle} onClose={onClose}
+        footer={<>{canEdit && <SaveButton busy={busy} />}<TestButton onClick={test} busy={testing} disabled={!d.anthropicKeySet} /><Result msg={msg} /></>}>
+        <SecretField label="API key" isSet={d.anthropicKeySet} value={key} onChange={setKey} disabled={!canEdit} />
+        <TextField label="Base URL (optional)" hint="Leave blank for api.anthropic.com. Set it to use a gateway or proxy (https only)." value={url} onChange={setUrl} placeholder="https://api.anthropic.com" disabled={!canEdit} />
+      </ExpandedCard>
+    </form>
+  );
+}
+
+function AzureOpenAiForm({ d, canEdit, onClose, active, toggling, onToggle }: { d: AiProviderPublic; canEdit: boolean; onClose: () => void; active: boolean; toggling: boolean; onToggle: (v: boolean) => void }) {
+  const { msg, setMsg, testing, test, refresh } = useProviderActions('azure_openai');
+  const [key, setKey] = useState('');
+  const [f, setF] = useState({ endpoint: d.azureOpenAiEndpoint ?? '', deployment: d.azureOpenAiDeployment ?? '', version: d.azureOpenAiApiVersion ?? '2024-06-01' });
+  const [busy, setBusy] = useState(false);
+  const configured = d.azureOpenAiKeySet && !!d.azureOpenAiEndpoint && !!d.azureOpenAiDeployment;
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault(); setBusy(true); setMsg(null);
+    try {
+      await aiControlsApi.saveProviders({ azureOpenAiEndpoint: f.endpoint, azureOpenAiDeployment: f.deployment, azureOpenAiApiVersion: f.version, ...(key ? { azureOpenAiKey: key } : {}) });
+      setKey(''); setMsg({ ok: true, text: 'Saved. New calls use it within ~15 seconds.' }); refresh();
+    } catch (er) { setMsg({ ok: false, text: errMsg(er, 'Could not save.') }); } finally { setBusy(false); }
+  };
+  return (
+    <form onSubmit={save} className="col-span-full">
+      <ExpandedCard icon={<Zap size={18} />} title="Azure OpenAI" blurb="GPT models through your Azure AI Foundry / Azure OpenAI deployment." active={active} configured={configured} canEdit={canEdit} toggling={toggling} onToggle={onToggle} onClose={onClose}
+        footer={<>{canEdit && <SaveButton busy={busy} />}<TestButton onClick={test} busy={testing} disabled={!configured} /><Result msg={msg} /></>}>
+        <TextField label="Endpoint (base URL)" hint="The resource URL, without /openai/v1." value={f.endpoint} onChange={(v) => setF((s) => ({ ...s, endpoint: v }))} placeholder="https://my-resource.openai.azure.com" disabled={!canEdit} />
+        <SecretField label="API key" isSet={d.azureOpenAiKeySet} value={key} onChange={setKey} disabled={!canEdit} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField label="Chat deployment" value={f.deployment} onChange={(v) => setF((s) => ({ ...s, deployment: v }))} placeholder="e.g. gpt-4.1-mini" disabled={!canEdit} />
+          <TextField label="API version" value={f.version} onChange={(v) => setF((s) => ({ ...s, version: v }))} placeholder="2024-06-01" disabled={!canEdit} />
+        </div>
+      </ExpandedCard>
+    </form>
+  );
+}
+
+function CustomForm({ d, item, canEdit, onClose, active, toggling, onToggle, onSaved }: {
+  d: AiProviderPublic; item: CustomProviderPublic | null; canEdit: boolean; onClose: () => void; active: boolean; toggling: boolean; onToggle: (v: boolean) => void; onSaved: (id: string | null) => void;
+}) {
+  const { msg, setMsg, testing, test, refresh } = useProviderActions(item ? (`custom:${item.id}` as ChatProviderId) : null);
+  const [f, setF] = useState({ name: item?.name ?? '', baseUrl: item?.baseUrl ?? '', model: item?.model ?? '', authStyle: item?.authStyle ?? ('bearer' as 'bearer' | 'api-key') });
+  const [key, setKey] = useState('');
+  const [busy, setBusy] = useState(false);
+  void d;
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault(); setBusy(true); setMsg(null);
+    try {
+      const body = { name: f.name, baseUrl: f.baseUrl, model: f.model, authStyle: f.authStyle, ...(key ? { apiKey: key } : {}) };
+      if (item) await aiControlsApi.updateCustomProvider(item.id, body);
+      else await aiControlsApi.addCustomProvider(body);
+      setKey(''); refresh();
+      if (item) setMsg({ ok: true, text: 'Saved.' }); else onSaved(null);
+    } catch (er) { setMsg({ ok: false, text: errMsg(er, 'Could not save.') }); } finally { setBusy(false); }
+  };
+  const del = async () => {
+    if (!item || !window.confirm(`Remove the provider "${item.name}"?`)) return;
+    setBusy(true);
+    try { await aiControlsApi.deleteCustomProvider(item.id); refresh(); onClose(); } catch (er) { setMsg({ ok: false, text: errMsg(er, 'Could not remove it.') }); } finally { setBusy(false); }
+  };
+  return (
+    <form onSubmit={save} className="col-span-full">
+      <ExpandedCard icon={<Server size={18} />} title={item ? item.name : 'Add a provider'} blurb="Any service that speaks the OpenAI chat-completions API: OpenAI, Azure AI Foundry (/openai/v1), OpenRouter, Mistral, vLLM, and more."
+        active={active} configured={item ? !!item.baseUrl && !!item.model : undefined} canEdit={canEdit} canToggle={!!item} toggling={toggling} onToggle={onToggle} onClose={onClose}
+        footer={<>
+          {canEdit && <SaveButton busy={busy} label={item ? 'Save' : 'Add provider'} disabled={!f.name.trim() || !f.baseUrl.trim() || !f.model.trim()} />}
+          {item && <TestButton onClick={test} busy={testing} />}
+          {item && canEdit && <button type="button" onClick={del} disabled={busy} className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"><Trash2 size={14} /> Remove</button>}
+          <Result msg={msg} />
+        </>}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField label="Name" value={f.name} onChange={(v) => setF((s) => ({ ...s, name: v }))} placeholder="OpenAI" disabled={!canEdit} />
+          <TextField label="Model" hint="The model or deployment name sent with each request." value={f.model} onChange={(v) => setF((s) => ({ ...s, model: v }))} placeholder="gpt-4.1-mini" disabled={!canEdit} />
+        </div>
+        <TextField label="Base URL" hint="https only. “/chat/completions” is added for you." value={f.baseUrl} onChange={(v) => setF((s) => ({ ...s, baseUrl: v }))} placeholder="https://api.openai.com/v1" disabled={!canEdit} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <SecretField label="API key" isSet={!!item?.keySet} value={key} onChange={setKey} disabled={!canEdit} />
+          <Field label="Key is sent as">
+            <select value={f.authStyle} onChange={(e) => setF((s) => ({ ...s, authStyle: e.target.value as 'bearer' | 'api-key' }))} className={inputCls} disabled={!canEdit}>
+              <option value="bearer">Authorization: Bearer … (OpenAI and most services)</option>
+              <option value="api-key">api-key header (Azure style)</option>
+            </select>
+          </Field>
+        </div>
+      </ExpandedCard>
+    </form>
+  );
+}
+
+function DocAzureForm({ d, canEdit, onClose, active, toggling, onToggle }: { d: AiProviderPublic; canEdit: boolean; onClose: () => void; active: boolean; toggling: boolean; onToggle: (v: boolean) => void }) {
+  const { msg, setMsg, refresh } = useProviderActions(null);
+  const [key, setKey] = useState('');
+  const [endpoint, setEndpoint] = useState(d.azureDocEndpoint ?? '');
+  const [busy, setBusy] = useState(false);
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault(); setBusy(true); setMsg(null);
+    try { await aiControlsApi.saveProviders({ azureDocEndpoint: endpoint, ...(key ? { azureDocKey: key } : {}) }); setKey(''); setMsg({ ok: true, text: 'Saved.' }); refresh(); }
+    catch (er) { setMsg({ ok: false, text: errMsg(er, 'Could not save.') }); } finally { setBusy(false); }
+  };
+  return (
+    <form onSubmit={save} className="col-span-full">
+      <ExpandedCard icon={<Sparkles size={18} />} title="Azure AI Document Intelligence" blurb="OCR + layout: reads scans and photos in Smart Upload." active={active} configured={d.azureDocKeySet && !!d.azureDocEndpoint} canEdit={canEdit} toggling={toggling} onToggle={onToggle} onClose={onClose}
+        footer={<>{canEdit && <SaveButton busy={busy} />}<Result msg={msg} /></>}>
+        <TextField label="Endpoint (base URL)" value={endpoint} onChange={setEndpoint} placeholder="https://my-di.cognitiveservices.azure.com" disabled={!canEdit} />
+        <SecretField label="API key" isSet={d.azureDocKeySet} value={key} onChange={setKey} disabled={!canEdit} />
+      </ExpandedCard>
+    </form>
   );
 }
 
@@ -551,120 +745,68 @@ function ProvidersTab() {
   const canEdit = can('ai_controls', 'edit');
   const q = useQuery({ queryKey: ['ai-providers'], queryFn: () => aiControlsApi.providers() });
   const d = q.data?.data;
-  const [chatProvider, setChatProvider] = useState<'anthropic' | 'azure_openai'>('anthropic');
-  const [docProvider, setDocProvider] = useState<'none' | 'azure_document_intelligence'>('none');
-  const [endpoints, setEndpoints] = useState({ azureOpenAiEndpoint: '', azureOpenAiDeployment: '', azureOpenAiApiVersion: '2024-06-01', azureDocEndpoint: '' });
-  const [keys, setKeys] = useState({ anthropicKey: '', azureOpenAiKey: '', azureDocKey: '' });
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
+  const [msg, setMsg] = useState<Msg>(null);
 
-  useEffect(() => {
-    if (d) {
-      setChatProvider(d.chatProvider);
-      setDocProvider(d.docProvider);
-      setEndpoints({
-        azureOpenAiEndpoint: d.azureOpenAiEndpoint ?? '',
-        azureOpenAiDeployment: d.azureOpenAiDeployment ?? '',
-        azureOpenAiApiVersion: d.azureOpenAiApiVersion ?? '2024-06-01',
-        azureDocEndpoint: d.azureDocEndpoint ?? '',
-      });
-      setKeys({ anthropicKey: '', azureOpenAiKey: '', azureDocKey: '' });
-    }
-  }, [d]);
-
-  const save = useMutation({
-    mutationFn: () => {
-      const payload: Record<string, string> = { chatProvider, docProvider, ...endpoints };
-      if (keys.anthropicKey) payload.anthropicKey = keys.anthropicKey;
-      if (keys.azureOpenAiKey) payload.azureOpenAiKey = keys.azureOpenAiKey;
-      if (keys.azureDocKey) payload.azureDocKey = keys.azureDocKey;
-      return aiControlsApi.saveProviders(payload);
-    },
-    onSuccess: () => { setMsg({ ok: true, text: 'Saved. New calls use this provider within ~15 seconds.' }); void qc.invalidateQueries({ queryKey: ['ai-providers'] }); void qc.invalidateQueries({ queryKey: ['ai-readiness'] }); },
-    onError: (e) => { const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message; setMsg({ ok: false, text: (Array.isArray(m) ? m.join(', ') : m) ?? 'Could not save.' }); },
-  });
-
-  // 'Make active' saves the provider choice right away (it does not wait for the Save button or touch unsaved field edits).
-  const [activating, setActivating] = useState<string | null>(null);
-  const activate = async (choice: { chatProvider?: 'anthropic' | 'azure_openai'; docProvider?: 'none' | 'azure_document_intelligence' }) => {
-    const which = choice.chatProvider ?? choice.docProvider ?? null;
-    setActivating(which);
-    setMsg(null);
+  // The Active switch saves straight away: ON selects this provider, OFF leaves the category with no cloud provider (rules engine only).
+  const setActive = async (id: string, choice: Partial<AiProviderSave>) => {
+    setToggling(id); setMsg(null);
     try {
       await aiControlsApi.saveProviders(choice);
-      if (choice.chatProvider) setChatProvider(choice.chatProvider);
-      if (choice.docProvider) setDocProvider(choice.docProvider);
-      setMsg({ ok: true, text: 'Active provider updated. New calls use it within ~15 seconds.' });
-      void qc.invalidateQueries({ queryKey: ['ai-providers'] });
-      void qc.invalidateQueries({ queryKey: ['ai-readiness'] });
-    } catch (e) {
-      const m = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
-      setMsg({ ok: false, text: (Array.isArray(m) ? m.join(', ') : m) ?? 'Could not switch provider.' });
-    } finally {
-      setActivating(null);
-    }
+      setMsg({ ok: true, text: 'Updated. New calls use the change within ~15 seconds.' });
+      void qc.invalidateQueries({ queryKey: ['ai-providers'] }); void qc.invalidateQueries({ queryKey: ['ai-readiness'] });
+    } catch (e) { setMsg({ ok: false, text: errMsg(e, 'Could not change the active provider.') }); } finally { setToggling(null); }
   };
 
-  if (q.isLoading) return <p className="text-sm text-gray-400">Loading…</p>;
-  const keyField = (label: string, isSet: boolean, value: string, onChange: (v: string) => void) => (
-    <Field label={label} hint={isSet ? 'A value is saved — leave blank to keep it, or type a new one to replace.' : 'Not set yet.'}>
-      <input type="password" value={value} onChange={(e) => { onChange(e.target.value); setMsg(null); }} placeholder={isSet ? '•••••••• (saved)' : 'Paste the key'}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" disabled={!canEdit} />
-    </Field>
-  );
-  const txt = (label: string, val: string, onChange: (v: string) => void, placeholder = '') => (
-    <Field label={label}>
-      <input value={val} onChange={(e) => { onChange(e.target.value); setMsg(null); }} placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" disabled={!canEdit} />
-    </Field>
-  );
+  if (q.isLoading || !d) return <p className="text-sm text-gray-400">Loading…</p>;
+  const chat = d.chatProvider;
+  const toggleChat = (id: ChatProviderId) => (v: boolean) => setActive(id, { chatProvider: v ? id : 'none' });
+  const toggleDoc = (v: boolean) => setActive('doc_azure', { docProvider: v ? 'azure_document_intelligence' : 'none' });
+  const azureOk = d.azureOpenAiKeySet && !!d.azureOpenAiEndpoint && !!d.azureOpenAiDeployment;
+  const closeBtn = () => setOpen(null);
+
+  const slot = (id: string, small: React.ReactNode, big: React.ReactNode) => (open === id ? big : small);
 
   return (
     <div className="space-y-6">
-      {!d?.ready && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Migration 023 (AppSettings) is not applied yet, so provider settings cannot be saved.</div>
-      )}
+      {!d.ready && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Migration 023 (AppSettings) is not applied yet, so provider settings cannot be saved.</div>}
+      {msg && <p className={cn('rounded-lg p-2 text-sm', msg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')}>{msg.text}</p>}
 
       <div>
         <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Sparkles size={15} /> Course matching &amp; chat</h3>
-        <p className="mb-3 text-xs text-gray-500">Configure any provider; the one you pick as Active is used. The built-in rules engine still covers everything when none is available.</p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <ProviderCard active={chatProvider === 'anthropic'} onActivate={() => activate({ chatProvider: 'anthropic' })} activating={activating === 'anthropic'} canEdit={canEdit}
-            icon={<Bot size={16} />} title="Anthropic (Claude)" blurb="Claude models via the Anthropic API." configured={!!d?.anthropicKeySet || !!keys.anthropicKey}>
-            {keyField('API key', !!d?.anthropicKeySet, keys.anthropicKey, (v) => setKeys((k) => ({ ...k, anthropicKey: v })))}
-          </ProviderCard>
-          <ProviderCard active={chatProvider === 'azure_openai'} onActivate={() => activate({ chatProvider: 'azure_openai' })} activating={activating === 'azure_openai'} canEdit={canEdit}
-            icon={<Zap size={16} />} title="Azure OpenAI" blurb="GPT models via your Azure Foundry deployment." configured={!!d?.azureOpenAiKeySet && !!endpoints.azureOpenAiEndpoint && !!endpoints.azureOpenAiDeployment}>
-            {txt('Endpoint', endpoints.azureOpenAiEndpoint, (v) => setEndpoints((s) => ({ ...s, azureOpenAiEndpoint: v })), 'https://my-resource.openai.azure.com')}
-            {keyField('API key', !!d?.azureOpenAiKeySet, keys.azureOpenAiKey, (v) => setKeys((k) => ({ ...k, azureOpenAiKey: v })))}
-            <div className="grid grid-cols-2 gap-3">
-              {txt('Chat deployment', endpoints.azureOpenAiDeployment, (v) => setEndpoints((s) => ({ ...s, azureOpenAiDeployment: v })), 'e.g. gpt-4o')}
-              {txt('API version', endpoints.azureOpenAiApiVersion, (v) => setEndpoints((s) => ({ ...s, azureOpenAiApiVersion: v })), '2024-06-01')}
-            </div>
-          </ProviderCard>
+        <p className="mb-3 text-xs text-gray-500">Open a card to set its key and URL. Only one provider is Active at a time; the built-in rules engine covers everything when none is.</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {slot('anthropic',
+            <SmallCard key="anthropic" icon={<Bot size={18} />} title="Anthropic (Claude)" active={chat === 'anthropic'} configured={d.anthropicKeySet} onOpen={() => setOpen('anthropic')} />,
+            <AnthropicForm key="anthropic" d={d} canEdit={canEdit} onClose={closeBtn} active={chat === 'anthropic'} toggling={toggling === 'anthropic'} onToggle={(v) => { void setActive('anthropic', { chatProvider: v ? 'anthropic' : 'none' }); }} />)}
+          {slot('azure_openai',
+            <SmallCard key="azure" icon={<Zap size={18} />} title="Azure OpenAI" active={chat === 'azure_openai'} configured={azureOk} onOpen={() => setOpen('azure_openai')} />,
+            <AzureOpenAiForm key="azure" d={d} canEdit={canEdit} onClose={closeBtn} active={chat === 'azure_openai'} toggling={toggling === 'azure_openai'} onToggle={(v) => { void setActive('azure_openai', { chatProvider: v ? 'azure_openai' : 'none' }); }} />)}
+          {d.customProviders.map((cp) => {
+            const id = `custom:${cp.id}` as ChatProviderId;
+            return slot(id,
+              <SmallCard key={id} icon={<Server size={18} />} title={cp.name} sub={cp.model} active={chat === id} configured={!!cp.baseUrl && !!cp.model} onOpen={() => setOpen(id)} />,
+              <CustomForm key={id} d={d} item={cp} canEdit={canEdit} onClose={closeBtn} active={chat === id} toggling={toggling === id} onToggle={(v) => { void toggleChat(id)(v); }} onSaved={() => undefined} />);
+          })}
+          {canEdit && slot('new',
+            <button key="new" type="button" onClick={() => setOpen('new')} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white p-3 text-sm font-medium text-gray-600 hover:border-brand-400 hover:text-brand-800">
+              <Plus size={16} /> Add provider
+            </button>,
+            <CustomForm key="new" d={d} item={null} canEdit={canEdit} onClose={closeBtn} active={false} toggling={false} onToggle={() => undefined} onSaved={() => setOpen(null)} />)}
         </div>
       </div>
 
       <div>
         <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900"><Database size={15} /> Document reading</h3>
         <p className="mb-3 text-xs text-gray-500">Reads transcripts, IDs and score reports in Smart Upload. The built-in rules reader needs no cloud service.</p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <ProviderCard active={docProvider === 'none'} onActivate={() => activate({ docProvider: 'none' })} activating={activating === 'none'} canEdit={canEdit}
-            icon={<Database size={16} />} title="Built-in rules reader" blurb="No cloud service; works without a key (no OCR on scans)." />
-          <ProviderCard active={docProvider === 'azure_document_intelligence'} onActivate={() => activate({ docProvider: 'azure_document_intelligence' })} activating={activating === 'azure_document_intelligence'} canEdit={canEdit}
-            icon={<Sparkles size={16} />} title="Azure AI Document Intelligence" blurb="OCR + layout; reads scans and photos." configured={!!d?.azureDocKeySet && !!endpoints.azureDocEndpoint}>
-            {txt('Endpoint', endpoints.azureDocEndpoint, (v) => setEndpoints((s) => ({ ...s, azureDocEndpoint: v })), 'https://my-di.cognitiveservices.azure.com')}
-            {keyField('API key', !!d?.azureDocKeySet, keys.azureDocKey, (v) => setKeys((k) => ({ ...k, azureDocKey: v })))}
-          </ProviderCard>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <SmallCard icon={<Database size={18} />} title="Built-in rules reader" sub="no key needed" active={d.docProvider === 'none'} onOpen={() => setActive('doc_none', { docProvider: 'none' })} />
+          {slot('doc_azure',
+            <SmallCard key="doc" icon={<Sparkles size={18} />} title="Azure Document Intelligence" active={d.docProvider === 'azure_document_intelligence'} configured={d.azureDocKeySet && !!d.azureDocEndpoint} onOpen={() => setOpen('doc_azure')} />,
+            <DocAzureForm key="doc" d={d} canEdit={canEdit} onClose={closeBtn} active={d.docProvider === 'azure_document_intelligence'} toggling={toggling === 'doc_azure'} onToggle={toggleDoc} />)}
         </div>
       </div>
-
-      {msg && <p className={cn('rounded-lg p-2 text-sm', msg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')}>{msg.text}</p>}
-      {canEdit && (
-        <button type="button" onClick={() => { setMsg(null); save.mutate(); }} disabled={save.isPending || !d?.ready}
-          className="flex items-center gap-2 rounded-lg bg-brand-800 px-5 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50">
-          <Save size={16} /> {save.isPending ? 'Saving…' : 'Save providers'}
-        </button>
-      )}
     </div>
   );
 }

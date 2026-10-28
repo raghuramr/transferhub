@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
 import { EmailService } from '../common/email.service';
 import { AiSettingsService } from './ai-settings.service';
-import { AiProvidersService } from './ai-providers.service';
+import { AiProvidersService, chatProviderLabel, isChatReady } from './ai-providers.service';
 import { AiUsageService } from './ai-usage.service';
 
 export interface ReadinessItem {
@@ -42,10 +42,8 @@ export class ReadinessService {
     const items: ReadinessItem[] = [];
 
     const prov = await this.safe(() => this.providers.getConfig(), null);
-    const anthropicOk = !!prov?.anthropicKey && !prov.anthropicKey.startsWith('REPLACE_WITH');
-    const azureOk = !!(prov?.azureOpenAiEndpoint && prov?.azureOpenAiKey && prov?.azureOpenAiDeployment);
-    const keyOk = prov?.chatProvider === 'azure_openai' ? azureOk : anthropicOk;
-    const providerLabel = prov?.chatProvider === 'azure_openai' ? 'Azure OpenAI' : 'Anthropic';
+    const keyOk = prov ? isChatReady(prov) : false;
+    const providerLabel = prov ? chatProviderLabel(prov) : 'Anthropic';
     items.push({
       key: 'anthropic',
       label: 'AI provider',

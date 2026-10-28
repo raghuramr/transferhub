@@ -500,6 +500,10 @@ export const aiControlsApi = {
   learnedSkills: (min = 2) => api.get<LearnedSkills>('/ai-controls/learned-skills', { params: { min } }),
   providers: () => api.get<AiProviderPublic>('/ai-controls/providers'),
   saveProviders: (data: Partial<AiProviderSave>) => api.put<AiProviderPublic>('/ai-controls/providers', data),
+  addCustomProvider: (d: CustomProviderInput) => api.post<AiProviderPublic>('/ai-controls/providers/custom', d),
+  updateCustomProvider: (id: string, d: CustomProviderInput) => api.put<AiProviderPublic>(`/ai-controls/providers/custom/${id}`, d),
+  deleteCustomProvider: (id: string) => api.delete<AiProviderPublic>(`/ai-controls/providers/custom/${id}`),
+  testProvider: (provider: ChatProviderId) => api.post<{ ok: boolean; ms?: number; reply?: string; error?: string }>('/ai-controls/providers/test', { provider }),
 };
 
 export interface LearnedSuggestion {
@@ -510,10 +514,14 @@ export interface LearnedSkills {
   stats: { decided: number; withAiPick: number; agreed: number; overridden: number; agreementRate: number | null };
   suggestions: LearnedSuggestion[];
 }
+export type ChatProviderId = 'none' | 'anthropic' | 'azure_openai' | `custom:${string}`;
+export interface CustomProviderPublic { id: string; name: string; baseUrl: string; model: string; authStyle: 'bearer' | 'api-key'; keySet: boolean }
 export interface AiProviderPublic {
   ready: boolean;
-  chatProvider: 'anthropic' | 'azure_openai';
+  chatProvider: ChatProviderId;
   anthropicKeySet: boolean;
+  anthropicBaseUrl: string | null;
+  customProviders: CustomProviderPublic[];
   azureOpenAiEndpoint: string | null;
   azureOpenAiKeySet: boolean;
   azureOpenAiDeployment: string | null;
@@ -523,8 +531,9 @@ export interface AiProviderPublic {
   azureDocKeySet: boolean;
 }
 export interface AiProviderSave {
-  chatProvider: 'anthropic' | 'azure_openai';
+  chatProvider: ChatProviderId;
   anthropicKey: string;
+  anthropicBaseUrl: string;
   azureOpenAiEndpoint: string;
   azureOpenAiKey: string;
   azureOpenAiDeployment: string;
@@ -533,6 +542,7 @@ export interface AiProviderSave {
   azureDocEndpoint: string;
   azureDocKey: string;
 }
+export interface CustomProviderInput { name: string; baseUrl: string; model: string; apiKey?: string; authStyle?: 'bearer' | 'api-key' }
 
 // ── Transfer policy (per-university rules) ──
 export const policiesApi = {

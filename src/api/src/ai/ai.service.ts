@@ -4,7 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { DatabaseService } from '../database/database.service';
 import * as sql from 'mssql';
 import { AiSettings, AiSettingsService } from './ai-settings.service';
-import { AiProvidersService } from './ai-providers.service';
+import { AiProvidersService, isChatReady, type ChatProvider, type CustomProvider } from './ai-providers.service';
 import { AiUsageService, SkipReason } from './ai-usage.service';
 import { estimateCostUsd, estimateTokens, TokenUsage } from './ai-pricing';
 import { CatalogCourse, normalizeKey, shortlist } from './course-prefilter';
@@ -78,11 +78,7 @@ export class AiService {
 
   /** Is a usable chat provider configured right now (Anthropic key, or a complete Azure OpenAI setup)? */
   private async hasApiKey(): Promise<boolean> {
-    const c = await this.providers.getConfig();
-    if (c.chatProvider === 'azure_openai') {
-      return !!(c.azureOpenAiEndpoint && c.azureOpenAiKey && c.azureOpenAiDeployment);
-    }
-    return !!c.anthropicKey && !c.anthropicKey.startsWith('REPLACE_WITH');
+    return isChatReady(await this.providers.getConfig());
   }
 
   private async assertApiKey() {
@@ -124,11 +120,30 @@ export class AiService {
     maxTokens: number,
   ) {
     const cfg = await this.providers.getConfig();
-    if (cfg.chatProvider === 'azure_openai') {
+    return this.callWith(cfg, cfg.chatProvider, model, systemText, userText, settings, maxTokens);
+  }
+
+  /** Runs one completion through a specific provider (the active one for real calls, any one for the "Test" button). */
+  private async callWith(
+    cfg: Awaited<ReturnType<AiProvidersService['getConfig']>>,
+    which: ChatProvider,
+    model: string,
+    systemText: string,
+    userText: string,
+    settings: AiSettings,
+    maxTokens: number,
+  ) {
+    if (which === 'azure_openai') {
       return this.callAzureOpenAi(cfg, systemText, userText, maxTokens);
     }
+    if (which.startsWith('custom:')) {
+      const cp = cfg.customProviders.find((x) => `custom:${x.id}` === which);
+      if (!cp) throw new Error('That AI provider no longer exists.');
+      return this.callOpenAiCompatible(cp, systemText, userText, maxTokens);
+    }
+    if (which === 'none') throw new Error('No AI provider is active.');
     const started = Date.now();
-    const client = new Anthropic({ apiKey: cfg.anthropicKey ?? '' });
+    const client = new Anthropic({ apiKey: cfg.anthropicKey ?? '', ...(cfg.anthropicBaseUrl ? { baseURL: cfg.anthropicBaseUrl } : {}) });
     const message = await client.messages.create({
       model,
       max_tokens: maxTokens,
@@ -151,6 +166,43 @@ export class AiService {
       costUsd: estimateCostUsd(model, tokenUsage),
       ms: Date.now() - started,
     };
+  }
+
+  /** Admin-added provider speaking the OpenAI chat-completions API (base URL + model + key). */
+  private async callOpenAiCompatible(cp: CustomProvider, systemText: string, userText: string, maxTokens: number) {
+    const started = Date.now();
+    const url = /\/chat\/completions$/.test(cp.baseUrl) ? cp.baseUrl : `${cp.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (cp.apiKey) headers[cp.authStyle === 'api-key' ? 'api-key' : 'Authorization'] = cp.authStyle === 'api-key' ? cp.apiKey : `Bearer ${cp.apiKey}`;
+    const messages = [{ role: 'system', content: systemText }, { role: 'user', content: userText }];
+    const post = (body: Record<string, unknown>) => fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(60_000) });
+    let res = await post({ model: cp.model, messages, max_tokens: maxTokens, temperature: 0 });
+    if (res.status === 400) {
+      // Newer reasoning models reject max_tokens / temperature: retry in their dialect.
+      const first = await res.text().catch(() => '');
+      if (/max_completion_tokens|max_tokens|temperature/i.test(first)) res = await post({ model: cp.model, messages, max_completion_tokens: maxTokens });
+      else throw new Error(`${cp.name} 400: ${first.slice(0, 300)}`);
+    }
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`${cp.name} ${res.status}: ${body.slice(0, 300)}`);
+    }
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+    const tokenUsage: TokenUsage = { input: data.usage?.prompt_tokens ?? 0, output: data.usage?.completion_tokens ?? 0, cacheRead: 0, cacheWrite: 0 };
+    return { text: data.choices?.[0]?.message?.content ?? '', usage: tokenUsage, costUsd: estimateCostUsd(cp.model, tokenUsage), ms: Date.now() - started };
+  }
+
+  /** "Test connection": a tiny completion through the named provider; never throws, returns the outcome for the UI. */
+  async testProvider(which: ChatProvider): Promise<{ ok: boolean; ms?: number; reply?: string; error?: string }> {
+    try {
+      const cfg = await this.providers.getConfig();
+      if (!isChatReady(cfg, which)) return { ok: false, error: 'This provider is not fully configured yet (key, URL or model missing).' };
+      const settings = await this.settingsService.getEffective(null);
+      const r = await this.callWith(cfg, which, settings.matchModel, 'You are a connectivity check. Reply with the single word OK.', 'ping', settings, 16);
+      return { ok: true, ms: r.ms, reply: String(r.text).trim().slice(0, 80) };
+    } catch (e) {
+      return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 400) };
+    }
   }
 
   /** Azure OpenAI chat completion via REST (no extra SDK). Same {text, usage, cost, ms} shape as the Anthropic path. */

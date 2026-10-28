@@ -4,12 +4,13 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Permission } from '../auth/permission.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import { AiSettingsService, AiSettingsInput } from './ai-settings.service';
-import { AiProvidersService, SaveAiProvidersInput } from './ai-providers.service';
+import { AiProvidersService, SaveAiProvidersInput, type ChatProvider } from './ai-providers.service';
+import { AiService } from './ai.service';
 import { AiLearningService } from './ai-learning.service';
 import { AiUsageService } from './ai-usage.service';
 import { ReadinessService } from './readiness.service';
 import { BacktestService } from './backtest.service';
-import { SaveAiSettingsDto, SaveSkillDto } from './dto/ai-controls.dto';
+import { SaveAiSettingsDto, SaveSkillDto, CustomProviderDto, TestProviderDto } from './dto/ai-controls.dto';
 
 /** Everything the "AI Controls" admin page needs: spend switches, the agent playbook, and token accounting. */
 @Controller('ai-controls')
@@ -22,6 +23,7 @@ export class AiControlsController {
     private backtest: BacktestService,
     private providers: AiProvidersService,
     private learning: AiLearningService,
+    private ai: AiService,
   ) {}
 
   /** Playbook rules suggested by patterns in faculty decisions (nothing is saved until an admin adds one). */
@@ -42,6 +44,32 @@ export class AiControlsController {
   @Permission('ai_controls', 'edit')
   saveProviders(@Body() dto: SaveAiProvidersInput, @Req() req: AuthenticatedRequest) {
     return this.providers.save(dto, req.user.email);
+  }
+
+  /** Add an OpenAI-compatible provider (base URL + model + key). */
+  @Post('providers/custom')
+  @Permission('ai_controls', 'edit')
+  addCustomProvider(@Body() dto: CustomProviderDto, @Req() req: AuthenticatedRequest) {
+    return this.providers.saveCustom(dto, req.user.email);
+  }
+
+  @Put('providers/custom/:id')
+  @Permission('ai_controls', 'edit')
+  updateCustomProvider(@Param('id') id: string, @Body() dto: CustomProviderDto, @Req() req: AuthenticatedRequest) {
+    return this.providers.saveCustom({ ...dto, id }, req.user.email);
+  }
+
+  @Delete('providers/custom/:id')
+  @Permission('ai_controls', 'edit')
+  removeCustomProvider(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.providers.removeCustom(id, req.user.email);
+  }
+
+  /** Sends a one-word test prompt through the saved settings of a provider ('anthropic', 'azure_openai' or 'custom:<id>'). */
+  @Post('providers/test')
+  @Permission('ai_controls', 'edit')
+  testProvider(@Body() dto: TestProviderDto) {
+    return this.ai.testProvider(dto.provider as ChatProvider);
   }
 
   /** Is the installation ready to run requests end to end? (keys, migrations, approvers, stalled automation) */
