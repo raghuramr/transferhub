@@ -31,8 +31,11 @@ export class EmailService {
   constructor() {
     const apiKey = process.env.RESEND_API_KEY;
     this.resend = apiKey ? new Resend(apiKey) : null;
-    this.fromAddress = process.env.RESEND_FROM_EMAIL || 'support@wcubeprojects.in';
-    this.fromName = process.env.RESEND_FROM_NAME || 'TransferHub';
+    // RESEND_FROM_EMAIL may be a bare address or the full "Name <address>" form; both work.
+    const configured = (process.env.RESEND_FROM_EMAIL || 'support@wcubeprojects.in').trim();
+    const named = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/.exec(configured);
+    this.fromAddress = named ? named[2].trim() : configured;
+    this.fromName = process.env.RESEND_FROM_NAME || (named && named[1].trim()) || 'TransferHub';
     // Used for every link AND the logo image in emails, so it must be the public address people can open.
     // Prefer an explicit APP_BASE_URL (e.g. your custom domain); else this App Service's own hostname; else the old guess.
     const azureHost = process.env.WEBSITE_HOSTNAME ? `https://${process.env.WEBSITE_HOSTNAME}` : '';
