@@ -1,0 +1,100 @@
+{
+  "universityCode": "CVU",
+  "universityName": "Cascade Valley University",
+  "emailDomain": "students.cascadevalley.example",
+  "seed": 20261029,
+  "cities": [
+    [
+      "Spokane",
+      "Washington"
+    ],
+    [
+      "Boise",
+      "Idaho"
+    ],
+    [
+      "Bend",
+      "Oregon"
+    ],
+    [
+      "Missoula",
+      "Montana"
+    ],
+    [
+      "Reno",
+      "Nevada"
+    ],
+    [
+      "Redding",
+      "California"
+    ]
+  ],
+  "phoneAreaCodes": [
+    "509",
+    "208",
+    "541",
+    "406",
+    "775",
+    "530"
+  ],
+  "concentrations": {
+    "Nursing": [
+      "Adult and Gerontological Nursing",
+      "Pediatric Nursing",
+      "Community Health Nursing"
+    ],
+    "Public Health": [
+      "Epidemiology and Biostatistics",
+      "Health Policy and Management",
+      "Community Health Promotion"
+    ],
+    "History": [
+      "United States History",
+      "European History",
+      "Global and Comparative History"
+    ],
+    "English Literature": [
+      "British and Irish Literature",
+      "American Literature",
+      "Literary Theory and Criticism"
+    ],
+    "Political Science": [
+      "American Politics",
+      "International Relations",
+      "Public Policy"
+    ],
+    "Sociology": [
+      "Inequality and Social Justice",
+      "Health and Society",
+      "Criminology and Social Control"
+    ],
+    "Chemistry": [
+      "Biochemistry",
+      "Analytical Chemistry",
+      "Environmental Chemistry"
+    ],
+    "Physics": [
+      "Astrophysics",
+      "Condensed Matter",
+      "Applied Optics"
+    ],
+    "Civil Engineering": [
+      "Structural Engineering",
+      "Geotechnical Engineering",
+      "Water Resources"
+    ],
+    "Graphic Design": [
+      "Brand Identity",
+      "Interactive Design",
+      "Editorial and Typography"
+    ]
+  },
+  "generalCourseCodes": [
+    "HIST 101",
+    "ENGL 101",
+    "POLS 101",
+    "SOC 101",
+    "PH 101",
+    "PHYS 210"
+  ]
+}
