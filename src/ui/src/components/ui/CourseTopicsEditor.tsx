@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Link as LinkIcon } from 'lucide-react';
 import { courseTopicsApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
+import { PermanentDeleteDialog } from '../shared/PermanentDeleteDialog';
 import type { CourseTopic, TopicReferenceLink } from '../../types';
 
 type ReferenceLink = TopicReferenceLink;
@@ -34,6 +36,8 @@ export function CourseTopicsEditor({ courseId, courseLabel, canEdit, onClose }: 
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<number | 'new' | null>(null);
   const [form, setForm] = useState<TopicFormState>(emptyForm);
+  const isSuperAdmin = useAuthStore((s) => s.user?.role) === 'super_admin';
+  const [purgeTopic, setPurgeTopic] = useState<CourseTopic | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['course-topics', courseId],
@@ -108,6 +112,19 @@ export function CourseTopicsEditor({ courseId, courseLabel, canEdit, onClose }: 
         )}
       </div>
 
+      {isSuperAdmin && purgeTopic && (
+        <PermanentDeleteDialog
+          entity="topics"
+          id={purgeTopic.id}
+          fallbackLabel={purgeTopic.title}
+          onClose={() => setPurgeTopic(null)}
+          onDeleted={() => {
+            setPurgeTopic(null);
+            qc.invalidateQueries({ queryKey: ['course-topics'] });
+          }}
+        />
+      )}
+
       {isLoading && <div className="text-center text-gray-400 py-8">Loading…</div>}
 
         <div className="space-y-3 mb-4">
@@ -132,6 +149,9 @@ export function CourseTopicsEditor({ courseId, courseLabel, canEdit, onClose }: 
                       <div className="flex items-center gap-3 text-xs">
                         <button onClick={() => startEdit(t)} className="text-brand-700 hover:underline">Edit</button>
                         <button onClick={() => removeMutation.mutate(t.id)} className="text-red-500 hover:underline">Delete</button>
+                        {isSuperAdmin && (
+                          <button onClick={() => setPurgeTopic(t)} className="font-medium text-red-700 hover:underline">Delete permanently</button>
+                        )}
                       </div>
                     )}
                   </div>

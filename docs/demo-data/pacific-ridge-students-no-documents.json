@@ -1,0 +1,2204 @@
+{
+  "note": "Pacific Ridge University student profiles (30, no documents)",
+  "students": [
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0001",
+      "idType": "student_id",
+      "email": "avery.nakamura@students.pacificridge.example",
+      "firstName": "Avery",
+      "lastName": "Nakamura",
+      "dateOfBirth": "2002-01-01",
+      "phone": "+1-206-555-0100",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Seattle",
+      "state": "Washington",
+      "programName": "Computer Science",
+      "degree": "BS",
+      "fieldOfStudy": "Computer Science - Systems",
+      "gpa": 3.05,
+      "graduationYear": 2027,
+      "creditsCompleted": 38,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CS 101",
+          "title": "Introduction to Computer Science",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "CS 201",
+          "title": "Data Structures and Algorithms",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CS 220",
+          "title": "Discrete Mathematics for Computing",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CS 301",
+          "title": "Computer Organization and Systems",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CS 340",
+          "title": "Database Systems",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0002",
+      "idType": "student_id",
+      "email": "jordan.okafor@students.pacificridge.example",
+      "firstName": "Jordan",
+      "lastName": "Okafor",
+      "dateOfBirth": "2003-06-08",
+      "phone": "+1-253-555-0101",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Tacoma",
+      "state": "Washington",
+      "programName": "Data Science",
+      "degree": "BS",
+      "fieldOfStudy": "Data Science - Applied Statistics",
+      "gpa": 2.97,
+      "graduationYear": 2028,
+      "creditsCompleted": 42,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "DS 110",
+          "title": "Introduction to Data Science",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "DS 240",
+          "title": "Data Visualization",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "DS 310",
+          "title": "Machine Learning Fundamentals",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "DS 330",
+          "title": "Big Data Systems",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "I07000274",
+      "idType": "passport",
+      "email": "priya.raman@students.pacificridge.example",
+      "firstName": "Priya",
+      "lastName": "Raman",
+      "dateOfBirth": "2004-11-15",
+      "phone": "+1-503-555-0102",
+      "country": "United States",
+      "countryOfOrigin": "India",
+      "city": "Portland",
+      "state": "Oregon",
+      "programName": "Mathematics",
+      "degree": "BS",
+      "fieldOfStudy": "Mathematics - Pure Mathematics",
+      "gpa": 3.17,
+      "graduationYear": 2027,
+      "creditsCompleted": 50,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "MATH 111",
+          "title": "Calculus I",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "MATH 211",
+          "title": "Multivariable Calculus",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "MATH 221",
+          "title": "Linear Algebra",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "MATH 301",
+          "title": "Probability Theory",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0004",
+      "idType": "student_id",
+      "email": "mateo.alvarez@students.pacificridge.example",
+      "firstName": "Mateo",
+      "lastName": "Alvarez",
+      "dateOfBirth": "2005-04-22",
+      "phone": "+1-541-555-0103",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Eugene",
+      "state": "Oregon",
+      "programName": "Business Administration",
+      "degree": "BS",
+      "fieldOfStudy": "Business Administration - Operations",
+      "gpa": 3.02,
+      "graduationYear": 2028,
+      "creditsCompleted": 53,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "BUS 201",
+          "title": "Financial Accounting",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "BUS 210",
+          "title": "Principles of Marketing",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "BUS 301",
+          "title": "Organizational Behavior",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "BUS 320",
+          "title": "Operations Management",
+          "credits": 3,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "G07000548",
+      "idType": "passport",
+      "email": "lena.fischer@students.pacificridge.example",
+      "firstName": "Lena",
+      "lastName": "Fischer",
+      "dateOfBirth": "2002-09-01",
+      "phone": "+1-916-555-0104",
+      "country": "United States",
+      "countryOfOrigin": "Germany",
+      "city": "Sacramento",
+      "state": "California",
+      "programName": "Economics",
+      "degree": "BA",
+      "fieldOfStudy": "Economics - Policy",
+      "gpa": 3.65,
+      "graduationYear": 2027,
+      "creditsCompleted": 34,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "P",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "ECON 102",
+          "title": "Principles of Macroeconomics",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "MATH 111",
+          "title": "Calculus I",
+          "credits": 4,
+          "grade": "P",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "ECON 201",
+          "title": "Intermediate Microeconomics",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "ECON 305",
+          "title": "Behavioral Economics",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0006",
+      "idType": "student_id",
+      "email": "noah.whitfield@students.pacificridge.example",
+      "firstName": "Noah",
+      "lastName": "Whitfield",
+      "dateOfBirth": "2003-02-08",
+      "phone": "+1-408-555-0105",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "San Jose",
+      "state": "California",
+      "programName": "Psychology",
+      "degree": "BA",
+      "fieldOfStudy": "Psychology - Developmental Psychology",
+      "gpa": 3.12,
+      "graduationYear": 2028,
+      "creditsCompleted": 45,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "C",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "MATH 111",
+          "title": "Calculus I",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PSY 210",
+          "title": "Research Methods in Psychology",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PSY 220",
+          "title": "Developmental Psychology",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PSY 301",
+          "title": "Cognitive Psychology",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "PSY 330",
+          "title": "Abnormal Psychology",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0007",
+      "idType": "student_id",
+      "email": "sofia.rossi@students.pacificridge.example",
+      "firstName": "Sofia",
+      "lastName": "Rossi",
+      "dateOfBirth": "2004-07-15",
+      "phone": "+1-206-555-0106",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Seattle",
+      "state": "Washington",
+      "programName": "Biology",
+      "degree": "BS",
+      "fieldOfStudy": "Biology - Cell Biology",
+      "gpa": 3.13,
+      "graduationYear": 2027,
+      "creditsCompleted": 50,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "BIO 101",
+          "title": "General Biology I",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "BIO 102",
+          "title": "General Biology II",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "MATH 111",
+          "title": "Calculus I",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "BIO 210",
+          "title": "Genetics",
+          "credits": 4,
+          "grade": "C",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "BIO 220",
+          "title": "Cell Biology",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "C07000959",
+      "idType": "passport",
+      "email": "wei.zhang@students.pacificridge.example",
+      "firstName": "Wei",
+      "lastName": "Zhang",
+      "dateOfBirth": "2005-12-22",
+      "phone": "+1-253-555-0107",
+      "country": "United States",
+      "countryOfOrigin": "China",
+      "city": "Tacoma",
+      "state": "Washington",
+      "programName": "Electrical Engineering",
+      "degree": "BS",
+      "fieldOfStudy": "Electrical Engineering - Signal Processing",
+      "gpa": 3.09,
+      "graduationYear": 2028,
+      "creditsCompleted": 57,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "EE 101",
+          "title": "Introduction to Engineering Design",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "MATH 111",
+          "title": "Calculus I",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "EE 201",
+          "title": "Circuit Analysis",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "EE 220",
+          "title": "Digital Logic Design",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "EE 301",
+          "title": "Signals and Systems",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "EE 320",
+          "title": "Embedded Systems",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0009",
+      "idType": "student_id",
+      "email": "imani.brooks@students.pacificridge.example",
+      "firstName": "Imani",
+      "lastName": "Brooks",
+      "dateOfBirth": "2002-05-01",
+      "phone": "+1-503-555-0108",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Portland",
+      "state": "Oregon",
+      "programName": "Communication",
+      "degree": "BA",
+      "fieldOfStudy": "Communication - Strategic Communication",
+      "gpa": 3.12,
+      "graduationYear": 2027,
+      "creditsCompleted": 32,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "COM 201",
+          "title": "Media and Society",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "COM 210",
+          "title": "Writing for Digital Media",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "COM 301",
+          "title": "Strategic Communication",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "NID-040008199",
+      "idType": "national_id",
+      "email": "carlos.mendes@students.pacificridge.example",
+      "firstName": "Carlos",
+      "lastName": "Mendes",
+      "dateOfBirth": "2003-10-08",
+      "phone": "+1-541-555-0109",
+      "country": "United States",
+      "countryOfOrigin": "Brazil",
+      "city": "Eugene",
+      "state": "Oregon",
+      "programName": "Environmental Science",
+      "degree": "BS",
+      "fieldOfStudy": "Environmental Science - Geospatial Analysis",
+      "gpa": 3.04,
+      "graduationYear": 2028,
+      "creditsCompleted": 42,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "ENV 201",
+          "title": "Environmental Chemistry",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "ENV 220",
+          "title": "Geographic Information Systems",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "ENV 301",
+          "title": "Climate Science and Policy",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "ENV 320",
+          "title": "Sustainable Energy Systems",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0011",
+      "idType": "student_id",
+      "email": "hannah.lindqvist@students.pacificridge.example",
+      "firstName": "Hannah",
+      "lastName": "Lindqvist",
+      "dateOfBirth": "2004-03-15",
+      "phone": "+1-916-555-0110",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Sacramento",
+      "state": "California",
+      "programName": "Computer Science",
+      "degree": "BS",
+      "fieldOfStudy": "Computer Science - Systems",
+      "gpa": 2.74,
+      "graduationYear": 2027,
+      "creditsCompleted": 46,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "C",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "CS 201",
+          "title": "Data Structures and Algorithms",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CS 220",
+          "title": "Discrete Mathematics for Computing",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CS 301",
+          "title": "Computer Organization and Systems",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CS 340",
+          "title": "Database Systems",
+          "credits": 4,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0012",
+      "idType": "student_id",
+      "email": "ethan.park@students.pacificridge.example",
+      "firstName": "Ethan",
+      "lastName": "Park",
+      "dateOfBirth": "2005-08-22",
+      "phone": "+1-408-555-0111",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "San Jose",
+      "state": "California",
+      "programName": "Data Science",
+      "degree": "BS",
+      "fieldOfStudy": "Data Science - Machine Learning",
+      "gpa": 2.99,
+      "graduationYear": 2028,
+      "creditsCompleted": 56,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "C",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "DS 110",
+          "title": "Introduction to Data Science",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "DS 210",
+          "title": "Statistical Computing with Python",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "DS 240",
+          "title": "Data Visualization",
+          "credits": 3,
+          "grade": "C",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "DS 310",
+          "title": "Machine Learning Fundamentals",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "DS 330",
+          "title": "Big Data Systems",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "N07001644",
+      "idType": "passport",
+      "email": "amara.nwosu@students.pacificridge.example",
+      "firstName": "Amara",
+      "lastName": "Nwosu",
+      "dateOfBirth": "2002-01-01",
+      "phone": "+1-206-555-0112",
+      "country": "United States",
+      "countryOfOrigin": "Nigeria",
+      "city": "Seattle",
+      "state": "Washington",
+      "programName": "Mathematics",
+      "degree": "BS",
+      "fieldOfStudy": "Mathematics - Applied Mathematics",
+      "gpa": 3.24,
+      "graduationYear": 2027,
+      "creditsCompleted": 38,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "MATH 111",
+          "title": "Calculus I",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "MATH 112",
+          "title": "Calculus II",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "MATH 211",
+          "title": "Multivariable Calculus",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "MATH 221",
+          "title": "Linear Algebra",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "MATH 301",
+          "title": "Probability Theory",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0014",
+      "idType": "student_id",
+      "email": "lucas.moreau@students.pacificridge.example",
+      "firstName": "Lucas",
+      "lastName": "Moreau",
+      "dateOfBirth": "2003-06-08",
+      "phone": "+1-253-555-0113",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Tacoma",
+      "state": "Washington",
+      "programName": "Business Administration",
+      "degree": "BS",
+      "fieldOfStudy": "Business Administration - Marketing",
+      "gpa": 3.08,
+      "graduationYear": 2028,
+      "creditsCompleted": 37,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "P",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "P",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "BUS 201",
+          "title": "Financial Accounting",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "BUS 210",
+          "title": "Principles of Marketing",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "BUS 301",
+          "title": "Organizational Behavior",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "BUS 320",
+          "title": "Operations Management",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0015",
+      "idType": "student_id",
+      "email": "zoe.kaplan@students.pacificridge.example",
+      "firstName": "Zoe",
+      "lastName": "Kaplan",
+      "dateOfBirth": "2004-11-15",
+      "phone": "+1-503-555-0114",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Portland",
+      "state": "Oregon",
+      "programName": "Economics",
+      "degree": "BA",
+      "fieldOfStudy": "Economics - Quantitative Economics",
+      "gpa": 3.23,
+      "graduationYear": 2027,
+      "creditsCompleted": 50,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "ECON 102",
+          "title": "Principles of Macroeconomics",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "ECON 201",
+          "title": "Intermediate Microeconomics",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "ECON 210",
+          "title": "Econometrics I",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "ECON 305",
+          "title": "Behavioral Economics",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "NID-040013665",
+      "idType": "national_id",
+      "email": "minh.tran@students.pacificridge.example",
+      "firstName": "Minh",
+      "lastName": "Tran",
+      "dateOfBirth": "2005-04-22",
+      "phone": "+1-541-555-0115",
+      "country": "United States",
+      "countryOfOrigin": "Vietnam",
+      "city": "Eugene",
+      "state": "Oregon",
+      "programName": "Psychology",
+      "degree": "BA",
+      "fieldOfStudy": "Psychology - Cognitive Science",
+      "gpa": 3.29,
+      "graduationYear": 2028,
+      "creditsCompleted": 53,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "MATH 111",
+          "title": "Calculus I",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PSY 210",
+          "title": "Research Methods in Psychology",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PSY 220",
+          "title": "Developmental Psychology",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PSY 301",
+          "title": "Cognitive Psychology",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "PSY 330",
+          "title": "Abnormal Psychology",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0017",
+      "idType": "student_id",
+      "email": "owen.gallagher@students.pacificridge.example",
+      "firstName": "Owen",
+      "lastName": "Gallagher",
+      "dateOfBirth": "2002-09-01",
+      "phone": "+1-916-555-0116",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Sacramento",
+      "state": "California",
+      "programName": "Biology",
+      "degree": "BS",
+      "fieldOfStudy": "Biology - Cell Biology",
+      "gpa": 3.38,
+      "graduationYear": 2027,
+      "creditsCompleted": 43,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "BIO 101",
+          "title": "General Biology I",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "BIO 102",
+          "title": "General Biology II",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "MATH 111",
+          "title": "Calculus I",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "BIO 210",
+          "title": "Genetics",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "BIO 220",
+          "title": "Cell Biology",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "BIO 310",
+          "title": "Ecology and Evolution",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "E07002329",
+      "idType": "passport",
+      "email": "fatima.hassan@students.pacificridge.example",
+      "firstName": "Fatima",
+      "lastName": "Hassan",
+      "dateOfBirth": "2003-02-08",
+      "phone": "+1-408-555-0117",
+      "country": "United States",
+      "countryOfOrigin": "Egypt",
+      "city": "San Jose",
+      "state": "California",
+      "programName": "Electrical Engineering",
+      "degree": "BS",
+      "fieldOfStudy": "Electrical Engineering - Digital Design",
+      "gpa": 3.21,
+      "graduationYear": 2028,
+      "creditsCompleted": 40,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "EE 101",
+          "title": "Introduction to Engineering Design",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "MATH 111",
+          "title": "Calculus I",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "EE 201",
+          "title": "Circuit Analysis",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "EE 220",
+          "title": "Digital Logic Design",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "EE 320",
+          "title": "Embedded Systems",
+          "credits": 4,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0019",
+      "idType": "student_id",
+      "email": "diego.herrera@students.pacificridge.example",
+      "firstName": "Diego",
+      "lastName": "Herrera",
+      "dateOfBirth": "2004-07-15",
+      "phone": "+1-206-555-0118",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Seattle",
+      "state": "Washington",
+      "programName": "Communication",
+      "degree": "BA",
+      "fieldOfStudy": "Communication - Intercultural Communication",
+      "gpa": 3.38,
+      "graduationYear": 2027,
+      "creditsCompleted": 44,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "COM 210",
+          "title": "Writing for Digital Media",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "COM 301",
+          "title": "Strategic Communication",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "COM 320",
+          "title": "Intercultural Communication",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "ALT-PRU-0020",
+      "idType": "other",
+      "email": "chloe.dubois@students.pacificridge.example",
+      "firstName": "Chloe",
+      "lastName": "Dubois",
+      "dateOfBirth": "2005-12-22",
+      "phone": "+1-253-555-0119",
+      "country": "United States",
+      "countryOfOrigin": "Canada",
+      "city": "Tacoma",
+      "state": "Washington",
+      "programName": "Environmental Science",
+      "degree": "BS",
+      "fieldOfStudy": "Environmental Science - Sustainable Energy",
+      "gpa": 2.95,
+      "graduationYear": 2028,
+      "creditsCompleted": 50,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "ENV 220",
+          "title": "Geographic Information Systems",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "ENV 301",
+          "title": "Climate Science and Policy",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "ENV 320",
+          "title": "Sustainable Energy Systems",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0021",
+      "idType": "student_id",
+      "email": "samuel.adeyemi@students.pacificridge.example",
+      "firstName": "Samuel",
+      "lastName": "Adeyemi",
+      "dateOfBirth": "2002-05-01",
+      "phone": "+1-503-555-0120",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Portland",
+      "state": "Oregon",
+      "programName": "Computer Science",
+      "degree": "BS",
+      "fieldOfStudy": "Computer Science - Artificial Intelligence",
+      "gpa": 2.74,
+      "graduationYear": 2027,
+      "creditsCompleted": 38,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CS 101",
+          "title": "Introduction to Computer Science",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CS 201",
+          "title": "Data Structures and Algorithms",
+          "credits": 4,
+          "grade": "C",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CS 220",
+          "title": "Discrete Mathematics for Computing",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CS 340",
+          "title": "Database Systems",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0022",
+      "idType": "student_id",
+      "email": "isabella.conti@students.pacificridge.example",
+      "firstName": "Isabella",
+      "lastName": "Conti",
+      "dateOfBirth": "2003-10-08",
+      "phone": "+1-541-555-0121",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Eugene",
+      "state": "Oregon",
+      "programName": "Data Science",
+      "degree": "BS",
+      "fieldOfStudy": "Data Science - Data Engineering",
+      "gpa": 3.42,
+      "graduationYear": 2028,
+      "creditsCompleted": 45,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "DS 110",
+          "title": "Introduction to Data Science",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "DS 210",
+          "title": "Statistical Computing with Python",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "DS 240",
+          "title": "Data Visualization",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "DS 310",
+          "title": "Machine Learning Fundamentals",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "DS 330",
+          "title": "Big Data Systems",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "J07003014",
+      "idType": "passport",
+      "email": "kenji.watanabe@students.pacificridge.example",
+      "firstName": "Kenji",
+      "lastName": "Watanabe",
+      "dateOfBirth": "2004-03-15",
+      "phone": "+1-916-555-0122",
+      "country": "United States",
+      "countryOfOrigin": "Japan",
+      "city": "Sacramento",
+      "state": "California",
+      "programName": "Mathematics",
+      "degree": "BS",
+      "fieldOfStudy": "Mathematics - Pure Mathematics",
+      "gpa": 3.42,
+      "graduationYear": 2027,
+      "creditsCompleted": 51,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "P",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "P",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "P",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "MATH 111",
+          "title": "Calculus I",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "MATH 112",
+          "title": "Calculus II",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "MATH 211",
+          "title": "Multivariable Calculus",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "MATH 221",
+          "title": "Linear Algebra",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0024",
+      "idType": "student_id",
+      "email": "maya.patel@students.pacificridge.example",
+      "firstName": "Maya",
+      "lastName": "Patel",
+      "dateOfBirth": "2005-08-22",
+      "phone": "+1-408-555-0123",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "San Jose",
+      "state": "California",
+      "programName": "Business Administration",
+      "degree": "BS",
+      "fieldOfStudy": "Business Administration - Operations",
+      "gpa": 2.83,
+      "graduationYear": 2028,
+      "creditsCompleted": 49,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "BUS 201",
+          "title": "Financial Accounting",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "BUS 210",
+          "title": "Principles of Marketing",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "BUS 320",
+          "title": "Operations Management",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0025",
+      "idType": "student_id",
+      "email": "jack.sullivan@students.pacificridge.example",
+      "firstName": "Jack",
+      "lastName": "Sullivan",
+      "dateOfBirth": "2002-01-01",
+      "phone": "+1-206-555-0124",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Seattle",
+      "state": "Washington",
+      "programName": "Economics",
+      "degree": "BA",
+      "fieldOfStudy": "Economics - Quantitative Economics",
+      "gpa": 3.2,
+      "graduationYear": 2027,
+      "creditsCompleted": 35,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "ECON 102",
+          "title": "Principles of Macroeconomics",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "ECON 201",
+          "title": "Intermediate Microeconomics",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "ECON 210",
+          "title": "Econometrics I",
+          "credits": 4,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "B07003425",
+      "idType": "passport",
+      "email": "aisha.rahman@students.pacificridge.example",
+      "firstName": "Aisha",
+      "lastName": "Rahman",
+      "dateOfBirth": "2003-06-08",
+      "phone": "+1-253-555-0125",
+      "country": "United States",
+      "countryOfOrigin": "Bangladesh",
+      "city": "Tacoma",
+      "state": "Washington",
+      "programName": "Psychology",
+      "degree": "BA",
+      "fieldOfStudy": "Psychology - Cognitive Science",
+      "gpa": 3.2,
+      "graduationYear": 2028,
+      "creditsCompleted": 41,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "PSY 210",
+          "title": "Research Methods in Psychology",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "PSY 220",
+          "title": "Developmental Psychology",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "PSY 301",
+          "title": "Cognitive Psychology",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "PSY 330",
+          "title": "Abnormal Psychology",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0027",
+      "idType": "student_id",
+      "email": "leo.nguyen@students.pacificridge.example",
+      "firstName": "Leo",
+      "lastName": "Nguyen",
+      "dateOfBirth": "2004-11-15",
+      "phone": "+1-503-555-0126",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Portland",
+      "state": "Oregon",
+      "programName": "Biology",
+      "degree": "BS",
+      "fieldOfStudy": "Biology - Ecology",
+      "gpa": 3.31,
+      "graduationYear": 2027,
+      "creditsCompleted": 51,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "BIO 101",
+          "title": "General Biology I",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "BIO 102",
+          "title": "General Biology II",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "BIO 210",
+          "title": "Genetics",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "BIO 220",
+          "title": "Cell Biology",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "BIO 310",
+          "title": "Ecology and Evolution",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "NID-040024597",
+      "idType": "national_id",
+      "email": "camila.torres@students.pacificridge.example",
+      "firstName": "Camila",
+      "lastName": "Torres",
+      "dateOfBirth": "2005-04-22",
+      "phone": "+1-541-555-0127",
+      "country": "United States",
+      "countryOfOrigin": "Mexico",
+      "city": "Eugene",
+      "state": "Oregon",
+      "programName": "Electrical Engineering",
+      "degree": "BS",
+      "fieldOfStudy": "Electrical Engineering - Digital Design",
+      "gpa": 3.15,
+      "graduationYear": 2028,
+      "creditsCompleted": 59,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "EE 101",
+          "title": "Introduction to Engineering Design",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ENV 101",
+          "title": "Introduction to Environmental Science",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "EE 201",
+          "title": "Circuit Analysis",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "EE 220",
+          "title": "Digital Logic Design",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "EE 301",
+          "title": "Signals and Systems",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "EE 320",
+          "title": "Embedded Systems",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "S07003836",
+      "idType": "passport",
+      "email": "benjamin.cho@students.pacificridge.example",
+      "firstName": "Benjamin",
+      "lastName": "Cho",
+      "dateOfBirth": "2002-09-01",
+      "phone": "+1-916-555-0128",
+      "country": "United States",
+      "countryOfOrigin": "South Korea",
+      "city": "Sacramento",
+      "state": "California",
+      "programName": "Communication",
+      "degree": "BA",
+      "fieldOfStudy": "Communication - Strategic Communication",
+      "gpa": 3.05,
+      "graduationYear": 2027,
+      "creditsCompleted": 38,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "COM 101",
+          "title": "Public Speaking",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "MATH 111",
+          "title": "Calculus I",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "COM 201",
+          "title": "Media and Society",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "COM 210",
+          "title": "Writing for Digital Media",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "COM 301",
+          "title": "Strategic Communication",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "COM 320",
+          "title": "Intercultural Communication",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "PRU",
+      "universityName": "Pacific Ridge University",
+      "externalId": "PRU-2023-0030",
+      "idType": "student_id",
+      "email": "grace.okonkwo@students.pacificridge.example",
+      "firstName": "Grace",
+      "lastName": "Okonkwo",
+      "dateOfBirth": "2003-02-08",
+      "phone": "+1-408-555-0129",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "San Jose",
+      "state": "California",
+      "programName": "Environmental Science",
+      "degree": "BS",
+      "fieldOfStudy": "Environmental Science - Climate Policy",
+      "gpa": 3.36,
+      "graduationYear": 2028,
+      "creditsCompleted": 41,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "PSY 101",
+          "title": "Introduction to Psychology",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "BUS 101",
+          "title": "Introduction to Business",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "ECON 101",
+          "title": "Principles of Microeconomics",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "ENV 201",
+          "title": "Environmental Chemistry",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "ENV 220",
+          "title": "Geographic Information Systems",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "ENV 301",
+          "title": "Climate Science and Policy",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "ENV 320",
+          "title": "Sustainable Energy Systems",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    }
+  ]
+}

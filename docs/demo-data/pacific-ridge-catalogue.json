@@ -1,0 +1,1998 @@
+{
+  "note": "Pacific Ridge University catalogue: 1 university, 10 programs, 50 courses with syllabus topics",
+  "universities": [
+    {
+      "code": "PRU",
+      "name": "Pacific Ridge University",
+      "type": "university",
+      "calendar": "semester",
+      "website": "https://www.pacificridge.example"
+    }
+  ],
+  "programs": [
+    {
+      "universityCode": "PRU",
+      "name": "Computer Science",
+      "area": "Computer Science",
+      "degree": "BS",
+      "school": "School of Engineering and Computing",
+      "description": "Undergraduate degree covering programming, algorithms, systems and databases with a strong mathematical foundation."
+    },
+    {
+      "universityCode": "PRU",
+      "name": "Data Science",
+      "area": "Data Science",
+      "degree": "BS",
+      "school": "School of Engineering and Computing",
+      "description": "Interdisciplinary degree combining statistics, programming and domain knowledge to extract insight from data."
+    },
+    {
+      "universityCode": "PRU",
+      "name": "Mathematics",
+      "area": "Mathematics",
+      "degree": "BS",
+      "school": "College of Arts and Sciences",
+      "description": "Rigorous training in calculus, algebra, analysis and probability for careers in quantitative fields and graduate study."
+    },
+    {
+      "universityCode": "PRU",
+      "name": "Business Administration",
+      "area": "Business",
+      "degree": "BS",
+      "school": "College of Business",
+      "description": "General management degree covering accounting, marketing, organizations and operations."
+    },
+    {
+      "universityCode": "PRU",
+      "name": "Economics",
+      "area": "Economics",
+      "degree": "BA",
+      "school": "College of Arts and Sciences",
+      "description": "Study of how individuals, firms and governments allocate scarce resources, with training in economic theory and empirical methods."
+    },
+    {
+      "universityCode": "PRU",
+      "name": "Psychology",
+      "area": "Psychology",
+      "degree": "BA",
+      "school": "College of Arts and Sciences",
+      "description": "Scientific study of behavior and mental processes with training in research design and statistics."
+    },
+    {
+      "universityCode": "PRU",
+      "name": "Biology",
+      "area": "Biology",
+      "degree": "BS",
+      "school": "College of Arts and Sciences",
+      "description": "Broad training in molecular, cellular, organismal and ecological biology with laboratory experience."
+    },
+    {
+      "universityCode": "PRU",
+      "name": "Electrical Engineering",
+      "area": "Engineering",
+      "degree": "BS",
+      "school": "School of Engineering and Computing",
+      "description": "Engineering curriculum in circuits, digital systems, signals and embedded hardware."
+    },
+    {
+      "universityCode": "PRU",
+      "name": "Communication",
+      "area": "Communication",
+      "degree": "BA",
+      "school": "College of Arts and Sciences",
+      "description": "Study of human and mediated communication with practical training in speaking, writing and strategy."
+    },
+    {
+      "universityCode": "PRU",
+      "name": "Environmental Science",
+      "area": "Environmental Science",
+      "degree": "BS",
+      "school": "College of Arts and Sciences",
+      "description": "Interdisciplinary study of natural systems, human impacts and sustainability with field and spatial analysis skills."
+    }
+  ],
+  "courses": [
+    {
+      "universityCode": "PRU",
+      "code": "CS 101",
+      "name": "Introduction to Computer Science",
+      "credits": 4,
+      "programName": "Computer Science",
+      "department": "Computer Science",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "An introduction to computational thinking and programming in Python. Students write programs that use variables, control flow, functions and basic data structures.",
+      "learningOutcomes": "Write and debug small Python programs; decompose problems into functions; explain basic algorithmic ideas.",
+      "topics": [
+        {
+          "title": "Variables, types and expressions",
+          "description": "Numeric, string and Boolean types, assignment and operators.",
+          "referenceLinks": [
+            {
+              "label": "CS 101 syllabus: Variables, types and expressions",
+              "url": "https://catalog.pacificridge.example/courses/cs-101#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Control flow and functions",
+          "description": "Conditionals, loops, function definition, parameters and scope."
+        },
+        {
+          "title": "Lists, dictionaries and files",
+          "description": "Built-in collections and reading and writing text files."
+        },
+        {
+          "title": "Debugging and testing",
+          "description": "Reading error messages, print debugging and writing simple unit tests.",
+          "referenceLinks": [
+            {
+              "label": "CS 101 syllabus: Debugging and testing",
+              "url": "https://catalog.pacificridge.example/courses/cs-101#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "CS 201",
+      "name": "Data Structures and Algorithms",
+      "credits": 4,
+      "programName": "Computer Science",
+      "department": "Computer Science",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Design, implementation and analysis of fundamental data structures and algorithms. Emphasis on asymptotic analysis and choosing the right structure for a problem.",
+      "learningOutcomes": "Implement core data structures; analyze running time with Big-O; select appropriate algorithms for a task.",
+      "topics": [
+        {
+          "title": "Arrays and linked lists",
+          "description": "Contiguous and linked sequence representations, stacks and queues."
+        },
+        {
+          "title": "Trees and heaps",
+          "description": "Binary search trees, balanced trees, binary heaps and priority queues."
+        },
+        {
+          "title": "Hash tables",
+          "description": "Hash functions, collision resolution and load factor.",
+          "referenceLinks": [
+            {
+              "label": "CS 201 syllabus: Hash tables",
+              "url": "https://catalog.pacificridge.example/courses/cs-201#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Sorting and complexity analysis",
+          "description": "Big-O notation, merge sort, quicksort and lower bounds for comparison sorting."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "CS 220",
+      "name": "Discrete Mathematics for Computing",
+      "credits": 4,
+      "programName": "Computer Science",
+      "department": "Computer Science",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Mathematical foundations for computer science including logic, proof techniques, sets, relations, counting and graphs.",
+      "learningOutcomes": "Construct formal proofs including induction; reason about sets, relations and graphs; solve basic counting problems.",
+      "topics": [
+        {
+          "title": "Propositional and predicate logic",
+          "description": "Truth tables, quantifiers and logical equivalence."
+        },
+        {
+          "title": "Proof techniques",
+          "description": "Direct proof, contradiction and mathematical induction.",
+          "referenceLinks": [
+            {
+              "label": "CS 220 syllabus: Proof techniques",
+              "url": "https://catalog.pacificridge.example/courses/cs-220#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Sets, relations and functions",
+          "description": "Set operations, equivalence relations and function properties."
+        },
+        {
+          "title": "Counting and graph theory",
+          "description": "Permutations, combinations, recurrences, paths and trees."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "CS 301",
+      "name": "Computer Organization and Systems",
+      "credits": 4,
+      "programName": "Computer Science",
+      "department": "Computer Science",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "How programs execute on hardware: data representation, assembly language, memory hierarchy, processes and an introduction to operating system concepts.",
+      "learningOutcomes": "Read simple assembly code; explain the memory hierarchy; describe process and thread behavior.",
+      "topics": [
+        {
+          "title": "Data representation",
+          "description": "Binary, two's complement and floating point formats.",
+          "referenceLinks": [
+            {
+              "label": "CS 301 syllabus: Data representation",
+              "url": "https://catalog.pacificridge.example/courses/cs-301#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Assembly language and the processor",
+          "description": "Instruction sets, registers, the stack and calling conventions."
+        },
+        {
+          "title": "Memory hierarchy and caching",
+          "description": "Locality, cache organization and virtual memory."
+        },
+        {
+          "title": "Processes and concurrency",
+          "description": "Process creation, scheduling and basic synchronization.",
+          "referenceLinks": [
+            {
+              "label": "CS 301 syllabus: Processes and concurrency",
+              "url": "https://catalog.pacificridge.example/courses/cs-301#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "CS 340",
+      "name": "Database Systems",
+      "credits": 4,
+      "programName": "Computer Science",
+      "department": "Computer Science",
+      "level": "upper",
+      "requirementType": "Major elective",
+      "description": "Relational database design and use. Covers the relational model, SQL, normalization, indexing and transactions.",
+      "learningOutcomes": "Design normalized schemas; write SQL queries; explain transaction isolation and indexing.",
+      "topics": [
+        {
+          "title": "Relational model and SQL",
+          "description": "Tables, keys, joins, aggregation and subqueries."
+        },
+        {
+          "title": "Entity-relationship design and normalization",
+          "description": "Modeling, functional dependencies and normal forms."
+        },
+        {
+          "title": "Indexing and query processing",
+          "description": "B-tree indexes and how query plans are chosen.",
+          "referenceLinks": [
+            {
+              "label": "CS 340 syllabus: Indexing and query processing",
+              "url": "https://catalog.pacificridge.example/courses/cs-340#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Transactions and concurrency control",
+          "description": "ACID properties, locking and isolation levels."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "DS 110",
+      "name": "Introduction to Data Science",
+      "credits": 3,
+      "programName": "Data Science",
+      "department": "Data Science",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "A survey of the data science workflow from question formulation through data collection, cleaning, analysis and communication of results.",
+      "learningOutcomes": "Describe the data science lifecycle; clean a small dataset; communicate findings with simple charts.",
+      "topics": [
+        {
+          "title": "The data science lifecycle",
+          "description": "Framing questions, collecting data and iterating on analysis."
+        },
+        {
+          "title": "Data cleaning and wrangling",
+          "description": "Missing values, tidy data and basic transformations.",
+          "referenceLinks": [
+            {
+              "label": "DS 110 syllabus: Data cleaning and wrangling",
+              "url": "https://catalog.pacificridge.example/courses/ds-110#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Exploratory analysis",
+          "description": "Summary statistics, distributions and simple visualizations."
+        },
+        {
+          "title": "Ethics and data privacy",
+          "description": "Bias, consent and responsible use of data."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "DS 210",
+      "name": "Statistical Computing with Python",
+      "credits": 4,
+      "programName": "Data Science",
+      "department": "Data Science",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Statistical methods implemented in Python using standard scientific libraries. Includes sampling, estimation, hypothesis testing and regression.",
+      "learningOutcomes": "Perform hypothesis tests and regression in Python; simulate sampling distributions; interpret confidence intervals.",
+      "topics": [
+        {
+          "title": "NumPy and pandas fundamentals",
+          "description": "Array computing and tabular data manipulation.",
+          "referenceLinks": [
+            {
+              "label": "DS 210 syllabus: NumPy and pandas fundamentals",
+              "url": "https://catalog.pacificridge.example/courses/ds-210#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Sampling and estimation",
+          "description": "Sampling distributions, confidence intervals and the bootstrap."
+        },
+        {
+          "title": "Hypothesis testing",
+          "description": "t-tests, chi-square tests and p-value interpretation."
+        },
+        {
+          "title": "Linear regression",
+          "description": "Fitting, diagnostics and interpretation of linear models.",
+          "referenceLinks": [
+            {
+              "label": "DS 210 syllabus: Linear regression",
+              "url": "https://catalog.pacificridge.example/courses/ds-210#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "DS 240",
+      "name": "Data Visualization",
+      "credits": 3,
+      "programName": "Data Science",
+      "department": "Data Science",
+      "level": "lower",
+      "requirementType": "Major elective",
+      "description": "Principles of effective visual communication of data, with hands-on work building static and interactive charts.",
+      "learningOutcomes": "Choose appropriate chart types; critique visualizations; build an interactive dashboard.",
+      "topics": [
+        {
+          "title": "Visual perception and design principles",
+          "description": "Pre-attentive attributes, color and layout choices."
+        },
+        {
+          "title": "Charting with Python libraries",
+          "description": "Static plots for distributions, trends and comparisons."
+        },
+        {
+          "title": "Interactive dashboards",
+          "description": "Filters, tooltips and linked views for exploration.",
+          "referenceLinks": [
+            {
+              "label": "DS 240 syllabus: Interactive dashboards",
+              "url": "https://catalog.pacificridge.example/courses/ds-240#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Storytelling with data",
+          "description": "Structuring a narrative around analytic findings."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "DS 310",
+      "name": "Machine Learning Fundamentals",
+      "credits": 4,
+      "programName": "Data Science",
+      "department": "Data Science",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Core supervised and unsupervised learning methods with emphasis on model evaluation, overfitting and practical workflow.",
+      "learningOutcomes": "Train and evaluate classification and regression models; apply cross-validation; explain bias and variance.",
+      "topics": [
+        {
+          "title": "Supervised learning and classification",
+          "description": "Logistic regression, decision trees and nearest neighbors."
+        },
+        {
+          "title": "Model evaluation and validation",
+          "description": "Train/test splits, cross-validation and performance metrics.",
+          "referenceLinks": [
+            {
+              "label": "DS 310 syllabus: Model evaluation and validation",
+              "url": "https://catalog.pacificridge.example/courses/ds-310#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Regularization and overfitting",
+          "description": "Bias-variance tradeoff, ridge and lasso."
+        },
+        {
+          "title": "Clustering and dimensionality reduction",
+          "description": "k-means and principal component analysis."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "DS 330",
+      "name": "Big Data Systems",
+      "credits": 3,
+      "programName": "Data Science",
+      "department": "Data Science",
+      "level": "upper",
+      "requirementType": "Major elective",
+      "description": "Architectures and tools for storing and processing datasets too large for a single machine.",
+      "learningOutcomes": "Explain distributed storage and processing models; write a simple parallel data job.",
+      "topics": [
+        {
+          "title": "Distributed file systems",
+          "description": "Partitioning, replication and fault tolerance.",
+          "referenceLinks": [
+            {
+              "label": "DS 330 syllabus: Distributed file systems",
+              "url": "https://catalog.pacificridge.example/courses/ds-330#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "MapReduce and dataflow processing",
+          "description": "Map and reduce stages, shuffles and parallel jobs."
+        },
+        {
+          "title": "NoSQL data stores",
+          "description": "Key-value, document and column-family stores."
+        },
+        {
+          "title": "Stream processing",
+          "description": "Handling continuous data with windows and event time.",
+          "referenceLinks": [
+            {
+              "label": "DS 330 syllabus: Stream processing",
+              "url": "https://catalog.pacificridge.example/courses/ds-330#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "MATH 111",
+      "name": "Calculus I",
+      "credits": 4,
+      "programName": "Mathematics",
+      "department": "Mathematics",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Limits, continuity, derivatives and their applications, and an introduction to integration for functions of one variable.",
+      "learningOutcomes": "Compute limits and derivatives; solve optimization and related-rate problems; evaluate basic integrals.",
+      "topics": [
+        {
+          "title": "Limits and continuity",
+          "description": "Limit laws, one-sided limits and the intermediate value theorem."
+        },
+        {
+          "title": "Differentiation rules",
+          "description": "Product, quotient and chain rules; derivatives of common functions."
+        },
+        {
+          "title": "Applications of the derivative",
+          "description": "Optimization, related rates and curve sketching.",
+          "referenceLinks": [
+            {
+              "label": "MATH 111 syllabus: Applications of the derivative",
+              "url": "https://catalog.pacificridge.example/courses/math-111#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Introduction to integration",
+          "description": "Riemann sums and the fundamental theorem of calculus."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "MATH 112",
+      "name": "Calculus II",
+      "credits": 4,
+      "programName": "Mathematics",
+      "department": "Mathematics",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Techniques of integration, applications of the integral, sequences and infinite series.",
+      "learningOutcomes": "Apply integration techniques; test series for convergence; use Taylor series to approximate functions.",
+      "topics": [
+        {
+          "title": "Techniques of integration",
+          "description": "Substitution, integration by parts and partial fractions."
+        },
+        {
+          "title": "Applications of integrals",
+          "description": "Area, volume and arc length.",
+          "referenceLinks": [
+            {
+              "label": "MATH 112 syllabus: Applications of integrals",
+              "url": "https://catalog.pacificridge.example/courses/math-112#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Sequences and series",
+          "description": "Convergence tests including ratio and comparison tests."
+        },
+        {
+          "title": "Power and Taylor series",
+          "description": "Representing functions as series and error estimates."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "MATH 211",
+      "name": "Multivariable Calculus",
+      "credits": 4,
+      "programName": "Mathematics",
+      "department": "Mathematics",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Calculus of functions of several variables including partial derivatives, multiple integrals and vector calculus.",
+      "learningOutcomes": "Compute partial derivatives and gradients; evaluate multiple integrals; apply Green's and Stokes' theorems.",
+      "topics": [
+        {
+          "title": "Vectors and curves in space",
+          "description": "Dot and cross products, lines, planes and parametric curves.",
+          "referenceLinks": [
+            {
+              "label": "MATH 211 syllabus: Vectors and curves in space",
+              "url": "https://catalog.pacificridge.example/courses/math-211#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Partial derivatives and optimization",
+          "description": "Gradients, directional derivatives and Lagrange multipliers."
+        },
+        {
+          "title": "Multiple integrals",
+          "description": "Double and triple integrals in rectangular, polar and spherical coordinates."
+        },
+        {
+          "title": "Vector calculus",
+          "description": "Line integrals, surface integrals and the major integral theorems.",
+          "referenceLinks": [
+            {
+              "label": "MATH 211 syllabus: Vector calculus",
+              "url": "https://catalog.pacificridge.example/courses/math-211#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "MATH 221",
+      "name": "Linear Algebra",
+      "credits": 4,
+      "programName": "Mathematics",
+      "department": "Mathematics",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Systems of linear equations, vector spaces, linear transformations, determinants and eigenvalue theory.",
+      "learningOutcomes": "Solve linear systems; compute eigenvalues and eigenvectors; reason about vector spaces and linear maps.",
+      "topics": [
+        {
+          "title": "Systems of linear equations",
+          "description": "Gaussian elimination and matrix algebra."
+        },
+        {
+          "title": "Vector spaces and subspaces",
+          "description": "Span, independence, basis and dimension."
+        },
+        {
+          "title": "Linear transformations and determinants",
+          "description": "Matrix representations, kernel and image.",
+          "referenceLinks": [
+            {
+              "label": "MATH 221 syllabus: Linear transformations and determinants",
+              "url": "https://catalog.pacificridge.example/courses/math-221#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Eigenvalues and diagonalization",
+          "description": "Characteristic polynomial, eigenspaces and orthogonality."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "MATH 301",
+      "name": "Probability Theory",
+      "credits": 4,
+      "programName": "Mathematics",
+      "department": "Mathematics",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Calculus-based probability including random variables, common distributions, expectation and limit theorems.",
+      "learningOutcomes": "Compute probabilities and expectations; work with joint distributions; apply the central limit theorem.",
+      "topics": [
+        {
+          "title": "Probability axioms and conditional probability",
+          "description": "Sample spaces, independence and Bayes' rule."
+        },
+        {
+          "title": "Discrete and continuous random variables",
+          "description": "PMFs, PDFs and cumulative distribution functions.",
+          "referenceLinks": [
+            {
+              "label": "MATH 301 syllabus: Discrete and continuous random variables",
+              "url": "https://catalog.pacificridge.example/courses/math-301#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Expectation, variance and joint distributions",
+          "description": "Moments, covariance and transformations."
+        },
+        {
+          "title": "Limit theorems",
+          "description": "Law of large numbers and the central limit theorem."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "BUS 101",
+      "name": "Introduction to Business",
+      "credits": 3,
+      "programName": "Business Administration",
+      "department": "Business",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Survey of the functional areas of business and the environment in which organizations operate.",
+      "learningOutcomes": "Describe the major business functions; analyze a simple business model; discuss ethical issues in business.",
+      "topics": [
+        {
+          "title": "Forms of business organization",
+          "description": "Sole proprietorships, partnerships and corporations.",
+          "referenceLinks": [
+            {
+              "label": "BUS 101 syllabus: Forms of business organization",
+              "url": "https://catalog.pacificridge.example/courses/bus-101#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Functional areas of a firm",
+          "description": "Marketing, finance, operations and human resources."
+        },
+        {
+          "title": "Business environment and globalization",
+          "description": "Economic, legal and cultural influences on firms."
+        },
+        {
+          "title": "Business ethics and social responsibility",
+          "description": "Stakeholder theory and ethical decision-making.",
+          "referenceLinks": [
+            {
+              "label": "BUS 101 syllabus: Business ethics and social responsibility",
+              "url": "https://catalog.pacificridge.example/courses/bus-101#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "BUS 201",
+      "name": "Financial Accounting",
+      "credits": 3,
+      "programName": "Business Administration",
+      "department": "Business",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Introduction to the preparation and interpretation of financial statements under generally accepted accounting principles.",
+      "learningOutcomes": "Prepare basic financial statements; record routine transactions; interpret key ratios.",
+      "topics": [
+        {
+          "title": "The accounting equation and transactions",
+          "description": "Double-entry bookkeeping and journal entries."
+        },
+        {
+          "title": "Financial statements",
+          "description": "Income statement, balance sheet and cash flow statement."
+        },
+        {
+          "title": "Assets, liabilities and equity",
+          "description": "Inventory, depreciation, debt and shareholder equity.",
+          "referenceLinks": [
+            {
+              "label": "BUS 201 syllabus: Assets, liabilities and equity",
+              "url": "https://catalog.pacificridge.example/courses/bus-201#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Financial statement analysis",
+          "description": "Liquidity, profitability and leverage ratios."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "BUS 210",
+      "name": "Principles of Marketing",
+      "credits": 3,
+      "programName": "Business Administration",
+      "department": "Business",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "The marketing process from consumer insight and segmentation to product, price, promotion and distribution decisions.",
+      "learningOutcomes": "Develop a basic marketing plan; segment and position a product; interpret market research.",
+      "topics": [
+        {
+          "title": "Consumer behavior and market research",
+          "description": "Buying decisions, surveys and focus groups."
+        },
+        {
+          "title": "Segmentation, targeting and positioning",
+          "description": "Choosing customers and differentiating an offering.",
+          "referenceLinks": [
+            {
+              "label": "BUS 210 syllabus: Segmentation, targeting and positioning",
+              "url": "https://catalog.pacificridge.example/courses/bus-210#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Product and pricing strategy",
+          "description": "Product life cycle, branding and pricing approaches."
+        },
+        {
+          "title": "Promotion and digital channels",
+          "description": "Advertising, social media and integrated communication."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "BUS 301",
+      "name": "Organizational Behavior",
+      "credits": 3,
+      "programName": "Business Administration",
+      "department": "Business",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "How individuals and groups behave in organizations, covering motivation, teams, leadership and organizational culture.",
+      "learningOutcomes": "Apply motivation and leadership theories; diagnose team dynamics; discuss organizational culture and change.",
+      "topics": [
+        {
+          "title": "Individual differences and motivation",
+          "description": "Personality, expectancy theory and goal setting.",
+          "referenceLinks": [
+            {
+              "label": "BUS 301 syllabus: Individual differences and motivation",
+              "url": "https://catalog.pacificridge.example/courses/bus-301#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Teams and group dynamics",
+          "description": "Team development, conflict and decision making."
+        },
+        {
+          "title": "Leadership and power",
+          "description": "Leadership styles and sources of influence."
+        },
+        {
+          "title": "Organizational culture and change",
+          "description": "Culture formation and managing change initiatives.",
+          "referenceLinks": [
+            {
+              "label": "BUS 301 syllabus: Organizational culture and change",
+              "url": "https://catalog.pacificridge.example/courses/bus-301#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "BUS 320",
+      "name": "Operations Management",
+      "credits": 3,
+      "programName": "Business Administration",
+      "department": "Business",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Design and management of processes that produce goods and services, including quality, inventory and supply chains.",
+      "learningOutcomes": "Analyze process flow and capacity; apply basic inventory models; describe quality improvement methods.",
+      "topics": [
+        {
+          "title": "Process analysis and capacity",
+          "description": "Flow charts, bottlenecks and throughput."
+        },
+        {
+          "title": "Quality management",
+          "description": "Statistical process control and continuous improvement."
+        },
+        {
+          "title": "Inventory management",
+          "description": "Economic order quantity and safety stock.",
+          "referenceLinks": [
+            {
+              "label": "BUS 320 syllabus: Inventory management",
+              "url": "https://catalog.pacificridge.example/courses/bus-320#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Supply chain management",
+          "description": "Sourcing, logistics and the bullwhip effect."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "ECON 101",
+      "name": "Principles of Microeconomics",
+      "credits": 4,
+      "programName": "Economics",
+      "department": "Economics",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Introduction to consumer and firm behavior, market structures and the role of government in correcting market failures.",
+      "learningOutcomes": "Analyze supply and demand; explain firm decisions under different market structures; evaluate simple policies.",
+      "topics": [
+        {
+          "title": "Supply, demand and market equilibrium",
+          "description": "Shifts in curves, elasticity and surplus."
+        },
+        {
+          "title": "Consumer choice and production costs",
+          "description": "Utility, budget constraints and cost curves.",
+          "referenceLinks": [
+            {
+              "label": "ECON 101 syllabus: Consumer choice and production costs",
+              "url": "https://catalog.pacificridge.example/courses/econ-101#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Market structures",
+          "description": "Perfect competition, monopoly and oligopoly."
+        },
+        {
+          "title": "Externalities and public goods",
+          "description": "Market failure and government intervention."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "ECON 102",
+      "name": "Principles of Macroeconomics",
+      "credits": 4,
+      "programName": "Economics",
+      "department": "Economics",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Introduction to national income, unemployment, inflation, growth and the effects of fiscal and monetary policy.",
+      "learningOutcomes": "Interpret macroeconomic indicators; explain business cycles; evaluate fiscal and monetary policy tools.",
+      "topics": [
+        {
+          "title": "National income accounting",
+          "description": "GDP, price indices and inflation measurement.",
+          "referenceLinks": [
+            {
+              "label": "ECON 102 syllabus: National income accounting",
+              "url": "https://catalog.pacificridge.example/courses/econ-102#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Aggregate demand and supply",
+          "description": "Short-run fluctuations and the business cycle."
+        },
+        {
+          "title": "Unemployment and inflation",
+          "description": "Types of unemployment and the Phillips curve."
+        },
+        {
+          "title": "Fiscal and monetary policy",
+          "description": "Government budgets, central banks and interest rates.",
+          "referenceLinks": [
+            {
+              "label": "ECON 102 syllabus: Fiscal and monetary policy",
+              "url": "https://catalog.pacificridge.example/courses/econ-102#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "ECON 201",
+      "name": "Intermediate Microeconomics",
+      "credits": 4,
+      "programName": "Economics",
+      "department": "Economics",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Mathematical treatment of consumer theory, production, general equilibrium and strategic behavior.",
+      "learningOutcomes": "Solve constrained optimization problems; analyze equilibrium in competitive and strategic settings.",
+      "topics": [
+        {
+          "title": "Consumer theory and demand",
+          "description": "Preferences, indirect utility and Slutsky decomposition."
+        },
+        {
+          "title": "Theory of the firm",
+          "description": "Production functions, cost minimization and profit maximization."
+        },
+        {
+          "title": "General equilibrium and welfare",
+          "description": "Edgeworth box and the welfare theorems.",
+          "referenceLinks": [
+            {
+              "label": "ECON 201 syllabus: General equilibrium and welfare",
+              "url": "https://catalog.pacificridge.example/courses/econ-201#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Game theory basics",
+          "description": "Nash equilibrium and strategic form games."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "ECON 210",
+      "name": "Econometrics I",
+      "credits": 4,
+      "programName": "Economics",
+      "department": "Economics",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Statistical methods for estimating and testing economic relationships using regression analysis.",
+      "learningOutcomes": "Estimate and interpret regression models; test hypotheses; diagnose heteroskedasticity and omitted variable bias.",
+      "topics": [
+        {
+          "title": "Probability and statistics review",
+          "description": "Random variables, estimators and sampling distributions."
+        },
+        {
+          "title": "Simple and multiple regression",
+          "description": "Ordinary least squares and interpretation of coefficients.",
+          "referenceLinks": [
+            {
+              "label": "ECON 210 syllabus: Simple and multiple regression",
+              "url": "https://catalog.pacificridge.example/courses/econ-210#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Inference in regression",
+          "description": "Standard errors, t-tests and F-tests."
+        },
+        {
+          "title": "Violations of regression assumptions",
+          "description": "Heteroskedasticity, omitted variables and endogeneity."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "ECON 305",
+      "name": "Behavioral Economics",
+      "credits": 3,
+      "programName": "Economics",
+      "department": "Economics",
+      "level": "upper",
+      "requirementType": "Major elective",
+      "description": "How psychological evidence about judgment and decision making modifies standard economic models.",
+      "learningOutcomes": "Explain departures from rational choice; apply prospect theory; discuss nudge-based policy design.",
+      "topics": [
+        {
+          "title": "Bounded rationality and heuristics",
+          "description": "Judgment biases and mental shortcuts.",
+          "referenceLinks": [
+            {
+              "label": "ECON 305 syllabus: Bounded rationality and heuristics",
+              "url": "https://catalog.pacificridge.example/courses/econ-305#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Prospect theory",
+          "description": "Reference dependence, loss aversion and framing."
+        },
+        {
+          "title": "Time preferences and self-control",
+          "description": "Present bias and commitment devices."
+        },
+        {
+          "title": "Nudges and behavioral policy",
+          "description": "Choice architecture and default effects.",
+          "referenceLinks": [
+            {
+              "label": "ECON 305 syllabus: Nudges and behavioral policy",
+              "url": "https://catalog.pacificridge.example/courses/econ-305#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "PSY 101",
+      "name": "Introduction to Psychology",
+      "credits": 3,
+      "programName": "Psychology",
+      "department": "Psychology",
+      "level": "intro",
+      "requirementType": "General education",
+      "description": "Survey of the major areas of psychology including biological, cognitive, developmental, social and clinical perspectives.",
+      "learningOutcomes": "Describe major psychological theories; evaluate research claims; relate concepts to everyday behavior.",
+      "topics": [
+        {
+          "title": "History and research methods",
+          "description": "Scientific method, experiments and correlational studies."
+        },
+        {
+          "title": "Biological bases of behavior",
+          "description": "Neurons, brain structures and the nervous system."
+        },
+        {
+          "title": "Learning and memory",
+          "description": "Classical and operant conditioning and memory processes.",
+          "referenceLinks": [
+            {
+              "label": "PSY 101 syllabus: Learning and memory",
+              "url": "https://catalog.pacificridge.example/courses/psy-101#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Social and clinical psychology",
+          "description": "Conformity, attitudes and an overview of psychological disorders."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "PSY 210",
+      "name": "Research Methods in Psychology",
+      "credits": 4,
+      "programName": "Psychology",
+      "department": "Psychology",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Design, analysis and reporting of psychological research, including experimental and survey methods and basic statistics.",
+      "learningOutcomes": "Design a simple study; analyze data with descriptive and inferential statistics; write a research report.",
+      "topics": [
+        {
+          "title": "Research design and hypotheses",
+          "description": "Variables, operational definitions and validity."
+        },
+        {
+          "title": "Experimental and survey methods",
+          "description": "Between- and within-subjects designs and questionnaire construction.",
+          "referenceLinks": [
+            {
+              "label": "PSY 210 syllabus: Experimental and survey methods",
+              "url": "https://catalog.pacificridge.example/courses/psy-210#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Descriptive and inferential statistics",
+          "description": "Means, correlation, t-tests and ANOVA."
+        },
+        {
+          "title": "Research ethics and reporting",
+          "description": "Informed consent, institutional review and report writing."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "PSY 220",
+      "name": "Developmental Psychology",
+      "credits": 3,
+      "programName": "Psychology",
+      "department": "Psychology",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Physical, cognitive and social development from conception through adulthood.",
+      "learningOutcomes": "Compare major developmental theories; describe milestones across the lifespan.",
+      "topics": [
+        {
+          "title": "Theories of development",
+          "description": "Piaget, Vygotsky and attachment theory.",
+          "referenceLinks": [
+            {
+              "label": "PSY 220 syllabus: Theories of development",
+              "url": "https://catalog.pacificridge.example/courses/psy-220#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Prenatal and infant development",
+          "description": "Early brain growth, reflexes and attachment."
+        },
+        {
+          "title": "Childhood and adolescence",
+          "description": "Cognitive growth, identity formation and peer influence."
+        },
+        {
+          "title": "Adulthood and aging",
+          "description": "Midlife transitions and cognitive aging.",
+          "referenceLinks": [
+            {
+              "label": "PSY 220 syllabus: Adulthood and aging",
+              "url": "https://catalog.pacificridge.example/courses/psy-220#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "PSY 301",
+      "name": "Cognitive Psychology",
+      "credits": 3,
+      "programName": "Psychology",
+      "department": "Psychology",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Study of attention, perception, memory, language and reasoning as information-processing activities.",
+      "learningOutcomes": "Explain models of memory and attention; evaluate experimental evidence in cognition.",
+      "topics": [
+        {
+          "title": "Attention and perception",
+          "description": "Selective attention and pattern recognition."
+        },
+        {
+          "title": "Memory systems",
+          "description": "Working memory, long-term memory and forgetting."
+        },
+        {
+          "title": "Language and thought",
+          "description": "Language comprehension and concept formation.",
+          "referenceLinks": [
+            {
+              "label": "PSY 301 syllabus: Language and thought",
+              "url": "https://catalog.pacificridge.example/courses/psy-301#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Problem solving and decision making",
+          "description": "Heuristics, reasoning and expertise."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "PSY 330",
+      "name": "Abnormal Psychology",
+      "credits": 3,
+      "programName": "Psychology",
+      "department": "Psychology",
+      "level": "upper",
+      "requirementType": "Major elective",
+      "description": "Description, classification, causes and treatment of psychological disorders.",
+      "learningOutcomes": "Describe major diagnostic categories; compare treatment approaches; discuss cultural factors in diagnosis.",
+      "topics": [
+        {
+          "title": "Classification and diagnosis",
+          "description": "Diagnostic systems and assessment methods."
+        },
+        {
+          "title": "Anxiety and mood disorders",
+          "description": "Symptoms, etiology and treatment.",
+          "referenceLinks": [
+            {
+              "label": "PSY 330 syllabus: Anxiety and mood disorders",
+              "url": "https://catalog.pacificridge.example/courses/psy-330#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Psychotic and personality disorders",
+          "description": "Schizophrenia spectrum and personality disorders."
+        },
+        {
+          "title": "Therapy approaches",
+          "description": "Cognitive-behavioral, psychodynamic and pharmacological treatments."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "BIO 101",
+      "name": "General Biology I",
+      "credits": 4,
+      "programName": "Biology",
+      "department": "Biology",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Introductory biology covering cell structure, biochemistry, energy metabolism and molecular genetics, with laboratory.",
+      "learningOutcomes": "Describe cell structure and metabolism; perform basic laboratory techniques; explain DNA replication and expression.",
+      "topics": [
+        {
+          "title": "Chemistry of life",
+          "description": "Water, macromolecules and enzyme function.",
+          "referenceLinks": [
+            {
+              "label": "BIO 101 syllabus: Chemistry of life",
+              "url": "https://catalog.pacificridge.example/courses/bio-101#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Cell structure and membranes",
+          "description": "Prokaryotic and eukaryotic cells and transport."
+        },
+        {
+          "title": "Cellular respiration and photosynthesis",
+          "description": "Energy flow and ATP production."
+        },
+        {
+          "title": "DNA, transcription and translation",
+          "description": "Central dogma and gene expression.",
+          "referenceLinks": [
+            {
+              "label": "BIO 101 syllabus: DNA, transcription and translation",
+              "url": "https://catalog.pacificridge.example/courses/bio-101#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "BIO 102",
+      "name": "General Biology II",
+      "credits": 4,
+      "programName": "Biology",
+      "department": "Biology",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Introduction to organismal biology, evolution, diversity of life and ecology, with laboratory.",
+      "learningOutcomes": "Explain natural selection; classify organisms; describe basic ecological interactions.",
+      "topics": [
+        {
+          "title": "Evolution and natural selection",
+          "description": "Population genetics and evidence for evolution."
+        },
+        {
+          "title": "Diversity of microbes, plants and fungi",
+          "description": "Major lineages and their life cycles."
+        },
+        {
+          "title": "Animal form and function",
+          "description": "Physiology and organ systems.",
+          "referenceLinks": [
+            {
+              "label": "BIO 102 syllabus: Animal form and function",
+              "url": "https://catalog.pacificridge.example/courses/bio-102#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Introduction to ecology",
+          "description": "Populations, communities and ecosystems."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "BIO 210",
+      "name": "Genetics",
+      "credits": 4,
+      "programName": "Biology",
+      "department": "Biology",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Principles of classical and molecular genetics including inheritance patterns, gene mapping and genomics.",
+      "learningOutcomes": "Solve Mendelian and linkage problems; explain gene regulation; interpret genomic data.",
+      "topics": [
+        {
+          "title": "Mendelian inheritance",
+          "description": "Segregation, independent assortment and pedigrees."
+        },
+        {
+          "title": "Linkage and chromosome mapping",
+          "description": "Recombination and map construction.",
+          "referenceLinks": [
+            {
+              "label": "BIO 210 syllabus: Linkage and chromosome mapping",
+              "url": "https://catalog.pacificridge.example/courses/bio-210#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Molecular genetics and gene regulation",
+          "description": "Operons, transcription factors and epigenetics."
+        },
+        {
+          "title": "Genomics and population genetics",
+          "description": "Sequencing, variation and Hardy-Weinberg equilibrium."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "BIO 220",
+      "name": "Cell Biology",
+      "credits": 4,
+      "programName": "Biology",
+      "department": "Biology",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Structure and function of eukaryotic cells, including organelles, signaling, the cytoskeleton and the cell cycle.",
+      "learningOutcomes": "Explain organelle function and trafficking; describe signal transduction; analyze cell cycle control.",
+      "topics": [
+        {
+          "title": "Organelles and protein trafficking",
+          "description": "Endomembrane system, mitochondria and targeting.",
+          "referenceLinks": [
+            {
+              "label": "BIO 220 syllabus: Organelles and protein trafficking",
+              "url": "https://catalog.pacificridge.example/courses/bio-220#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Cytoskeleton and cell motility",
+          "description": "Actin, microtubules and motor proteins."
+        },
+        {
+          "title": "Cell signaling",
+          "description": "Receptors, second messengers and signal cascades."
+        },
+        {
+          "title": "Cell cycle and cell death",
+          "description": "Checkpoints, mitosis and apoptosis.",
+          "referenceLinks": [
+            {
+              "label": "BIO 220 syllabus: Cell cycle and cell death",
+              "url": "https://catalog.pacificridge.example/courses/bio-220#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "BIO 310",
+      "name": "Ecology and Evolution",
+      "credits": 4,
+      "programName": "Biology",
+      "department": "Biology",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Interactions between organisms and their environment and the evolutionary processes shaping them, with field components.",
+      "learningOutcomes": "Analyze population dynamics; design a field study; relate ecological patterns to evolutionary processes.",
+      "topics": [
+        {
+          "title": "Population ecology",
+          "description": "Growth models, life tables and regulation."
+        },
+        {
+          "title": "Community ecology",
+          "description": "Competition, predation and succession."
+        },
+        {
+          "title": "Evolutionary processes",
+          "description": "Selection, drift, speciation and phylogenetics.",
+          "referenceLinks": [
+            {
+              "label": "BIO 310 syllabus: Evolutionary processes",
+              "url": "https://catalog.pacificridge.example/courses/bio-310#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Conservation biology",
+          "description": "Biodiversity loss and management strategies."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "EE 101",
+      "name": "Introduction to Engineering Design",
+      "credits": 3,
+      "programName": "Electrical Engineering",
+      "department": "Electrical Engineering",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Team-based introduction to the engineering design process with hands-on projects, basic measurement and technical communication.",
+      "learningOutcomes": "Apply the design process in a team; use basic lab instruments; prepare a technical report.",
+      "topics": [
+        {
+          "title": "The engineering design process",
+          "description": "Requirements, concept generation and prototyping."
+        },
+        {
+          "title": "Basic electronics and measurement",
+          "description": "Voltage, current, multimeters and breadboards.",
+          "referenceLinks": [
+            {
+              "label": "EE 101 syllabus: Basic electronics and measurement",
+              "url": "https://catalog.pacificridge.example/courses/ee-101#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Teamwork and project management",
+          "description": "Roles, scheduling and design reviews."
+        },
+        {
+          "title": "Technical communication",
+          "description": "Reports, drawings and oral presentations."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "EE 201",
+      "name": "Circuit Analysis",
+      "credits": 4,
+      "programName": "Electrical Engineering",
+      "department": "Electrical Engineering",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Analysis of resistive and dynamic electrical circuits using network theorems and transient and sinusoidal steady-state methods.",
+      "learningOutcomes": "Analyze circuits with Kirchhoff's laws; solve first- and second-order transients; use phasors for AC analysis.",
+      "topics": [
+        {
+          "title": "Resistive circuits and network theorems",
+          "description": "Kirchhoff's laws, Thevenin and Norton equivalents.",
+          "referenceLinks": [
+            {
+              "label": "EE 201 syllabus: Resistive circuits and network theorems",
+              "url": "https://catalog.pacificridge.example/courses/ee-201#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Capacitors, inductors and transients",
+          "description": "First- and second-order responses."
+        },
+        {
+          "title": "Sinusoidal steady state and phasors",
+          "description": "Impedance and AC power."
+        },
+        {
+          "title": "Operational amplifiers",
+          "description": "Ideal op-amp configurations and applications.",
+          "referenceLinks": [
+            {
+              "label": "EE 201 syllabus: Operational amplifiers",
+              "url": "https://catalog.pacificridge.example/courses/ee-201#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "EE 220",
+      "name": "Digital Logic Design",
+      "credits": 4,
+      "programName": "Electrical Engineering",
+      "department": "Electrical Engineering",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Design of combinational and sequential digital circuits, including state machines and programmable logic.",
+      "learningOutcomes": "Design combinational and sequential circuits; implement a finite state machine in a hardware description language.",
+      "topics": [
+        {
+          "title": "Boolean algebra and combinational logic",
+          "description": "Gates, minimization and arithmetic circuits."
+        },
+        {
+          "title": "Sequential circuits",
+          "description": "Latches, flip-flops, registers and counters."
+        },
+        {
+          "title": "Finite state machines",
+          "description": "State diagrams and synchronous design.",
+          "referenceLinks": [
+            {
+              "label": "EE 220 syllabus: Finite state machines",
+              "url": "https://catalog.pacificridge.example/courses/ee-220#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Hardware description languages",
+          "description": "Modeling and simulating circuits in Verilog."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "EE 301",
+      "name": "Signals and Systems",
+      "credits": 4,
+      "programName": "Electrical Engineering",
+      "department": "Electrical Engineering",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Mathematical representation and analysis of continuous and discrete-time signals and linear time-invariant systems.",
+      "learningOutcomes": "Compute convolutions and transforms; analyze system frequency response; explain sampling.",
+      "topics": [
+        {
+          "title": "Signals and system properties",
+          "description": "Linearity, time invariance and causality."
+        },
+        {
+          "title": "Convolution and impulse response",
+          "description": "Time-domain analysis of LTI systems.",
+          "referenceLinks": [
+            {
+              "label": "EE 301 syllabus: Convolution and impulse response",
+              "url": "https://catalog.pacificridge.example/courses/ee-301#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Fourier series and transforms",
+          "description": "Frequency-domain representation of signals."
+        },
+        {
+          "title": "Laplace transform and sampling",
+          "description": "Transfer functions and the sampling theorem."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "EE 320",
+      "name": "Embedded Systems",
+      "credits": 4,
+      "programName": "Electrical Engineering",
+      "department": "Electrical Engineering",
+      "level": "upper",
+      "requirementType": "Major elective",
+      "description": "Design of microcontroller-based systems including peripherals, interrupts, real-time constraints and sensor interfacing.",
+      "learningOutcomes": "Program a microcontroller in C; interface sensors and actuators; design interrupt-driven software.",
+      "topics": [
+        {
+          "title": "Microcontroller architecture",
+          "description": "Processor core, memory map and I/O ports.",
+          "referenceLinks": [
+            {
+              "label": "EE 320 syllabus: Microcontroller architecture",
+              "url": "https://catalog.pacificridge.example/courses/ee-320#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Embedded C programming",
+          "description": "Low-level programming and peripheral registers."
+        },
+        {
+          "title": "Interrupts and timers",
+          "description": "Event-driven design and real-time constraints."
+        },
+        {
+          "title": "Sensor interfacing and communication",
+          "description": "ADC, I2C, SPI and serial protocols.",
+          "referenceLinks": [
+            {
+              "label": "EE 320 syllabus: Sensor interfacing and communication",
+              "url": "https://catalog.pacificridge.example/courses/ee-320#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "COM 101",
+      "name": "Public Speaking",
+      "credits": 3,
+      "programName": "Communication",
+      "department": "Communication",
+      "level": "intro",
+      "requirementType": "General education",
+      "description": "Principles and practice of preparing and delivering informative and persuasive speeches.",
+      "learningOutcomes": "Organize and deliver speeches; adapt messages to audiences; give constructive peer feedback.",
+      "topics": [
+        {
+          "title": "Audience analysis and topic selection",
+          "description": "Understanding listeners and narrowing a topic."
+        },
+        {
+          "title": "Organizing and outlining speeches",
+          "description": "Introductions, main points and transitions."
+        },
+        {
+          "title": "Delivery and managing anxiety",
+          "description": "Voice, body language and rehearsal techniques.",
+          "referenceLinks": [
+            {
+              "label": "COM 101 syllabus: Delivery and managing anxiety",
+              "url": "https://catalog.pacificridge.example/courses/com-101#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Persuasion and evidence",
+          "description": "Logical appeals, credibility and use of sources."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "COM 201",
+      "name": "Media and Society",
+      "credits": 3,
+      "programName": "Communication",
+      "department": "Communication",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Examines the role of mass and digital media in culture, politics and everyday life.",
+      "learningOutcomes": "Analyze media messages critically; discuss media effects theories; evaluate media institutions.",
+      "topics": [
+        {
+          "title": "History of mass media",
+          "description": "From print to broadcast to the internet."
+        },
+        {
+          "title": "Media effects theories",
+          "description": "Agenda setting, cultivation and uses and gratifications.",
+          "referenceLinks": [
+            {
+              "label": "COM 201 syllabus: Media effects theories",
+              "url": "https://catalog.pacificridge.example/courses/com-201#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Social media and public discourse",
+          "description": "Platforms, misinformation and online communities."
+        },
+        {
+          "title": "Media ownership and regulation",
+          "description": "Economics and policy of media industries."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "COM 210",
+      "name": "Writing for Digital Media",
+      "credits": 3,
+      "programName": "Communication",
+      "department": "Communication",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Practical writing for web, social and multimedia channels with attention to audience, style and editing.",
+      "learningOutcomes": "Write clear web copy and news items; edit for style; adapt content across platforms.",
+      "topics": [
+        {
+          "title": "Writing for the web",
+          "description": "Scannable structure, headlines and search visibility.",
+          "referenceLinks": [
+            {
+              "label": "COM 210 syllabus: Writing for the web",
+              "url": "https://catalog.pacificridge.example/courses/com-210#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "News and feature writing",
+          "description": "Interviewing, sourcing and the inverted pyramid."
+        },
+        {
+          "title": "Social media and multimedia content",
+          "description": "Short-form copy, images and audio."
+        },
+        {
+          "title": "Editing and style",
+          "description": "Grammar, house style and revision.",
+          "referenceLinks": [
+            {
+              "label": "COM 210 syllabus: Editing and style",
+              "url": "https://catalog.pacificridge.example/courses/com-210#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "COM 301",
+      "name": "Strategic Communication",
+      "credits": 3,
+      "programName": "Communication",
+      "department": "Communication",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Planning and evaluating communication campaigns for organizations, including public relations and advocacy.",
+      "learningOutcomes": "Develop a campaign plan; set measurable objectives; manage a communication crisis scenario.",
+      "topics": [
+        {
+          "title": "Communication planning and research",
+          "description": "Situation analysis and goal setting."
+        },
+        {
+          "title": "Audience segmentation and messaging",
+          "description": "Key messages and channel selection."
+        },
+        {
+          "title": "Crisis communication",
+          "description": "Response strategies and reputation management.",
+          "referenceLinks": [
+            {
+              "label": "COM 301 syllabus: Crisis communication",
+              "url": "https://catalog.pacificridge.example/courses/com-301#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Campaign evaluation",
+          "description": "Metrics, analytics and reporting."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "COM 320",
+      "name": "Intercultural Communication",
+      "credits": 3,
+      "programName": "Communication",
+      "department": "Communication",
+      "level": "upper",
+      "requirementType": "Major elective",
+      "description": "How culture shapes communication, with attention to values, nonverbal behavior and communication in global settings.",
+      "learningOutcomes": "Identify cultural dimensions in interaction; analyze intercultural conflict; apply strategies for effective cross-cultural communication.",
+      "topics": [
+        {
+          "title": "Culture and communication theory",
+          "description": "Cultural dimensions and communication styles."
+        },
+        {
+          "title": "Verbal and nonverbal differences",
+          "description": "Language, context and gestures.",
+          "referenceLinks": [
+            {
+              "label": "COM 320 syllabus: Verbal and nonverbal differences",
+              "url": "https://catalog.pacificridge.example/courses/com-320#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Identity and intergroup relations",
+          "description": "Stereotypes, prejudice and identity negotiation."
+        },
+        {
+          "title": "Global and workplace communication",
+          "description": "Working in multicultural teams."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "ENV 101",
+      "name": "Introduction to Environmental Science",
+      "credits": 4,
+      "programName": "Environmental Science",
+      "department": "Environmental Science",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Introduction to ecosystems, biogeochemical cycles, resources and human impacts on the environment, with laboratory.",
+      "learningOutcomes": "Describe ecosystem processes; analyze environmental data; discuss human impacts and mitigation.",
+      "topics": [
+        {
+          "title": "Ecosystems and energy flow",
+          "description": "Food webs, productivity and trophic levels.",
+          "referenceLinks": [
+            {
+              "label": "ENV 101 syllabus: Ecosystems and energy flow",
+              "url": "https://catalog.pacificridge.example/courses/env-101#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Biogeochemical cycles",
+          "description": "Carbon, nitrogen and water cycles."
+        },
+        {
+          "title": "Natural resources and pollution",
+          "description": "Air, water and soil quality."
+        },
+        {
+          "title": "Sustainability and environmental policy",
+          "description": "Frameworks for managing resources.",
+          "referenceLinks": [
+            {
+              "label": "ENV 101 syllabus: Sustainability and environmental policy",
+              "url": "https://catalog.pacificridge.example/courses/env-101#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "ENV 201",
+      "name": "Environmental Chemistry",
+      "credits": 4,
+      "programName": "Environmental Science",
+      "department": "Environmental Science",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Chemical processes in air, water and soil, including pollutant fate and transport, with laboratory.",
+      "learningOutcomes": "Explain pollutant behavior in the environment; perform water quality analyses; use chemical equilibrium concepts.",
+      "topics": [
+        {
+          "title": "Atmospheric chemistry",
+          "description": "Ozone, smog and greenhouse gases."
+        },
+        {
+          "title": "Aquatic chemistry",
+          "description": "Acid-base chemistry, alkalinity and nutrients."
+        },
+        {
+          "title": "Soil chemistry and contaminants",
+          "description": "Sorption and heavy metals.",
+          "referenceLinks": [
+            {
+              "label": "ENV 201 syllabus: Soil chemistry and contaminants",
+              "url": "https://catalog.pacificridge.example/courses/env-201#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Analytical methods",
+          "description": "Sampling, spectroscopy and data quality."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "ENV 220",
+      "name": "Geographic Information Systems",
+      "credits": 3,
+      "programName": "Environmental Science",
+      "department": "Environmental Science",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Concepts and tools for collecting, analyzing and mapping spatial data using GIS software.",
+      "learningOutcomes": "Create and analyze maps; perform basic spatial queries and overlays; evaluate data quality.",
+      "topics": [
+        {
+          "title": "Spatial data models",
+          "description": "Vector and raster data and coordinate systems."
+        },
+        {
+          "title": "Mapping and cartography",
+          "description": "Symbology, layout and map design.",
+          "referenceLinks": [
+            {
+              "label": "ENV 220 syllabus: Mapping and cartography",
+              "url": "https://catalog.pacificridge.example/courses/env-220#topic-2"
+            }
+          ]
+        },
+        {
+          "title": "Spatial analysis",
+          "description": "Buffers, overlays and spatial joins."
+        },
+        {
+          "title": "Remote sensing basics",
+          "description": "Satellite imagery and land cover classification."
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "ENV 301",
+      "name": "Climate Science and Policy",
+      "credits": 3,
+      "programName": "Environmental Science",
+      "department": "Environmental Science",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "The physical basis of climate change, observed impacts, projections and the policy responses available.",
+      "learningOutcomes": "Explain the greenhouse effect and feedbacks; interpret climate projections; compare mitigation policies.",
+      "topics": [
+        {
+          "title": "Climate system and the greenhouse effect",
+          "description": "Radiative balance and feedbacks.",
+          "referenceLinks": [
+            {
+              "label": "ENV 301 syllabus: Climate system and the greenhouse effect",
+              "url": "https://catalog.pacificridge.example/courses/env-301#topic-1"
+            }
+          ]
+        },
+        {
+          "title": "Evidence and projections",
+          "description": "Observations, models and scenarios."
+        },
+        {
+          "title": "Impacts and adaptation",
+          "description": "Sea level, extreme events and vulnerable systems."
+        },
+        {
+          "title": "Mitigation policy",
+          "description": "Carbon pricing, regulation and international agreements.",
+          "referenceLinks": [
+            {
+              "label": "ENV 301 syllabus: Mitigation policy",
+              "url": "https://catalog.pacificridge.example/courses/env-301#topic-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "PRU",
+      "code": "ENV 320",
+      "name": "Sustainable Energy Systems",
+      "credits": 3,
+      "programName": "Environmental Science",
+      "department": "Environmental Science",
+      "level": "upper",
+      "requirementType": "Major elective",
+      "description": "Comparison of conventional and renewable energy technologies, their environmental footprints and system integration.",
+      "learningOutcomes": "Compare energy sources by cost and impact; analyze a simple renewable system; discuss grid integration.",
+      "topics": [
+        {
+          "title": "Energy resources and demand",
+          "description": "Fossil, nuclear and renewable sources."
+        },
+        {
+          "title": "Solar and wind power",
+          "description": "Resource assessment and system sizing."
+        },
+        {
+          "title": "Energy storage and the grid",
+          "description": "Batteries, demand response and reliability.",
+          "referenceLinks": [
+            {
+              "label": "ENV 320 syllabus: Energy storage and the grid",
+              "url": "https://catalog.pacificridge.example/courses/env-320#topic-3"
+            }
+          ]
+        },
+        {
+          "title": "Life cycle assessment",
+          "description": "Evaluating environmental footprints of energy options."
+        }
+      ]
+    }
+  ]
+}

@@ -193,6 +193,25 @@ export const coursesApi = {
   },
 };
 
+// ── Permanent delete (super_admin only) ───────────────────────
+export type PurgeEntity = 'universities' | 'programs' | 'courses' | 'topics';
+export interface PurgeCount { label: string; count: number }
+export interface PurgeImpact {
+  entity: string;
+  id: number | string;
+  label: string;
+  canDelete: boolean;
+  willDelete: PurgeCount[];
+  willDetach: PurgeCount[];
+  blockers: (PurgeCount & { hint?: string })[];
+}
+export const purgeApi = {
+  impact: (entity: PurgeEntity, id: number | string, cascade = false) =>
+    api.get<PurgeImpact>(`/purge/${entity}/${id}/impact`, { params: { cascade: cascade ? 1 : 0 } }),
+  remove: (entity: PurgeEntity, id: number | string, cascade = false) =>
+    api.delete<{ ok: boolean; deleted: PurgeCount[] }>(`/purge/${entity}/${id}`, { params: { cascade: cascade ? 1 : 0 } }),
+};
+
 // ── Uploads (private docs + public logo/hero images) ──────────
 export const uploadsApi = {
   upload: (file: File, opts?: { isPublic?: boolean; entityType?: string; entityId?: string; documentType?: string }) => {
