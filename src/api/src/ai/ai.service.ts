@@ -64,6 +64,21 @@ export interface PipelineMatchResult {
   reasons: string[];
 }
 
+export interface DryMatchResult {
+  engine: ChatProvider | 'rules';
+  model: string;
+  candidates: CourseMatchResult[];
+  catalogSize: number;
+  shortlistSize: number;
+  shortlistMs: number;
+  callMs: number;
+  parseMs: number;
+  totalMs: number;
+  usage: TokenUsage | null;
+  costUsd: number;
+  error?: string;
+}
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -139,14 +154,15 @@ export class AiService {
     if (which.startsWith('custom:')) {
       const cp = cfg.customProviders.find((x) => `custom:${x.id}` === which);
       if (!cp) throw new Error('That AI provider no longer exists.');
-      return this.callOpenAiCompatible(cp, systemText, userText, maxTokens);
+      return this.callOpenAiCompatible(cp, systemText, userText, maxTokens, cfg.temperature, cfg.timeoutSec);
     }
     if (which === 'none') throw new Error('No AI provider is active.');
     const started = Date.now();
-    const client = new Anthropic({ apiKey: cfg.anthropicKey ?? '', ...(cfg.anthropicBaseUrl ? { baseURL: cfg.anthropicBaseUrl } : {}) });
+    const client = new Anthropic({ apiKey: cfg.anthropicKey ?? '', timeout: cfg.timeoutSec * 1000, ...(cfg.anthropicBaseUrl ? { baseURL: cfg.anthropicBaseUrl } : {}) });
     const message = await client.messages.create({
       model,
       max_tokens: maxTokens,
+      temperature: cfg.temperature,
       system: settings.usePromptCaching
         ? [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }]
         : systemText,
@@ -169,14 +185,14 @@ export class AiService {
   }
 
   /** Admin-added provider speaking the OpenAI chat-completions API (base URL + model + key). */
-  private async callOpenAiCompatible(cp: CustomProvider, systemText: string, userText: string, maxTokens: number) {
+  private async callOpenAiCompatible(cp: CustomProvider, systemText: string, userText: string, maxTokens: number, temperature = 0, timeoutSec = 60) {
     const started = Date.now();
     const url = /\/chat\/completions$/.test(cp.baseUrl) ? cp.baseUrl : `${cp.baseUrl.replace(/\/+$/, '')}/chat/completions`;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (cp.apiKey) headers[cp.authStyle === 'api-key' ? 'api-key' : 'Authorization'] = cp.authStyle === 'api-key' ? cp.apiKey : `Bearer ${cp.apiKey}`;
     const messages = [{ role: 'system', content: systemText }, { role: 'user', content: userText }];
-    const post = (body: Record<string, unknown>) => fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(60_000) });
-    let res = await post({ model: cp.model, messages, max_tokens: maxTokens, temperature: 0 });
+    const post = (body: Record<string, unknown>) => fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutSec * 1000) });
+    let res = await post({ model: cp.model, messages, max_tokens: maxTokens, temperature });
     if (res.status === 400) {
       // Newer reasoning models reject max_tokens / temperature: retry in their dialect.
       const first = await res.text().catch(() => '');
@@ -190,6 +206,60 @@ export class AiService {
     const data = (await res.json()) as { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
     const tokenUsage: TokenUsage = { input: data.usage?.prompt_tokens ?? 0, output: data.usage?.completion_tokens ?? 0, cacheRead: 0, cacheWrite: 0 };
     return { text: data.choices?.[0]?.message?.content ?? '', usage: tokenUsage, costUsd: estimateCostUsd(cp.model, tokenUsage), ms: Date.now() - started };
+  }
+
+  /**
+   * Benchmark helper: matches ONE external course against a catalogue through the given engine and returns everything
+   * measured, WITHOUT touching the database (no cache, no usage log, no persisted candidates). Mirrors the prompt and
+   * shortlist of the real pipeline (runMatch) so the numbers describe what production would do. Never throws.
+   */
+  async dryMatch(
+    engine: ChatProvider | 'rules',
+    ext: { code: string; title: string; credits: number | null; description: string | null; topics: string[]; institutionName: string; calendar: string },
+    catalog: CatalogCourse[],
+    settings: AiSettings,
+  ): Promise<DryMatchResult> {
+    const t0 = Date.now();
+    const base = { engine, catalogSize: catalog.length } as const;
+    const facts = { code: ext.code, title: ext.title, credits: ext.credits, text: `${ext.description ?? ''} ${ext.topics.join(' ')}` };
+    try {
+      if (engine === 'rules') {
+        const found = rulesMatch(facts, catalog, 3).map((c) => ({ buCourseId: c.courseId, buCode: c.code, buTitle: c.title, rank: c.rank, confidenceScore: c.confidence, rationale: c.rationale }));
+        const ms = Date.now() - t0;
+        return { ...base, model: 'built-in rules', candidates: found as CourseMatchResult[], shortlistSize: catalog.length, shortlistMs: 0, callMs: 0, parseMs: ms, totalMs: ms, usage: null, costUsd: 0 };
+      }
+      const cfg = await this.providers.getConfig();
+      if (!isChatReady(cfg, engine)) throw new Error('Provider is not configured');
+      const picked = shortlist(facts, catalog, settings.prefilterTopN);
+      const shortlistMs = Date.now() - t0;
+      const line = (c: CatalogCourse) =>
+        `[${c.id}] ${c.code} - ${c.title} (${c.credits}cr)` +
+        (c.topics.length ? ` | topics: ${c.topics.join('; ')}` : '') +
+        (c.description && settings.maxDescriptionChars > 0 ? ` | ${c.description.slice(0, settings.maxDescriptionChars)}` : '');
+      const userPrompt =
+        `EXTERNAL COURSE: ${ext.code} - ${ext.title} (${ext.credits ?? '?'}cr, ${ext.calendar} calendar, ${ext.institutionName})` +
+        (ext.description ? `\nDescription: ${ext.description.slice(0, settings.maxDescriptionChars * 2)}` : '') +
+        (ext.topics.length ? `\nTopics: ${ext.topics.join('; ')}` : '') +
+        `\n\nCANDIDATES:\n${picked.map(line).join('\n')}`;
+      const system = (await this.settingsService.buildSystemPrompt()).text;
+      const model = engine === 'anthropic' ? settings.matchModel : engine === 'azure_openai' ? cfg.azureOpenAiDeployment ?? 'azure-openai' : cfg.customProviders.find((x) => `custom:${x.id}` === engine)?.model ?? 'custom';
+      const c0 = Date.now();
+      const call = await this.callWith(cfg, engine, settings.matchModel, system, userPrompt, settings, settings.maxOutputTokens);
+      const callMs = Date.now() - c0;
+      const p0 = Date.now();
+      let candidates: CourseMatchResult[] = [];
+      let parseError: string | undefined;
+      try {
+        candidates = this.validate(this.parseCandidates(call.text), new Map(picked.map((c) => [c.id, c])));
+      } catch (e) {
+        parseError = (e as Error).message;
+      }
+      const parseMs = Date.now() - p0;
+      return { ...base, model, candidates, shortlistSize: picked.length, shortlistMs, callMs, parseMs, totalMs: Date.now() - t0, usage: call.usage, costUsd: call.costUsd, ...(parseError ? { error: `Unreadable answer: ${parseError}` } : {}) };
+    } catch (e) {
+      const ms = Date.now() - t0;
+      return { ...base, model: '', candidates: [], shortlistSize: 0, shortlistMs: 0, callMs: ms, parseMs: 0, totalMs: ms, usage: null, costUsd: 0, error: String((e as Error)?.message ?? e).slice(0, 300) };
+    }
   }
 
   /** "Test connection": a tiny completion through the named provider; never throws, returns the outcome for the UI. */
@@ -207,7 +277,7 @@ export class AiService {
 
   /** Azure OpenAI chat completion via REST (no extra SDK). Same {text, usage, cost, ms} shape as the Anthropic path. */
   private async callAzureOpenAi(
-    cfg: { azureOpenAiEndpoint: string | null; azureOpenAiKey: string | null; azureOpenAiDeployment: string | null; azureOpenAiApiVersion: string },
+    cfg: { azureOpenAiEndpoint: string | null; azureOpenAiKey: string | null; azureOpenAiDeployment: string | null; azureOpenAiApiVersion: string; temperature?: number; timeoutSec?: number },
     systemText: string,
     userText: string,
     maxTokens: number,
@@ -218,13 +288,14 @@ export class AiService {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'api-key': cfg.azureOpenAiKey ?? '' },
+      signal: AbortSignal.timeout((cfg.timeoutSec ?? 60) * 1000),
       body: JSON.stringify({
         messages: [
           { role: 'system', content: systemText },
           { role: 'user', content: userText },
         ],
         max_tokens: maxTokens,
-        temperature: 0,
+        temperature: cfg.temperature ?? 0,
       }),
     });
     if (!res.ok) {

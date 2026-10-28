@@ -10,6 +10,8 @@ const K = {
   anthropicKey: 'ai.anthropic_api_key',
   azEndpoint: 'ai.azure_openai_endpoint',
   anthropicBaseUrl: 'ai.anthropic_base_url',
+  temperature: 'ai.temperature',
+  timeoutSec: 'ai.timeout_sec',
   azKey: 'ai.azure_openai_api_key',
   azDeployment: 'ai.azure_openai_deployment',
   azApiVersion: 'ai.azure_openai_api_version',
@@ -39,6 +41,10 @@ export interface AiProviderConfig {
   chatProvider: ChatProvider;
   anthropicKey: string | null;
   anthropicBaseUrl: string | null;
+  /** Sampling temperature sent with every model call (0 = most deterministic; matching works best at 0). */
+  temperature: number;
+  /** Per-request timeout for model calls, seconds. */
+  timeoutSec: number;
   customProviders: CustomProvider[];
   azureOpenAiEndpoint: string | null;
   azureOpenAiKey: string | null;
@@ -55,6 +61,8 @@ export interface AiProviderPublic {
   chatProvider: ChatProvider;
   anthropicKeySet: boolean;
   anthropicBaseUrl: string | null;
+  temperature: number;
+  timeoutSec: number;
   customProviders: { id: string; name: string; baseUrl: string; model: string; authStyle: 'bearer' | 'api-key'; keySet: boolean }[];
   azureOpenAiEndpoint: string | null;
   azureOpenAiKeySet: boolean;
@@ -69,6 +77,8 @@ export interface SaveAiProvidersInput {
   chatProvider?: ChatProvider;
   anthropicKey?: string;
   anthropicBaseUrl?: string;
+  temperature?: string;
+  timeoutSec?: string;
   azureOpenAiEndpoint?: string;
   azureOpenAiKey?: string;
   azureOpenAiDeployment?: string;
@@ -82,6 +92,11 @@ const DEFAULT_API_VERSION = '2024-06-01';
 const CUSTOM_PREFIX = 'ai.custom.';
 const CHUNK = 900; // AppSettings.SettingValue is NVARCHAR(1000)
 const CUSTOM_KEY_RE = /^ai\.custom\.([a-z0-9]+)(?:~(\d+))?$/;
+
+function clampNum(v: string | null | undefined, min: number, max: number, dflt: number): number {
+  const n = Number(v);
+  return v == null || v === '' || !Number.isFinite(n) ? dflt : Math.min(max, Math.max(min, n));
+}
 
 const placeholder = (k: string | null) => !k || k.startsWith('REPLACE_WITH');
 
@@ -132,6 +147,8 @@ export class AiProvidersService {
       chatProvider: (m.get(K.chatProvider) as ChatProvider) || 'anthropic',
       anthropicKey: m.get(K.anthropicKey) || process.env.ANTHROPIC_API_KEY || null,
       anthropicBaseUrl: m.get(K.anthropicBaseUrl) || null,
+      temperature: clampNum(m.get(K.temperature), 0, 1, 0),
+      timeoutSec: clampNum(m.get(K.timeoutSec), 5, 300, 60),
       customProviders: await this.readCustom(),
       azureOpenAiEndpoint: m.get(K.azEndpoint) || null,
       azureOpenAiKey: m.get(K.azKey) || null,
@@ -155,6 +172,8 @@ export class AiProvidersService {
       chatProvider: c.chatProvider,
       anthropicKeySet: notPlaceholder(c.anthropicKey),
       anthropicBaseUrl: c.anthropicBaseUrl,
+      temperature: c.temperature,
+      timeoutSec: c.timeoutSec,
       customProviders: c.customProviders.map((x) => ({ id: x.id, name: x.name, baseUrl: x.baseUrl, model: x.model, authStyle: x.authStyle, keySet: !!x.apiKey })),
       azureOpenAiEndpoint: c.azureOpenAiEndpoint,
       azureOpenAiKeySet: notPlaceholder(c.azureOpenAiKey),
@@ -177,9 +196,16 @@ export class AiProvidersService {
     } else if (input.chatProvider && !['none', 'anthropic', 'azure_openai'].includes(input.chatProvider)) {
       throw new BadRequestException('Unknown provider.');
     }
+    for (const [name, raw, min, max] of [['Temperature', input.temperature, 0, 1], ['Timeout', input.timeoutSec, 5, 300]] as const) {
+      if (raw !== undefined && raw !== '' && !(Number.isFinite(Number(raw)) && Number(raw) >= min && Number(raw) <= max)) {
+        throw new BadRequestException(`${name} must be a number between ${min} and ${max}.`);
+      }
+    }
     const pairs: [string, string | undefined][] = [
       [K.chatProvider, input.chatProvider],
       [K.anthropicKey, input.anthropicKey],
+      [K.temperature, input.temperature],
+      [K.timeoutSec, input.timeoutSec],
       [K.anthropicBaseUrl, input.anthropicBaseUrl ? assertSafeProviderUrl(input.anthropicBaseUrl) : input.anthropicBaseUrl],
       [K.azEndpoint, input.azureOpenAiEndpoint],
       [K.azKey, input.azureOpenAiKey],

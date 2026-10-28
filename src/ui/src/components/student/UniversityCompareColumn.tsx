@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, Flag, Plus, Upload, X } from 'lucide-react';
+import { Check, ChevronDown, Flag, School, Upload, X } from 'lucide-react';
 import { api } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { Badge } from '../ui/Badge';
@@ -71,21 +71,20 @@ function ProgramBlock({ p, onTarget, isTargetProgram }: { p: ProgramRollup; onTa
 interface Props {
   index: number;
   universities: JourneyUniversity[];
-  value: number | null;
-  onChange: (id: number | null) => void;
-  takenIds: number[];
+  value: number;
+  /** Omitted when this is the only university shown (the last one cannot be removed). */
+  onRemove?: () => void;
   data: UniversityComparison | undefined;
   loading: boolean;
   error: boolean;
   targetInstitutionId: number | null;
   targetProgramId: number | null;
-  optional: boolean;
   /** The student's own total credits, for the my-credits vs would-transfer comparison. */
   myTotalCredits: number;
 }
 
-/** One of the three comparison slots: a university dropdown plus its auto-populated preview. */
-export function UniversityCompareColumn({ index, universities, value, onChange, takenIds, data, loading, error, targetInstitutionId, targetProgramId, optional, myTotalCredits }: Props) {
+/** One selected university's full preview, with a remove button when more than one is shown. */
+export function UniversityCompareColumn({ index, universities, value, onRemove, data, loading, error, targetInstitutionId, targetProgramId, myTotalCredits }: Props) {
   const qc = useQueryClient();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -104,7 +103,7 @@ export function UniversityCompareColumn({ index, universities, value, onChange, 
   });
 
   const uni = universities.find((u) => u.id === value) ?? null;
-  const isTarget = value != null && value === targetInstitutionId;
+  const isTarget = value === targetInstitutionId;
   const s = data?.summary;
 
   return (
@@ -113,34 +112,17 @@ export function UniversityCompareColumn({ index, universities, value, onChange, 
       className="min-w-0 rounded-2xl border border-brand-100/60 bg-white shadow-sm shadow-brand-900/5"
     >
       <div className="border-b border-brand-100/60 bg-brand-50/50 p-3 sm:p-4">
-        <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor={`slot-${index}`}>
-          {index === 0 ? 'University' : `Compare with (optional)`}
-        </label>
         <div className="flex items-center gap-2">
-          <select
-            id={`slot-${index}`}
-            value={value ?? ''}
-            onChange={(e) => { setMsg(null); onChange(e.target.value ? Number(e.target.value) : null); }}
-            className="min-w-0 flex-1 rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
-          >
-            <option value="">{optional ? 'Add a university to compare' : 'Choose a university'}</option>
-            {universities.map((u) => (
-              <option key={u.id} value={u.id} disabled={takenIds.includes(u.id) && u.id !== value}>{u.name}</option>
-            ))}
-          </select>
-          {optional && value != null && (
-            <button onClick={() => onChange(null)} aria-label="Remove this university" className="shrink-0 rounded-lg p-2 text-gray-400 hover:bg-white hover:text-gray-700"><X size={16} /></button>
+          <School size={18} className="shrink-0 text-brand-700" />
+          <h2 className="min-w-0 flex-1 break-words text-sm font-semibold text-gray-900">{uni?.name ?? `University ${value}`}</h2>
+          {onRemove && (
+            <button onClick={onRemove} aria-label={`Remove ${uni?.name ?? 'this university'} from the comparison`} className="shrink-0 rounded-lg p-2 text-gray-400 hover:bg-white hover:text-gray-700"><X size={16} /></button>
           )}
         </div>
         {isTarget && <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-700"><Check size={13} /> Your current target</p>}
       </div>
 
-      {value == null ? (
-        <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-sm text-gray-400">
-          <Plus size={22} className="text-gray-300" />
-          Pick a university to see which of your courses could count there.
-        </div>
-      ) : loading ? (
+      {loading ? (
         <div className="space-y-3 p-4">{[0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-gray-100" />)}</div>
       ) : error || !data || !s ? (
         <p className="p-4 text-sm text-red-600">Could not load the comparison for {uni?.name ?? 'this university'}.</p>
