@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, ExternalLink, FileText, Info, Loader2, Paperclip, School, Upload } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, ExternalLink, FileText, Info, Loader2, Paperclip, Plus, School, Search, Upload, X } from 'lucide-react';
 import { api, getErrorMessage, uploadsApi } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { UniversityCompareColumn } from '../../components/student/UniversityCompareColumn';
 import { fmtCredits, type ApplyResult, type CompareResult, type JourneyOverview, type JourneyUniversity } from '../../components/student/journeyTypes';
 
 interface UploadRow { id: string; entityType: string; documentType: string; originalFileName: string; mimeType: string | null; sizeBytes: number | null; createdAt: string }
+
+const MAX_COMPARE = 3;
 
 const STEPS = [
   { n: 1, label: 'Your courses' },
@@ -16,7 +18,7 @@ const STEPS = [
   { n: 4, label: 'Apply' },
 ] as const;
 
-/** A guided, step-by-step flow: confirm your courses, add optional documents, compare up to 3 universities, then apply to one or more at once (each tracked as its own request). */
+/** A guided, step-by-step flow: confirm your courses, add optional documents, compare up to 3 universities (start with one and add more), then apply to one or more at once (each tracked as its own request). */
 export default function Explore() {
   const qc = useQueryClient();
   const unis = useQuery({ queryKey: ['student', 'universities'], queryFn: async () => (await api.get<JourneyUniversity[]>('/student/universities')).data });
@@ -24,7 +26,7 @@ export default function Explore() {
   const docs = useQuery({ queryKey: ['student', 'explore-docs'], queryFn: async () => (await uploadsApi.list()).data as UploadRow[] });
 
   const [step, setStep] = useState(1);
-  const [slots, setSlots] = useState<(number | null)[]>([null, null, null]);
+  const [ids, setIds] = useState<number[]>([]);
   const [seeded, setSeeded] = useState(false);
   const [applySel, setApplySel] = useState<Set<number>>(new Set());
   const [results, setResults] = useState<ApplyResult[] | null>(null);
@@ -33,12 +35,11 @@ export default function Explore() {
   useEffect(() => {
     if (seeded || !unis.data || overview.isLoading) return;
     const t = overview.data?.target?.institutionId;
-    const first = t && unis.data.some((u) => u.id === t) ? t : null;
-    setSlots([first, null, null]);
+    const first = t && unis.data.some((u) => u.id === t) ? t : unis.data[0]?.id ?? null;
+    setIds(first != null ? [first] : []);
     setSeeded(true);
   }, [seeded, unis.data, overview.data, overview.isLoading]);
 
-  const ids = slots.filter((x): x is number => x != null);
   const cmp = useQuery({
     queryKey: ['student', 'compare', ids.join(',')],
     queryFn: async () => (await api.get<CompareResult>('/student/compare', { params: { ids: ids.join(',') } })).data,
@@ -51,7 +52,8 @@ export default function Explore() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  const setSlot = (i: number, v: number | null) => { setResults(null); setSlots((s) => s.map((x, j) => (j === i ? v : x))); };
+  const addUni = (id: number) => { setResults(null); setIds((s) => (s.includes(id) || s.length >= MAX_COMPARE ? s : [...s, id])); };
+  const removeUni = (id: number) => { setResults(null); setIds((s) => (s.length > 1 ? s.filter((x) => x !== id) : s)); };
   const target = overview.data?.target ?? null;
   const myCredits = overview.data?.totals.convertedCredits ?? 0;
   const courses = overview.data?.courses ?? [];
@@ -89,10 +91,10 @@ export default function Explore() {
             unisData={unis.data ?? []}
             unisError={unis.isError}
             noCourses={cmp.data != null && cmp.data.studentCourses.length === 0}
-            slots={slots}
             ids={ids}
             cmp={cmp}
-            setSlot={setSlot}
+            addUni={addUni}
+            removeUni={removeUni}
             target={target}
             myCredits={myCredits}
           />
@@ -260,11 +262,12 @@ function StepDocuments({ docs, loading, onUploaded }: { docs: UploadRow[]; loadi
 
 // ── Step 3: compare ────────────────────────────────────────────────────────
 
-function StepCompare({ note, unisData, unisError, noCourses, slots, ids, cmp, setSlot, target, myCredits }: {
+function StepCompare({ note, unisData, unisError, noCourses, ids, cmp, addUni, removeUni, target, myCredits }: {
   note?: string; unisData: JourneyUniversity[]; unisError: boolean; noCourses: boolean;
-  slots: (number | null)[]; ids: number[]; cmp: ReturnType<typeof useQuery<CompareResult>>;
-  setSlot: (i: number, v: number | null) => void; target: JourneyOverview['target']; myCredits: number;
+  ids: number[]; cmp: ReturnType<typeof useQuery<CompareResult>>;
+  addUni: (id: number) => void; removeUni: (id: number) => void; target: JourneyOverview['target']; myCredits: number;
 }) {
+  const gridCols = ids.length >= 3 ? 'lg:grid-cols-3' : ids.length === 2 ? 'lg:grid-cols-2' : 'lg:grid-cols-1 lg:max-w-2xl';
   return (
     <div>
       <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900">
@@ -275,25 +278,87 @@ function StepCompare({ note, unisData, unisError, noCourses, slots, ids, cmp, se
       {noCourses && (
         <p className="mb-4 rounded-xl bg-brand-50 p-3 text-sm text-brand-900">You have no courses yet, so there is nothing to match. Add coursework in step 1 to see real matches here.</p>
       )}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
-        {[0, 1, 2].map((i) => (
-          <UniversityCompareColumn
-            key={i}
-            index={i}
-            optional={i > 0}
-            universities={unisData}
-            value={slots[i]}
-            onChange={(v) => setSlot(i, v)}
-            takenIds={ids}
-            data={cmp.data?.universities.find((u) => u.institutionId === slots[i])}
-            loading={cmp.isLoading || (cmp.isFetching && !cmp.data?.universities.some((u) => u.institutionId === slots[i]))}
-            error={cmp.isError}
-            targetInstitutionId={target?.institutionId ?? null}
-            targetProgramId={target?.programId ?? null}
-            myTotalCredits={myCredits}
-          />
-        ))}
+      <AddUniversity universities={unisData} selected={ids} onAdd={addUni} />
+      {ids.length === 0 ? (
+        <p className="rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">Add a university above to see which of your courses could count there.</p>
+      ) : (
+        <div className={cn('grid grid-cols-1 items-start gap-4', gridCols)}>
+          {ids.map((id, i) => (
+            <UniversityCompareColumn
+              key={id}
+              index={i}
+              universities={unisData}
+              value={id}
+              onRemove={ids.length > 1 ? () => removeUni(id) : undefined}
+              data={cmp.data?.universities.find((u) => u.institutionId === id)}
+              loading={cmp.isLoading || (cmp.isFetching && !cmp.data?.universities.some((u) => u.institutionId === id))}
+              error={cmp.isError}
+              targetInstitutionId={target?.institutionId ?? null}
+              targetProgramId={target?.programId ?? null}
+              myTotalCredits={myCredits}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** "Add university to compare": a searchable list of universities not yet shown; disabled at the 3-university limit. */
+function AddUniversity({ universities, selected, onAdd }: { universities: JourneyUniversity[]; selected: number[]; onAdd: (id: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const full = selected.length >= MAX_COMPARE;
+  const options = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return universities.filter((u) => !selected.includes(u.id) && (!t || u.name.toLowerCase().includes(t) || u.code.toLowerCase().includes(t)));
+  }, [universities, selected, q]);
+
+  return (
+    <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => { setOpen((v) => !v); setQ(''); }}
+          disabled={full || universities.length <= selected.length}
+          aria-expanded={open}
+          className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm font-medium text-brand-800 hover:bg-brand-50 disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-white"
+        >
+          <Plus size={16} /> Add university to compare
+        </button>
+        <p className="text-xs text-gray-500">
+          {full ? 'You are comparing the maximum of 3 universities. Remove one to add another.' : `Showing ${selected.length} of ${MAX_COMPARE}. You can add up to ${MAX_COMPARE - selected.length} more.`}
+        </p>
       </div>
+      {open && !full && (
+        <div className="mt-3">
+          <div className="relative">
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              autoFocus
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search universities"
+              aria-label="Search universities"
+              className="w-full rounded-lg border border-gray-200 py-2 pl-9 pr-9 text-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
+            />
+            <button onClick={() => setOpen(false)} aria-label="Close the list" className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:text-gray-700"><X size={14} /></button>
+          </div>
+          <ul className="mt-2 max-h-56 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-100" role="listbox">
+            {options.length ? options.map((u) => (
+              <li key={u.id}>
+                <button
+                  onClick={() => { onAdd(u.id); setOpen(false); setQ(''); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-brand-50"
+                >
+                  <School size={15} className="shrink-0 text-brand-700" />
+                  <span className="min-w-0 flex-1 break-words">{u.name}</span>
+                  <span className="shrink-0 text-xs text-gray-400">{u.code}</span>
+                </button>
+              </li>
+            )) : <li className="px-3 py-3 text-sm text-gray-400">No universities match.</li>}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
