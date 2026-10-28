@@ -1159,3 +1159,4 @@ No migrations were added this session. Still to apply by the user: seed 020 (and
   Files per set: `catalogue.json`, `students.json`, `students-no-documents.json`, `postman.collection.json`, `roster.json`, `set.json`. Shared generic tools in `docs/demo-data/tools/`
   (`validate.js`, `build-students.js`, `build-postman.js`, each takes the set folder); regenerating PRU is byte-identical to the earlier output. `scripts/test-demo-students.ts` checks all sets.
   The old root paths (`pacific-ridge-*.json`, `build-*.js`) no longer exist; anything above that mentions them means the PRU folder.
+- **Demo 3** `docs/demo-data/demo-3-lakeshore-tech/` (Lakeshore Institute of Technology, `LIT`, applied/technical fields): 10 programs, 50 courses, 164 topics, 30 students (213 course rows, 69 PDFs); same layout/tools as demo 2; `test-demo-students.ts` now expects >= 4 sets.

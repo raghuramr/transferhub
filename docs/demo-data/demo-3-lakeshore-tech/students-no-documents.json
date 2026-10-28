@@ -1,0 +1,2246 @@
+{
+  "note": "Lakeshore Institute of Technology student profiles (30, no documents)",
+  "students": [
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0001",
+      "idType": "student_id",
+      "email": "gavin.hollister@students.lakeshoretech.example",
+      "firstName": "Gavin",
+      "lastName": "Hollister",
+      "dateOfBirth": "2002-01-01",
+      "phone": "+1-216-555-0100",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Cleveland",
+      "state": "Ohio",
+      "programName": "Mechanical Engineering",
+      "degree": "BS",
+      "fieldOfStudy": "Mechanical Engineering - Thermal and Fluid Systems",
+      "gpa": 3.41,
+      "graduationYear": 2027,
+      "creditsCompleted": 38,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "MECH 101",
+          "title": "Introduction to Engineering Design",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "MECH 210",
+          "title": "Statics and Mechanics of Materials",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "MECH 245",
+          "title": "Thermodynamics I",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "MECH 320",
+          "title": "Machine Component Design",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "MECH 355",
+          "title": "Heat Transfer and Thermal Systems",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0002",
+      "idType": "student_id",
+      "email": "priya.ramaswamy@students.lakeshoretech.example",
+      "firstName": "Priya",
+      "lastName": "Ramaswamy",
+      "dateOfBirth": "2003-06-08",
+      "phone": "+1-716-555-0101",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Buffalo",
+      "state": "New York",
+      "programName": "Cybersecurity",
+      "degree": "BS",
+      "fieldOfStudy": "Cybersecurity - Network Security",
+      "gpa": 3.44,
+      "graduationYear": 2028,
+      "creditsCompleted": 44,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CYBR 210",
+          "title": "Network Defense and Monitoring",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CYBR 240",
+          "title": "Applied Cryptography",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CYBR 330",
+          "title": "Ethical Hacking and Penetration Testing",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CYBR 360",
+          "title": "Security Risk and Governance",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0003",
+      "idType": "student_id",
+      "email": "marcus.delgado@students.lakeshoretech.example",
+      "firstName": "Marcus",
+      "lastName": "Delgado",
+      "dateOfBirth": "2004-11-15",
+      "phone": "+1-414-555-0102",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Milwaukee",
+      "state": "Wisconsin",
+      "programName": "Information Systems",
+      "degree": "BS",
+      "fieldOfStudy": "Information Systems - Enterprise Systems",
+      "gpa": 3.31,
+      "graduationYear": 2027,
+      "creditsCompleted": 49,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "INFS 205",
+          "title": "Database Design and SQL",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "INFS 250",
+          "title": "Systems Analysis and Requirements",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "INFS 340",
+          "title": "Enterprise Systems Integration",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "INFS 380",
+          "title": "IT Project Management",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0004",
+      "idType": "student_id",
+      "email": "olivia.brzezinski@students.lakeshoretech.example",
+      "firstName": "Olivia",
+      "lastName": "Brzezinski",
+      "dateOfBirth": "2005-04-22",
+      "phone": "+1-313-555-0103",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Detroit",
+      "state": "Michigan",
+      "programName": "Industrial Design",
+      "degree": "BID",
+      "fieldOfStudy": "Industrial Design - Consumer Products",
+      "gpa": 3.06,
+      "graduationYear": 2028,
+      "creditsCompleted": 52,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "IDES 150",
+          "title": "Materials and Making",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "IDES 220",
+          "title": "Human Factors and Ergonomics",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "IDES 310",
+          "title": "Product Design Studio",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "IDES 340",
+          "title": "Design for Manufacturing",
+          "credits": 3,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0005",
+      "idType": "student_id",
+      "email": "tobias.kellerman@students.lakeshoretech.example",
+      "firstName": "Tobias",
+      "lastName": "Kellerman",
+      "dateOfBirth": "2002-09-01",
+      "phone": "+1-814-555-0104",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Erie",
+      "state": "Pennsylvania",
+      "programName": "Aviation Management",
+      "degree": "BS",
+      "fieldOfStudy": "Aviation Management - Aviation Safety",
+      "gpa": 3.36,
+      "graduationYear": 2027,
+      "creditsCompleted": 31,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "P",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "P",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "AVIA 210",
+          "title": "Airport Operations",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "AVIA 240",
+          "title": "Aviation Safety Management Systems",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "AVIA 320",
+          "title": "Airline Revenue and Network Planning",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0006",
+      "idType": "student_id",
+      "email": "aaliyah.fontenot@students.lakeshoretech.example",
+      "firstName": "Aaliyah",
+      "lastName": "Fontenot",
+      "dateOfBirth": "2003-02-08",
+      "phone": "+1-312-555-0105",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Chicago",
+      "state": "Illinois",
+      "programName": "Construction Management",
+      "degree": "BS",
+      "fieldOfStudy": "Construction Management - Sustainable Construction",
+      "gpa": 3.4,
+      "graduationYear": 2028,
+      "creditsCompleted": 43,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CMGT 101",
+          "title": "Introduction to Construction",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CMGT 210",
+          "title": "Construction Materials and Methods",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CMGT 240",
+          "title": "Estimating and Bidding",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CMGT 320",
+          "title": "Construction Scheduling and Control",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CMGT 360",
+          "title": "Contracts and Construction Law",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0007",
+      "idType": "student_id",
+      "email": "nolan.pietrowski@students.lakeshoretech.example",
+      "firstName": "Nolan",
+      "lastName": "Pietrowski",
+      "dateOfBirth": "2004-07-15",
+      "phone": "+1-216-555-0106",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Cleveland",
+      "state": "Ohio",
+      "programName": "Biomedical Technology",
+      "degree": "BS",
+      "fieldOfStudy": "Biomedical Technology - Device Manufacturing",
+      "gpa": 3.23,
+      "graduationYear": 2027,
+      "creditsCompleted": 47,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "BMT 101",
+          "title": "Introduction to Biomedical Technology",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "BMT 210",
+          "title": "Human Anatomy for Technologists",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "BMT 240",
+          "title": "Biomedical Instrumentation",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "BMT 330",
+          "title": "Medical Imaging Technology",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "BMT 360",
+          "title": "Clinical Equipment Maintenance and Safety",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0008",
+      "idType": "student_id",
+      "email": "greta.halvorsen@students.lakeshoretech.example",
+      "firstName": "Greta",
+      "lastName": "Halvorsen",
+      "dateOfBirth": "2005-12-22",
+      "phone": "+1-716-555-0107",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Buffalo",
+      "state": "New York",
+      "programName": "Supply Chain Management",
+      "degree": "BS",
+      "fieldOfStudy": "Supply Chain Management - Logistics and Distribution",
+      "gpa": 3.39,
+      "graduationYear": 2028,
+      "creditsCompleted": 49,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "SCM 210",
+          "title": "Procurement and Strategic Sourcing",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "SCM 240",
+          "title": "Inventory Management",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "SCM 320",
+          "title": "Transportation and Distribution Networks",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "SCM 360",
+          "title": "Supply Chain Analytics",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0009",
+      "idType": "student_id",
+      "email": "jamal.whitfield@students.lakeshoretech.example",
+      "firstName": "Jamal",
+      "lastName": "Whitfield",
+      "dateOfBirth": "2002-05-01",
+      "phone": "+1-414-555-0108",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Milwaukee",
+      "state": "Wisconsin",
+      "programName": "Renewable Energy",
+      "degree": "BS",
+      "fieldOfStudy": "Renewable Energy - Energy Storage and Policy",
+      "gpa": 3.02,
+      "graduationYear": 2027,
+      "creditsCompleted": 34,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "RENE 210",
+          "title": "Photovoltaic Systems",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "RENE 240",
+          "title": "Wind Energy Systems",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "RENE 360",
+          "title": "Energy Economics and Project Finance",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0010",
+      "idType": "student_id",
+      "email": "colleen.dougherty@students.lakeshoretech.example",
+      "firstName": "Colleen",
+      "lastName": "Dougherty",
+      "dateOfBirth": "2003-10-08",
+      "phone": "+1-313-555-0109",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Detroit",
+      "state": "Michigan",
+      "programName": "Statistics",
+      "degree": "BS",
+      "fieldOfStudy": "Statistics - Quality and Experimentation",
+      "gpa": 2.87,
+      "graduationYear": 2028,
+      "creditsCompleted": 41,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "STAT 210",
+          "title": "Probability Theory",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "STAT 240",
+          "title": "Statistical Computing with R",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "STAT 320",
+          "title": "Regression Analysis",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "STAT 360",
+          "title": "Experimental Design and Quality Methods",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0011",
+      "idType": "student_id",
+      "email": "mateo.salcedo@students.lakeshoretech.example",
+      "firstName": "Mateo",
+      "lastName": "Salcedo",
+      "dateOfBirth": "2004-03-15",
+      "phone": "+1-814-555-0110",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Erie",
+      "state": "Pennsylvania",
+      "programName": "Mechanical Engineering",
+      "degree": "BS",
+      "fieldOfStudy": "Mechanical Engineering - Machine Design",
+      "gpa": 3.17,
+      "graduationYear": 2027,
+      "creditsCompleted": 47,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "MECH 210",
+          "title": "Statics and Mechanics of Materials",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "MECH 245",
+          "title": "Thermodynamics I",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "MECH 320",
+          "title": "Machine Component Design",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "MECH 355",
+          "title": "Heat Transfer and Thermal Systems",
+          "credits": 3,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0012",
+      "idType": "student_id",
+      "email": "hannah.zielinski@students.lakeshoretech.example",
+      "firstName": "Hannah",
+      "lastName": "Zielinski",
+      "dateOfBirth": "2005-08-22",
+      "phone": "+1-312-555-0111",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Chicago",
+      "state": "Illinois",
+      "programName": "Cybersecurity",
+      "degree": "BS",
+      "fieldOfStudy": "Cybersecurity - Security Governance",
+      "gpa": 3.03,
+      "graduationYear": 2028,
+      "creditsCompleted": 53,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "CYBR 210",
+          "title": "Network Defense and Monitoring",
+          "credits": 4,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CYBR 240",
+          "title": "Applied Cryptography",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CYBR 330",
+          "title": "Ethical Hacking and Penetration Testing",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CYBR 360",
+          "title": "Security Risk and Governance",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0013",
+      "idType": "student_id",
+      "email": "isaiah.beauchamp@students.lakeshoretech.example",
+      "firstName": "Isaiah",
+      "lastName": "Beauchamp",
+      "dateOfBirth": "2002-01-01",
+      "phone": "+1-216-555-0112",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Cleveland",
+      "state": "Ohio",
+      "programName": "Information Systems",
+      "degree": "BS",
+      "fieldOfStudy": "Information Systems - Systems Development",
+      "gpa": 3.18,
+      "graduationYear": 2027,
+      "creditsCompleted": 34,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "INFS 205",
+          "title": "Database Design and SQL",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "INFS 250",
+          "title": "Systems Analysis and Requirements",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "INFS 380",
+          "title": "IT Project Management",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0014",
+      "idType": "student_id",
+      "email": "fiona.mcallister@students.lakeshoretech.example",
+      "firstName": "Fiona",
+      "lastName": "McAllister",
+      "dateOfBirth": "2003-06-08",
+      "phone": "+1-716-555-0113",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Buffalo",
+      "state": "New York",
+      "programName": "Industrial Design",
+      "degree": "BID",
+      "fieldOfStudy": "Industrial Design - Transportation Design",
+      "gpa": 3.56,
+      "graduationYear": 2028,
+      "creditsCompleted": 37,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "IDES 101",
+          "title": "Design Drawing and Visualisation",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "P",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "P",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "IDES 150",
+          "title": "Materials and Making",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "IDES 220",
+          "title": "Human Factors and Ergonomics",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "IDES 310",
+          "title": "Product Design Studio",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0015",
+      "idType": "student_id",
+      "email": "dominic.rinaldi@students.lakeshoretech.example",
+      "firstName": "Dominic",
+      "lastName": "Rinaldi",
+      "dateOfBirth": "2004-11-15",
+      "phone": "+1-414-555-0114",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Milwaukee",
+      "state": "Wisconsin",
+      "programName": "Aviation Management",
+      "degree": "BS",
+      "fieldOfStudy": "Aviation Management - Airport Management",
+      "gpa": 3.18,
+      "graduationYear": 2027,
+      "creditsCompleted": 46,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "AVIA 210",
+          "title": "Airport Operations",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "AVIA 240",
+          "title": "Aviation Safety Management Systems",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "AVIA 320",
+          "title": "Airline Revenue and Network Planning",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "AVIA 350",
+          "title": "Aviation Law and Policy",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0016",
+      "idType": "student_id",
+      "email": "skyler.tran@students.lakeshoretech.example",
+      "firstName": "Skyler",
+      "lastName": "Tran",
+      "dateOfBirth": "2005-04-22",
+      "phone": "+1-313-555-0115",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Detroit",
+      "state": "Michigan",
+      "programName": "Construction Management",
+      "degree": "BS",
+      "fieldOfStudy": "Construction Management - Infrastructure Delivery",
+      "gpa": 3.2,
+      "graduationYear": 2028,
+      "creditsCompleted": 52,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CMGT 101",
+          "title": "Introduction to Construction",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CMGT 210",
+          "title": "Construction Materials and Methods",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CMGT 240",
+          "title": "Estimating and Bidding",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CMGT 320",
+          "title": "Construction Scheduling and Control",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0017",
+      "idType": "student_id",
+      "email": "everett.lindqvist@students.lakeshoretech.example",
+      "firstName": "Everett",
+      "lastName": "Lindqvist",
+      "dateOfBirth": "2002-09-01",
+      "phone": "+1-814-555-0116",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Erie",
+      "state": "Pennsylvania",
+      "programName": "Biomedical Technology",
+      "degree": "BS",
+      "fieldOfStudy": "Biomedical Technology - Device Manufacturing",
+      "gpa": 3.18,
+      "graduationYear": 2027,
+      "creditsCompleted": 34,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "BMT 101",
+          "title": "Introduction to Biomedical Technology",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "BMT 210",
+          "title": "Human Anatomy for Technologists",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "BMT 330",
+          "title": "Medical Imaging Technology",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "BMT 360",
+          "title": "Clinical Equipment Maintenance and Safety",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0018",
+      "idType": "student_id",
+      "email": "camila.barrientos@students.lakeshoretech.example",
+      "firstName": "Camila",
+      "lastName": "Barrientos",
+      "dateOfBirth": "2003-02-08",
+      "phone": "+1-312-555-0117",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Chicago",
+      "state": "Illinois",
+      "programName": "Supply Chain Management",
+      "degree": "BS",
+      "fieldOfStudy": "Supply Chain Management - Logistics and Distribution",
+      "gpa": 2.92,
+      "graduationYear": 2028,
+      "creditsCompleted": 43,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "SCM 210",
+          "title": "Procurement and Strategic Sourcing",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "SCM 240",
+          "title": "Inventory Management",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "SCM 320",
+          "title": "Transportation and Distribution Networks",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "SCM 360",
+          "title": "Supply Chain Analytics",
+          "credits": 3,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0019",
+      "idType": "student_id",
+      "email": "russell.oyelaran@students.lakeshoretech.example",
+      "firstName": "Russell",
+      "lastName": "Oyelaran",
+      "dateOfBirth": "2004-07-15",
+      "phone": "+1-216-555-0118",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Cleveland",
+      "state": "Ohio",
+      "programName": "Renewable Energy",
+      "degree": "BS",
+      "fieldOfStudy": "Renewable Energy - Wind and Hybrid Systems",
+      "gpa": 3.25,
+      "graduationYear": 2027,
+      "creditsCompleted": 49,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "RENE 210",
+          "title": "Photovoltaic Systems",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "RENE 240",
+          "title": "Wind Energy Systems",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "RENE 330",
+          "title": "Energy Storage and Grid Integration",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "RENE 360",
+          "title": "Energy Economics and Project Finance",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0020",
+      "idType": "student_id",
+      "email": "paige.kowalczyk@students.lakeshoretech.example",
+      "firstName": "Paige",
+      "lastName": "Kowalczyk",
+      "dateOfBirth": "2005-12-22",
+      "phone": "+1-716-555-0119",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Buffalo",
+      "state": "New York",
+      "programName": "Statistics",
+      "degree": "BS",
+      "fieldOfStudy": "Statistics - Data Science",
+      "gpa": 3.23,
+      "graduationYear": 2028,
+      "creditsCompleted": 50,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "STAT 210",
+          "title": "Probability Theory",
+          "credits": 4,
+          "grade": "C+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "STAT 240",
+          "title": "Statistical Computing with R",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "STAT 320",
+          "title": "Regression Analysis",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "STAT 360",
+          "title": "Experimental Design and Quality Methods",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "LIT-2023-0021",
+      "idType": "student_id",
+      "email": "leo.fitzgerald@students.lakeshoretech.example",
+      "firstName": "Leo",
+      "lastName": "Fitzgerald",
+      "dateOfBirth": "2002-05-01",
+      "phone": "+1-414-555-0120",
+      "country": "United States",
+      "countryOfOrigin": "United States",
+      "city": "Milwaukee",
+      "state": "Wisconsin",
+      "programName": "Mechanical Engineering",
+      "degree": "BS",
+      "fieldOfStudy": "Mechanical Engineering - Machine Design",
+      "gpa": 3.04,
+      "graduationYear": 2027,
+      "creditsCompleted": 35,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "MECH 101",
+          "title": "Introduction to Engineering Design",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "MECH 210",
+          "title": "Statics and Mechanics of Materials",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "MECH 245",
+          "title": "Thermodynamics I",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "MECH 320",
+          "title": "Machine Component Design",
+          "credits": 4,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "MECH 355",
+          "title": "Heat Transfer and Thermal Systems",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "N07002877",
+      "idType": "passport",
+      "email": "oluwaseun.adeyemi@students.lakeshoretech.example",
+      "firstName": "Oluwaseun",
+      "lastName": "Adeyemi",
+      "dateOfBirth": "2003-10-08",
+      "phone": "+1-313-555-0121",
+      "country": "United States",
+      "countryOfOrigin": "Nigeria",
+      "city": "Detroit",
+      "state": "Michigan",
+      "programName": "Cybersecurity",
+      "degree": "BS",
+      "fieldOfStudy": "Cybersecurity - Digital Forensics",
+      "gpa": 3.36,
+      "graduationYear": 2028,
+      "creditsCompleted": 44,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CYBR 210",
+          "title": "Network Defense and Monitoring",
+          "credits": 4,
+          "grade": "B",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CYBR 240",
+          "title": "Applied Cryptography",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CYBR 330",
+          "title": "Ethical Hacking and Penetration Testing",
+          "credits": 4,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CYBR 360",
+          "title": "Security Risk and Governance",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "J07003014",
+      "idType": "passport",
+      "email": "takumi.fujimoto@students.lakeshoretech.example",
+      "firstName": "Takumi",
+      "lastName": "Fujimoto",
+      "dateOfBirth": "2004-03-15",
+      "phone": "+1-814-555-0122",
+      "country": "United States",
+      "countryOfOrigin": "Japan",
+      "city": "Erie",
+      "state": "Pennsylvania",
+      "programName": "Information Systems",
+      "degree": "BS",
+      "fieldOfStudy": "Information Systems - Systems Development",
+      "gpa": 3.5,
+      "graduationYear": 2027,
+      "creditsCompleted": 49,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "P",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "P",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "P",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "INFS 205",
+          "title": "Database Design and SQL",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "INFS 250",
+          "title": "Systems Analysis and Requirements",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "INFS 340",
+          "title": "Enterprise Systems Integration",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "INFS 380",
+          "title": "IT Project Management",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "G07003151",
+      "idType": "passport",
+      "email": "anneliese.brandt@students.lakeshoretech.example",
+      "firstName": "Anneliese",
+      "lastName": "Brandt",
+      "dateOfBirth": "2005-08-22",
+      "phone": "+1-312-555-0123",
+      "country": "United States",
+      "countryOfOrigin": "Germany",
+      "city": "Chicago",
+      "state": "Illinois",
+      "programName": "Industrial Design",
+      "degree": "BID",
+      "fieldOfStudy": "Industrial Design - Transportation Design",
+      "gpa": 2.86,
+      "graduationYear": 2028,
+      "creditsCompleted": 52,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "IDES 101",
+          "title": "Design Drawing and Visualisation",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "IDES 220",
+          "title": "Human Factors and Ergonomics",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "IDES 310",
+          "title": "Product Design Studio",
+          "credits": 4,
+          "grade": "C",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "IDES 340",
+          "title": "Design for Manufacturing",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "NID-040021864",
+      "idType": "national_id",
+      "email": "rafael.cardoso@students.lakeshoretech.example",
+      "firstName": "Rafael",
+      "lastName": "Cardoso",
+      "dateOfBirth": "2002-01-01",
+      "phone": "+1-216-555-0124",
+      "country": "United States",
+      "countryOfOrigin": "Brazil",
+      "city": "Cleveland",
+      "state": "Ohio",
+      "programName": "Aviation Management",
+      "degree": "BS",
+      "fieldOfStudy": "Aviation Management - Airline Operations",
+      "gpa": 2.94,
+      "graduationYear": 2027,
+      "creditsCompleted": 34,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "AVIA 210",
+          "title": "Airport Operations",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "AVIA 240",
+          "title": "Aviation Safety Management Systems",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "AVIA 320",
+          "title": "Airline Revenue and Network Planning",
+          "credits": 4,
+          "grade": "C-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "I07003425",
+      "idType": "passport",
+      "email": "sanjana.iyer@students.lakeshoretech.example",
+      "firstName": "Sanjana",
+      "lastName": "Iyer",
+      "dateOfBirth": "2003-06-08",
+      "phone": "+1-716-555-0125",
+      "country": "United States",
+      "countryOfOrigin": "India",
+      "city": "Buffalo",
+      "state": "New York",
+      "programName": "Construction Management",
+      "degree": "BS",
+      "fieldOfStudy": "Construction Management - Infrastructure Delivery",
+      "gpa": 3.36,
+      "graduationYear": 2028,
+      "creditsCompleted": 40,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "CMGT 101",
+          "title": "Introduction to Construction",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "CMGT 210",
+          "title": "Construction Materials and Methods",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "CMGT 320",
+          "title": "Construction Scheduling and Control",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "CMGT 360",
+          "title": "Contracts and Construction Law",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "NID-040023686",
+      "idType": "national_id",
+      "email": "nguyet.tran@students.lakeshoretech.example",
+      "firstName": "Nguyet",
+      "lastName": "Tran",
+      "dateOfBirth": "2004-11-15",
+      "phone": "+1-414-555-0126",
+      "country": "United States",
+      "countryOfOrigin": "Vietnam",
+      "city": "Milwaukee",
+      "state": "Wisconsin",
+      "programName": "Biomedical Technology",
+      "degree": "BS",
+      "fieldOfStudy": "Biomedical Technology - Device Manufacturing",
+      "gpa": 3.18,
+      "graduationYear": 2027,
+      "creditsCompleted": 50,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "BMT 101",
+          "title": "Introduction to Biomedical Technology",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "A",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "C",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "BMT 210",
+          "title": "Human Anatomy for Technologists",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "BMT 240",
+          "title": "Biomedical Instrumentation",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "BMT 330",
+          "title": "Medical Imaging Technology",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "BMT 360",
+          "title": "Clinical Equipment Maintenance and Safety",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "L07003699",
+      "idType": "passport",
+      "email": "karim.haddad@students.lakeshoretech.example",
+      "firstName": "Karim",
+      "lastName": "Haddad",
+      "dateOfBirth": "2005-04-22",
+      "phone": "+1-313-555-0127",
+      "country": "United States",
+      "countryOfOrigin": "Lebanon",
+      "city": "Detroit",
+      "state": "Michigan",
+      "programName": "Supply Chain Management",
+      "degree": "BS",
+      "fieldOfStudy": "Supply Chain Management - Logistics and Distribution",
+      "gpa": 3.08,
+      "graduationYear": 2028,
+      "creditsCompleted": 52,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "CYBR 101",
+          "title": "Introduction to Cybersecurity",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "SCM 210",
+          "title": "Procurement and Strategic Sourcing",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "SCM 240",
+          "title": "Inventory Management",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "SCM 320",
+          "title": "Transportation and Distribution Networks",
+          "credits": 4,
+          "grade": "B-",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "ALT-LIT-0029",
+      "idType": "other",
+      "email": "ayesha.rahman@students.lakeshoretech.example",
+      "firstName": "Ayesha",
+      "lastName": "Rahman",
+      "dateOfBirth": "2002-09-01",
+      "phone": "+1-814-555-0128",
+      "country": "United States",
+      "countryOfOrigin": "Bangladesh",
+      "city": "Erie",
+      "state": "Pennsylvania",
+      "programName": "Renewable Energy",
+      "degree": "BS",
+      "fieldOfStudy": "Renewable Energy - Energy Storage and Policy",
+      "gpa": 3.25,
+      "graduationYear": 2027,
+      "creditsCompleted": 31,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "RENE 101",
+          "title": "Introduction to Renewable Energy",
+          "credits": 3,
+          "grade": "B+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "AVIA 101",
+          "title": "Introduction to Aviation",
+          "credits": 3,
+          "grade": "C",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "RENE 210",
+          "title": "Photovoltaic Systems",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "RENE 330",
+          "title": "Energy Storage and Grid Integration",
+          "credits": 3,
+          "grade": "B-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "RENE 360",
+          "title": "Energy Economics and Project Finance",
+          "credits": 3,
+          "grade": "A",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    },
+    {
+      "universityCode": "LIT",
+      "universityName": "Lakeshore Institute of Technology",
+      "externalId": "T07003973",
+      "idType": "passport",
+      "email": "meiling.chou@students.lakeshoretech.example",
+      "firstName": "Mei-Ling",
+      "lastName": "Chou",
+      "dateOfBirth": "2003-02-08",
+      "phone": "+1-312-555-0129",
+      "country": "United States",
+      "countryOfOrigin": "Taiwan",
+      "city": "Chicago",
+      "state": "Illinois",
+      "programName": "Statistics",
+      "degree": "BS",
+      "fieldOfStudy": "Statistics - Applied Statistics",
+      "gpa": 3.33,
+      "graduationYear": 2028,
+      "creditsCompleted": 38,
+      "calendar": "semester",
+      "courses": [
+        {
+          "code": "STAT 101",
+          "title": "Introduction to Statistics",
+          "credits": 3,
+          "grade": "C+",
+          "term": "Fall 2023"
+        },
+        {
+          "code": "INFS 101",
+          "title": "Foundations of Information Systems",
+          "credits": 3,
+          "grade": "A-",
+          "term": "Spring 2024"
+        },
+        {
+          "code": "SCM 101",
+          "title": "Introduction to Supply Chain Management",
+          "credits": 3,
+          "grade": "B",
+          "term": "Fall 2024"
+        },
+        {
+          "code": "STAT 210",
+          "title": "Probability Theory",
+          "credits": 4,
+          "grade": "A",
+          "term": "Spring 2025"
+        },
+        {
+          "code": "STAT 320",
+          "title": "Regression Analysis",
+          "credits": 4,
+          "grade": "A-",
+          "term": "Fall 2025"
+        },
+        {
+          "code": "STAT 360",
+          "title": "Experimental Design and Quality Methods",
+          "credits": 3,
+          "grade": "B",
+          "term": "Spring 2026"
+        }
+      ],
+      "invite": false
+    }
+  ]
+}

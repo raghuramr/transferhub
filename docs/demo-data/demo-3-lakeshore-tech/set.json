@@ -1,0 +1,100 @@
+{
+  "universityCode": "LIT",
+  "universityName": "Lakeshore Institute of Technology",
+  "emailDomain": "students.lakeshoretech.example",
+  "seed": 20261031,
+  "cities": [
+    [
+      "Cleveland",
+      "Ohio"
+    ],
+    [
+      "Buffalo",
+      "New York"
+    ],
+    [
+      "Milwaukee",
+      "Wisconsin"
+    ],
+    [
+      "Detroit",
+      "Michigan"
+    ],
+    [
+      "Erie",
+      "Pennsylvania"
+    ],
+    [
+      "Chicago",
+      "Illinois"
+    ]
+  ],
+  "phoneAreaCodes": [
+    "216",
+    "716",
+    "414",
+    "313",
+    "814",
+    "312"
+  ],
+  "concentrations": {
+    "Mechanical Engineering": [
+      "Thermal and Fluid Systems",
+      "Machine Design",
+      "Manufacturing and Robotics"
+    ],
+    "Cybersecurity": [
+      "Network Security",
+      "Digital Forensics",
+      "Security Governance"
+    ],
+    "Information Systems": [
+      "Business Analytics",
+      "Enterprise Systems",
+      "Systems Development"
+    ],
+    "Industrial Design": [
+      "Consumer Products",
+      "Medical and Assistive Design",
+      "Transportation Design"
+    ],
+    "Aviation Management": [
+      "Airport Management",
+      "Airline Operations",
+      "Aviation Safety"
+    ],
+    "Construction Management": [
+      "Commercial Building",
+      "Infrastructure Delivery",
+      "Sustainable Construction"
+    ],
+    "Biomedical Technology": [
+      "Clinical Engineering",
+      "Medical Imaging",
+      "Device Manufacturing"
+    ],
+    "Supply Chain Management": [
+      "Logistics and Distribution",
+      "Procurement",
+      "Supply Chain Analytics"
+    ],
+    "Renewable Energy": [
+      "Solar Power Systems",
+      "Wind and Hybrid Systems",
+      "Energy Storage and Policy"
+    ],
+    "Statistics": [
+      "Applied Statistics",
+      "Data Science",
+      "Quality and Experimentation"
+    ]
+  },
+  "generalCourseCodes": [
+    "STAT 101",
+    "INFS 101",
+    "CYBR 101",
+    "SCM 101",
+    "AVIA 101",
+    "RENE 101"
+  ]
+}

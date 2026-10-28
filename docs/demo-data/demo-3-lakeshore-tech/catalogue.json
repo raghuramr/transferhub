@@ -1,0 +1,1764 @@
+{
+  "note": "Lakeshore Institute of Technology catalogue: 1 university, 10 programs, 50 courses with syllabus topics",
+  "universities": [
+    {
+      "code": "LIT",
+      "name": "Lakeshore Institute of Technology",
+      "type": "university",
+      "calendar": "semester",
+      "website": "https://www.lakeshoretech.example"
+    }
+  ],
+  "programs": [
+    {
+      "universityCode": "LIT",
+      "name": "Mechanical Engineering",
+      "area": "Engineering",
+      "degree": "BS",
+      "school": "College of Engineering and Applied Technology",
+      "description": "Design, analysis and manufacture of mechanical systems, with a strong laboratory and project component."
+    },
+    {
+      "universityCode": "LIT",
+      "name": "Cybersecurity",
+      "area": "Computing",
+      "degree": "BS",
+      "school": "College of Computing and Information",
+      "description": "Defensive and offensive security, secure systems and risk management for modern networks."
+    },
+    {
+      "universityCode": "LIT",
+      "name": "Information Systems",
+      "area": "Computing",
+      "degree": "BS",
+      "school": "College of Computing and Information",
+      "description": "Analysis, design and management of business information systems and data."
+    },
+    {
+      "universityCode": "LIT",
+      "name": "Industrial Design",
+      "area": "Design",
+      "degree": "BID",
+      "school": "College of Arts and Design",
+      "description": "Human-centred design of manufactured products, from research and sketching to prototype."
+    },
+    {
+      "universityCode": "LIT",
+      "name": "Aviation Management",
+      "area": "Aviation",
+      "degree": "BS",
+      "school": "College of Aviation and Logistics",
+      "description": "Business and operations management for airlines, airports and aviation services."
+    },
+    {
+      "universityCode": "LIT",
+      "name": "Construction Management",
+      "area": "Construction",
+      "degree": "BS",
+      "school": "College of Engineering and Applied Technology",
+      "description": "Planning, estimating and delivering building and infrastructure projects."
+    },
+    {
+      "universityCode": "LIT",
+      "name": "Biomedical Technology",
+      "area": "Health Technology",
+      "degree": "BS",
+      "school": "College of Engineering and Applied Technology",
+      "description": "Medical device technology, instrumentation and clinical engineering support."
+    },
+    {
+      "universityCode": "LIT",
+      "name": "Supply Chain Management",
+      "area": "Business",
+      "degree": "BS",
+      "school": "College of Aviation and Logistics",
+      "description": "Planning and managing the flow of goods, information and finance across supply networks."
+    },
+    {
+      "universityCode": "LIT",
+      "name": "Renewable Energy",
+      "area": "Energy",
+      "degree": "BS",
+      "school": "College of Engineering and Applied Technology",
+      "description": "Technology, economics and policy of solar, wind and storage systems."
+    },
+    {
+      "universityCode": "LIT",
+      "name": "Statistics",
+      "area": "Mathematics",
+      "degree": "BS",
+      "school": "College of Computing and Information",
+      "description": "Probability, statistical inference and data analysis for applied problems."
+    }
+  ],
+  "courses": [
+    {
+      "universityCode": "LIT",
+      "code": "MECH 101",
+      "name": "Introduction to Engineering Design",
+      "credits": 3,
+      "programName": "Mechanical Engineering",
+      "department": "Mechanical Engineering",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Team-based introduction to the engineering design process, sketching and basic CAD modelling.",
+      "learningOutcomes": "Apply the design process to a small project; produce dimensioned sketches and a CAD model; communicate design decisions in a short report.",
+      "topics": [
+        {
+          "title": "The design process",
+          "description": "Problem definition, concept generation, selection matrices and iteration.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - MECH 101",
+              "url": "https://catalog.lakeshoretech.example/courses/mech-101"
+            }
+          ]
+        },
+        {
+          "title": "Sketching and orthographic projection",
+          "description": "Freehand and dimensioned views of parts and assemblies."
+        },
+        {
+          "title": "Parametric CAD basics",
+          "description": "Sketches, features and assemblies in a solid modelling package."
+        },
+        {
+          "title": "Design reports and teamwork",
+          "description": "Documenting requirements, decisions and test results as a team."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "MECH 210",
+      "name": "Statics and Mechanics of Materials",
+      "credits": 4,
+      "programName": "Mechanical Engineering",
+      "department": "Mechanical Engineering",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Equilibrium of particles and rigid bodies followed by stress, strain and deformation of structural members.",
+      "learningOutcomes": "Draw free-body diagrams; solve equilibrium problems; compute stress and deflection in bars and beams.",
+      "topics": [
+        {
+          "title": "Free-body diagrams and equilibrium",
+          "description": "Forces, moments and support reactions in two and three dimensions."
+        },
+        {
+          "title": "Trusses and frames",
+          "description": "Method of joints and sections for statically determinate structures.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - MECH 210",
+              "url": "https://catalog.lakeshoretech.example/courses/mech-210"
+            }
+          ]
+        },
+        {
+          "title": "Axial, torsional and bending stress",
+          "description": "Stress and strain relationships for common loadings."
+        },
+        {
+          "title": "Beam deflection",
+          "description": "Shear and moment diagrams and deflection by integration."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "MECH 245",
+      "name": "Thermodynamics I",
+      "credits": 3,
+      "programName": "Mechanical Engineering",
+      "department": "Mechanical Engineering",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Properties of pure substances and the first and second laws applied to closed and open systems.",
+      "learningOutcomes": "State and apply the first and second laws; use property tables; evaluate simple power and refrigeration cycles.",
+      "topics": [
+        {
+          "title": "Properties and state",
+          "description": "Phase diagrams, steam tables and ideal gas behaviour."
+        },
+        {
+          "title": "First law for control volumes",
+          "description": "Energy balances for turbines, pumps and heat exchangers."
+        },
+        {
+          "title": "Entropy and the second law",
+          "description": "Reversibility, isentropic efficiency and entropy generation.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - MECH 245",
+              "url": "https://catalog.lakeshoretech.example/courses/mech-245"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "MECH 320",
+      "name": "Machine Component Design",
+      "credits": 4,
+      "programName": "Mechanical Engineering",
+      "department": "Mechanical Engineering",
+      "level": "upper",
+      "requirementType": "Technical elective",
+      "description": "Design of shafts, fasteners, bearings and gears with attention to fatigue and failure theories.",
+      "learningOutcomes": "Select and size machine elements; apply failure criteria; justify safety factors.",
+      "topics": [
+        {
+          "title": "Failure theories",
+          "description": "Maximum shear, distortion energy and fracture considerations."
+        },
+        {
+          "title": "Fatigue life",
+          "description": "S-N curves, stress concentration and endurance limits."
+        },
+        {
+          "title": "Shafts and fasteners",
+          "description": "Sizing shafts, keys, bolted joints and preload.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - MECH 320",
+              "url": "https://catalog.lakeshoretech.example/courses/mech-320"
+            }
+          ]
+        },
+        {
+          "title": "Gears and bearings",
+          "description": "Spur gear geometry, rolling bearing selection and life."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "MECH 355",
+      "name": "Heat Transfer and Thermal Systems",
+      "credits": 3,
+      "programName": "Mechanical Engineering",
+      "department": "Mechanical Engineering",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Conduction, convection and radiation with applications to heat exchangers and electronics cooling.",
+      "learningOutcomes": "Solve steady and transient conduction problems; size a heat exchanger; estimate radiative exchange.",
+      "topics": [
+        {
+          "title": "Steady conduction and fins",
+          "description": "One-dimensional conduction, thermal resistance networks and extended surfaces."
+        },
+        {
+          "title": "Forced and natural convection",
+          "description": "Correlations for internal and external flows.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - MECH 355",
+              "url": "https://catalog.lakeshoretech.example/courses/mech-355"
+            }
+          ]
+        },
+        {
+          "title": "Heat exchanger analysis",
+          "description": "LMTD and effectiveness-NTU methods."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "CYBR 101",
+      "name": "Introduction to Cybersecurity",
+      "credits": 3,
+      "programName": "Cybersecurity",
+      "department": "Cybersecurity",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Survey of threats, attack techniques and defensive controls, with hands-on lab exercises.",
+      "learningOutcomes": "Describe common attack classes; apply basic hardening; explain confidentiality, integrity and availability trade-offs.",
+      "topics": [
+        {
+          "title": "Threat landscape",
+          "description": "Malware, phishing, social engineering and ransomware case studies.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - CYBR 101",
+              "url": "https://catalog.lakeshoretech.example/courses/cybr-101"
+            }
+          ]
+        },
+        {
+          "title": "The CIA triad and security controls",
+          "description": "Preventive, detective and corrective controls mapped to risks."
+        },
+        {
+          "title": "Passwords and authentication",
+          "description": "Hashing, multi-factor authentication and credential attacks."
+        },
+        {
+          "title": "Safe lab practice",
+          "description": "Isolated virtual labs and responsible disclosure."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "CYBR 210",
+      "name": "Network Defense and Monitoring",
+      "credits": 4,
+      "programName": "Cybersecurity",
+      "department": "Cybersecurity",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Firewalls, intrusion detection and traffic analysis on enterprise-style lab networks.",
+      "learningOutcomes": "Configure a firewall policy; analyse packet captures; tune an intrusion detection system.",
+      "topics": [
+        {
+          "title": "Packet analysis",
+          "description": "Reading captures to identify scans, tunnels and exfiltration.",
+          "referenceLinks": [
+            {
+              "label": "Public reference documentation",
+              "url": "https://www.wireshark.org/docs/"
+            }
+          ]
+        },
+        {
+          "title": "Firewall rule design",
+          "description": "Stateful filtering, segmentation and DMZ architecture."
+        },
+        {
+          "title": "IDS and log correlation",
+          "description": "Signature and anomaly detection and central log review."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "CYBR 240",
+      "name": "Applied Cryptography",
+      "credits": 3,
+      "programName": "Cybersecurity",
+      "department": "Cybersecurity",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Symmetric and public-key cryptography, hashing and protocol use in practice.",
+      "learningOutcomes": "Choose appropriate primitives; explain key exchange; identify common implementation mistakes.",
+      "topics": [
+        {
+          "title": "Symmetric ciphers and modes",
+          "description": "Block ciphers, modes of operation and authenticated encryption."
+        },
+        {
+          "title": "Public-key cryptography",
+          "description": "RSA, elliptic curves and digital signatures."
+        },
+        {
+          "title": "Certificates and TLS",
+          "description": "Public key infrastructure and the TLS handshake.",
+          "referenceLinks": [
+            {
+              "label": "Public reference documentation",
+              "url": "https://www.rfc-editor.org/rfc/rfc8446"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "CYBR 330",
+      "name": "Ethical Hacking and Penetration Testing",
+      "credits": 4,
+      "programName": "Cybersecurity",
+      "department": "Cybersecurity",
+      "level": "upper",
+      "requirementType": "Technical elective",
+      "description": "Authorised testing methodology from reconnaissance to reporting.",
+      "learningOutcomes": "Plan a scoped engagement; exploit common web and host weaknesses in a lab; write a remediation report.",
+      "topics": [
+        {
+          "title": "Reconnaissance and scanning",
+          "description": "Enumeration of hosts, services and exposed applications."
+        },
+        {
+          "title": "Web application attacks",
+          "description": "Injection, broken access control and session weaknesses.",
+          "referenceLinks": [
+            {
+              "label": "Public reference documentation",
+              "url": "https://owasp.org/www-project-top-ten/"
+            }
+          ]
+        },
+        {
+          "title": "Post-exploitation and reporting",
+          "description": "Privilege escalation, evidence handling and findings reports."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "CYBR 360",
+      "name": "Security Risk and Governance",
+      "credits": 3,
+      "programName": "Cybersecurity",
+      "department": "Cybersecurity",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Risk assessment, policy, compliance frameworks and incident response planning.",
+      "learningOutcomes": "Perform a qualitative risk assessment; map controls to a framework; draft an incident response plan.",
+      "topics": [
+        {
+          "title": "Risk assessment methods",
+          "description": "Asset valuation, threat modelling and likelihood-impact matrices."
+        },
+        {
+          "title": "Security frameworks",
+          "description": "Control families and compliance mapping.",
+          "referenceLinks": [
+            {
+              "label": "Public reference documentation",
+              "url": "https://www.nist.gov/cyberframework"
+            }
+          ]
+        },
+        {
+          "title": "Incident response planning",
+          "description": "Preparation, containment, recovery and lessons learned."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "INFS 101",
+      "name": "Foundations of Information Systems",
+      "credits": 3,
+      "programName": "Information Systems",
+      "department": "Information Systems",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "How organisations use information systems to support operations, decisions and strategy.",
+      "learningOutcomes": "Describe the components of an information system; map a business process; evaluate a system proposal.",
+      "topics": [
+        {
+          "title": "Components of information systems",
+          "description": "Hardware, software, data, people and processes."
+        },
+        {
+          "title": "Business process modelling",
+          "description": "Flowcharts and swimlane diagrams for operational processes.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - INFS 101",
+              "url": "https://catalog.lakeshoretech.example/courses/infs-101"
+            }
+          ]
+        },
+        {
+          "title": "Systems and competitive strategy",
+          "description": "Enterprise systems and value creation."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "INFS 205",
+      "name": "Database Design and SQL",
+      "credits": 4,
+      "programName": "Information Systems",
+      "department": "Information Systems",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Relational modelling, normalisation and query writing against a production-style database.",
+      "learningOutcomes": "Design a normalised schema; write joins and aggregates; enforce integrity constraints.",
+      "topics": [
+        {
+          "title": "Entity-relationship modelling",
+          "description": "Entities, relationships and cardinality."
+        },
+        {
+          "title": "Normalisation",
+          "description": "Functional dependencies through third normal form."
+        },
+        {
+          "title": "SQL queries",
+          "description": "Joins, grouping, subqueries and views.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - INFS 205",
+              "url": "https://catalog.lakeshoretech.example/courses/infs-205"
+            }
+          ]
+        },
+        {
+          "title": "Transactions and indexing",
+          "description": "ACID properties and basic performance tuning."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "INFS 250",
+      "name": "Systems Analysis and Requirements",
+      "credits": 3,
+      "programName": "Information Systems",
+      "department": "Information Systems",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Eliciting, documenting and validating requirements for new systems.",
+      "learningOutcomes": "Run stakeholder interviews; write user stories and use cases; build a prioritised backlog.",
+      "topics": [
+        {
+          "title": "Stakeholder elicitation",
+          "description": "Interviews, workshops and observation."
+        },
+        {
+          "title": "User stories and use cases",
+          "description": "Writing testable requirements and acceptance criteria."
+        },
+        {
+          "title": "Prototyping and validation",
+          "description": "Wireframes and review cycles with users.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - INFS 250",
+              "url": "https://catalog.lakeshoretech.example/courses/infs-250"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "INFS 340",
+      "name": "Enterprise Systems Integration",
+      "credits": 3,
+      "programName": "Information Systems",
+      "department": "Information Systems",
+      "level": "upper",
+      "requirementType": "Technical elective",
+      "description": "ERP concepts, APIs and data integration across enterprise applications.",
+      "learningOutcomes": "Explain ERP modules; consume a REST API; design a simple integration flow.",
+      "topics": [
+        {
+          "title": "ERP modules and workflows",
+          "description": "Finance, procurement and inventory processes in an ERP."
+        },
+        {
+          "title": "REST APIs and JSON",
+          "description": "Calling and documenting web services.",
+          "referenceLinks": [
+            {
+              "label": "Public reference documentation",
+              "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP"
+            }
+          ]
+        },
+        {
+          "title": "Data integration patterns",
+          "description": "Batch, event-driven and API-led approaches."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "INFS 380",
+      "name": "IT Project Management",
+      "credits": 3,
+      "programName": "Information Systems",
+      "department": "Information Systems",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Planning, scheduling and delivering technology projects using predictive and agile methods.",
+      "learningOutcomes": "Build a work breakdown structure; manage scope and risk; run an agile sprint cycle.",
+      "topics": [
+        {
+          "title": "Scope, schedule and cost",
+          "description": "Work breakdown structures, Gantt charts and earned value."
+        },
+        {
+          "title": "Agile delivery",
+          "description": "Scrum roles, sprints and retrospectives.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - INFS 380",
+              "url": "https://catalog.lakeshoretech.example/courses/infs-380"
+            }
+          ]
+        },
+        {
+          "title": "Project risk management",
+          "description": "Risk registers and response planning."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "IDES 101",
+      "name": "Design Drawing and Visualisation",
+      "credits": 3,
+      "programName": "Industrial Design",
+      "department": "Industrial Design",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Perspective sketching, rendering and presentation techniques for product concepts.",
+      "learningOutcomes": "Produce perspective sketches; render form and material; present concepts visually.",
+      "topics": [
+        {
+          "title": "Perspective and form",
+          "description": "One- and two-point perspective for product forms."
+        },
+        {
+          "title": "Rendering materials",
+          "description": "Marker and digital rendering of plastics, metals and glass.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - IDES 101",
+              "url": "https://catalog.lakeshoretech.example/courses/ides-101"
+            }
+          ]
+        },
+        {
+          "title": "Concept presentation boards",
+          "description": "Layout and storytelling for design reviews."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "IDES 150",
+      "name": "Materials and Making",
+      "credits": 3,
+      "programName": "Industrial Design",
+      "department": "Industrial Design",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Hands-on workshop in wood, metal, plastics and rapid prototyping.",
+      "learningOutcomes": "Select materials for a product; use shop tools safely; produce a working prototype.",
+      "topics": [
+        {
+          "title": "Workshop safety and tools",
+          "description": "Safe operation of hand and power tools."
+        },
+        {
+          "title": "Plastics and thermoforming",
+          "description": "Properties and forming methods for common polymers."
+        },
+        {
+          "title": "3D printing and laser cutting",
+          "description": "Preparing files and iterating physical prototypes.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - IDES 150",
+              "url": "https://catalog.lakeshoretech.example/courses/ides-150"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "IDES 220",
+      "name": "Human Factors and Ergonomics",
+      "credits": 3,
+      "programName": "Industrial Design",
+      "department": "Industrial Design",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Anthropometry, usability and the study of how people interact with products.",
+      "learningOutcomes": "Apply anthropometric data; plan a usability test; critique a product for accessibility.",
+      "topics": [
+        {
+          "title": "Anthropometry and posture",
+          "description": "Percentile data and design for the range of users."
+        },
+        {
+          "title": "Usability testing",
+          "description": "Task analysis, think-aloud sessions and metrics.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - IDES 220",
+              "url": "https://catalog.lakeshoretech.example/courses/ides-220"
+            }
+          ]
+        },
+        {
+          "title": "Inclusive design",
+          "description": "Designing for varied abilities and contexts."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "IDES 310",
+      "name": "Product Design Studio",
+      "credits": 4,
+      "programName": "Industrial Design",
+      "department": "Industrial Design",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Studio project taking a consumer product from user research through refined prototype.",
+      "learningOutcomes": "Frame a design brief from research; iterate prototypes; defend a final design.",
+      "topics": [
+        {
+          "title": "Research and brief writing",
+          "description": "Observation, interviews and design opportunity statements."
+        },
+        {
+          "title": "Concept development",
+          "description": "Divergent sketching and model making."
+        },
+        {
+          "title": "Refinement and detailing",
+          "description": "Form, colour, material and finish decisions.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - IDES 310",
+              "url": "https://catalog.lakeshoretech.example/courses/ides-310"
+            }
+          ]
+        },
+        {
+          "title": "Studio critique",
+          "description": "Presenting and responding to critique."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "IDES 340",
+      "name": "Design for Manufacturing",
+      "credits": 3,
+      "programName": "Industrial Design",
+      "department": "Industrial Design",
+      "level": "upper",
+      "requirementType": "Technical elective",
+      "description": "How processes such as injection moulding and sheet metal shape design decisions.",
+      "learningOutcomes": "Apply design-for-manufacture rules; estimate tooling cost; prepare production drawings.",
+      "topics": [
+        {
+          "title": "Injection moulding rules",
+          "description": "Draft, wall thickness and parting lines."
+        },
+        {
+          "title": "Sheet metal and extrusion",
+          "description": "Bend allowances and profile design.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - IDES 340",
+              "url": "https://catalog.lakeshoretech.example/courses/ides-340"
+            }
+          ]
+        },
+        {
+          "title": "Cost and assembly",
+          "description": "Part count reduction and tooling cost estimates."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "AVIA 101",
+      "name": "Introduction to Aviation",
+      "credits": 3,
+      "programName": "Aviation Management",
+      "department": "Aviation Management",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "History, structure and regulation of the aviation industry.",
+      "learningOutcomes": "Describe industry sectors; explain the role of regulators; identify key airport and airline functions.",
+      "topics": [
+        {
+          "title": "History of flight and the industry",
+          "description": "From early aviation to modern air transport."
+        },
+        {
+          "title": "Regulation and safety oversight",
+          "description": "National and international regulators and standards.",
+          "referenceLinks": [
+            {
+              "label": "Public reference documentation",
+              "url": "https://www.icao.int/"
+            }
+          ]
+        },
+        {
+          "title": "Airlines, airports and services",
+          "description": "Industry structure and stakeholders."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "AVIA 210",
+      "name": "Airport Operations",
+      "credits": 3,
+      "programName": "Aviation Management",
+      "department": "Aviation Management",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Airside and landside operations, security and capacity planning.",
+      "learningOutcomes": "Explain airfield layout; analyse terminal capacity; describe security screening processes.",
+      "topics": [
+        {
+          "title": "Airfield layout and ground handling",
+          "description": "Runways, taxiways, aprons and turnaround processes."
+        },
+        {
+          "title": "Terminal and landside flow",
+          "description": "Passenger processing and capacity."
+        },
+        {
+          "title": "Airport security and emergency planning",
+          "description": "Screening, access control and response drills.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - AVIA 210",
+              "url": "https://catalog.lakeshoretech.example/courses/avia-210"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "AVIA 240",
+      "name": "Aviation Safety Management Systems",
+      "credits": 3,
+      "programName": "Aviation Management",
+      "department": "Aviation Management",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Safety culture, hazard identification and safety management system principles.",
+      "learningOutcomes": "Conduct a hazard analysis; interpret accident data; describe the four pillars of an SMS.",
+      "topics": [
+        {
+          "title": "Safety culture",
+          "description": "Just culture, reporting systems and human error."
+        },
+        {
+          "title": "Hazard identification and risk",
+          "description": "Risk matrices and mitigation planning."
+        },
+        {
+          "title": "Accident investigation basics",
+          "description": "Causal factors and investigation reports.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - AVIA 240",
+              "url": "https://catalog.lakeshoretech.example/courses/avia-240"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "AVIA 320",
+      "name": "Airline Revenue and Network Planning",
+      "credits": 4,
+      "programName": "Aviation Management",
+      "department": "Aviation Management",
+      "level": "upper",
+      "requirementType": "Technical elective",
+      "description": "Route economics, fleet decisions, pricing and revenue management.",
+      "learningOutcomes": "Estimate route profitability; explain yield management; compare fleet options.",
+      "topics": [
+        {
+          "title": "Route and network economics",
+          "description": "Load factor, yield and cost per available seat mile."
+        },
+        {
+          "title": "Revenue management",
+          "description": "Fare classes, overbooking and demand forecasting.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - AVIA 320",
+              "url": "https://catalog.lakeshoretech.example/courses/avia-320"
+            }
+          ]
+        },
+        {
+          "title": "Fleet planning",
+          "description": "Aircraft selection and utilisation."
+        },
+        {
+          "title": "Alliances and codeshares",
+          "description": "Cooperation among carriers."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "AVIA 350",
+      "name": "Aviation Law and Policy",
+      "credits": 3,
+      "programName": "Aviation Management",
+      "department": "Aviation Management",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Legal framework for aviation including liability, labour and environmental policy.",
+      "learningOutcomes": "Summarise key conventions; analyse a liability case; evaluate an aviation policy proposal.",
+      "topics": [
+        {
+          "title": "International conventions",
+          "description": "Air law and sovereignty over airspace."
+        },
+        {
+          "title": "Liability and insurance",
+          "description": "Passenger, cargo and third-party liability."
+        },
+        {
+          "title": "Environmental and noise policy",
+          "description": "Emissions rules and community impacts.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - AVIA 350",
+              "url": "https://catalog.lakeshoretech.example/courses/avia-350"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "CMGT 101",
+      "name": "Introduction to Construction",
+      "credits": 3,
+      "programName": "Construction Management",
+      "department": "Construction Management",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Overview of construction project delivery, trades and site practice.",
+      "learningOutcomes": "Identify project delivery methods; read basic plans; describe site safety obligations.",
+      "topics": [
+        {
+          "title": "Delivery methods",
+          "description": "Design-bid-build, design-build and construction manager at risk."
+        },
+        {
+          "title": "Reading construction drawings",
+          "description": "Plans, elevations, sections and details.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - CMGT 101",
+              "url": "https://catalog.lakeshoretech.example/courses/cmgt-101"
+            }
+          ]
+        },
+        {
+          "title": "Site safety and OSHA basics",
+          "description": "Hazard recognition and regulatory requirements.",
+          "referenceLinks": [
+            {
+              "label": "Public reference documentation",
+              "url": "https://www.osha.gov/construction"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "CMGT 210",
+      "name": "Construction Materials and Methods",
+      "credits": 4,
+      "programName": "Construction Management",
+      "department": "Construction Management",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Properties and installation of concrete, steel, wood and masonry systems.",
+      "learningOutcomes": "Specify materials for a building element; explain sequencing; interpret quality tests.",
+      "topics": [
+        {
+          "title": "Concrete and formwork",
+          "description": "Mix design, placement and curing."
+        },
+        {
+          "title": "Structural steel and wood framing",
+          "description": "Connections and erection sequencing."
+        },
+        {
+          "title": "Envelope systems",
+          "description": "Roofing, cladding and moisture control.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - CMGT 210",
+              "url": "https://catalog.lakeshoretech.example/courses/cmgt-210"
+            }
+          ]
+        },
+        {
+          "title": "Quality control testing",
+          "description": "Field and laboratory tests."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "CMGT 240",
+      "name": "Estimating and Bidding",
+      "credits": 3,
+      "programName": "Construction Management",
+      "department": "Construction Management",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Quantity takeoff, unit costs and bid preparation.",
+      "learningOutcomes": "Perform a quantity takeoff; price an assembly; assemble a competitive bid.",
+      "topics": [
+        {
+          "title": "Quantity takeoff",
+          "description": "Measuring materials from drawings."
+        },
+        {
+          "title": "Unit pricing and labour productivity",
+          "description": "Crew rates and production factors.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - CMGT 240",
+              "url": "https://catalog.lakeshoretech.example/courses/cmgt-240"
+            }
+          ]
+        },
+        {
+          "title": "Overhead, profit and bid strategy",
+          "description": "Indirect costs and risk allowances."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "CMGT 320",
+      "name": "Construction Scheduling and Control",
+      "credits": 3,
+      "programName": "Construction Management",
+      "department": "Construction Management",
+      "level": "upper",
+      "requirementType": "Technical elective",
+      "description": "Critical path scheduling, resource levelling and progress tracking.",
+      "learningOutcomes": "Build a CPM network; level resources; update a schedule against actual progress.",
+      "topics": [
+        {
+          "title": "Critical path method",
+          "description": "Activity networks, float and critical paths."
+        },
+        {
+          "title": "Resource loading and levelling",
+          "description": "Balancing crews and equipment."
+        },
+        {
+          "title": "Progress monitoring and delay analysis",
+          "description": "Earned value and time-impact analysis.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - CMGT 320",
+              "url": "https://catalog.lakeshoretech.example/courses/cmgt-320"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "CMGT 360",
+      "name": "Contracts and Construction Law",
+      "credits": 3,
+      "programName": "Construction Management",
+      "department": "Construction Management",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Contract documents, change orders, claims and dispute resolution.",
+      "learningOutcomes": "Interpret contract clauses; process a change order; compare dispute resolution routes.",
+      "topics": [
+        {
+          "title": "Contract documents and parties",
+          "description": "Owner, contractor and designer responsibilities."
+        },
+        {
+          "title": "Change orders and claims",
+          "description": "Notice, pricing and documentation.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - CMGT 360",
+              "url": "https://catalog.lakeshoretech.example/courses/cmgt-360"
+            }
+          ]
+        },
+        {
+          "title": "Dispute resolution",
+          "description": "Negotiation, mediation and arbitration."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "BMT 101",
+      "name": "Introduction to Biomedical Technology",
+      "credits": 3,
+      "programName": "Biomedical Technology",
+      "department": "Biomedical Technology",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Survey of medical devices, the healthcare environment and the technologist role.",
+      "learningOutcomes": "Name major device categories; describe regulatory oversight; explain the role of clinical engineering.",
+      "topics": [
+        {
+          "title": "Medical device categories",
+          "description": "Diagnostic, therapeutic and monitoring devices."
+        },
+        {
+          "title": "Healthcare environment",
+          "description": "Hospital departments and clinical workflows."
+        },
+        {
+          "title": "Device regulation",
+          "description": "Classification and approval pathways.",
+          "referenceLinks": [
+            {
+              "label": "Public reference documentation",
+              "url": "https://www.fda.gov/medical-devices"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "BMT 210",
+      "name": "Human Anatomy for Technologists",
+      "credits": 4,
+      "programName": "Biomedical Technology",
+      "department": "Biomedical Technology",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Organ systems and physiology relevant to device use, with laboratory sessions.",
+      "learningOutcomes": "Describe major organ systems; relate physiology to device measurements; use anatomical terminology.",
+      "topics": [
+        {
+          "title": "Cardiovascular and respiratory systems",
+          "description": "Structure and function relevant to monitoring."
+        },
+        {
+          "title": "Nervous and musculoskeletal systems",
+          "description": "Signals, movement and support."
+        },
+        {
+          "title": "Anatomical terminology",
+          "description": "Planes, directions and body regions.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - BMT 210",
+              "url": "https://catalog.lakeshoretech.example/courses/bmt-210"
+            }
+          ]
+        },
+        {
+          "title": "Laboratory dissection models",
+          "description": "Identification of structures on models."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "BMT 240",
+      "name": "Biomedical Instrumentation",
+      "credits": 4,
+      "programName": "Biomedical Technology",
+      "department": "Biomedical Technology",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Sensors, amplifiers and signal acquisition for physiological measurement.",
+      "learningOutcomes": "Build a simple biosignal amplifier; reduce noise; calibrate a sensor.",
+      "topics": [
+        {
+          "title": "Biopotential electrodes",
+          "description": "ECG, EMG and EEG signal sources."
+        },
+        {
+          "title": "Amplifiers and filtering",
+          "description": "Operational amplifiers and noise reduction.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - BMT 240",
+              "url": "https://catalog.lakeshoretech.example/courses/bmt-240"
+            }
+          ]
+        },
+        {
+          "title": "Data acquisition",
+          "description": "Sampling and digitisation of physiological signals."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "BMT 330",
+      "name": "Medical Imaging Technology",
+      "credits": 3,
+      "programName": "Biomedical Technology",
+      "department": "Biomedical Technology",
+      "level": "upper",
+      "requirementType": "Technical elective",
+      "description": "Physical principles and equipment of X-ray, ultrasound, CT and MRI.",
+      "learningOutcomes": "Explain image formation in each modality; compare modality strengths; describe safety practices.",
+      "topics": [
+        {
+          "title": "X-ray and CT",
+          "description": "Attenuation, detectors and reconstruction."
+        },
+        {
+          "title": "Ultrasound",
+          "description": "Acoustic propagation and transducers."
+        },
+        {
+          "title": "Magnetic resonance imaging",
+          "description": "Spin physics and image contrast.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - BMT 330",
+              "url": "https://catalog.lakeshoretech.example/courses/bmt-330"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "BMT 360",
+      "name": "Clinical Equipment Maintenance and Safety",
+      "credits": 3,
+      "programName": "Biomedical Technology",
+      "department": "Biomedical Technology",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Preventive maintenance, electrical safety testing and equipment lifecycle management.",
+      "learningOutcomes": "Perform electrical safety tests; plan a maintenance schedule; document service records.",
+      "topics": [
+        {
+          "title": "Electrical safety testing",
+          "description": "Leakage current and grounding checks."
+        },
+        {
+          "title": "Preventive maintenance programmes",
+          "description": "Inspection schedules and performance verification.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - BMT 360",
+              "url": "https://catalog.lakeshoretech.example/courses/bmt-360"
+            }
+          ]
+        },
+        {
+          "title": "Equipment lifecycle and recalls",
+          "description": "Acquisition, replacement and recall handling."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "SCM 101",
+      "name": "Introduction to Supply Chain Management",
+      "credits": 3,
+      "programName": "Supply Chain Management",
+      "department": "Supply Chain Management",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Overview of sourcing, production, distribution and the integration of supply networks.",
+      "learningOutcomes": "Map a supply chain; define key performance measures; explain the bullwhip effect.",
+      "topics": [
+        {
+          "title": "Supply chain structure",
+          "description": "Suppliers, manufacturers, distributors and customers."
+        },
+        {
+          "title": "Performance metrics",
+          "description": "Cost, service level and cycle time.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - SCM 101",
+              "url": "https://catalog.lakeshoretech.example/courses/scm-101"
+            }
+          ]
+        },
+        {
+          "title": "The bullwhip effect",
+          "description": "Demand amplification and its remedies."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "SCM 210",
+      "name": "Procurement and Strategic Sourcing",
+      "credits": 3,
+      "programName": "Supply Chain Management",
+      "department": "Supply Chain Management",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Supplier selection, negotiation and category management.",
+      "learningOutcomes": "Evaluate suppliers; prepare a negotiation plan; compute total cost of ownership.",
+      "topics": [
+        {
+          "title": "Make-or-buy and supplier selection",
+          "description": "Evaluation criteria and scorecards."
+        },
+        {
+          "title": "Negotiation planning",
+          "description": "Preparation, leverage and agreement."
+        },
+        {
+          "title": "Total cost of ownership",
+          "description": "Beyond purchase price cost elements.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - SCM 210",
+              "url": "https://catalog.lakeshoretech.example/courses/scm-210"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "SCM 240",
+      "name": "Inventory Management",
+      "credits": 3,
+      "programName": "Supply Chain Management",
+      "department": "Supply Chain Management",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Models for stocking decisions under certain and uncertain demand.",
+      "learningOutcomes": "Compute economic order quantity; set safety stock; classify items by ABC analysis.",
+      "topics": [
+        {
+          "title": "Economic order quantity",
+          "description": "Ordering and holding cost trade-offs."
+        },
+        {
+          "title": "Safety stock and service levels",
+          "description": "Demand variability and reorder points.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - SCM 240",
+              "url": "https://catalog.lakeshoretech.example/courses/scm-240"
+            }
+          ]
+        },
+        {
+          "title": "ABC classification",
+          "description": "Prioritising control effort."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "SCM 320",
+      "name": "Transportation and Distribution Networks",
+      "credits": 4,
+      "programName": "Supply Chain Management",
+      "department": "Supply Chain Management",
+      "level": "upper",
+      "requirementType": "Technical elective",
+      "description": "Mode selection, routing and warehouse network design.",
+      "learningOutcomes": "Compare transport modes; solve a routing problem; locate a distribution centre.",
+      "topics": [
+        {
+          "title": "Mode selection and freight costs",
+          "description": "Truck, rail, ocean and air trade-offs."
+        },
+        {
+          "title": "Vehicle routing",
+          "description": "Heuristics for delivery routes."
+        },
+        {
+          "title": "Warehouse and network design",
+          "description": "Facility location and cross-docking.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - SCM 320",
+              "url": "https://catalog.lakeshoretech.example/courses/scm-320"
+            }
+          ]
+        },
+        {
+          "title": "Last-mile logistics",
+          "description": "Urban delivery challenges."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "SCM 360",
+      "name": "Supply Chain Analytics",
+      "credits": 3,
+      "programName": "Supply Chain Management",
+      "department": "Supply Chain Management",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Forecasting, optimisation and dashboards for supply chain decisions.",
+      "learningOutcomes": "Build a demand forecast; formulate a linear programme; present a metrics dashboard.",
+      "topics": [
+        {
+          "title": "Demand forecasting",
+          "description": "Moving average, exponential smoothing and error measures."
+        },
+        {
+          "title": "Linear optimisation",
+          "description": "Formulating and solving allocation models.",
+          "referenceLinks": [
+            {
+              "label": "Public reference documentation",
+              "url": "https://docs.scipy.org/doc/scipy/reference/optimize.linprog-highs.html"
+            }
+          ]
+        },
+        {
+          "title": "Dashboards and decision support",
+          "description": "Visualising supply chain performance."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "RENE 101",
+      "name": "Introduction to Renewable Energy",
+      "credits": 3,
+      "programName": "Renewable Energy",
+      "department": "Renewable Energy",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Survey of energy resources, renewable technologies and climate context.",
+      "learningOutcomes": "Compare energy sources; explain basic solar and wind conversion; interpret energy statistics.",
+      "topics": [
+        {
+          "title": "Global energy landscape",
+          "description": "Fossil fuels, nuclear and renewables in the energy mix.",
+          "referenceLinks": [
+            {
+              "label": "Public reference documentation",
+              "url": "https://www.eia.gov/energyexplained/"
+            }
+          ]
+        },
+        {
+          "title": "Solar and wind basics",
+          "description": "Resource availability and conversion principles."
+        },
+        {
+          "title": "Climate and policy drivers",
+          "description": "Emissions targets and incentives.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - RENE 101",
+              "url": "https://catalog.lakeshoretech.example/courses/rene-101"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "RENE 210",
+      "name": "Photovoltaic Systems",
+      "credits": 4,
+      "programName": "Renewable Energy",
+      "department": "Renewable Energy",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Solar cell physics, module characteristics and system sizing.",
+      "learningOutcomes": "Read an I-V curve; size an array and inverter; estimate annual energy yield.",
+      "topics": [
+        {
+          "title": "Solar cell operation",
+          "description": "Semiconductors, junctions and efficiency limits."
+        },
+        {
+          "title": "Modules and I-V curves",
+          "description": "Series and parallel connection and shading.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - RENE 210",
+              "url": "https://catalog.lakeshoretech.example/courses/rene-210"
+            }
+          ]
+        },
+        {
+          "title": "System sizing",
+          "description": "Arrays, inverters and battery interfaces."
+        },
+        {
+          "title": "Yield estimation",
+          "description": "Irradiance data and loss factors."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "RENE 240",
+      "name": "Wind Energy Systems",
+      "credits": 3,
+      "programName": "Renewable Energy",
+      "department": "Renewable Energy",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Aerodynamics, turbine components and wind farm siting.",
+      "learningOutcomes": "Compute power from wind speed; describe turbine subsystems; assess a site.",
+      "topics": [
+        {
+          "title": "Wind resource assessment",
+          "description": "Distributions, shear and capacity factor."
+        },
+        {
+          "title": "Turbine aerodynamics",
+          "description": "Power coefficient and Betz limit.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - RENE 240",
+              "url": "https://catalog.lakeshoretech.example/courses/rene-240"
+            }
+          ]
+        },
+        {
+          "title": "Wind farm layout",
+          "description": "Wake effects and grid connection."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "RENE 330",
+      "name": "Energy Storage and Grid Integration",
+      "credits": 3,
+      "programName": "Renewable Energy",
+      "department": "Renewable Energy",
+      "level": "upper",
+      "requirementType": "Technical elective",
+      "description": "Battery technologies, power electronics and the challenges of variable generation.",
+      "learningOutcomes": "Compare storage technologies; explain inverter control; analyse a variable-generation profile.",
+      "topics": [
+        {
+          "title": "Battery chemistries",
+          "description": "Lithium-ion, flow batteries and degradation."
+        },
+        {
+          "title": "Power electronics and inverters",
+          "description": "Conversion and grid-support functions."
+        },
+        {
+          "title": "Grid integration",
+          "description": "Forecasting, curtailment and flexibility.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - RENE 330",
+              "url": "https://catalog.lakeshoretech.example/courses/rene-330"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "RENE 360",
+      "name": "Energy Economics and Project Finance",
+      "credits": 3,
+      "programName": "Renewable Energy",
+      "department": "Renewable Energy",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Levelised cost, incentives and financing structures for renewable projects.",
+      "learningOutcomes": "Calculate levelised cost of energy; model project cash flows; evaluate policy incentives.",
+      "topics": [
+        {
+          "title": "Levelised cost of energy",
+          "description": "Capital, operating cost and capacity factor."
+        },
+        {
+          "title": "Cash flow and financing",
+          "description": "Debt, equity and tax credits.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - RENE 360",
+              "url": "https://catalog.lakeshoretech.example/courses/rene-360"
+            }
+          ]
+        },
+        {
+          "title": "Power purchase agreements",
+          "description": "Contract structures and risk allocation."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "STAT 101",
+      "name": "Introduction to Statistics",
+      "credits": 3,
+      "programName": "Statistics",
+      "department": "Statistics",
+      "level": "intro",
+      "requirementType": "Major core",
+      "description": "Descriptive statistics, probability basics, confidence intervals and hypothesis tests.",
+      "learningOutcomes": "Summarise data graphically and numerically; construct confidence intervals; carry out common hypothesis tests.",
+      "topics": [
+        {
+          "title": "Descriptive statistics and graphs",
+          "description": "Measures of centre and spread, histograms and box plots."
+        },
+        {
+          "title": "Probability and sampling distributions",
+          "description": "Random variables, the normal distribution and the central limit theorem.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - STAT 101",
+              "url": "https://catalog.lakeshoretech.example/courses/stat-101"
+            }
+          ]
+        },
+        {
+          "title": "Confidence intervals",
+          "description": "Estimating means and proportions."
+        },
+        {
+          "title": "Hypothesis testing",
+          "description": "Test statistics, p-values and errors."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "STAT 210",
+      "name": "Probability Theory",
+      "credits": 4,
+      "programName": "Statistics",
+      "department": "Statistics",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Discrete and continuous random variables, joint distributions and limit theorems.",
+      "learningOutcomes": "Compute expectations and variances; work with joint distributions; apply the law of large numbers.",
+      "topics": [
+        {
+          "title": "Random variables and distributions",
+          "description": "Binomial, Poisson, exponential and normal families."
+        },
+        {
+          "title": "Joint and conditional distributions",
+          "description": "Independence, covariance and conditioning."
+        },
+        {
+          "title": "Limit theorems",
+          "description": "Law of large numbers and central limit theorem.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - STAT 210",
+              "url": "https://catalog.lakeshoretech.example/courses/stat-210"
+            }
+          ]
+        },
+        {
+          "title": "Moment generating functions",
+          "description": "Transformations of random variables."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "STAT 240",
+      "name": "Statistical Computing with R",
+      "credits": 3,
+      "programName": "Statistics",
+      "department": "Statistics",
+      "level": "lower",
+      "requirementType": "Major core",
+      "description": "Data wrangling, visualisation and simulation in R.",
+      "learningOutcomes": "Import and clean data; produce publication-quality graphics; run a Monte Carlo simulation.",
+      "topics": [
+        {
+          "title": "Data import and wrangling",
+          "description": "Reading, reshaping and cleaning data frames.",
+          "referenceLinks": [
+            {
+              "label": "Public reference documentation",
+              "url": "https://cran.r-project.org/manuals.html"
+            }
+          ]
+        },
+        {
+          "title": "Visualisation",
+          "description": "Layered graphics for exploration and reporting."
+        },
+        {
+          "title": "Simulation and resampling",
+          "description": "Monte Carlo and bootstrap methods."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "STAT 320",
+      "name": "Regression Analysis",
+      "credits": 4,
+      "programName": "Statistics",
+      "department": "Statistics",
+      "level": "upper",
+      "requirementType": "Major core",
+      "description": "Linear and generalised linear models with diagnostics and model selection.",
+      "learningOutcomes": "Fit and interpret regression models; check assumptions; select among competing models.",
+      "topics": [
+        {
+          "title": "Simple and multiple regression",
+          "description": "Least squares estimation and inference."
+        },
+        {
+          "title": "Diagnostics and remedies",
+          "description": "Residuals, leverage and transformations.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - STAT 320",
+              "url": "https://catalog.lakeshoretech.example/courses/stat-320"
+            }
+          ]
+        },
+        {
+          "title": "Logistic regression",
+          "description": "Binary outcomes and odds ratios."
+        },
+        {
+          "title": "Model selection",
+          "description": "Information criteria and cross-validation."
+        }
+      ]
+    },
+    {
+      "universityCode": "LIT",
+      "code": "STAT 360",
+      "name": "Experimental Design and Quality Methods",
+      "credits": 3,
+      "programName": "Statistics",
+      "department": "Statistics",
+      "level": "upper",
+      "requirementType": "Technical elective",
+      "description": "Designed experiments, ANOVA and statistical process control.",
+      "learningOutcomes": "Design a factorial experiment; analyse variance; construct control charts.",
+      "topics": [
+        {
+          "title": "Completely randomised and block designs",
+          "description": "Randomisation and ANOVA."
+        },
+        {
+          "title": "Factorial experiments",
+          "description": "Main effects and interactions.",
+          "referenceLinks": [
+            {
+              "label": "Syllabus module - STAT 360",
+              "url": "https://catalog.lakeshoretech.example/courses/stat-360"
+            }
+          ]
+        },
+        {
+          "title": "Statistical process control",
+          "description": "Control charts and process capability."
+        }
+      ]
+    }
+  ]
+}

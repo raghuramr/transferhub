@@ -93,6 +93,6 @@ async function checkSet(name: string) {
 }
 
 (async () => {
-  assert.ok(sets.length >= 3, `expected 3 data sets, found ${sets.join(', ')}`);
+  assert.ok(sets.length >= 4, `expected 4 data sets, found ${sets.join(', ')}`);
   for (const s of sets) await checkSet(s);
 })().catch((e) => { console.error(e); process.exit(1); });
