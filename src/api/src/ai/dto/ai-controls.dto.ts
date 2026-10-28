@@ -29,3 +29,15 @@ export class SaveSkillDto {
   @IsBoolean() isActive: boolean;
   @IsOptional() @IsInt() sortOrder?: number;
 }
+
+export class CustomProviderDto {
+  @IsString() @MaxLength(80) name: string;
+  @IsString() @MaxLength(500) baseUrl: string;
+  @IsString() @MaxLength(120) model: string;
+  @IsOptional() @IsString() @MaxLength(400) apiKey?: string;
+  @IsOptional() @IsIn(['bearer', 'api-key']) authStyle?: 'bearer' | 'api-key';
+}
+
+export class TestProviderDto {
+  @IsString() @MaxLength(60) provider: string;
+}
