@@ -63,7 +63,7 @@ export function PermanentDeleteDialog({ entity, id, fallbackLabel, onClose, onDe
                 onChange={(e) => { setCascade(e.target.checked); setConfirm(''); }}
                 className="mt-0.5 rounded border-gray-300"
               />
-              Also delete its programs, courses and topics (cascade)
+              Also delete its programs, courses, topics and imported student profiles (cascade)
             </label>
           )}
 

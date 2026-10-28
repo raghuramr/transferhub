@@ -80,6 +80,19 @@ function make(counts: Counts, opts: { isBU?: boolean; existingTables?: string[] 
     assert.ok(withCascade.willDelete.some((w) => w.label === 'programs'));
   }
 
+  // Imported student profiles go with a cascade delete, but a profile already claimed into an account blocks it.
+  {
+    const counts = { 'Programs|InstitutionId': 10, 'Courses|InstitutionId': 50, 'StudentSourceProfiles|InstitutionCode': 30, Institutions: 1 };
+    const without = await make(counts).svc.impact('universities', 9, false);
+    assert.ok(without.blockers.some((b) => /30 imported student profile/.test(b.label)));
+    const casc = await make(counts).svc.impact('universities', 9, true);
+    assert.equal(casc.canDelete, true);
+    assert.ok(casc.willDelete.some((w) => /imported student profiles/.test(w.label) && w.count === 30));
+    const claimed = await make({ ...counts, 'IntakeSessions|ClaimedUserId IS NOT NULL': 2 }).svc.impact('universities', 9, true);
+    assert.equal(claimed.canDelete, false);
+    assert.ok(claimed.blockers.some((b) => /student accounts created/.test(b.label) && b.count === 2));
+  }
+
   // Real history blocks even with cascade; the BU home university can never be deleted.
   {
     const hist = await make({ Transcripts: 4 }).svc.impact('universities', 9, true);

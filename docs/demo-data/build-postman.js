@@ -7,6 +7,8 @@ const path = require('path');
 const dir = __dirname;
 const data = JSON.parse(fs.readFileSync(path.join(dir, 'pacific-ridge-catalogue.json'), 'utf8'));
 
+const studentsNoDocs = JSON.parse(fs.readFileSync(path.join(dir, 'pacific-ridge-students-no-documents.json'), 'utf8'));
+
 const postTestLines = [
   'let body = {};',
   'try { body = pm.response.json(); } catch (e) {}',
@@ -46,6 +48,19 @@ const post = (name, payload, description) => ({
   },
 });
 
+// Same endpoint, but the body is a file chosen in Postman (the version with documents is 240 KB of base64).
+const postFile = (name, fileName, description) => ({
+  name,
+  event: [{ listen: 'test', script: { type: 'text/javascript', exec: postTestLines } }],
+  request: {
+    method: 'POST',
+    header: [keyHeader, { key: 'Content-Type', value: 'application/json' }],
+    body: { mode: 'file', file: { src: fileName } },
+    url: url('/api/public/v1/submissions'),
+    description,
+  },
+});
+
 const collection = {
   info: {
     name: 'TransferHub Partner API - Pacific Ridge University demo',
@@ -67,6 +82,15 @@ const collection = {
         post('1 University only', { note: 'Step 1 - university', universities: data.universities }, 'Step 1 of the staged demo.'),
         post('2 Programs only', { note: 'Step 2 - programs', programs: data.programs }, 'Step 2. Programs reference the university code PRU.'),
         post('3 Courses with topics only', { note: 'Step 3 - courses with topics', courses: data.courses }, 'Step 3. Courses link to programs by programName and carry syllabus topics.'),
+      ],
+    },
+    {
+      name: 'Students',
+      description: 'Student profiles for Pacific Ridge University. Nothing creates an account: approved profiles become "ready to claim" on the student intake page.',
+      item: [
+        post('Students - first 5 (quick demo)', { note: 'Student profiles - first 5', students: studentsNoDocs.students.slice(0, 5) }, '5 students with every profile field and their course history, no documents.'),
+        post('Students - all 30 (no documents)', studentsNoDocs, '30 students, 207 courses. Every profile field filled; courses come from the PRU catalogue.'),
+        postFile('Students - all 30 WITH documents (choose file)', 'pacific-ridge-students.json', 'In Postman: Body > pick docs/demo-data/pacific-ridge-students.json. 72 small PDFs (transcript, ID/passport, English test for international students). About 240 KB, well under the 6 MB limit.'),
       ],
     },
     get('List my submissions', '/api/public/v1/submissions', true, 'All submissions made with this key.'),

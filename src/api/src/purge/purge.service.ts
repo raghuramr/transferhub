@@ -130,14 +130,27 @@ export class PurgeService {
         const extra: PurgeLine[] = [];
         const removals: Plan['removals'] = [];
 
+        // Imported student profiles are tied to the university by its CODE (no foreign key).
+        const profileWhere = 'InstitutionCode = (SELECT Code FROM Institutions WHERE Id = @id)';
+        const profileSel = `SELECT Id FROM StudentSourceProfiles WHERE ${profileWhere}`;
         const owned = {
           programs: await this.countFor('Programs', ['InstitutionId'], inst, id),
           courses: await this.countFor('Courses', ['InstitutionId'], inst, id),
+          students: await this.countFor('StudentSourceProfiles', ['InstitutionCode'], profileWhere, id),
         };
         if (cascade) {
           const progSel = 'SELECT Id FROM Programs WHERE InstitutionId = @id';
           const courseSel = 'SELECT Id FROM Courses WHERE InstitutionId = @id';
           refs.push(...this.courseRefs(courseSel), ...this.programRefs(progSel));
+          // Imported student profiles: unclaimed ones go (with their courses and documents); a profile a student
+          // already claimed into a real account blocks the delete. Claim sessions must be removed first.
+          refs.push(
+            { label: 'student accounts created from its imported profiles', table: 'IntakeSessions', cols: ['SourceProfileId', 'ClaimedUserId'], mode: 'block',
+              where: `ClaimedUserId IS NOT NULL AND SourceProfileId IN (${profileSel})`, hint: 'Real student accounts exist. Deactivate the university instead.' },
+            { label: 'unclaimed student claim links', table: 'IntakeSessions', cols: ['SourceProfileId', 'ClaimedUserId'], mode: 'delete',
+              where: `ClaimedUserId IS NULL AND SourceProfileId IN (${profileSel})` },
+            { label: 'imported student profiles (with their courses and documents)', table: 'StudentSourceProfiles', cols: ['InstitutionCode'], mode: 'delete', where: profileWhere },
+          );
           // Programs this university owns but other universities also offer must not vanish from under them.
           if (await this.schema.has('ProgramUniversities', 'ProgramId')) {
             const shared = await this.countFor('ProgramUniversities', ['ProgramId', 'InstitutionId'], `ProgramId IN (${progSel}) AND InstitutionId <> @id`, id);
@@ -147,11 +160,11 @@ export class PurgeService {
             { label: 'courses', table: 'Courses', where: inst },
             { label: 'programs', table: 'Programs', where: inst },
           );
-        } else if (owned.programs || owned.courses) {
+        } else if (owned.programs || owned.courses || owned.students) {
           extra.push({
-            label: `${owned.programs} program(s) and ${owned.courses} course(s) belong to it`,
-            count: owned.programs + owned.courses,
-            hint: 'Tick "also delete its programs, courses and topics" to remove them together.',
+            label: `${owned.programs} program(s), ${owned.courses} course(s) and ${owned.students} imported student profile(s) belong to it`,
+            count: owned.programs + owned.courses + owned.students,
+            hint: 'Tick "also delete its programs, courses, topics and imported student profiles" to remove them together.',
           });
         }
         removals.push({ label: 'universities', table: 'Institutions', where: 'Id = @id' });
