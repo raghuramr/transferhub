@@ -90,6 +90,7 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/superadmin/settings/ai-controls', label: 'AI Controls', icon: <Bot size={18} /> },
     { to: '/superadmin/settings/import', label: 'Data Import', icon: <Upload size={18} /> },
     { to: '/superadmin/settings/demo-scenario', label: 'Demo scenario', icon: <Presentation size={18} /> },
+    { to: '/superadmin/settings/demo-documents', label: 'Demo documents', icon: <ScanText size={18} /> },
   ],
 };
 
