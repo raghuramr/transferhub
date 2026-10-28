@@ -38,11 +38,41 @@ export class BlobStorageService {
     let c = this.containers.get(name);
     if (!c) {
       const client = this.service!.getContainerClient(name);
-      c = client.createIfNotExists().then(() => client);
+      // The public container allows anonymous read of individual blobs (never listing), so logos/banners are loaded
+      // straight from Storage. If the account forbids public access, fall back to a private container (served via the API).
+      c = (name === this.publicContainer
+        ? client.createIfNotExists({ access: 'blob' }).catch((e) => {
+            this.logger.warn(`Could not create public container with blob access (${e?.code || e?.message}); creating it private`);
+            return client.createIfNotExists();
+          })
+        : client.createIfNotExists()
+      ).then(() => client);
       c.catch(() => this.containers.delete(name));
       this.containers.set(name, c);
     }
     return c;
+  }
+
+  private publicReadable: Promise<boolean> | null = null;
+
+  /**
+   * Direct URL of a public blob (served by Azure Storage / a CDN, not the API), or null when it is not available:
+   * local-disk mode, or the public container is not anonymously readable. `PUBLIC_ASSET_BASE_URL` (e.g. a CDN or custom
+   * domain in front of the public container) overrides the storage account URL.
+   */
+  async publicUrl(blobName: string): Promise<string | null> {
+    if (!this.service) return null;
+    const override = process.env.PUBLIC_ASSET_BASE_URL?.replace(/\/+$/, '');
+    if (!this.publicReadable) {
+      this.publicReadable = this.container(this.publicContainer)
+        .then((c) => c.getAccessPolicy())
+        .then((p) => p.blobPublicAccess === 'blob' || p.blobPublicAccess === 'container')
+        .catch(() => false);
+    }
+    if (!(await this.publicReadable)) return null;
+    if (override) return `${override}/${encodeURIComponent(blobName)}`;
+    const client = (await this.container(this.publicContainer)).getBlobClient(blobName);
+    return client.url;
   }
 
   async put(container: string, blobName: string, data: Buffer, contentType?: string | null): Promise<void> {
