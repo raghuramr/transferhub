@@ -18,6 +18,7 @@ const statusColor: Record<string, string> = {
   received: 'bg-blue-100 text-blue-700',
   processing: 'bg-amber-100 text-amber-700',
   complete: 'bg-green-100 text-green-700',
+  cancelled: 'bg-gray-100 text-gray-500',
 };
 
 const laneColor: Record<string, string> = {
@@ -79,7 +80,7 @@ export default function StudentDashboard() {
           </div>
           <div>
             <p className="font-semibold text-gray-900">
-              {transcripts.filter((t) => t.status !== 'complete').length}
+              {transcripts.filter((t) => t.status !== 'complete' && t.status !== 'cancelled').length}
             </p>
             <p className="text-sm text-gray-500">In progress</p>
           </div>

@@ -10,6 +10,7 @@ import { Avatar } from '../shared/Avatar';
 import { UniversityHeader } from './UniversityHeader';
 import { LiveEventsProvider } from '../live/LiveEventsProvider';
 import { StudentTabBar } from './StudentTabBar';
+import { StudentTranscriptsNav } from './StudentTranscriptsNav';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
@@ -227,6 +228,7 @@ export default function AppLayout() {
       {/* Nav */}
       <nav className={`flex-1 py-2 overflow-y-auto overflow-x-hidden ${compact ? 'px-2' : 'px-3'}`}>
         {renderNavItems(items, compact)}
+        {user?.role === 'student' && !compact && <StudentTranscriptsNav />}
 
         {navPages.length > 0 && (
           <div className="pt-4 mt-2 border-t border-brand-100/60">

@@ -1,5 +1,5 @@
 import { CourseMappingsService } from '../policy/course-mappings.service';
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { SubmitTranscriptDto, UpdateTranscriptCourseDto } from './dto/create-transcript.dto';
@@ -51,6 +51,8 @@ interface TranscriptListRow {
   InstitutionName: string;
   StudentName: string;
   CourseCount: number;
+  TargetName?: string | null;
+  StageName?: string | null;
 }
 
 interface LaneRow {
@@ -482,6 +484,102 @@ export class TranscriptsService {
     return p.AdmissionStatus === 'admitted' ? 'official' : 'preview';
   }
 
+  /**
+   * The student (or the agency that submitted it) cancels an open request. Staff queues drop it (WorkflowStatus
+   * 'cancelled'), open stages are skipped, and a snapshot of how far it got is kept so reports can show how much
+   * had been done: courses decided, credits awarded so far, approval stages completed.
+   */
+  async cancel(id: string, user: { id: string; role: string; email?: string }, dto: { reason: string; note?: string }) {
+    if (!(await this.schema.has('Transcripts', 'CancelledAt'))) {
+      throw new ServiceUnavailableException('Cancelling is not available yet (migration 031 has not been applied).');
+    }
+    const r = await this.db.query<{ Status: string; WorkflowStatus: string | null; StudentUserId: string; SubmittedById: string | null; InstitutionName: string }>(
+      `SELECT t.Status, ${(await this.schema.has('Transcripts', 'WorkflowStatus')) ? 't.WorkflowStatus' : 'CAST(NULL AS VARCHAR(12)) AS WorkflowStatus'},
+              t.StudentUserId, t.SubmittedById, i.Name AS InstitutionName
+       FROM Transcripts t JOIN Institutions i ON i.Id = t.InstitutionId WHERE t.Id = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+    );
+    const t = r.recordset[0];
+    if (!t) throw new NotFoundException('Transcript not found');
+    const owner = (user.role === 'student' && String(t.StudentUserId).toLowerCase() === user.id.toLowerCase())
+      || (user.role === 'agency' && t.SubmittedById && String(t.SubmittedById).toLowerCase() === user.id.toLowerCase());
+    if (!owner) throw new ForbiddenException('Only the student who owns this request can cancel it.');
+    if (t.Status === 'cancelled') throw new BadRequestException('This request is already cancelled.');
+    if (t.Status === 'complete' || ['approved', 'bypassed', 'rejected'].includes(t.WorkflowStatus ?? '')) {
+      throw new BadRequestException('This request has already been completed, so it can no longer be cancelled.');
+    }
+
+    // Progress snapshot
+    const hasStages = await this.schema.has('TranscriptStages');
+    const courses = await this.db.query<{ Total: number; Decided: number; Credits: number | null }>(
+      `SELECT COUNT(*) AS Total,
+              SUM(CASE WHEN tc.Status IN ('decided','posted') OR e.Outcome IS NOT NULL OR tc.Lane = 'applied' THEN 1 ELSE 0 END) AS Decided,
+              SUM(CASE WHEN e.AwardedCredits IS NOT NULL AND e.Outcome IN ('equivalent','elective') THEN e.AwardedCredits
+                       WHEN tc.Lane = 'applied' THEN ISNULL(tc.NormalisedCredits, tc.OriginalCredits) ELSE 0 END) AS Credits
+       FROM TranscriptCourses tc LEFT JOIN Evaluations e ON e.TranscriptCourseId = tc.Id WHERE tc.TranscriptId = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+    );
+    let stagesDone = 0, stagesTotal = 0, stageName: string | null = null;
+    if (hasStages) {
+      const st = await this.db.query<{ Total: number; Done: number; Active: string | null }>(
+        `SELECT COUNT(*) AS Total, SUM(CASE WHEN Status IN ('approved','bypassed') THEN 1 ELSE 0 END) AS Done,
+                MAX(CASE WHEN Status = 'active' THEN StageName END) AS Active
+         FROM TranscriptStages WHERE TranscriptId = @id`,
+        [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+      );
+      stagesTotal = Number(st.recordset[0]?.Total ?? 0);
+      stagesDone = Number(st.recordset[0]?.Done ?? 0);
+      stageName = st.recordset[0]?.Active ?? null;
+    }
+    const progress = {
+      coursesTotal: Number(courses.recordset[0]?.Total ?? 0),
+      coursesDecided: Number(courses.recordset[0]?.Decided ?? 0),
+      creditsAwarded: Number(courses.recordset[0]?.Credits ?? 0),
+      stagesCompleted: stagesDone,
+      stagesTotal,
+      stoppedAt: stageName,
+    };
+    const reason = dto.reason.trim().slice(0, 60);
+    const note = dto.note?.trim().slice(0, 1000) || null;
+
+    await this.db.transaction(async (run) => {
+      const bind = [
+        { name: 'id', type: sql.UniqueIdentifier, value: id },
+        { name: 'reason', type: sql.NVarChar(60), value: reason },
+        { name: 'note', type: sql.NVarChar(1000), value: note },
+        { name: 'prog', type: sql.NVarChar(1000), value: JSON.stringify(progress) },
+      ];
+      const wf = (await this.schema.has('Transcripts', 'WorkflowStatus')) ? ", WorkflowStatus = CASE WHEN WorkflowStatus IS NULL THEN NULL ELSE 'cancelled' END" : '';
+      await run(
+        `UPDATE Transcripts SET Status = 'cancelled'${wf}, CancelledAt = SYSUTCDATETIME(), CancelReason = @reason, CancelNote = @note, CancelProgress = @prog WHERE Id = @id`,
+        bind,
+      );
+      if (hasStages) await run(`UPDATE TranscriptStages SET Status = 'skipped' WHERE TranscriptId = @id AND Status IN ('pending','active')`, [bind[0]]);
+      if (await this.schema.has('TranscriptNotes')) {
+        await run(
+          `INSERT INTO TranscriptNotes (TranscriptId, Audience, Kind, AuthorUserId, AuthorRole, Body) VALUES (@id, 'internal', 'system', @uid, @role, @body)`,
+          [bind[0], { name: 'uid', type: sql.UniqueIdentifier, value: user.id }, { name: 'role', type: sql.VarChar(20), value: user.role },
+            { name: 'body', type: sql.NVarChar(sql.MAX), value: `Cancelled by the ${user.role}. Reason: ${reason}${note ? ` - ${note}` : ''}. Progress: ${progress.coursesDecided}/${progress.coursesTotal} courses decided, ${progress.creditsAwarded} credits awarded, ${stagesDone}/${stagesTotal} stages done${stageName ? `, stopped at "${stageName}"` : ''}.` }],
+        );
+      }
+    });
+
+    try {
+      await this.db.query(
+        `INSERT INTO AuditLog (UserId, UserEmail, UserRole, Action, EntityType, EntityId, OldValue, NewValue)
+         VALUES (@uid, @email, @role, 'TRANSCRIPT_CANCELLED', 'Transcript', @eid, NULL, @new)`,
+        [
+          { name: 'uid', type: sql.UniqueIdentifier, value: user.id },
+          { name: 'email', type: sql.NVarChar(254), value: user.email ?? '' },
+          { name: 'role', type: sql.VarChar(20), value: user.role },
+          { name: 'eid', type: sql.NVarChar(100), value: id },
+          { name: 'new', type: sql.NVarChar(sql.MAX), value: JSON.stringify({ reason, note, progress }) },
+        ],
+      );
+    } catch { /* auditing must never undo the cancel */ }
+    return { ok: true, status: 'cancelled', progress };
+  }
+
   async findById(id: string) {
     const res = await this.db.query<TranscriptHeaderRow>(
       `SELECT t.Id, t.Status, t.ReceivedAt, t.ProcessedAt, t.Notes, t.OriginalFileName, t.StudentUserId,
@@ -591,8 +689,23 @@ export class TranscriptsService {
       suggestions.get(key)!.push({ code: s.Code, title: s.Title, credits: s.Credits, score: s.Score });
     }
 
+    let cancellation: { cancelledAt: Date; reason: string | null; note: string | null; progress: unknown } | null = null;
+    if (t.Status === 'cancelled' && (await this.schema.has('Transcripts', 'CancelledAt'))) {
+      const c = await this.db.query<{ CancelledAt: Date; CancelReason: string | null; CancelNote: string | null; CancelProgress: string | null }>(
+        `SELECT CancelledAt, CancelReason, CancelNote, CancelProgress FROM Transcripts WHERE Id = @id`,
+        [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
+      );
+      const row = c.recordset[0];
+      if (row) {
+        let progress: unknown = null;
+        try { progress = row.CancelProgress ? JSON.parse(row.CancelProgress) : null; } catch { /* ignore */ }
+        cancellation = { cancelledAt: row.CancelledAt, reason: row.CancelReason, note: row.CancelNote, progress };
+      }
+    }
+
     return {
       id: t.Id,
+      cancellation,
       evaluationKind,
       preapprovalExpiresAt,
       credit,
@@ -687,11 +800,16 @@ export class TranscriptsService {
       }
     }
 
+    // Receiving university + the stage a request is currently at (columns exist only after migration 013).
+    const hasTarget = await this.schema.has('Transcripts', 'TargetInstitutionId');
+    const hasStages = await this.schema.has('TranscriptStages');
+    const extraSel = (hasTarget ? `, (SELECT ti.Name FROM Institutions ti WHERE ti.Id = t.TargetInstitutionId) AS TargetName` : '')
+      + (hasStages ? `, (SELECT TOP 1 ts.StageName FROM TranscriptStages ts WHERE ts.TranscriptId = t.Id AND ts.Status = 'active' ORDER BY ts.StageOrder) AS StageName` : '');
     const res = await this.db.query<TranscriptListRow>(
       `SELECT t.Id, t.Status, t.ReceivedAt,
               i.Name AS InstitutionName,
               u.FirstName + ' ' + u.LastName AS StudentName,
-              (SELECT COUNT(*) FROM TranscriptCourses WHERE TranscriptId = t.Id) AS CourseCount
+              (SELECT COUNT(*) FROM TranscriptCourses WHERE TranscriptId = t.Id) AS CourseCount${extraSel}
        FROM Transcripts t
        JOIN Institutions i ON i.Id = t.InstitutionId
        JOIN Users u        ON u.Id = t.StudentUserId
@@ -726,6 +844,8 @@ export class TranscriptsService {
       institution: { name: t.InstitutionName },
       studentName: t.StudentName,
       courseCount: t.CourseCount,
+      targetInstitutionName: t.TargetName ?? null,
+      currentStage: t.StageName ?? null,
       courses: lanesByTranscript.get(t.Id) ?? [],
     }));
   }

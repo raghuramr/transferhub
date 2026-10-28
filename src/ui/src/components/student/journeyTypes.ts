@@ -16,7 +16,7 @@ export interface JourneyOverview {
   } | null;
 }
 
-export interface JourneyUniversity { id: number; code: string; name: string; logoUrl: string | null }
+export interface JourneyUniversity { id: number; code: string; name: string; type?: 'university' | 'community_college'; logoUrl: string | null }
 
 export interface MatchedCourse {
   studentCourseId: string; studentCode: string; studentTitle: string; convertedCredits: number;

@@ -114,12 +114,17 @@ export function UniversityCompareColumn({ index, universities, value, onRemove, 
       <div className="border-b border-brand-100/60 bg-brand-50/50 p-3 sm:p-4">
         <div className="flex items-center gap-2">
           <School size={18} className="shrink-0 text-brand-700" />
-          <h2 className="min-w-0 flex-1 break-words text-sm font-semibold text-gray-900">{uni?.name ?? `University ${value}`}</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="inline break-words text-sm font-semibold text-gray-900">{uni?.name ?? `University ${value}`}</h2>
+            {isTarget && (
+              <span className="ml-2 inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-50 px-2 py-0.5 align-middle text-[11px] font-medium text-emerald-700"><Check size={11} /> Your target</span>
+            )}
+            {uni?.type === 'community_college' && <span className="ml-2 align-middle text-[11px] text-gray-400">Community college</span>}
+          </div>
           {onRemove && (
             <button onClick={onRemove} aria-label={`Remove ${uni?.name ?? 'this university'} from the comparison`} className="shrink-0 rounded-lg p-2 text-gray-400 hover:bg-white hover:text-gray-700"><X size={16} /></button>
           )}
         </div>
-        {isTarget && <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-700"><Check size={13} /> Your current target</p>}
       </div>
 
       {loading ? (

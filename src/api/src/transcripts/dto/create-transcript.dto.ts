@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsArray, ValidateNested, IsIn, IsInt, IsBoolean, IsUUID, Matches, MaxLength, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsArray, ValidateNested, IsIn, IsInt, IsBoolean, IsUUID, Matches, MaxLength, MinLength, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class TranscriptCourseInputDto {
@@ -54,4 +54,9 @@ export class SubmitTranscriptDto {
   @ValidateNested({ each: true })
   @Type(() => TranscriptCourseInputDto)
   courses: TranscriptCourseInputDto[];
+}
+
+export class CancelTranscriptDto {
+  @IsString() @MinLength(2) @MaxLength(60) reason: string;
+  @IsOptional() @IsString() @MaxLength(1000) note?: string;
 }

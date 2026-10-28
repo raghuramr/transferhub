@@ -345,7 +345,12 @@ export default function UploadTranscript() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* ── Step 1: the source college ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
-          <StepHeader n={1} icon={<GraduationCap size={18} />} title="Where did you study?" subtitle="The college or university these courses were taken at." />
+          <StepHeader n={1} icon={<GraduationCap size={18} />} title="Where did you take these courses?" subtitle="The college you studied at and finished these courses (your current or previous school)." />
+
+          <div className="mb-4 flex items-start gap-2 rounded-lg bg-brand-50/60 p-3 text-xs text-brand-900">
+            <Info size={14} className="mt-0.5 shrink-0" />
+            <p><span className="font-semibold">Two different schools here:</span> first, the college where you <em>already took</em> these courses; then, the university you want to <em>transfer to</em>. You only list courses from the first one.</p>
+          </div>
 
           <SourceCollegeField
             colleges={knownColleges}
@@ -356,7 +361,7 @@ export default function UploadTranscript() {
           />
           {selectedKnown ? (
             <p className="mt-2 flex items-center gap-1.5 text-xs text-green-700">
-              <CheckCircle2 size={13} /> We have this college's course catalogue — you can pick courses from it below.
+              <CheckCircle2 size={13} /> We have this college's course list — you can pick the courses you took there below.
             </p>
           ) : collegeName.trim() ? (
             <p className="mt-2 text-xs text-gray-500">We'll record "{collegeName.trim()}" as your transfer college. Type your courses in below.</p>
@@ -364,7 +369,7 @@ export default function UploadTranscript() {
 
           {isStudent && (
             <div className="mt-5">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Transferring to *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">University you want to transfer to *</label>
               <select
                 value={targetId ?? ''}
                 onChange={(e) => setTargetId(e.target.value ? Number(e.target.value) : null)}
@@ -374,7 +379,7 @@ export default function UploadTranscript() {
                 {targetOptions.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
               <p className="mt-1 text-xs text-gray-400">
-                The receiving university that will evaluate these credits.{' '}
+                This is the university that will decide which of your credits count. It is a different list from the college above.{' '}
                 {overviewQuery.data?.data?.targetInstitutionName ? `Prefilled from your profile (${overviewQuery.data.data.targetInstitutionName}).` : 'You can set a default on your profile.'}
               </p>
             </div>
@@ -420,7 +425,7 @@ export default function UploadTranscript() {
 
         {/* ── Step 2: courses ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
-          <StepHeader n={2} icon={<BookOpen size={18} />} title="Your courses" subtitle="One row per course you took. Add as many as you need." />
+          <StepHeader n={2} icon={<BookOpen size={18} />} title="Courses you completed there" subtitle="One row per course you finished at the college above (not courses at the university you are moving to). Add as many as you need." />
 
           <div className="space-y-4">
             {courses.map((course, i) => (
@@ -551,7 +556,7 @@ function SourceCollegeField({
 
   return (
     <div ref={rootRef} className="relative">
-      <label className="block text-sm font-medium text-gray-700 mb-1">Transfer college *</label>
+      <label className="block text-sm font-medium text-gray-700 mb-1">College where you completed the courses *</label>
       <div className="relative">
         <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
@@ -657,7 +662,7 @@ function CourseRowFields({
       {hasCatalog && (
         <div className="mb-3">
           <MasterDataSelect
-            label="Pick from this college's catalogue (optional — fills the fields for you)"
+            label="Pick a course you took at this college (optional — fills the fields for you)"
             placeholder="Search this college's courses…"
             items={courseOptions}
             selectedId={row.catalogId}

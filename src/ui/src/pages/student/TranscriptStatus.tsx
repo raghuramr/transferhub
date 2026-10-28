@@ -11,6 +11,9 @@ import { TransferWorkflowStepper, TRANSCRIPT_STEPS } from '../../components/ui/T
 import { CreditHubCard, EvaluationKindBanner, FlagList } from '../../components/policy/PolicyBits';
 import AppealModal from '../../components/policy/AppealModal';
 import type { TranscriptCourse } from '../../types';
+import { CancelRequestDialog, CancelledBanner } from '../../components/workflow/CancelRequest';
+import { useAuthStore } from '../../store/auth';
+import { Ban } from 'lucide-react';
 import ExchangePanel, { OpenRequestsBanner } from '../../components/transfers/ExchangePanel';
 
 const APPEAL_LABEL: Record<string, string> = {
@@ -60,6 +63,8 @@ export default function TranscriptStatus() {
   const timeline = timelineQuery.data?.data;
   const setTimeline = (t: TimelineData) => qc.setQueryData(['request', id], { data: t });
   const [appealing, setAppealing] = useState<TranscriptCourse | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const role = useAuthStore((st) => st.user?.role);
 
   if (isLoading) return <div className="p-8 text-center text-gray-400">Loading…</div>;
   if (error || !transcript) return <div className="p-8 text-center text-red-500">Failed to load transcript.</div>;
@@ -69,6 +74,18 @@ export default function TranscriptStatus() {
   const credits = transcript.courses
     ?.filter((c) => c.lane === 'applied')
     .reduce((sum, c) => sum + (c.normalisedCredits ?? c.originalCredits ?? 0), 0) ?? 0;
+
+  const cancelled = transcript.status === 'cancelled';
+  const wfDone = ['approved', 'bypassed', 'rejected'].includes(timeline?.transcript.workflowStatus ?? '');
+  const canCancel = (role === 'student' || role === 'agency') && !cancelled && transcript.status !== 'complete' && !wfDone;
+  const decided = transcript.courses?.filter((c) => c.lane === 'applied' || !!c.evaluation?.outcome).length ?? 0;
+  const progressNow = {
+    coursesTotal: total,
+    coursesDecided: decided,
+    creditsAwarded: transcript.toCredits ?? 0,
+    stagesCompleted: timeline?.stages.filter((s) => s.status === 'approved' || s.status === 'bypassed').length ?? 0,
+    stagesTotal: timeline?.stages.length ?? 0,
+  };
 
   return (
     <div className="p-4 sm:p-8 max-w-4xl mx-auto">
@@ -81,6 +98,11 @@ export default function TranscriptStatus() {
           Submitted {new Date(transcript.receivedAt).toLocaleDateString()} ·{' '}
           <span className="capitalize font-medium">{transcript.status}</span>
         </p>
+        {canCancel && (
+          <button onClick={() => setCancelling(true)} className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50">
+            <Ban size={14} /> Cancel this request
+          </button>
+        )}
         {transcript.documentFileName && (
           <button
             onClick={() => downloadDocument(transcript.id, transcript.documentFileName!)}
@@ -113,11 +135,12 @@ export default function TranscriptStatus() {
         </div>
       </div>
 
-      <EvaluationKindBanner kind={transcript.evaluationKind} expiresAt={transcript.preapprovalExpiresAt} />
+      {cancelled && transcript.cancellation && <CancelledBanner info={transcript.cancellation} />}
+      {!cancelled && <EvaluationKindBanner kind={transcript.evaluationKind} expiresAt={transcript.preapprovalExpiresAt} />}
       <OpenRequestsBanner transcriptId={transcript.id} />
 
       {/* Workflow progress: the per-university approval stages when the request has them, else the simple 3-step status */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+      {!cancelled && <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
         {timeline?.transcript.workflow ? (
           <>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
@@ -143,7 +166,7 @@ export default function TranscriptStatus() {
         ) : (
           <TransferWorkflowStepper currentStatus={transcript.status} steps={TRANSCRIPT_STEPS} />
         )}
-      </div>
+      </div>}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -260,6 +283,9 @@ export default function TranscriptStatus() {
             />
           </div>
         </div>
+      )}
+      {cancelling && (
+        <CancelRequestDialog requestId={transcript.id} label={`${transcript.institution?.name ?? 'Transcript'}${transcript.targetInstitutionName ? ` → ${transcript.targetInstitutionName}` : ''}`} progress={progressNow} onClose={() => setCancelling(false)} />
       )}
       {appealing && (
         <AppealModal

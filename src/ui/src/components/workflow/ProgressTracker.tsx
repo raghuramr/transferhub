@@ -27,7 +27,7 @@ function StepIcon({ s }: { s: TimelineStage }) {
 }
 
 /**
- * "Pizza tracker" for a transfer request: horizontal on desktop, vertical on phones. Completed steps are
+ * "Pizza tracker" for a transfer request, always vertical (easier to read with names, times and who it waits on). Completed steps are
  * checked, the current one pulses with who it is waiting on and since when, and a step animates when a live
  * event changes it. The status sentence is an aria-live region so screen readers hear the changes.
  */
@@ -70,20 +70,17 @@ export function ProgressTracker({ stages, workflowStatus }: { stages: TimelineSt
         <motion.div className="h-full rounded-full bg-emerald-500" initial={false} animate={{ width: `${pct}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} />
       </div>
 
-      <ol className="flex flex-col md:flex-row md:items-start">
+      <ol className="flex flex-col">
         {steps.map((s, i) => {
           const last = i === steps.length - 1;
           const active = s.status === 'active';
           const completed = s.status === 'approved' || s.status === 'bypassed';
           const waitingOn = s.type === 'system' ? 'Automatic processing' : s.approvers.join(', ') || 'A reviewer';
           return (
-            <li key={s.id} className="relative flex gap-3 pb-6 last:pb-0 md:flex-1 md:flex-col md:items-center md:gap-0 md:pb-0" aria-current={active ? 'step' : undefined}>
-              {/* connector: vertical on mobile, horizontal on desktop (drawn from this dot to the next) */}
+            <li key={s.id} className="relative flex gap-3 pb-6 last:pb-0" aria-current={active ? 'step' : undefined}>
+              {/* connector drawn from this dot down to the next */}
               {!last && (
-                <>
-                  <span aria-hidden className={cn('absolute left-[17px] top-9 bottom-0 w-0.5 rounded-full md:hidden', completed ? LINE_DONE : 'bg-gray-200')} />
-                  <span aria-hidden className={cn('absolute left-1/2 right-[-50%] top-[17px] hidden h-0.5 rounded-full md:block', completed ? LINE_DONE : 'bg-gray-200')} />
-                </>
+                <span aria-hidden className={cn('absolute left-[17px] top-9 bottom-0 w-0.5 rounded-full', completed ? LINE_DONE : 'bg-gray-200')} />
               )}
 
               <div className="relative z-10 shrink-0">
@@ -99,14 +96,14 @@ export function ProgressTracker({ stages, workflowStatus }: { stages: TimelineSt
                 </div>
               </div>
 
-              <div className="min-w-0 flex-1 md:mt-2 md:flex-none md:px-2 md:text-center">
+              <div className="min-w-0 flex-1 pt-1.5">
                 <p className={cn('text-sm font-semibold', completed || active ? 'text-gray-900' : 'text-gray-500')}>{s.name}</p>
                 {completed && <p className="text-xs text-emerald-700">{s.status === 'bypassed' ? 'Not needed' : 'Done'}{s.completedAt ? ` · ${agoLabel(s.completedAt, now)}` : ''}</p>}
                 {s.status === 'rejected' && <p className="text-xs text-red-700">Not approved</p>}
                 {s.status === 'returned' && <p className="text-xs text-amber-700">Sent back for another look</p>}
                 {active && (
                   <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="mt-0.5 space-y-0.5 text-xs text-gray-600">
-                    <p className="flex flex-wrap items-center gap-1 md:justify-center"><Users size={12} className="text-gray-400" /> Waiting on: <span className="font-medium text-gray-800">{waitingOn}</span></p>
+                    <p className="flex flex-wrap items-center gap-1"><Users size={12} className="text-gray-400" /> Waiting on: <span className="font-medium text-gray-800">{waitingOn}</span></p>
                     {s.activatedAt && <p className="text-gray-500">since {agoLabel(s.activatedAt, now)}</p>}
                     {s.overdue && <p className="font-medium text-red-600">Taking longer than planned</p>}
                   </motion.div>

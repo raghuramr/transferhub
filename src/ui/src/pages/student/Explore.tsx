@@ -267,7 +267,9 @@ function StepCompare({ note, unisData, unisError, noCourses, ids, cmp, addUni, r
   ids: number[]; cmp: ReturnType<typeof useQuery<CompareResult>>;
   addUni: (id: number) => void; removeUni: (id: number) => void; target: JourneyOverview['target']; myCredits: number;
 }) {
-  const gridCols = ids.length >= 3 ? 'lg:grid-cols-3' : ids.length === 2 ? 'lg:grid-cols-2' : 'lg:grid-cols-1 lg:max-w-2xl';
+  // One column per shown university plus the empty "add" slot (when there is room), so the slot sits beside the others.
+  const slots = Math.min(MAX_COMPARE, ids.length + 1);
+  const gridCols = slots >= 3 ? 'lg:grid-cols-3' : slots === 2 ? 'lg:grid-cols-2' : 'lg:grid-cols-1';
   return (
     <div>
       <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900">
@@ -278,9 +280,8 @@ function StepCompare({ note, unisData, unisError, noCourses, ids, cmp, addUni, r
       {noCourses && (
         <p className="mb-4 rounded-xl bg-brand-50 p-3 text-sm text-brand-900">You have no courses yet, so there is nothing to match. Add coursework in step 1 to see real matches here.</p>
       )}
-      <AddUniversity universities={unisData} selected={ids} onAdd={addUni} />
       {ids.length === 0 ? (
-        <p className="rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">Add a university above to see which of your courses could count there.</p>
+        <AddSlot universities={unisData} selected={ids} onAdd={addUni} />
       ) : (
         <div className={cn('grid grid-cols-1 items-start gap-4', gridCols)}>
           {ids.map((id, i) => (
@@ -298,67 +299,66 @@ function StepCompare({ note, unisData, unisError, noCourses, ids, cmp, addUni, r
               myTotalCredits={myCredits}
             />
           ))}
+          {ids.length < MAX_COMPARE && <AddSlot universities={unisData} selected={ids} onAdd={addUni} />}
         </div>
       )}
     </div>
   );
 }
 
-/** "Add university to compare": a searchable list of universities not yet shown; disabled at the 3-university limit. */
-function AddUniversity({ universities, selected, onAdd }: { universities: JourneyUniversity[]; selected: number[]; onAdd: (id: number) => void }) {
+/** An empty comparison slot: a dashed card beside the shown universities that opens a searchable list. Slots are limited to 3 in total. */
+function AddSlot({ universities, selected, onAdd }: { universities: JourneyUniversity[]; selected: number[]; onAdd: (id: number) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
-  const full = selected.length >= MAX_COMPARE;
   const options = useMemo(() => {
     const t = q.trim().toLowerCase();
     return universities.filter((u) => !selected.includes(u.id) && (!t || u.name.toLowerCase().includes(t) || u.code.toLowerCase().includes(t)));
   }, [universities, selected, q]);
+  const nothingLeft = universities.length <= selected.length;
 
+  if (!open) {
+    return (
+      <button
+        onClick={() => { setOpen(true); setQ(''); }}
+        disabled={nothingLeft}
+        className="flex min-h-40 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand-200 bg-brand-50/30 p-6 text-center text-sm font-medium text-brand-800 hover:bg-brand-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-400"
+      >
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm"><Plus size={20} /></span>
+        Add a university to compare
+        <span className="text-xs font-normal text-gray-500">
+          {nothingLeft ? 'No other universities available.' : `${selected.length} of ${MAX_COMPARE} shown - room for ${MAX_COMPARE - selected.length} more`}
+        </span>
+      </button>
+    );
+  }
   return (
-    <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          onClick={() => { setOpen((v) => !v); setQ(''); }}
-          disabled={full || universities.length <= selected.length}
-          aria-expanded={open}
-          className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm font-medium text-brand-800 hover:bg-brand-50 disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-white"
-        >
-          <Plus size={16} /> Add university to compare
-        </button>
-        <p className="text-xs text-gray-500">
-          {full ? 'You are comparing the maximum of 3 universities. Remove one to add another.' : `Showing ${selected.length} of ${MAX_COMPARE}. You can add up to ${MAX_COMPARE - selected.length} more.`}
-        </p>
+    <div className="rounded-2xl border-2 border-dashed border-brand-300 bg-white p-3">
+      <div className="relative">
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          autoFocus
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search universities"
+          aria-label="Search universities"
+          className="w-full rounded-lg border border-gray-200 py-2 pl-9 pr-9 text-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
+        />
+        <button onClick={() => setOpen(false)} aria-label="Close the list" className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:text-gray-700"><X size={14} /></button>
       </div>
-      {open && !full && (
-        <div className="mt-3">
-          <div className="relative">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              autoFocus
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search universities"
-              aria-label="Search universities"
-              className="w-full rounded-lg border border-gray-200 py-2 pl-9 pr-9 text-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
-            />
-            <button onClick={() => setOpen(false)} aria-label="Close the list" className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:text-gray-700"><X size={14} /></button>
-          </div>
-          <ul className="mt-2 max-h-56 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-100" role="listbox">
-            {options.length ? options.map((u) => (
-              <li key={u.id}>
-                <button
-                  onClick={() => { onAdd(u.id); setOpen(false); setQ(''); }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-brand-50"
-                >
-                  <School size={15} className="shrink-0 text-brand-700" />
-                  <span className="min-w-0 flex-1 break-words">{u.name}</span>
-                  <span className="shrink-0 text-xs text-gray-400">{u.code}</span>
-                </button>
-              </li>
-            )) : <li className="px-3 py-3 text-sm text-gray-400">No universities match.</li>}
-          </ul>
-        </div>
-      )}
+      <ul className="mt-2 max-h-72 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-100" role="listbox">
+        {options.length ? options.map((u) => (
+          <li key={u.id}>
+            <button
+              onClick={() => { onAdd(u.id); setOpen(false); setQ(''); }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-800 hover:bg-brand-50"
+            >
+              <School size={15} className="shrink-0 text-brand-700" />
+              <span className="min-w-0 flex-1 break-words">{u.name}{u.type === 'community_college' && <span className="ml-1 text-[11px] text-gray-400">community college</span>}</span>
+              <span className="shrink-0 text-xs text-gray-400">{u.code}</span>
+            </button>
+          </li>
+        )) : <li className="px-3 py-3 text-sm text-gray-400">No universities match.</li>}
+      </ul>
     </div>
   );
 }
