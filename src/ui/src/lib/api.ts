@@ -203,7 +203,7 @@ export const coursesApi = {
 };
 
 // ── Permanent delete (super_admin only) ───────────────────────
-export type PurgeEntity = 'universities' | 'programs' | 'courses' | 'topics';
+export type PurgeEntity = 'universities' | 'programs' | 'courses' | 'topics' | 'agencies';
 export interface PurgeCount { label: string; count: number }
 export interface PurgeImpact {
   entity: string;

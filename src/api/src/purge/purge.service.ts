@@ -3,8 +3,8 @@ import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
 import { SchemaService } from '../policy/schema.service';
 
-export type PurgeEntity = 'universities' | 'programs' | 'courses' | 'topics';
-export const PURGE_ENTITIES: PurgeEntity[] = ['universities', 'programs', 'courses', 'topics'];
+export type PurgeEntity = 'universities' | 'programs' | 'courses' | 'topics' | 'agencies';
+export const PURGE_ENTITIES: PurgeEntity[] = ['universities', 'programs', 'courses', 'topics', 'agencies'];
 
 export interface PurgeLine { label: string; count: number; hint?: string }
 export interface PurgeImpact {
@@ -94,6 +94,21 @@ export class PurgeService {
           extraBlockers: [],
           removals: [{ label: 'topics', table: 'CourseTopics', where: 'Id = @id' }],
         };
+      case 'agencies': {
+        // Users who belong to the agency: any who have submitted transcript requests block the delete (real history);
+        // otherwise the link is just detached and the user account stays.
+        const members = 'SELECT Id FROM Users WHERE AgencyId = @id';
+        return {
+          refs: [
+            { label: 'transcript requests submitted by its users', table: 'Transcripts', cols: ['SubmittedById'], mode: 'block',
+              where: `SubmittedById IN (${members})`, hint: 'Its users have submitted requests on behalf of students. Deactivate the agency instead.' },
+            { label: 'users linked to it (accounts are kept, just unlinked)', table: 'Users', cols: ['AgencyId'], mode: 'nullify', setCol: 'AgencyId', where: 'AgencyId = @id' },
+            { label: 'user visibility scopes', table: 'UserScopeAgencies', cols: ['AgencyId'], mode: 'delete', where: 'AgencyId = @id' },
+          ],
+          extraBlockers: [],
+          removals: [{ label: 'agencies', table: 'Agencies', where: 'Id = @id' }],
+        };
+      }
       case 'courses':
         return {
           refs: this.courseRefs('SELECT @id'),
@@ -190,6 +205,7 @@ export class PurgeService {
       programs: `SELECT Name + ISNULL(' (' + Degree + ')', '') AS L, CAST(0 AS BIT) AS IsBU FROM Programs WHERE Id = @id`,
       courses: `SELECT Code + ' - ' + Title AS L, CAST(0 AS BIT) AS IsBU FROM Courses WHERE Id = @id`,
       topics: `SELECT Title AS L, CAST(0 AS BIT) AS IsBU FROM CourseTopics WHERE Id = @id`,
+      agencies: `SELECT Name AS L, CAST(0 AS BIT) AS IsBU FROM Agencies WHERE Id = @id`,
     };
     const r = await this.db.query<{ L: string }>(q[entity], [{ name: 'id', type: sql.Int, value: id }]);
     if (!r.recordset[0]) throw new NotFoundException('Not found');
@@ -302,4 +318,4 @@ export class PurgeService {
   }
 }
 
-const isHeadline = (label: string) => ['universities', 'programs', 'courses', 'topics'].includes(label);
+const isHeadline = (label: string) => ['universities', 'programs', 'courses', 'topics', 'agencies'].includes(label);

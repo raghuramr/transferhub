@@ -9,4 +9,5 @@ export class CreateUserDto {
   @IsOptional() @IsInt() departmentId?: number;
   @IsOptional() @IsString() studentId?: string;
   @IsOptional() @IsString() agencyName?: string;
+  @IsOptional() @IsInt() agencyId?: number;
 }

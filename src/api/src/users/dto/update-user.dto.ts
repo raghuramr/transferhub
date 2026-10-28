@@ -9,6 +9,7 @@ export class UpdateUserDto {
   @IsOptional() @IsInt() departmentId?: number;
   @IsOptional() @IsString() studentId?: string;
   @IsOptional() @IsString() agencyName?: string;
+  @IsOptional() @IsInt() agencyId?: number;
   @IsOptional() @IsString() mobile?: string;
   @IsOptional() @IsString() addressLine1?: string;
   @IsOptional() @IsString() addressLine2?: string;

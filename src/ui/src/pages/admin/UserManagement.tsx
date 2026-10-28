@@ -89,6 +89,7 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
     email: user.email,
     role: user.role,
     isActive: user.isActive,
+    agencyName: user.agencyName ?? '',
     password: '',
     mobile: user.mobile ?? '',
     addressLine1: user.addressLine1 ?? '',
@@ -155,6 +156,7 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
         email: editForm.email,
         role: editForm.role,
         isActive: editForm.isActive,
+        ...(editForm.role === 'agency' ? { agencyId: agencies.find((a) => a.name === editForm.agencyName)?.id ?? undefined, agencyName: editForm.agencyName } : {}),
         mobile: editForm.mobile,
         addressLine1: editForm.addressLine1,
         addressLine2: editForm.addressLine2,
@@ -356,6 +358,23 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
               </div>
             </div>
           </div>
+          {editForm.role === 'agency' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Agency</label>
+              <select
+                value={editForm.agencyName}
+                onChange={(e) => setEditForm((f) => ({ ...f, agencyName: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="">— none —</option>
+                {editForm.agencyName && !agencies.some((a) => a.name === editForm.agencyName) && (
+                  <option value={editForm.agencyName}>{editForm.agencyName} (not in the agency list)</option>
+                )}
+                {agencies.map((a) => <option key={a.id} value={a.name}>{a.name}</option>)}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">Drives the logo and banner shown in this user's header.</p>
+            </div>
+          )}
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -436,7 +455,9 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
   const { can } = usePermissions();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ email: '', firstName: '', lastName: '', role: 'student', password: '' });
+  const [form, setForm] = useState({ email: '', firstName: '', lastName: '', role: 'student', password: '', agencyId: '' });
+  const createAgenciesQuery = useQuery({ queryKey: ['scope-agencies'], queryFn: () => api.get('/agencies').catch(() => ({ data: [] })) });
+  const createAgencies = (createAgenciesQuery.data?.data as { id: number; name: string }[]) ?? [];
   const [bulkRole, setBulkRole] = useState<string | null>(null);
   const [bulkRoleValue, setBulkRoleValue] = useState('student');
 
@@ -450,11 +471,14 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
   }));
 
   const createMutation = useMutation({
-    mutationFn: () => usersApi.create(form),
+    mutationFn: () => {
+      const { agencyId, ...rest } = form;
+      return usersApi.create(form.role === 'agency' && agencyId ? { ...rest, agencyId: Number(agencyId) } : rest);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] });
       setShowCreate(false);
-      setForm({ email: '', firstName: '', lastName: '', role: 'student', password: '' });
+      setForm({ email: '', firstName: '', lastName: '', role: 'student', password: '', agencyId: '' });
     },
   });
 
@@ -688,6 +712,19 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
               </select>
             </div>
           </div>
+          {form.role === 'agency' && (
+            <div className="mt-3 max-w-xs">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Agency</label>
+              <select
+                value={form.agencyId}
+                onChange={(e) => setForm((f) => ({ ...f, agencyId: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="">— choose an agency —</option>
+                {createAgencies.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </div>
+          )}
           <div className="flex gap-3 mt-4">
             <button
               onClick={() => setShowCreate(false)}
