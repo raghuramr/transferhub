@@ -153,7 +153,7 @@ function createDeck({ title, footer, titleWidth = 12.1 }) {
       for (let i = 0; i < TEAM.length; i++) {
         const m = TEAM[i];
         const x = 0.6 + i * (cw + gap), y = 1.55;
-        k.card(s, x, y, cw, 4.55, C.tint, 'Team card ' + m.name);
+        k.card(s, x, y, cw, 4.15, C.tint, 'Team card ' + m.name);
         s.addImage({ data: await facePng(m), x: x + 0.35, y: y + 0.3, w: 1.6, h: 1.6, altText: 'Photo of ' + m.name });
         s.addShape(pres.ShapeType.ellipse, { x: x + 0.35, y: y + 0.3, w: 1.6, h: 1.6, fill: { color: C.white, transparency: 100 }, line: { color: C.maroon, width: 2.5 } });
         k.text(s, m.name, { x: x + 0.1, y: y + 2.05, w: cw - 0.2, h: 0.7, align: 'center', valign: 'middle', fontFace: THEME.headFontFace, fontSize: 17, bold: true, color: C.maroon });

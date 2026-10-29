@@ -72,7 +72,7 @@ IDs follow [`understanding/03_business_rules.md`](understanding/03_business_rule
 | Outcomes | OUT-01..06: BU equivalent, elective, no credit, BU-only; one external course to several BU courses |
 | Credits | CR-01/02: quarter credits × 2/3, truncated; CR-04: 5-credit lab courses (open question to BU) |
 | Grades | GR-01: C or higher; GR-02: external grades not in GPA; P/F and S/U go to review |
-| Caps and eligibility | GR-04: external-credit cap including AP/IB/A-level (68/60/80 by applicant type); GR-05: course age, accreditation, no internships/research/military/life experience |
+| Caps and eligibility | GR-04: external-credit cap including AP/IB/A-level (68 for transfers, 60 for first-year/dual enrollment, 68 for current students; per university); GR-05: course age, accreditation, no internships/research/military/life experience |
 | Programme | PRG-01: the Hub is never satisfied by transfer; PRG-02: all credit within one year; PRG-03: "must be taken at BU"; PRG-04..08: programme caps and substitutions |
 | International | Coursework outside the US goes to International Admissions |
 

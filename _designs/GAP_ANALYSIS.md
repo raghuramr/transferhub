@@ -32,7 +32,7 @@ Legend: ✅ built · 🟡 partial · ❌ gap · ⭐ beyond the ask
 | CR-04 5-credit NU lab course | 🟡 | Credits stored as given; no explicit rule (BU never stated one — open question) |
 | GR-01 C or higher; C- not eligible | ✅ | Plus policy engine: P/F & S/U → review (exceptions: Spring 2020, mandated P/F), per-university minimum |
 | GR-02 external grades not in GPA | ✅ | Not computed |
-| GR-04 68/60/80 external-credit cap incl. AP/IB/A-level | ✅ ⭐ | `TransferPolicyService`, per-university thresholds |
+| GR-04 external-credit cap (68 transfer / 60 first-year / 68 current student) incl. AP/IB/A-level | ✅ ⭐ | `TransferPolicyService`, per-university thresholds |
 | GR-05 5-year age, accreditation, no internships/research/military/life experience | ✅ ⭐ | Flags stored per course and shown in brief + student view |
 | GR-06 / PRG-01 Hub never satisfied by transfer | ✅ | Always stated in brief and student summary |
 | **PRG-02 all credits within one year of starting** | ✅ | Credit-deadline tracker: per-university months, `past_deadline` review flag, progress/staff badges, 90/30/7-day and overdue reminders (migration 024; SQL unverified until applied) |
