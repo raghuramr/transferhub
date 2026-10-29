@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { usersApi, api, accountApi, permissionsApi } from '../../lib/api';
+import { usersApi, api, accountApi, permissionsApi, getErrorMessage } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
 import { Users, UserPlus, Lock, Unlock, MapPin, Upload, Download, Camera, Trash2 } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
@@ -405,6 +405,9 @@ function EditAndScopePanel({ user }: { user: UserRow }) {
         {saveEditMutation.isSuccess && (
           <p className="mt-2 text-xs text-green-600">Saved.</p>
         )}
+        {saveEditMutation.isError && (
+          <p className="mt-2 text-xs text-red-600">{getErrorMessage(saveEditMutation.error, 'Could not save the user.')}</p>
+        )}
       </div>
 
       {/* Scope section */}
@@ -726,6 +729,9 @@ export default function UserManagement({ withRoleTabs = false }: { withRoleTabs?
                 {createAgencies.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
+          )}
+          {createMutation.isError && (
+            <p className="mt-3 text-sm text-red-600">{getErrorMessage(createMutation.error, 'Could not create the user.')}</p>
           )}
           <div className="flex gap-3 mt-4">
             <button
