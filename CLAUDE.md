@@ -488,6 +488,11 @@ now does too (previously new programs were invisible to `publicPrograms()`).
 - `GET /ai-controls/readiness` powers a setup checklist card (AI key, email, migration,
   default workflow, stages with no approver, stalled automation, overdue).
 - `GET /workflows/insights` + Insights tab: per-stage turnaround/backlog/lateness.
+- **AI spend reporting**: the super admin dashboard payload carries a separate `ai` section
+  (`DashboardService.aiSection`, built from `AiUsageService.summary`/`byRequest`, so its numbers
+  match AI Controls) rendered as a violet "AI agents" block under "Transfer operations".
+  AI Controls shows "Spent this month" (`monthCostUsd`), spend not tied to a request
+  (`unlinked`), and a "$ Spent by request" tab with matching/documents/briefs cost split.
 - AI Controls: Economy/Balanced/Accuracy presets and a monthly-budget meter.
 - Fixed: the designer posted server-only fields (`stageKey`, approver `id`...) that the API's
   whitelist validation rejects; it now sends only editable fields.

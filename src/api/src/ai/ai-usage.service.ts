@@ -87,6 +87,14 @@ export class AiUsageService {
     );
   }
 
+  /** Estimated USD spent so far this calendar month. */
+  costThisMonth(): Promise<number> {
+    return this.scalar(
+      `SELECT SUM(EstimatedCostUsd) AS n FROM AiUsageLog
+       WHERE CreatedAt >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)`,
+    );
+  }
+
   tokensForTranscript(transcriptId: string): Promise<number> {
     return this.scalar(
       `SELECT SUM(CAST(InputTokens AS BIGINT) + OutputTokens + CacheReadTokens + CacheWriteTokens) AS n
@@ -159,6 +167,12 @@ export class AiUsageService {
        FROM AiUsageLog WHERE Skipped = 1 AND CreatedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME()) GROUP BY SkipReason`,
       [since],
     );
+    // Spend that is not tied to a transfer request (benchmarks, provider tests, documents read before submission).
+    const unlinked = await this.db.query(
+      `SELECT ISNULL(SUM(EstimatedCostUsd), 0) AS costUsd, COUNT(CASE WHEN Skipped = 0 THEN 1 END) AS calls
+       FROM AiUsageLog WHERE TranscriptId IS NULL AND CreatedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME())`,
+      [since],
+    );
     const prefilter = await this.db.query(
       `SELECT ISNULL(SUM(CAST(EstTokensSaved AS BIGINT)), 0) AS tokensSaved
        FROM AiUsageLog WHERE Skipped = 0 AND CreatedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME())`,
@@ -192,6 +206,8 @@ export class AiUsageService {
       skippedBy: bySkip.recordset.map((r) => this.num(r, ['n', 'tokensSaved'])),
       prefilterTokensSaved,
       monthTokens: Number(await this.tokensThisMonth()),
+      monthCostUsd: Number(await this.costThisMonth()),
+      unlinked: this.num(unlinked.recordset[0], ['costUsd', 'calls']),
     };
   }
 
@@ -207,6 +223,9 @@ export class AiUsageService {
               ISNULL(SUM(CAST(l.OutputTokens AS BIGINT)), 0) AS outputTokens,
               ISNULL(SUM(CAST(l.CacheReadTokens + l.CacheWriteTokens AS BIGINT)), 0) AS cacheTokens,
               ISNULL(SUM(l.EstimatedCostUsd), 0) AS costUsd,
+              ISNULL(SUM(CASE WHEN l.Operation IN ('match','escalate') THEN l.EstimatedCostUsd END), 0) AS matchCostUsd,
+              ISNULL(SUM(CASE WHEN l.Operation = 'read' THEN l.EstimatedCostUsd END), 0) AS readCostUsd,
+              ISNULL(SUM(CASE WHEN l.Operation IN ('brief','summary') THEN l.EstimatedCostUsd END), 0) AS briefCostUsd,
               ISNULL(SUM(CAST(l.EstTokensSaved AS BIGINT)), 0) AS tokensSaved
        FROM AiUsageLog l
        JOIN Transcripts t  ON t.Id = l.TranscriptId
@@ -214,10 +233,12 @@ export class AiUsageService {
        JOIN Institutions i ON i.Id = t.InstitutionId
        WHERE l.CreatedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME())
        GROUP BY t.Id, u.FirstName, u.LastName, i.Name, t.ReceivedAt, t.Status
-       ORDER BY SUM(CAST(l.InputTokens + l.OutputTokens + l.CacheReadTokens + l.CacheWriteTokens AS BIGINT)) DESC`,
+       ORDER BY SUM(l.EstimatedCostUsd) DESC, SUM(CAST(l.InputTokens + l.OutputTokens + l.CacheReadTokens + l.CacheWriteTokens AS BIGINT)) DESC`,
       [{ name: 'days', type: sql.Int, value: days }],
     );
-    return res.recordset.map((r) => this.num(r, ['calls', 'cacheHits', 'inputTokens', 'outputTokens', 'cacheTokens', 'costUsd', 'tokensSaved']));
+    return res.recordset.map((r) =>
+      this.num(r, ['calls', 'cacheHits', 'inputTokens', 'outputTokens', 'cacheTokens', 'costUsd', 'matchCostUsd', 'readCostUsd', 'briefCostUsd', 'tokensSaved']),
+    );
   }
 
   async forTranscript(transcriptId: string) {

@@ -259,6 +259,9 @@ export interface UsageSummary {
   skippedBy: { reason: string; n: number; tokensSaved: number }[];
   prefilterTokensSaved: number;
   monthTokens: number;
+  monthCostUsd?: number;
+  /** Spend not tied to a transfer request (benchmarks, provider tests...). */
+  unlinked?: { costUsd: number; calls: number };
   cache: { entries: number; hits: number };
 }
 
@@ -274,6 +277,9 @@ export interface RequestUsageRow {
   outputTokens: number;
   cacheTokens: number;
   costUsd: number;
+  matchCostUsd?: number;
+  readCostUsd?: number;
+  briefCostUsd?: number;
   tokensSaved: number;
 }
 

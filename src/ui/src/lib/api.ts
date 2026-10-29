@@ -677,7 +677,11 @@ export interface DashboardChart {
   data: Record<string, string | number>[];
   series?: { key: string; label: string }[];
 }
-export interface DashboardPayload { role: string; days: number; ranges: number[]; generatedAt: string; kpis: DashboardKpi[]; charts: DashboardChart[] }
+export interface DashboardPayload {
+  role: string; days: number; ranges: number[]; generatedAt: string; kpis: DashboardKpi[]; charts: DashboardChart[];
+  /** Super admin only: AI usage and spend, kept apart from the regular operations numbers. */
+  ai?: { kpis: DashboardKpi[]; charts: DashboardChart[] };
+}
 export interface BentoPayload {
   currency: string;
   revenue: { label: string; value: number; delta: string; note?: string; caption?: string; series: { label: string; value: number }[] };

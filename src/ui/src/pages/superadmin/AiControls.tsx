@@ -104,9 +104,9 @@ function UsageTab({ days }: { days: number }) {
       <MatcherAccuracyCard />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat icon={<Coins size={13} />} label="Tokens used" value={fmt(spent)} hint={`${fmt(s.totals.inputTokens)} in · ${fmt(s.totals.outputTokens)} out`} />
-        <Stat icon={<Gauge size={13} />} label="Estimated cost" value={usd(s.totals.costUsd)} hint={`${fmt(s.totals.requests)} requests`} />
+        <Stat icon={<Gauge size={13} />} label="Spent in period" value={usd(s.totals.costUsd)} hint={`${fmt(s.totals.requests)} requests${s.unlinked?.costUsd ? ` · ${usd(s.unlinked.costUsd)} not tied to a request` : ''}`} />
         <Stat icon={<Sparkles size={13} />} label="Tokens saved" value={fmt(saved)} hint="cache hits, skipped calls, catalogue shortlist" />
-        <Stat icon={<Zap size={13} />} label="This month" value={fmt(s.monthTokens)} hint={`${fmt(s.totals.calls)} AI calls · ${fmt(s.totals.skippedCalls)} skipped`} />
+        <Stat icon={<Zap size={13} />} label="Spent this month" value={usd(s.monthCostUsd ?? 0)} hint={`${fmt(s.monthTokens)} tokens · ${fmt(s.totals.calls)} AI calls · ${fmt(s.totals.skippedCalls)} skipped`} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" data-testid="ai-kpis">
@@ -134,7 +134,7 @@ function UsageTab({ days }: { days: number }) {
         {s.byDay.length === 0 ? <p className="text-sm text-gray-400">No AI activity in this period.</p> : (
           <div className="flex h-40 items-end gap-1">
             {s.byDay.map((d) => (
-              <div key={d.day} className="group relative flex h-full flex-1 flex-col justify-end" title={`${d.day}: ${fmt(d.tokens)} used, ${fmt(d.tokensSaved)} saved`}>
+              <div key={d.day} className="group relative flex h-full flex-1 flex-col justify-end" title={`${d.day}: ${fmt(d.tokens)} used (${usd(d.costUsd)}), ${fmt(d.tokensSaved)} saved`}>
                 <div className="rounded-t bg-emerald-200" style={{ height: `${(d.tokensSaved / maxDay) * 100}%` }} />
                 <div className="bg-brand-700" style={{ height: `${(d.tokens / maxDay) * 100}%`, minHeight: d.tokens ? 2 : 0 }} />
               </div>
@@ -509,39 +509,69 @@ function PlaybookTab() {
   );
 }
 
-// ── Tokens by request ──
+// ── Spend and tokens by request ──
 function RequestsTab({ days }: { days: number }) {
   const { data, isLoading } = useQuery({ queryKey: ['ai-usage-requests', days], queryFn: () => aiControlsApi.byRequest(days) });
   const rows = data?.data ?? [];
   if (isLoading) return <p className="text-gray-400">Loading…</p>;
+  const total = rows.reduce((n, r) => n + Number(r.costUsd), 0);
+  const maxCost = Math.max(0, ...rows.map((r) => Number(r.costUsd)));
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-      <table className="w-full min-w-[48rem] text-sm">
-        <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
-          <tr>
-            <th className="px-4 py-2.5">Request</th><th className="px-4 py-2.5">University</th>
-            <th className="px-4 py-2.5 text-right">AI calls</th><th className="px-4 py-2.5 text-right">Cache hits</th>
-            <th className="px-4 py-2.5 text-right">Tokens</th><th className="px-4 py-2.5 text-right">Saved</th><th className="px-4 py-2.5 text-right">Cost</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {rows.map((r) => (
-            <tr key={r.transcriptId} className="hover:bg-gray-50">
-              <td className="px-4 py-2.5">
-                <Link to={`/requests/${r.transcriptId}`} className="font-medium text-brand-800 hover:underline">{r.studentName}</Link>
-                <div className="text-xs text-gray-400">{new Date(r.receivedAt).toLocaleDateString()} · {r.status}</div>
-              </td>
-              <td className="px-4 py-2.5 text-gray-600">{r.institutionName}</td>
-              <td className="px-4 py-2.5 text-right">{fmt(r.calls)}</td>
-              <td className="px-4 py-2.5 text-right">{fmt(r.cacheHits)}</td>
-              <td className="px-4 py-2.5 text-right font-medium">{fmt(Number(r.inputTokens) + Number(r.outputTokens))}</td>
-              <td className="px-4 py-2.5 text-right text-emerald-700">{fmt(r.tokensSaved)}</td>
-              <td className="px-4 py-2.5 text-right">{usd(r.costUsd)}</td>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat icon={<Coins size={13} />} label="Spent on these requests" value={usd(total)} hint={`${fmt(rows.length)} requests with AI usage`} />
+        <Stat icon={<Gauge size={13} />} label="Average per request" value={usd(rows.length ? total / rows.length : 0)} hint="estimated" />
+        <Stat icon={<Zap size={13} />} label="Most expensive" value={usd(maxCost)} hint={rows[0]?.studentName ?? '-'} />
+        <Stat icon={<Sparkles size={13} />} label="Tokens saved" value={fmt(rows.reduce((n, r) => n + Number(r.tokensSaved), 0))} hint="cache hits and shortlisting" />
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <table className="w-full min-w-[60rem] text-sm">
+          <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <th className="px-4 py-2.5">Request</th><th className="px-4 py-2.5">University</th>
+              <th className="px-4 py-2.5 text-right">AI calls</th><th className="px-4 py-2.5 text-right">Tokens</th>
+              <th className="px-4 py-2.5 text-right">Saved</th>
+              <th className="px-4 py-2.5 text-right">Matching</th><th className="px-4 py-2.5 text-right">Documents</th>
+              <th className="px-4 py-2.5 text-right">Briefs</th><th className="px-4 py-2.5 text-right">$ Spent</th>
             </tr>
-          ))}
-          {rows.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No AI usage recorded in this period.</td></tr>}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.map((r) => (
+              <tr key={r.transcriptId} className="hover:bg-gray-50">
+                <td className="px-4 py-2.5">
+                  <Link to={`/requests/${r.transcriptId}`} className="font-medium text-brand-800 hover:underline">{r.studentName}</Link>
+                  <div className="text-xs text-gray-400">{new Date(r.receivedAt).toLocaleDateString()} · {r.status}</div>
+                </td>
+                <td className="px-4 py-2.5 text-gray-600">{r.institutionName}</td>
+                <td className="px-4 py-2.5 text-right">{fmt(r.calls)}<span className="block text-xs text-gray-400">{fmt(r.cacheHits)} cache hits</span></td>
+                <td className="px-4 py-2.5 text-right">{fmt(Number(r.inputTokens) + Number(r.outputTokens))}</td>
+                <td className="px-4 py-2.5 text-right text-emerald-700">{fmt(r.tokensSaved)}</td>
+                <td className="px-4 py-2.5 text-right text-gray-600">{usd(r.matchCostUsd)}</td>
+                <td className="px-4 py-2.5 text-right text-gray-600">{usd(r.readCostUsd)}</td>
+                <td className="px-4 py-2.5 text-right text-gray-600">{usd(r.briefCostUsd)}</td>
+                <td className="px-4 py-2.5 text-right">
+                  <span className="font-semibold text-gray-900">{usd(r.costUsd)}</span>
+                  <div className="ml-auto mt-1 h-1 w-20 overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-full rounded-full bg-violet-500" style={{ width: `${maxCost ? (Number(r.costUsd) / maxCost) * 100 : 0}%` }} />
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">No AI usage recorded in this period.</td></tr>}
+          </tbody>
+          {rows.length > 0 && (
+            <tfoot className="border-t border-gray-200 bg-gray-50 text-sm font-semibold">
+              <tr>
+                <td className="px-4 py-2.5" colSpan={5}>Total</td>
+                <td className="px-4 py-2.5 text-right">{usd(rows.reduce((n, r) => n + Number(r.matchCostUsd ?? 0), 0))}</td>
+                <td className="px-4 py-2.5 text-right">{usd(rows.reduce((n, r) => n + Number(r.readCostUsd ?? 0), 0))}</td>
+                <td className="px-4 py-2.5 text-right">{usd(rows.reduce((n, r) => n + Number(r.briefCostUsd ?? 0), 0))}</td>
+                <td className="px-4 py-2.5 text-right">{usd(total)}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
     </div>
   );
 }
@@ -1169,7 +1199,7 @@ export default function AiControls() {
   const [tab, setTab] = useState<Tab>('usage');
   const [days, setDays] = useState(30);
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'usage', label: 'Usage' }, { key: 'requests', label: 'By request' },
+    { key: 'usage', label: 'Usage' }, { key: 'requests', label: '$ Spent by request' },
     { key: 'settings', label: 'Settings' }, { key: 'providers', label: 'Providers' }, { key: 'benchmark', label: 'Benchmark' }, { key: 'learning', label: 'Learning' }, { key: 'playbook', label: 'Agent playbook' },
   ];
   return (

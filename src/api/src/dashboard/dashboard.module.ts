@@ -3,9 +3,10 @@ import { DashboardService } from './dashboard.service';
 import { BentoService } from './bento.service';
 import { DashboardController } from './dashboard.controller';
 import { AuthModule } from '../auth/auth.module';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, AiModule],
   providers: [DashboardService, BentoService],
   controllers: [DashboardController],
 })

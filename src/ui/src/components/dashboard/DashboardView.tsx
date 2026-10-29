@@ -5,8 +5,9 @@ import {
   PolarAngleAxis, RadialBar, RadialBarChart, ResponsiveContainer, Sector, Tooltip, Treemap, XAxis, YAxis,
 } from 'recharts';
 import { AnimatePresence, animate, motion, useMotionValue } from 'framer-motion';
-import { BarChart3, Filter, LayoutGrid, LineChart as LineIcon, PieChart as PieIcon, RefreshCw, Target } from 'lucide-react';
-import { dashboardApi, type DashboardChart, type DashboardKpi } from '../../lib/api';
+import { BarChart3, Filter, LayoutGrid, LineChart as LineIcon, PieChart as PieIcon, RefreshCw, Sparkles, Target, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { dashboardApi, type DashboardChart, type DashboardKpi, type DashboardPayload } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { AnalyticsBento } from '../ui/analytics-bento';
 
@@ -57,7 +58,8 @@ function Ring({ pct, color }: { pct: number; color: string }) {
   );
 }
 
-export function KpiGrid({ kpis }: { kpis: DashboardKpi[] }) {
+/** `accent` recolours the cards' top bar so a section (e.g. AI) reads as its own group. */
+export function KpiGrid({ kpis, accent }: { kpis: DashboardKpi[]; accent?: string }) {
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
       {kpis.map((k, i) => {
@@ -71,7 +73,7 @@ export function KpiGrid({ kpis }: { kpis: DashboardKpi[] }) {
             transition={{ delay: i * 0.05, duration: 0.35, type: 'spring', stiffness: 260, damping: 22 }}
             className="relative flex items-center justify-between gap-3 overflow-hidden rounded-xl border border-brand-100/60 bg-white p-4 shadow-sm shadow-brand-900/5 transition-shadow hover:shadow-md"
           >
-            <span className="absolute inset-x-0 top-0 h-0.5" style={{ background: tone.ring, opacity: 0.55 }} />
+            <span className="absolute inset-x-0 top-0 h-0.5" style={{ background: accent ?? tone.ring, opacity: accent ? 0.9 : 0.55 }} />
             <div className="min-w-0">
               <p className={cn('text-2xl font-bold', tone.text)}>
                 {typeof k.value === 'number' ? <CountUp value={k.value} /> : k.value}
@@ -405,6 +407,7 @@ export function DashboardView({ withRange = true }: { withRange?: boolean }) {
       {error && <p className="py-4 text-center text-sm text-red-500">Could not load the dashboard.</p>}
       {d && (
         <>
+          {d.ai && <SectionHeading className="text-brand-800" icon={<Users size={15} />} title="Transfer operations" subtitle="Requests, students and reviews handled by people" />}
           <KpiGrid key={`k-${d.days}`} kpis={d.kpis} />
           {bentoOk ? (
             <AnalyticsBento className="w-full" {...bento} currency={bento.currency ?? ''} credit={false} fontFamily="inherit" />
@@ -419,8 +422,52 @@ export function DashboardView({ withRange = true }: { withRange?: boolean }) {
               {d.charts.map((c, i) => <ChartCard key={`${c.key}-${d.days}`} chart={c} index={i} />)}
             </div>
           )}
+          {d.ai && <AiSection ai={d.ai} days={d.days} />}
         </>
       )}
     </div>
+  );
+}
+
+function SectionHeading({ icon, title, subtitle, className }: { icon: React.ReactNode; title: string; subtitle?: string; className?: string }) {
+  return (
+    <div className={cn('flex items-center gap-2', className)}>
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-current/10">{icon}</span>
+      <div>
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+const AI_ACCENT = '#7c3aed';
+
+/** AI usage and spend, visually separated from the regular operations numbers above. */
+function AiSection({ ai, days }: { ai: NonNullable<DashboardPayload['ai']>; days: number }) {
+  return (
+    <section className="space-y-4 rounded-2xl border border-violet-200 bg-violet-50/40 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <SectionHeading
+          className="text-violet-800"
+          icon={<Sparkles size={15} />}
+          title="AI agents"
+          subtitle={`Work done by AI and its estimated cost (last ${days} days)`}
+        />
+        <Link to="/superadmin/settings/ai-controls" className="text-xs font-medium text-violet-700 hover:underline">
+          Open AI Controls →
+        </Link>
+      </div>
+      {ai.kpis.length > 0 && <KpiGrid key={`ai-k-${days}`} kpis={ai.kpis} accent={AI_ACCENT} />}
+      {ai.charts.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          {ai.charts.map((c, i) => <ChartCard key={`${c.key}-${days}`} chart={c} index={i} />)}
+        </div>
+      ) : (
+        <p className="rounded-xl border border-dashed border-violet-200 bg-white p-6 text-center text-sm text-gray-400">
+          No AI calls recorded in this period.
+        </p>
+      )}
+    </section>
   );
 }

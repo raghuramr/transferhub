@@ -3,6 +3,7 @@ import * as sql from 'mssql';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import { ScopeService } from '../policy/scope.service';
 import { SchemaService } from '../policy/schema.service';
+import { AiUsageService } from '../ai/ai-usage.service';
 
 export interface Kpi {
   key: string;
@@ -44,6 +45,7 @@ export class DashboardService {
     private db: DatabaseService,
     private scope: ScopeService,
     private schema: SchemaService,
+    private aiUsage: AiUsageService,
   ) {}
 
   private async rows(query: string, inputs: QueryInput[] = []): Promise<Row[]> {
@@ -404,7 +406,12 @@ export class DashboardService {
     }, []);
     if (regs.length) charts.push({ key: 'registrations', title: 'New student registrations', type: 'line', data: this.pairs(regs) });
 
-    if (isSuper) await this.superExtras(kpis, charts, d, days);
+    if (isSuper) {
+      await this.superExtras(kpis, charts, d, days);
+      // AI work is reported separately so it is never mixed into the regular operations numbers.
+      const ai = await this.safe('ai section', () => this.aiSection(days), null);
+      return { kpis, charts, ...(ai ? { ai } : {}) };
+    }
     return { kpis, charts };
   }
 
@@ -442,21 +449,76 @@ export class DashboardService {
       return this.rows(`SELECT COALESCE(DocumentType, EntityType) AS name, COUNT(*) AS value FROM Uploads WHERE IsPublic = 0 GROUP BY COALESCE(DocumentType, EntityType) ORDER BY COUNT(*) DESC`);
     }, []);
     if (docs.length) charts.push({ key: 'docs', title: 'Stored documents by type', type: 'bar', data: this.pairs(docs).map((p) => ({ ...p, name: this.nice(p.name) })) });
+  }
 
-    const ai = await this.safe('ai usage', async () => {
-      if (!(await this.schema.has('AiUsageLog'))) return [];
-      return this.rows(
-        `SELECT CONVERT(VARCHAR(7), CreatedAt, 120) AS name, COUNT(*) AS calls, CAST(SUM(EstimatedCostUsd) AS FLOAT) AS cost
-         FROM AiUsageLog WHERE Skipped = 0 AND CreatedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME()) GROUP BY CONVERT(VARCHAR(7), CreatedAt, 120) ORDER BY 1`,
-        [d],
+  /** Super admin: AI usage and spend (same numbers as AI Controls, which reads the same AiUsageLog). */
+  private async aiSection(days: number): Promise<{ kpis: Kpi[]; charts: Chart[] } | null> {
+    if (!(await this.schema.has('AiUsageLog'))) return null;
+    const s = await this.aiUsage.summary(days);
+    const usd = (n: number) => `$${n.toFixed(n > 0 && n < 1 ? 4 : 2)}`;
+    const pct = (n: number) => Math.round(n * 100);
+    const spent = s.totals.inputTokens + s.totals.outputTokens;
+    const saved = s.totals.tokensSaved + s.prefilterTokensSaved;
+
+    const totalRequests = await this.safe('ai share', async () => {
+      const r = await this.rows(`SELECT COUNT(*) AS n FROM Transcripts WHERE ReceivedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME())`, [
+        { name: 'days', type: sql.Int, value: days },
+      ]);
+      return Number(r[0]?.n ?? 0);
+    }, 0);
+    const autoApproved = await this.safe('ai auto-approved', async () => {
+      if (!(await this.schema.has('TranscriptStages', 'AutoApproved'))) return null;
+      const r = await this.rows(
+        `SELECT COUNT(*) AS n FROM TranscriptStages ts JOIN Transcripts t ON t.Id = ts.TranscriptId
+         WHERE ts.AutoApproved = 1 AND t.ReceivedAt >= DATEADD(DAY, -@days, SYSUTCDATETIME())`,
+        [{ name: 'days', type: sql.Int, value: days }],
       );
-    }, []);
-    if (ai.length) {
+      return Number(r[0]?.n ?? 0);
+    }, null as number | null);
+
+    const kpis: Kpi[] = [
+      { key: 'aiSpend', label: `AI spend (last ${days} days)`, value: usd(s.totals.costUsd), hint: s.unlinked.costUsd > 0 ? `${usd(s.unlinked.costUsd)} not tied to a request` : 'estimated', tone: 'neutral' },
+      { key: 'aiMonth', label: 'AI spend this month', value: usd(s.monthCostUsd), hint: `${s.monthTokens.toLocaleString()} tokens` },
+      { key: 'aiPerRequest', label: 'AI cost per request', value: usd(s.kpis.costPerRequestUsd), hint: `${s.kpis.tokensPerRequest.toLocaleString()} tokens per request` },
+      {
+        key: 'aiRequests', label: 'Requests processed by AI', value: s.totals.requests,
+        hint: totalRequests ? `of ${totalRequests} requests received` : undefined,
+        gauge: totalRequests ? Math.min(100, Math.round((s.totals.requests / totalRequests) * 100)) : undefined,
+      },
+      { key: 'aiCalls', label: 'AI calls', value: s.totals.calls, hint: `${s.totals.skippedCalls} skipped · avg ${Math.round(s.kpis.avgLatencyMs)} ms` },
+      { key: 'aiTokens', label: 'Tokens used', value: spent, hint: `${s.totals.inputTokens.toLocaleString()} in · ${s.totals.outputTokens.toLocaleString()} out` },
+      { key: 'aiSaved', label: 'Tokens saved', value: saved, tone: 'good', gauge: pct(s.kpis.savingsRate), hint: `${pct(s.kpis.cacheHitRate)}% cache hits` },
+    ];
+    if (autoApproved !== null) kpis.push({ key: 'aiAuto', label: 'Stages auto-approved', value: autoApproved, tone: 'good' });
+
+    const charts: Chart[] = [];
+    if (s.byDay.length) {
       charts.push({
-        key: 'ai', title: 'AI usage', subtitle: `Calls and estimated cost (last ${days} days)`, type: 'bar',
-        series: [{ key: 'calls', label: 'Calls' }, { key: 'cost', label: 'Cost (USD)' }],
-        data: ai.map((r) => ({ name: String(r.name), calls: Number(r.calls), cost: Number(Number(r.cost).toFixed(2)) })),
+        key: 'aiDaily', title: 'AI spend per day', subtitle: 'Estimated USD', type: 'area',
+        series: [{ key: 'cost', label: 'Cost (USD)' }],
+        data: s.byDay.map((r) => ({ name: String(r.day), cost: Number(Number(r.costUsd).toFixed(4)) })),
       });
     }
+    const ops = s.byOperation.filter((o) => o.costUsd > 0 || o.calls > 0);
+    if (ops.length) {
+      charts.push({
+        key: 'aiByOperation', title: 'AI spend by task', subtitle: 'Matching, document reading, briefs', type: 'pie',
+        data: ops.map((o) => ({ name: this.nice(String(o.operation)), value: Number(Number(o.costUsd).toFixed(4)) })),
+      });
+    }
+    if (s.byModel.length) {
+      charts.push({
+        key: 'aiByModel', title: 'AI spend by model', type: 'hbar',
+        data: s.byModel.map((m) => ({ name: String(m.model), value: Number(Number(m.costUsd).toFixed(4)) })),
+      });
+    }
+    const top = (await this.safe('ai top requests', () => this.aiUsage.byRequest(days, 8), [])).filter((r) => r.costUsd > 0);
+    if (top.length) {
+      charts.push({
+        key: 'aiTopRequests', title: 'Most expensive requests', subtitle: 'Estimated USD per transfer request', type: 'hbar',
+        data: top.map((r) => ({ name: String(r.studentName), value: Number(Number(r.costUsd).toFixed(4)) })),
+      });
+    }
+    return { kpis, charts };
   }
 }
