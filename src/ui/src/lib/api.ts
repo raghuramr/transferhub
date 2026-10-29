@@ -668,7 +668,15 @@ export const verificationApi = {
 };
 
 // ── Dashboards (role-aware KPIs + charts) ─────────────────────────
-export interface DashboardKpi { key: string; label: string; value: number | string; hint?: string; tone?: 'good' | 'warn' | 'bad' | 'neutral'; gauge?: number }
+export interface DashboardKpi {
+  key: string; label: string; value: number | string; hint?: string; tone?: 'good' | 'warn' | 'bad' | 'neutral'; gauge?: number;
+  /** Formatting hint; `num` is the raw number when `value` is a preformatted string. */
+  unit?: 'count' | 'usd' | 'pct' | 'days' | 'ms'; num?: number;
+  /** Equal buckets across the selected period, oldest first. */
+  spark?: number[];
+  /** Relative change vs the previous period (0.12 = +12%); null = no baseline. */
+  delta?: number | null; deltaLabel?: string; good?: 'up' | 'down';
+}
 export interface DashboardChart {
   key: string;
   title: string;
