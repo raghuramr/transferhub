@@ -22,17 +22,18 @@ export class EvaluationsController {
       statusList: status ? status.split(',') : undefined,
       assignedToMe: assigned === 'me',
       userId: req.user.id,
+      viewer: req.user,
     });
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.evaluationsService.findById(id);
+  findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.evaluationsService.findById(id, req.user);
   }
 
   @Post(':id/decide')
   decide(@Param('id') id: string, @Body() dto: DecideEvaluationDto, @Req() req: AuthenticatedRequest) {
-    return this.evaluationsService.decide(id, dto, req.user.id);
+    return this.evaluationsService.decide(id, dto, req.user.id, req.user);
   }
 
   @Post(':id/assign')

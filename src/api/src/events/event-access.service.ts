@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
-import { ScopeService } from '../policy/scope.service';
+import { ScopeService, isScopedStaffRole } from '../policy/scope.service';
 import type { EventAccess, HubViewer } from './live-hub';
 import type { LiveEvent } from './event-bus.service';
 
@@ -45,7 +45,7 @@ export class EventAccessService implements EventAccess {
       if (!o) return false;
       return viewer.role === 'student' ? o.student === uid : o.submitter === uid;
     }
-    if (viewer.role === 'admin') {
+    if (isScopedStaffRole(viewer.role)) {
       const key = `${uid}:${transcriptId}`;
       const hit = this.decisions.get(key);
       if (hit && Date.now() - hit.at < DECISION_TTL_MS) return hit.ok;
@@ -54,6 +54,6 @@ export class EventAccessService implements EventAccess {
       this.decisions.set(key, { ok, at: Date.now() });
       return ok;
     }
-    return viewer.role === 'super_admin' || viewer.role === 'faculty';
+    return viewer.role === 'super_admin';
   }
 }

@@ -123,7 +123,7 @@ function Brief({ brief, evalBase, requestId, canAct, onDone, syllabusCourseIds }
       <div className="overflow-x-auto" ref={wrapRef}>
         <table className="w-full text-left text-sm">
           <thead className="text-xs uppercase tracking-wide text-gray-400">
-            <tr><th className="py-1.5 pr-3">Course</th><th className="pr-3">Grade</th><th className="pr-3">Credits</th><th className="pr-3">AI suggestion</th><th className="pr-3">Decision</th><th /></tr>
+            <tr><th className="py-1.5 pr-3">Course</th><th className="pr-3">Term</th><th className="pr-3">Grade</th><th className="pr-3">Credits</th><th className="pr-3">Status</th><th className="pr-3">AI suggestion</th><th className="pr-3">Decision</th><th /></tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {brief.courses.map((c) => (
@@ -142,8 +142,15 @@ function Brief({ brief, evalBase, requestId, canAct, onDone, syllabusCourseIds }
                     </button>
                   )}
                 </td>
+                <td className="pr-3 whitespace-nowrap text-xs text-gray-600">{c.term || '—'}</td>
                 <td className="pr-3">{c.grade}</td>
-                <td className="pr-3">{c.credits}</td>
+                <td className="pr-3 whitespace-nowrap">
+                  {c.credits}
+                  {c.normalisedCredits != null && c.originalCredits != null && Number(c.normalisedCredits) !== Number(c.originalCredits) && (
+                    <div className="text-xs text-gray-500">{c.originalCredits} taken → {c.normalisedCredits} converted</div>
+                  )}
+                </td>
+                <td className="pr-3 text-xs capitalize text-gray-600">{c.lane.replace('_', ' ')}</td>
                 <td className="pr-3">
                   {c.suggested ? (
                     <div>
@@ -154,7 +161,7 @@ function Brief({ brief, evalBase, requestId, canAct, onDone, syllabusCourseIds }
                         </div>
                       )}
                     </div>
-                  ) : <span className="text-xs text-gray-400">{c.lane.replace('_', ' ')}</span>}
+                  ) : <span className="text-xs text-gray-400">—</span>}
                 </td>
                 <td className="pr-3 text-xs text-gray-600">
                   {c.decided ? `${c.decided.outcome?.replace('_', ' ') ?? ''}${c.decided.code ? ` → ${c.decided.code}` : ''}${c.decided.awardedCredits != null ? ` (${c.decided.awardedCredits} cr)` : ''}` : '—'}
@@ -171,7 +178,7 @@ function Brief({ brief, evalBase, requestId, canAct, onDone, syllabusCourseIds }
               </tr>
               {c.evaluationId && openEval === c.evaluationId && (
                 <tr>
-                  <td colSpan={6} className="p-0 pb-3">
+                  <td colSpan={8} className="p-0 pb-3">
                     <div className="sticky left-0" style={{ width: wrapW > 0 ? wrapW : undefined }}>
                       <CourseComparison evaluationId={c.evaluationId} requestId={requestId} canDecide={canAct} />
                       <div className="mt-3"><NetworkPanel evaluationId={c.evaluationId} requestId={requestId} canDecide={canAct} /></div>
@@ -335,6 +342,10 @@ export default function RequestReview() {
   if (error || !tl) return <div className="p-8 text-center text-red-500">Could not load this request.</div>;
 
   const active = tl.stages.find((s) => s.status === 'active');
+  // The course detail belongs to the request, not to whichever stage happens to be active: a faculty
+  // reviewer whose stage has already been approved (or who is waiting for an earlier one) still needs
+  // the full course list, so fall back to the most recent stage that carries a brief.
+  const brief = active?.aiBrief ?? [...tl.stages].reverse().find((s) => s.aiBrief)?.aiBrief ?? null;
   const evalBase = role === 'faculty' ? '/faculty/evaluation' : '/admin/evaluation';
   const wfStatus = tl.transcript.workflowStatus;
 
@@ -378,6 +389,13 @@ export default function RequestReview() {
         ) : undefined}
       />
 
+      {tl.permissions.readOnly && (
+        <div className="mb-6 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+          This request is <strong>outgoing</strong> from your university - it is being decided at {tl.transcript.targetInstitutionName ?? 'the receiving university'}.
+          You can read it, add documents and send reminders, but not approve or decide its courses.
+        </div>
+      )}
+
       <OpenRequestsBanner transcriptId={id!} />
 
       {!tl.transcript.workflow && tl.transcript.evaluationKind !== 'preview' && (
@@ -396,7 +414,7 @@ export default function RequestReview() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
           <CreditHubCard credit={tl.credit} />
-          {active?.aiBrief && <Brief brief={active.aiBrief} evalBase={evalBase} requestId={id!} canAct={tl.permissions.canAct} onDone={set}
+          {brief && <Brief brief={brief} evalBase={evalBase} requestId={id!} canAct={tl.permissions.canAct} onDone={set}
             syllabusCourseIds={new Set(tl.documents.uploaded.filter((d) => d.docTypeKey === 'syllabus' && d.transcriptCourseId).map((d) => String(d.transcriptCourseId).toLowerCase()))} />}
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="mb-4 text-base font-semibold text-gray-900">Progress</h2>

@@ -5,7 +5,7 @@ import * as sql from 'mssql';
 import { SubmitTranscriptDto, UpdateTranscriptCourseDto } from './dto/create-transcript.dto';
 import { EmailService } from '../common/email.service';
 import { UploadsService } from '../uploads/uploads.service';
-import { ScopeService } from '../policy/scope.service';
+import { ScopeService, isScopedStaffRole } from '../policy/scope.service';
 import { TransferPolicyService, parseFlags } from '../policy/transfer-policy.service';
 import { SchemaService } from '../policy/schema.service';
 import { WorkflowEngineService } from '../requests/workflow-engine.service';
@@ -799,11 +799,14 @@ export class TranscriptsService {
       inputs.push({ name: 'status', type: sql.VarChar(20), value: filters.status });
     }
 
-    if (filters.requestingRole === 'admin' && filters.requestingUserId) {
-      // Admins assigned to universities see only requests targeting (or registered for) those universities.
-      const adminScope = await this.scopeService.universityScope({ id: filters.requestingUserId, role: 'admin' });
-      if (adminScope) where += ` AND ${this.scopeService.transcriptVisibleInScope(adminScope, 't', inputs)}`;
-    } else {
+    if (filters.requestingRole && isScopedStaffRole(filters.requestingRole) && filters.requestingUserId) {
+      // Admins and faculty assigned to universities see only requests coming INTO one of those
+      // universities (target) or going OUT of one (source). No scope rows = unrestricted.
+      const staffScope = await this.scopeService.universityScope({ id: filters.requestingUserId, role: filters.requestingRole });
+      if (staffScope) where += ` AND ${this.scopeService.transcriptVisibleInScope(staffScope, 't', inputs)}`;
+    } else if (filters.requestingRole !== 'super_admin') {
+      // Legacy source-institution narrowing, kept for the roles above that are not scoped staff.
+      // Super admins are never narrowed, even when they happen to carry scope rows of their own.
       const scope = await this.getUniversityScope(filters.requestingUserId);
       if (scope) {
         const scopeParams = scope.map((instId, i) => {
@@ -888,7 +891,7 @@ export class TranscriptsService {
     return transcript;
   }
 
-  /** Can this admin see the transcript? (true for everyone but scoped admins.) */
+  /** Can this staff member see the transcript? (true for everyone but scoped admins/faculty.) */
   async adminCanSee(transcriptId: string, viewer: { id: string; role: string }): Promise<boolean> {
     const ids = await this.scopeService.universityScope(viewer);
     if (!ids) return true;

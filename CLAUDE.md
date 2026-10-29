@@ -1219,3 +1219,30 @@ No migrations were added this session. Still to apply by the user: seed 020 (and
 - **Custom roles** (migration 032: `Roles.BaseRole/IsSystem/IsActive`): super admin creates roles on Roles & Permissions (`RolesManager`, `/permissions/roles` CRUD, audit `ROLE_CREATED/DELETED`). A custom role has its own grants in the matrix (starts as a copy of its base role's grants) and a **BaseRole** (student/faculty/admin/agency, never super_admin). Mechanism: `JwtStrategy`/`AuthService` return `role` = BaseRole (so every `@Roles()` check, route guard and UI shell treats the user as that built-in role) plus `roleKey` = the real role name; `RolesGuard` and `GET /permissions/my` use `roleKey` for the `@Permission()` matrix. Users forms take roles from `GET /permissions/assignable-roles` (plain admins never get super_admin). Delete blocked while users hold the role; built-ins cannot be deleted/deactivated. Code degrades before 032 (`SchemaService.has('Roles','BaseRole')`). Limit: only `@Permission()`-gated endpoints follow the custom role's own grants; everything else follows its base role. Test: `scripts/test-custom-roles.ts`.
 - **Per-university approver groups**: creating a university workflow ("Copy from default") now clones every approver group on the copied stages as `<CODE> - <name>` with `InstitutionId` = that university (no members; reused if it exists) and points the new stages at them; the response carries `createdGroups` and the designer says so. Approver groups tab: university picker per group (it was never sent before), filter, university label; a university workflow's stage picker offers its own + shared groups only.
 - **University panel**: left details pane can be hidden ("Hide details for more room") so Institutions/Programs/Courses/Topics use the full width; nested program editor split is 1:2 (sharing area gets the room); expanded table cell padding reduced.
+
+## Session 2026-10-29 (g): faculty university scope (branch `claude/faculty-university-scope`, NOT merged; no migrations)
+- **Root cause**: `ScopeService.universityScope()` began `if (viewer.role !== 'admin') return null`, so *only* admins were ever
+  narrowed. A faculty user with `UserScopeUniversities` rows saw every university's requests, queues and evaluations.
+- **Fix**: `isScopedStaffRole(role)` (= admin | faculty, exported from `policy/scope.service.ts`) now gates `universityScope`,
+  `canViewTranscript`, `canWorkRequest` and `canManageUser`; `staffUniversityScope()` is just an alias now. Unchanged rules:
+  super admins are never narrowed, **no scope rows = unrestricted**, students/agencies keep their ownership checks.
+- **Faculty narrowing is additive**: workflow-stage membership (`myStageIds`) AND university scope both apply.
+- Scoped staff on an **outgoing** request (their university is the source) are read-only everywhere now, not just admins:
+  `requests` stage actions, `evaluations.decide`, `appeals.decide`, `transcripts.updateStatus`.
+- Call sites touched: `requests.service` (assertCanView, timeline readOnly, queue, bulk-approve), `transcripts.service.findAll`
+  (faculty used to be narrowed by SOURCE institution only; super admins were wrongly narrowed by the legacy branch - fixed) +
+  `adminCanSee` via `transcripts.controller`, **`evaluations.service` list/findById/decide (was completely unscoped - this is the
+  faculty queue)**, `appeals.service` listForStaff/decide (was unscoped), `dashboard.service` faculty waiting/backlog/appeals,
+  `uploads.service`, `events/event-access.service`, and everything already routed through `universityScope` (users, bento,
+  network, comparison, progress, student-journey, transfers).
+- **Course-detail gap (the "faculty is not displayed with all the course details" report)**: the per-course table comes from
+  `TranscriptStages.AiBrief`, and `getTimeline` only returned it `WHERE s.Status = 'active'` - so a faculty reviewer lost the whole
+  course list as soon as their stage was approved, or before it activated. It is now returned for every stage a staff viewer can
+  see, and `RequestReview.tsx` falls back to the most recent stage that carries one. The brief also gained `term`,
+  `originalCredits`/`normalisedCredits` (shown as "X taken -> Y converted") and the lane is now its own "Status" column.
+  Nothing was role-gated away from faculty in that table - `canAct` only hides the action buttons.
+- Test: `scripts/test-faculty-scope.ts` (stubbed DB). `test-events.ts` was updated: faculty now go through `canViewTranscript`.
+- **Not changed / known gaps**: `documents.service` smart-upload access still checks `role === 'admin'` only, because
+  `canManageUser` matches students by TARGET university and would lock source-side faculty out of their own students' documents;
+  `studentInScope` is still target-only for the same reason; the bento faculty widgets are all "my own work" so they needed no
+  scope. Nothing was verified against a live database.
