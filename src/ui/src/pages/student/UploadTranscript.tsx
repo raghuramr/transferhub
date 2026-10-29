@@ -113,7 +113,25 @@ export default function UploadTranscript() {
     enabled: isStudent,
     retry: false,
   });
-  const targetOptions = targetsQuery.data?.data ?? [];
+  const fetchedTargets = targetsQuery.data?.data ?? [];
+  // A target the student already chose must stay selectable even if it is no longer offered in the
+  // picker (deactivated, or a community college the list filters out) - otherwise the field renders
+  // blank and they are made to pick their university all over again.
+  const profileTarget = overviewQuery.data?.data;
+  const targetOptions = profileTarget?.targetInstitutionId != null
+    && !fetchedTargets.some((t) => t.id === profileTarget.targetInstitutionId)
+    ? [
+        {
+          id: profileTarget.targetInstitutionId,
+          code: profileTarget.targetInstitutionCode ?? '',
+          name: profileTarget.targetInstitutionName ?? 'Your current target',
+          programs: profileTarget.targetProgramId != null
+            ? [{ id: profileTarget.targetProgramId, name: profileTarget.targetProgramName ?? 'Your current program', degree: profileTarget.targetProgramDegree ?? null }]
+            : [],
+        },
+        ...fetchedTargets,
+      ]
+    : fetchedTargets;
   const [targetId, setTargetId] = useState<number | null>(null);
   const [targetProgramId, setTargetProgramId] = useState<number | null>(null);
   const [targetPrefilled, setTargetPrefilled] = useState(false);

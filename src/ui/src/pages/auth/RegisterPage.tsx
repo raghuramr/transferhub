@@ -388,7 +388,11 @@ export default function RegisterPage() {
                   <Field label="Intended program (optional)">
                     <select {...register('targetProgramId')} className={inputClass} disabled={!targetInstitutionId}>
                       <option value="">Select…</option>
-                      {programs.map((p) => <option key={p.id} value={p.id}>{p.name}{p.degree ? ` (${p.degree})` : ''}</option>)}
+                      {programs.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}{p.degree ? ` (${p.degree})` : ''}{p.credits != null ? ` — ${p.credits} credits across ${p.courses ?? 0} courses` : ''}
+                        </option>
+                      ))}
                     </select>
                   </Field>
                   <div className="grid grid-cols-2 gap-2">

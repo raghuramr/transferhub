@@ -100,7 +100,7 @@ export const authApi = {
     api.get<{ id: number; title: string; description: string | null; fields: import('../types').FormField[] } | ''>('/auth/registration-form'),
   publicUniversities: () => api.get<{ id: number; code: string; name: string }[]>('/auth/universities'),
   publicPrograms: (institutionId: number) =>
-    api.get<{ id: number; name: string; degree: string | null; area: string | null }[]>('/auth/programs', {
+    api.get<{ id: number; name: string; degree: string | null; area: string | null; courses?: number; credits?: number | null }[]>('/auth/programs', {
       params: { institutionId },
     }),
   /** Public (no auth) — a university's schools/colleges (transfer applicants must choose one). */
