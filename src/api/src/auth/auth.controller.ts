@@ -39,6 +39,16 @@ export class AuthController {
     return this.authService.register(dto, ip, userAgent);
   }
 
+  /**
+   * Public — no auth. Lets the registration wizard tell the applicant their email is already taken
+   * right on step 1, instead of only at final submit. Rate-limited per IP to blunt enumeration.
+   */
+  @Get('check-email')
+  async checkEmail(@Query('email') email: string, @Req() req: Request) {
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    return this.authService.checkEmailAvailable(email, ip);
+  }
+
   /** Public — no auth. Registration-page dropdown data. */
   @Get('universities')
   publicUniversities() {

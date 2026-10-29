@@ -4,6 +4,8 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  HttpException,
+  HttpStatus,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -77,6 +79,9 @@ interface PasswordHashRow {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  // Per-IP rate limit for the public email-availability check (not the uniqueness guarantee itself —
+  // that is still enforced, DB-constrained, at register()). Only here to blunt enumeration.
+  private checkEmailHits = new Map<string, { n: number; reset: number }>();
 
   constructor(
     private db: DatabaseService,
@@ -177,6 +182,30 @@ export class AuthService {
    * notes). Logs the caller straight in afterward, same response shape as
    * `login()`.
    */
+  /**
+   * Public, pre-submit "is this email already registered?" check for the registration wizard's first
+   * step, so the applicant is not told at the very end of a 7-step form. 20 requests/min per IP.
+   * Reuses the same lookup register() uses right before insert, so it can never disagree with it.
+   */
+  async checkEmailAvailable(email: string, ip: string): Promise<{ available: boolean }> {
+    const key = ip || 'unknown';
+    const now = Date.now();
+    const hit = this.checkEmailHits.get(key);
+    if (hit && now < hit.reset) {
+      if (hit.n >= 20) throw new HttpException('Too many checks. Please wait a moment and try again.', HttpStatus.TOO_MANY_REQUESTS);
+      hit.n += 1;
+    } else {
+      this.checkEmailHits.set(key, { n: 1, reset: now + 60_000 });
+    }
+    const trimmed = (email ?? '').trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return { available: true }; // not a real address yet - let field-level validation handle the message
+    const existing = await this.db.query<{ Id: string }>(
+      `SELECT Id FROM Users WHERE Email = @email`,
+      [{ name: 'email', type: sql.NVarChar(254), value: trimmed }],
+    );
+    return { available: !existing.recordset[0] };
+  }
+
   async register(dto: RegisterStudentDto, ip: string, userAgent: string) {
     const existing = await this.db.query<{ Id: string }>(
       `SELECT Id FROM Users WHERE Email = @email`,
