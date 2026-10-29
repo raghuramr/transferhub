@@ -77,6 +77,7 @@ import ProfilePage from './pages/ProfilePage';
 
 // Public landing / hero page
 import HomePage from './pages/public/HomePage';
+import PublicPageShell from './pages/public/PublicPageShell';
 import PartnerPortal from './pages/public/PartnerPortal';
 
 // Guards
@@ -99,6 +100,13 @@ function RoleRedirect() {
     super_admin: '/superadmin',
   };
   return <Navigate to={map[user.role] ?? '/login'} replace />;
+}
+
+/** Published Custom Pages need no login; signed-in users still see them inside the app. */
+function PageLayout() {
+  const { isAuthenticated, user } = useAuthStore();
+  if (isAuthenticated && user?.mustChangePass) return <Navigate to="/change-password" replace />;
+  return isAuthenticated ? <AppLayout /> : <PublicPageShell />;
 }
 
 /** Signed-in users are sent to their dashboard; anonymous visitors see the public landing page. */
@@ -205,7 +213,8 @@ export default function App() {
         </Route>
 
         {/* Shared CMS page view (any authenticated role) */}
-        <Route path="/pages/:slug" element={<RequireAuth><AppLayout /></RequireAuth>}>
+        {/* Custom Pages are public: anonymous visitors get the public frame, signed-in users the app layout. */}
+        <Route path="/pages/:slug" element={<PageLayout />}>
           <Route index element={<CmsPageView />} />
         </Route>
 
