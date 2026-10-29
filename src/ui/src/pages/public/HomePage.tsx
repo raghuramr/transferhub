@@ -8,6 +8,7 @@ import { BlockRenderer } from '../../components/blocks/BlockRenderer';
 import { Button } from '../../components/ui/Button';
 import { Reveal } from '../../components/ui/PageTransition';
 import type { CmsPage } from '../../types';
+import { TeamLink } from './PublicPageShell';
 
 /**
  * Public landing page shown to anonymous visitors at "/". Its body is a
@@ -34,9 +35,12 @@ export default function HomePage() {
         <div className="flex items-center gap-3">
           <LogoFull height={72} />
         </div>
-        <Link to="/login">
-          <Button size="sm" icon={<ArrowRight size={14} />}>Log in</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <TeamLink />
+          <Link to="/login">
+            <Button size="sm" icon={<ArrowRight size={14} />}>Log in</Button>
+          </Link>
+        </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 md:px-10 pb-20">

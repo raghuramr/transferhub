@@ -1291,3 +1291,6 @@ Four areas the user found while rehearsing the demo. One branch, three lines of 
   Files are ordinary public `Uploads` rows with `EntityType='gallery'`; `EntityId` holds the optional category label. URL = direct Azure Storage blob URL when the public container is
   anonymously readable, else `/uploads/public/:id` (UI makes it absolute). Images are compressed to <=1920px WebP like other public uploads. Purpose: stable public URLs for team photos/logos
   used by `_designs/ClopayCodeCrafters.html` and elsewhere.
+- **Overview page on the site**: `src/ui/scripts/copy-overview.mjs` (runs as `predev`/`prebuild`) publishes `_designs/ClopayCodeCrafters.html` at `/clopay-codecrafters.html`
+  (+ `_designs/team/web/` at `/team/web/`), stripping the inline `onerror` fallbacks because helmet's CSP blocks inline handlers; images load from the Gallery's Azure URLs.
+  The copies are git-ignored; `_designs` is the only source. "Meet the team" link (`TeamLink` in `PublicPageShell.tsx`) on the home page and public Custom Pages headers.

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5173",
+    "predev": "node scripts/copy-overview.mjs",
+    "prebuild": "node scripts/copy-overview.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
