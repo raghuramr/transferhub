@@ -45,6 +45,9 @@ interface UserRow {
   DepartmentName: string | null;
   // Only selected by findById.
   DepartmentCode?: string | null;
+  // Only selected by findAll, for admin/faculty rows — the universities they are scoped to
+  // (UserScopeUniversities), comma-joined; null/empty means unrestricted (sees every university).
+  ScopedUniversities?: string | null;
   // Only selected by findById — StudentProfiles join.
   PriorInstitutionName?: string | null;
   HighestEducationLevel?: string | null;
@@ -118,6 +121,7 @@ function mapUser(row: UserRow) {
     roleDisplay: row.RoleDisplay,
     departmentName: row.DepartmentName,
     departmentCode: row.DepartmentCode,
+    scopedUniversities: row.ScopedUniversities ?? undefined,
     emailVerified: row.EmailVerified == null ? undefined : !!row.EmailVerified,
     hasAvatar: !!row.AvatarUploadId,
     priorInstitutionName: row.PriorInstitutionName ?? undefined,
@@ -249,13 +253,19 @@ export class UsersService {
               r.Name AS Role, r.DisplayName AS RoleDisplay,
               d.Name AS DepartmentName,
               sp.PriorInstitutionName, sp.HighestEducationLevel, sp.FieldOfStudy, sp.GPA, sp.GraduationYear,
-              ti.Name AS TargetInstitutionName, tp.Name AS TargetProgramName
+              ti.Name AS TargetInstitutionName, tp.Name AS TargetProgramName,
+              su.Names AS ScopedUniversities
        FROM Users u
        JOIN Roles r ON r.Id = u.RoleId
        LEFT JOIN Departments d ON d.Id = u.DepartmentId
        LEFT JOIN StudentProfiles sp ON sp.UserId = u.Id
        LEFT JOIN Institutions ti ON ti.Id = sp.TargetInstitutionId
        LEFT JOIN Programs tp ON tp.Id = sp.TargetProgramId
+       OUTER APPLY (
+         SELECT STRING_AGG(i.Name, ', ') WITHIN GROUP (ORDER BY i.Name) AS Names
+         FROM UserScopeUniversities us JOIN Institutions i ON i.Id = us.InstitutionId
+         WHERE us.UserId = u.Id
+       ) su
        WHERE ${where}
        ORDER BY u.LastLoginAt DESC`,
       inputs,
