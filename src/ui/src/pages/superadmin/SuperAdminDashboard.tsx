@@ -1,49 +1,54 @@
-import { LayoutDashboard } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { AnnouncementsBanner } from '../../components/blocks/AnnouncementsBanner';
 import { DashboardView } from '../../components/dashboard/DashboardView';
-import { Link } from 'react-router-dom';
+import { useAuthStore } from '../../store/auth';
 
 const LINKS = [
-  { to: '/superadmin/users', label: 'User Management' },
+  { to: '/superadmin/users', label: 'Users' },
   { to: '/superadmin/universities', label: 'Universities' },
   { to: '/superadmin/programs', label: 'Programs' },
   { to: '/admin/equivalencies', label: 'Equivalencies' },
   { to: '/admin/verification', label: 'Course verification' },
-  { to: '/superadmin/audit', label: 'Audit Log' },
-  { to: '/superadmin/settings/import', label: 'Data Import' },
-  { to: '/superadmin/settings', label: 'System Settings' },
+  { to: '/superadmin/audit', label: 'Audit log' },
+  { to: '/superadmin/settings/import', label: 'Data import' },
+  { to: '/superadmin/settings', label: 'System settings' },
 ];
 
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
 export default function SuperAdminDashboard() {
+  const user = useAuthStore((s) => s.user);
+  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   return (
-    <div className="p-4 sm:p-6 w-[95%] mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <LayoutDashboard className="text-brand-800" size={24} />
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Super Admin Dashboard</h1>
-          <p className="text-gray-500">Everything across every university</p>
+    <div className="mx-auto w-full max-w-[1400px] p-4 sm:p-6">
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8b8183]">{today}</p>
+          <h1 className="mt-1 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-[#1d1517]">
+            {greeting()}{user?.firstName ? `, ${user.firstName}` : ''}
+          </h1>
+          <p className="text-sm text-[#5b5153]">Transfer credit across every university, at a glance.</p>
         </div>
-      </div>
+        <nav aria-label="Quick links" className="flex max-w-full flex-wrap gap-1.5">
+          {LINKS.map(({ to, label }) => (
+            <Link
+              key={to} to={to}
+              className="group inline-flex items-center gap-1 rounded-full border border-[#ece4e6] bg-white px-2.5 py-1 text-xs text-[#5b5153] transition-colors hover:border-[#d9c9cc] hover:text-[#1d1517]"
+            >
+              {label}
+              <ArrowUpRight size={12} className="text-[#b9afb1] transition-colors group-hover:text-[#770816]" />
+            </Link>
+          ))}
+        </nav>
+      </header>
 
       <AnnouncementsBanner />
 
       <DashboardView />
-
-      <div className="mt-8 bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">Quick Links</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-          {LINKS.map(({ to, label }) => (
-            <Link
-              key={to}
-              to={to}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-brand-50 hover:text-brand-900 transition-colors text-sm"
-            >
-              {label}
-              <span>→</span>
-            </Link>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

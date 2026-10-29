@@ -1272,3 +1272,13 @@ Four areas the user found while rehearsing the demo. One branch, three lines of 
   - **Course details gap, real cause**: `getTimeline` returned `aiBrief` only for the *active* stage, so the per-course table vanished for a reviewer once their stage passed. Now returned for every stage a staff viewer may see, the page falls back to the latest stage carrying one, and the table gained Term + Status columns and "4 taken -> 3 converted" credits.
   - **"from and to" for student records**: `studentInScope` matched the target university only, so sending-side staff could see the request but not the student. It now also matches a request's source institution; Smart Upload documents follow the same rule for faculty.
 - Not verified: nothing was run against the live database (the sandbox cannot reach Azure SQL), and none of the new UI was opened in a browser.
+
+## Session 2026-10-29 (h): dashboard charts redesign (branch `claude/superadmin-dashboard-wow`, NOT merged; no migrations)
+- `components/ui/analytics-bento.tsx` is GONE (the note above is history). `GET /dashboard/bento` stays and now feeds hand-built widgets.
+- `components/dashboard/viz.tsx` = plain-SVG primitives (Sparkline, ColumnStrip, LineTrend w/ crosshair + direct end labels, Columns,
+  Composition 100% bars, Ranked lists, HourHeat, Card w/ table-view toggle, Tip). Palette validated with the dataviz checker on white:
+  CATEGORICAL `#a3243c,#c98500,#2a78d6,#0f8a6a,#6250d6,#d4608a` (fixed order), BRAND_RAMP / AI_RAMP one-hue ordinal ramps. Light only (app has no dark theme).
+- `DashboardView` maps payload charts by type: pie -> one "Breakdown" card of composition bars (lanes/outcomes use the ordinal ramp), hbar/bar -> ranked
+  lists, dated bar or multi-series bar -> columns, area/line -> LineTrend. KPIs render as a hairline "ledger" of stat tiles.
+- KPI payload gained optional `unit`, `num`, `spark` (12 buckets), `delta` (vs previous equal period), `deltaLabel`, `good` - built by
+  `bucketize()`/`relDelta()` in `dashboard.service.ts` (test `scripts/test-dashboard-trend.ts`). AI KPIs now carry `num` + `unit:'usd'` too.

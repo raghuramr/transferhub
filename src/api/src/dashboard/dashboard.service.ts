@@ -11,8 +11,19 @@ export interface Kpi {
   value: number | string;
   hint?: string;
   tone?: 'good' | 'warn' | 'bad' | 'neutral';
-  /** 0-100: draws a small progress ring on the card (e.g. completion rate). */
+  /** 0-100: draws a small meter on the tile (e.g. completion rate). */
   gauge?: number;
+  /** How the UI formats the number. `value` may still be a preformatted string for older clients; `num` then carries the raw number. */
+  unit?: 'count' | 'usd' | 'pct' | 'days' | 'ms';
+  num?: number;
+  /** Up to 12 equal buckets across the selected period (oldest first) - drawn as a sparkline. */
+  spark?: number[];
+  /** Relative change vs the previous period of the same length (0.12 = +12%); null when there is no baseline. */
+  delta?: number | null;
+  /** What the delta compares, when it is not the headline value itself (e.g. "new sign-ups"). */
+  deltaLabel?: string;
+  /** Which direction is good for this number, so the UI colours the delta correctly. */
+  good?: 'up' | 'down';
 }
 
 export interface Chart {
@@ -29,6 +40,38 @@ type Viewer = { id: string; role: string };
 type Row = Record<string, string | number | null>;
 
 const RANGES = [30, 90, 180, 365];
+const BUCKETS = 12;
+
+/** Relative change; null when the previous period had nothing to compare with. */
+export function relDelta(cur: number, prev: number): number | null {
+  if (!Number.isFinite(cur) || !Number.isFinite(prev) || prev === 0) return null;
+  return (cur - prev) / prev;
+}
+
+/**
+ * Folds rows keyed by "days ago" (`ago`, 0 = today) into BUCKETS equal buckets over the current
+ * period (oldest first) plus a total for the previous period of the same length. Values go through
+ * Number() because SQL Server returns BIGINT sums as strings.
+ */
+export function bucketize(rows: Row[], days: number, keys: string[], n = BUCKETS) {
+  const cur: Record<string, number[]> = {};
+  const prev: Record<string, number> = {};
+  for (const k of keys) {
+    cur[k] = new Array<number>(n).fill(0);
+    prev[k] = 0;
+  }
+  for (const r of rows) {
+    const ago = Number(r.ago);
+    if (!Number.isFinite(ago) || ago < 0) continue;
+    for (const k of keys) {
+      const v = Number(r[k] ?? 0) || 0;
+      if (ago < days) cur[k][n - 1 - Math.min(n - 1, Math.floor((ago * n) / days))] += v;
+      else if (ago < days * 2) prev[k] += v;
+    }
+  }
+  const total = (k: string) => cur[k].reduce((a, b) => a + b, 0);
+  return { cur, prev, total };
+}
 
 /**
  * Role-aware dashboard payloads. The API decides which KPIs and charts a role
@@ -298,14 +341,55 @@ export class DashboardService {
       return r[0] ?? {};
     }, {} as Row);
 
+    // Sparklines + period-over-period deltas: one row per "days ago" across two periods, folded in TS.
+    const tTrend = await this.safe('staff transcript trend', async () => {
+      const inputs: QueryInput[] = [{ name: 'days2', type: sql.Int, value: days * 2 }];
+      const r = await this.rows(
+        `SELECT DATEDIFF(DAY, t.ReceivedAt, SYSUTCDATETIME()) AS ago, COUNT(*) AS received,
+                SUM(CASE WHEN t.Status = 'complete' THEN 1 ELSE 0 END) AS completed,
+                SUM(CASE WHEN t.Status NOT IN ('complete','cancelled') THEN 1 ELSE 0 END) AS openCount,
+                SUM(CASE WHEN t.Status = 'complete' AND t.ProcessedAt IS NOT NULL THEN 1 ELSE 0 END) AS timed,
+                SUM(CASE WHEN t.Status = 'complete' AND t.ProcessedAt IS NOT NULL THEN CAST(DATEDIFF(HOUR, t.ReceivedAt, t.ProcessedAt) AS BIGINT) ELSE 0 END) AS tatHours
+         FROM Transcripts t WHERE t.ReceivedAt >= DATEADD(DAY, -@days2, SYSUTCDATETIME())${tScope(inputs)}
+         GROUP BY DATEDIFF(DAY, t.ReceivedAt, SYSUTCDATETIME())`,
+        inputs,
+      );
+      return bucketize(r, days, ['received', 'completed', 'openCount', 'timed', 'tatHours']);
+    }, null);
+    const regTrend = await this.safe('staff registration trend', async () => {
+      const inputs: QueryInput[] = [{ name: 'days2', type: sql.Int, value: days * 2 }];
+      const r = await this.rows(
+        `SELECT DATEDIFF(DAY, u.CreatedAt, SYSUTCDATETIME()) AS ago, COUNT(*) AS fresh
+         FROM Users u JOIN Roles r ON r.Id = u.RoleId
+         WHERE r.Name = 'student' AND u.CreatedAt >= DATEADD(DAY, -@days2, SYSUTCDATETIME())${uScope(inputs)}
+         GROUP BY DATEDIFF(DAY, u.CreatedAt, SYSUTCDATETIME())`,
+        inputs,
+      );
+      return bucketize(r, days, ['fresh']);
+    }, null);
+    const tat = (hours: number[], timed: number[]) => hours.map((h, i) => (timed[i] ? Math.round((h / timed[i] / 24) * 10) / 10 : 0));
+    const trendOf = (k: string, good: 'up' | 'down' = 'up') =>
+      tTrend ? { spark: tTrend.cur[k], delta: relDelta(tTrend.total(k), tTrend.prev[k]), good } : {};
+    const avgDays = tCounts.avgDays == null ? null : Number(tCounts.avgDays);
+    const prevAvgDays = tTrend && tTrend.prev.timed ? tTrend.prev.tatHours / tTrend.prev.timed / 24 : null;
+    const waitingN = Number(stageStats.waiting ?? 0);
+    const overdueN = Number(stageStats.overdue ?? 0);
+
     const kpis: Kpi[] = [
-      { key: 'students', label: 'Students', value: Number(students.total ?? 0), hint: `${Number(students.fresh ?? 0)} new in ${days} days` },
-      { key: 'requests', label: `Requests (last ${days} days)`, value: Number(tCounts.total ?? 0) },
-      { key: 'inprogress', label: 'In progress', value: Number(tCounts.inProgress ?? 0), tone: 'warn' },
-      { key: 'completed', label: 'Completed', value: Number(tCounts.completed ?? 0), tone: 'good', gauge: Number(tCounts.total ?? 0) ? Math.round((Number(tCounts.completed ?? 0) / Number(tCounts.total)) * 100) : 0 },
-      { key: 'waiting', label: 'Approvals waiting', value: Number(stageStats.waiting ?? 0), tone: 'warn' },
-      { key: 'overdue', label: 'Overdue stages', value: Number(stageStats.overdue ?? 0), tone: Number(stageStats.overdue ?? 0) > 0 ? 'bad' : 'good' },
-      { key: 'turnaround', label: 'Avg turnaround', value: tCounts.avgDays == null ? '-' : `${Number(tCounts.avgDays).toFixed(1)} days` },
+      {
+        key: 'students', label: 'Students', value: Number(students.total ?? 0), unit: 'count', hint: `${Number(students.fresh ?? 0)} new in ${days} days`,
+        ...(regTrend ? { spark: regTrend.cur.fresh, delta: relDelta(regTrend.total('fresh'), regTrend.prev.fresh), deltaLabel: 'new sign-ups', good: 'up' as const } : {}),
+      },
+      { key: 'requests', label: `Requests (last ${days} days)`, value: Number(tCounts.total ?? 0), unit: 'count', ...trendOf('received') },
+      { key: 'inprogress', label: 'In progress', value: Number(tCounts.inProgress ?? 0), tone: 'warn', unit: 'count', ...trendOf('openCount', 'down') },
+      { key: 'completed', label: 'Completed', value: Number(tCounts.completed ?? 0), tone: 'good', unit: 'count', gauge: Number(tCounts.total ?? 0) ? Math.round((Number(tCounts.completed ?? 0) / Number(tCounts.total)) * 100) : 0, ...trendOf('completed') },
+      { key: 'waiting', label: 'Approvals waiting', value: waitingN, tone: 'warn', unit: 'count' },
+      { key: 'overdue', label: 'Overdue stages', value: overdueN, tone: overdueN > 0 ? 'bad' : 'good', unit: 'count', ...(waitingN ? { gauge: Math.round((overdueN / waitingN) * 100) } : {}) },
+      {
+        key: 'turnaround', label: 'Avg turnaround', value: avgDays == null ? '-' : `${avgDays.toFixed(1)} days`, unit: 'days',
+        ...(avgDays == null ? {} : { num: Math.round(avgDays * 10) / 10 }),
+        ...(tTrend ? { spark: tat(tTrend.cur.tatHours, tTrend.cur.timed), delta: avgDays == null || prevAvgDays == null ? null : relDelta(avgDays, prevAvgDays), good: 'down' as const } : {}),
+      },
     ];
 
     const charts: Chart[] = [];
@@ -424,21 +508,21 @@ export class DashboardService {
       const r = await this.rows(`SELECT COUNT(*) AS n FROM Users WHERE LastLoginAt >= DATEADD(DAY, -7, SYSUTCDATETIME())`);
       return Number(r[0]?.n ?? 0);
     }, 0);
-    kpis.splice(1, 0, { key: 'active7', label: 'Signed in (7 days)', value: active7 });
+    kpis.splice(1, 0, { key: 'active7', label: 'Signed in (7 days)', value: active7, unit: 'count' });
 
     const verify = await this.safe('open verification', async () => {
       if (!(await this.schema.has('CourseVerificationRequests'))) return null;
       const r = await this.rows(`SELECT COUNT(*) AS n FROM CourseVerificationRequests WHERE Status = 'open'`);
       return Number(r[0]?.n ?? 0);
     }, null as number | null);
-    if (verify !== null) kpis.push({ key: 'verify', label: 'Course verifications open', value: verify, tone: verify > 0 ? 'warn' : 'good' });
+    if (verify !== null) kpis.push({ key: 'verify', label: 'Course verifications open', value: verify, unit: 'count', tone: verify > 0 ? 'warn' : 'good' });
 
     const imports = await this.safe('pending imports', async () => {
       if (!(await this.schema.has('ImportBatches'))) return null;
       const r = await this.rows(`SELECT COUNT(*) AS n FROM ImportBatches WHERE Status = 'pending'`);
       return Number(r[0]?.n ?? 0);
     }, null as number | null);
-    if (imports !== null) kpis.push({ key: 'imports', label: 'Partner submissions to review', value: imports, tone: imports > 0 ? 'warn' : 'good' });
+    if (imports !== null) kpis.push({ key: 'imports', label: 'Partner submissions to review', value: imports, unit: 'count', tone: imports > 0 ? 'warn' : 'good' });
 
     const catalogue = await this.safe('catalogue by university', () =>
       this.rows(`SELECT TOP 10 i.Code AS name, COUNT(*) AS value FROM Courses c JOIN Institutions i ON i.Id = c.InstitutionId WHERE c.IsActive = 1 GROUP BY i.Code ORDER BY COUNT(*) DESC`), []);
@@ -476,20 +560,38 @@ export class DashboardService {
       return Number(r[0]?.n ?? 0);
     }, null as number | null);
 
+    // Per-bucket AI trend over this period and the one before.
+    const aiTrend = await this.safe('ai trend', async () => {
+      const r = await this.rows(
+        `SELECT DATEDIFF(DAY, CreatedAt, SYSUTCDATETIME()) AS ago,
+                ISNULL(SUM(EstimatedCostUsd), 0) AS cost,
+                COUNT(CASE WHEN Skipped = 0 THEN 1 END) AS calls,
+                ISNULL(SUM(CAST(InputTokens AS BIGINT) + OutputTokens), 0) AS tokens,
+                ISNULL(SUM(CAST(EstTokensSaved AS BIGINT)), 0) AS saved,
+                COUNT(DISTINCT TranscriptId) AS reqs
+         FROM AiUsageLog WHERE CreatedAt >= DATEADD(DAY, -@days2, SYSUTCDATETIME())
+         GROUP BY DATEDIFF(DAY, CreatedAt, SYSUTCDATETIME())`,
+        [{ name: 'days2', type: sql.Int, value: days * 2 }],
+      );
+      return bucketize(r, days, ['cost', 'calls', 'tokens', 'saved', 'reqs']);
+    }, null);
+    const aiT = (k: string, good?: 'up' | 'down') =>
+      aiTrend ? { spark: aiTrend.cur[k].map((v) => Math.round(v * 10000) / 10000), delta: relDelta(aiTrend.total(k), aiTrend.prev[k]), ...(good ? { good } : {}) } : {};
+
     const kpis: Kpi[] = [
-      { key: 'aiSpend', label: `AI spend (last ${days} days)`, value: usd(s.totals.costUsd), hint: s.unlinked.costUsd > 0 ? `${usd(s.unlinked.costUsd)} not tied to a request` : 'estimated', tone: 'neutral' },
-      { key: 'aiMonth', label: 'AI spend this month', value: usd(s.monthCostUsd), hint: `${s.monthTokens.toLocaleString()} tokens` },
-      { key: 'aiPerRequest', label: 'AI cost per request', value: usd(s.kpis.costPerRequestUsd), hint: `${s.kpis.tokensPerRequest.toLocaleString()} tokens per request` },
+      { key: 'aiSpend', label: `AI spend (last ${days} days)`, value: usd(s.totals.costUsd), num: s.totals.costUsd, unit: 'usd', ...aiT('cost'), hint: s.unlinked.costUsd > 0 ? `${usd(s.unlinked.costUsd)} not tied to a request` : 'estimated', tone: 'neutral' },
+      { key: 'aiMonth', label: 'AI spend this month', value: usd(s.monthCostUsd), num: s.monthCostUsd, unit: 'usd', hint: `${s.monthTokens.toLocaleString()} tokens` },
+      { key: 'aiPerRequest', label: 'AI cost per request', value: usd(s.kpis.costPerRequestUsd), num: s.kpis.costPerRequestUsd, unit: 'usd', hint: `${s.kpis.tokensPerRequest.toLocaleString()} tokens per request` },
       {
-        key: 'aiRequests', label: 'Requests processed by AI', value: s.totals.requests,
+        key: 'aiRequests', label: 'Requests processed by AI', value: s.totals.requests, unit: 'count', ...aiT('reqs', 'up'),
         hint: totalRequests ? `of ${totalRequests} requests received` : undefined,
         gauge: totalRequests ? Math.min(100, Math.round((s.totals.requests / totalRequests) * 100)) : undefined,
       },
-      { key: 'aiCalls', label: 'AI calls', value: s.totals.calls, hint: `${s.totals.skippedCalls} skipped · avg ${Math.round(s.kpis.avgLatencyMs)} ms` },
-      { key: 'aiTokens', label: 'Tokens used', value: spent, hint: `${s.totals.inputTokens.toLocaleString()} in · ${s.totals.outputTokens.toLocaleString()} out` },
-      { key: 'aiSaved', label: 'Tokens saved', value: saved, tone: 'good', gauge: pct(s.kpis.savingsRate), hint: `${pct(s.kpis.cacheHitRate)}% cache hits` },
+      { key: 'aiCalls', label: 'AI calls', value: s.totals.calls, unit: 'count', ...aiT('calls'), hint: `${s.totals.skippedCalls} skipped · avg ${Math.round(s.kpis.avgLatencyMs)} ms` },
+      { key: 'aiTokens', label: 'Tokens used', value: spent, unit: 'count', ...aiT('tokens'), hint: `${s.totals.inputTokens.toLocaleString()} in · ${s.totals.outputTokens.toLocaleString()} out` },
+      { key: 'aiSaved', label: 'Tokens saved', value: saved, unit: 'count', ...aiT('saved', 'up'), tone: 'good', gauge: pct(s.kpis.savingsRate), hint: `${pct(s.kpis.cacheHitRate)}% cache hits` },
     ];
-    if (autoApproved !== null) kpis.push({ key: 'aiAuto', label: 'Stages auto-approved', value: autoApproved, tone: 'good' });
+    if (autoApproved !== null) kpis.push({ key: 'aiAuto', label: 'Stages auto-approved', value: autoApproved, unit: 'count', tone: 'good' });
 
     const charts: Chart[] = [];
     if (s.byDay.length) {
