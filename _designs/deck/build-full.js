@@ -248,7 +248,7 @@ async function iconRows(s, rows, x, y, w, gap, d = 0.6) {
   // AI tiers
   {
     const s = k.content('AI that keeps working when AI is off', 'Order: AI if a provider is set up, switched on and within budget; else the built-in rules if the fallback is on; else paused. A person can always override.');
-    const tiers = [['1', 'AI provider', 'Claude (direct API), Azure OpenAI or any OpenAI-compatible service for matching; Azure Document Intelligence for reading. Cheap model first, escalates only when unsure.', C.maroon, C.white],
+    const tiers = [['1', 'AI provider', 'Azure OpenAI via Azure AI Foundry (in use) and Anthropic Claude (configured); any OpenAI-compatible service can be added when required. Azure Document Intelligence for reading. Cheap model first, escalates only when unsure.', C.maroon, C.white],
       ['2', 'Built-in rules', 'Zero tokens. Reads text PDFs, classifies, extracts fields; ranks courses by title, topics, code and credits. Confidence capped at 70%, so it never auto-approves at default thresholds.', C.gold, C.deep],
       ['3', 'Human', 'Faculty and students can edit or override every result. Nothing is ever auto-rejected.', C.tint, C.ink]];
     tiers.forEach((t, i) => {
@@ -258,7 +258,7 @@ async function iconRows(s, rows, x, y, w, gap, d = 0.6) {
       k.text(s, [{ text: t[1], options: { bold: true, fontSize: 19, breakLine: true } }, { text: t[2], options: { fontSize: 13 } }], { x: 1.6, y: y + 0.05, w: 6.1, h: 1.35, color: t[4], valign: 'middle' });
     });
     await k.shot(s, '06-ai-controls.png', 8.2, 1.55, 4.6, 4.65, 'AI Controls screenshot');
-    k.text(s, 'Honest status: no Anthropic key yet, so the AI paths are built but not verified live. The rules engine runs every AI step today.', { x: 0.6, y: 6.4, w: 12.1, h: 0.5, fontSize: 14, italic: true, color: C.maroon, valign: 'middle' });
+    k.text(s, 'In use today: Azure OpenAI through Azure AI Foundry. Anthropic is also configured, and providers can be switched or added when required.', { x: 0.6, y: 6.4, w: 12.1, h: 0.5, fontSize: 14, italic: true, color: C.maroon, valign: 'middle' });
   }
   // Cost + controls
   {
@@ -276,7 +276,7 @@ async function iconRows(s, rows, x, y, w, gap, d = 0.6) {
   }
   // Measured
   {
-    const s = k.content('Measured, not claimed', 'Backtest: for each of 63 past decisions, hide it from the matcher and ask whether the right BU course is in its top 1 or top 3. Built-in rules only, no AI key. The same harness will score the AI matcher once a key exists.');
+    const s = k.content('Measured, not claimed', 'Backtest: for each of 63 past decisions, hide it from the matcher and ask whether the right BU course is in its top 1 or top 3. Built-in rules engine, the floor any AI provider must beat. The same harness and the Benchmark tab score Azure OpenAI and Anthropic.');
     const stats = [['96.8%', 'right BU course in the top 3'], ['88.9%', 'right BU course ranked first'], ['63', 'held-out past decisions']];
     stats.forEach((st, i) => {
       const x = 0.6 + i * 4.1;
@@ -284,7 +284,7 @@ async function iconRows(s, rows, x, y, w, gap, d = 0.6) {
       k.text(s, st[0], { x, y: 1.8, w: 3.9, h: 1.3, align: 'center', fontFace: 'Cambria', fontSize: 58, bold: true, color: i === 2 ? C.deep : C.maroon });
       k.text(s, st[1], { x: x + 0.2, y: 3.15, w: 3.5, h: 0.7, align: 'center', fontSize: 16, color: C.ink });
     });
-    const pts = [['Matcher', 'Built-in rules matcher (zero tokens). No AI accuracy is claimed: the AI matcher has not run live yet.'],
+    const pts = [['Matcher', 'Built-in rules matcher (zero tokens). No AI accuracy figure is claimed yet; live AI runs on Azure OpenAI and will be scored with the same harness.'],
       ['Live smoke test', '39 of 40 HTTP checks pass on the deployed app, 1 write check skipped, 0 failed.'],
       ['Database checks', '243 SQL smoke checks and all 11 triage contract cases pass, including the 2.66 quarter rule.']];
     pts.forEach((p, i) => k.text(s, [{ text: p[0] + '  ', options: { bold: true, color: C.maroon } }, { text: p[1], options: { color: C.ink } }], { x: 0.6, y: 4.35 + i * 0.82, w: 12.1, h: 0.75, fontSize: 15, valign: 'middle' }));
@@ -373,10 +373,10 @@ async function iconRows(s, rows, x, y, w, gap, d = 0.6) {
   await k.teamSlide();
   // Next
   {
-    const s = k.content('What we have not proven yet, and what comes next', 'No live AI key, no BU baseline numbers. Plan to close the gaps.');
+    const s = k.content('What we have not proven yet, and what comes next', 'No published AI accuracy yet, no BU baseline numbers. Plan to close the gaps.');
     k.text(s, 'Not proven yet', { x: 0.6, y: 1.5, w: 5.8, h: 0.5, fontSize: 21, bold: true, fontFace: 'Cambria', color: C.maroon });
-    bullets(s, ['No Anthropic key yet: AI matching and reading are built but unverified live; the rules fallback carries the demo', 'No BU baseline for evaluator minutes or turnaround, so time saved is not yet quantified', 'No API integration tests; coverage is unit scripts, an HTTP smoke suite and SQL contract tests', 'Exam thresholds and quarter rounding follow defaults; BU to confirm'], { x: 0.6, y: 2.1, w: 5.8, h: 4.6, fontSize: 15 });
-    const N = [['1', 'Get the Anthropic key; re-run the same backtest'], ['2', 'BU answers: 5-credit lab rule, exam thresholds'], ['3', 'Faculty screen for one-to-many mappings'], ['4', 'Measure evaluator minutes against a BU baseline'], ['5', 'SIS connector; turn demo login off for launch']];
+    bullets(s, ['AI accuracy not published yet: live AI runs on Azure OpenAI (Azure AI Foundry), Anthropic is configured, neither has been scored with the backtest', 'No BU baseline for evaluator minutes or turnaround, so time saved is not yet quantified', 'No API integration tests; coverage is unit scripts, an HTTP smoke suite and SQL contract tests', 'Exam thresholds and quarter rounding follow defaults; BU to confirm'], { x: 0.6, y: 2.1, w: 5.8, h: 4.6, fontSize: 15 });
+    const N = [['1', 'Score Azure OpenAI and Anthropic with the same backtest'], ['2', 'BU answers: 5-credit lab rule, exam thresholds'], ['3', 'Faculty screen for one-to-many mappings'], ['4', 'Measure evaluator minutes against a BU baseline'], ['5', 'SIS connector; turn demo login off for launch']];
     k.text(s, 'Next', { x: 6.9, y: 1.5, w: 5.8, h: 0.5, fontSize: 21, bold: true, fontFace: 'Cambria', color: C.maroon });
     N.forEach((r, i) => {
       const y = 2.15 + i * 0.88;

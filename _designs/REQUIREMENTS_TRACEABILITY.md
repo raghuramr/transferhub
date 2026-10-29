@@ -7,7 +7,7 @@
 
 **Legend:** ✅ built · 🟡 partial · ⏸ waiting on something outside the code (key, data, decision)
 
-> **Verification note.** "Built" means the code exists, type-checks and, where scripts exist, passes its unit/script tests. The build sandbox could not reach Azure SQL, so SQL marked *untested* in `CLAUDE.md` was first exercised by the team on the live database. AI paths that need an Anthropic or Azure key are unverified; the built-in rules fallback runs instead.
+> **Verification note.** "Built" means the code exists, type-checks and, where scripts exist, passes its unit/script tests. The build sandbox could not reach Azure SQL, so SQL marked *untested* in `CLAUDE.md` was first exercised by the team on the live database. Live AI runs on Azure OpenAI (Azure AI Foundry); Anthropic is also configured; the built-in rules engine is the fallback.
 
 ---
 
@@ -71,9 +71,9 @@
 
 | Asked | Status | Where |
 |---|---|---|
-| AI course matching with cost controls | ✅ ⏸ | `ai.service.ts`; needs `ANTHROPIC_API_KEY` |
+| AI course matching with cost controls | ✅ | `ai.service.ts`; running on Azure OpenAI (Azure AI Foundry) |
 | Works with no key (rules fallback) | ✅ | `ai/rules-matcher.ts`, `documents/rules-document-reader.ts` |
-| Providers: Anthropic, Azure OpenAI, custom OpenAI-compatible, Azure Document Intelligence | ✅ ⏸ | AI Controls → Providers; live calls not verified |
+| Providers configurable when required: Azure OpenAI / Azure AI Foundry (in use), Anthropic (configured), custom OpenAI-compatible, Azure Document Intelligence | ✅ | AI Controls → Providers |
 | Editable agent playbook (skills), learned skills from faculty decisions | ✅ | AI Controls → Playbook / Learning |
 | Benchmark engines on real students (dry run) | ✅ | AI Controls → Benchmark |
 | Equivalency network (anonymised cross-university history, optional boost) | ✅ | `src/api/src/network/` |
@@ -112,7 +112,7 @@
 
 ## 8. Open items
 
-- `ANTHROPIC_API_KEY` from infra; then switch AI on and try an auto-approve stage.
+- Score the live AI providers (Azure OpenAI, Anthropic) with the same backtest/benchmark and publish the numbers; then try an auto-approve stage.
 - CI permission to write Azure SQL firewall rules (migrations are applied by hand until then).
 - BU answers: 5-credit lab rule, exam thresholds, baseline turnaround numbers.
 - Turn demo login off before a real launch.

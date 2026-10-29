@@ -73,7 +73,7 @@ function points(s, list, x, y, w, gap = 1.05, titleSize = 17) {
   }
   // b
   {
-    const s = k.content('Uploading the documents', 'Smart Upload: drop PDFs or photos (or use the phone camera). Each file is classified and read; the student checks and confirms. Without an AI key the built-in rules reader does it, at lower confidence.');
+    const s = k.content('Uploading the documents', 'Smart Upload: drop PDFs or photos (or use the phone camera). Each file is classified and read; the student checks and confirms. Live AI runs on Azure OpenAI (Azure AI Foundry); with no provider active the built-in rules reader does it, at lower confidence.');
     step(s, 'b', 'Student');
     await k.shot(s, '08-smart-upload.png', 0.6, 1.5, 7.2, 5.3, 'Smart upload screenshot');
     const kinds = [['FiFileText', 'Transcript', 'College, term, courses, credits, grades'], ['FiCreditCard', 'ID / passport', 'Name, date of birth, country'], ['FiMessageSquare', 'English test', 'Test type and scores'], ['FiBookOpen', 'Syllabus', 'Course, topics, outcomes']];
@@ -197,7 +197,7 @@ function points(s, list, x, y, w, gap = 1.05, titleSize = 17) {
   k.section('Super admin');
   // g
   {
-    const s = k.content('AI stats for the Super Admin', 'Super admin dashboard: an "AI agents" block sits under Transfer operations, separate from the regular counts. AI Controls shows the same numbers in detail: spent this month, $ spent by request (matching / documents / briefs), tokens avoided, cache hits, response times. No AI key yet, so live AI spend is zero; the rules engine is logged at no cost.');
+    const s = k.content('AI stats for the Super Admin', 'Super admin dashboard: an "AI agents" block sits under Transfer operations, separate from the regular counts. AI Controls shows the same numbers in detail: spent this month, $ spent by request (matching / documents / briefs), tokens avoided, cache hits, response times. Spend comes from the active provider (Azure OpenAI today; Anthropic also configured); the rules engine is logged at no cost.');
     step(s, 'g', 'Super admin');
     await k.shot(s, '11-super-admin-dashboard.png', 0.6, 1.5, 6.0, 3.5, 'Super admin dashboard screenshot');
     await k.shot(s, '06-ai-controls.png', 6.8, 1.5, 6.0, 3.5, 'AI Controls screenshot');

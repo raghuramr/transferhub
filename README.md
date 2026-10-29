@@ -37,7 +37,7 @@ TransferHub makes transfer-credit evaluation faster for evaluators and transpare
 | Frontend (`src/ui`) | React 19, Vite, Tailwind CSS v4, TanStack Query, React Router 7, framer-motion, recharts, zustand, react-hook-form + zod |
 | Backend (`src/api`) | NestJS 10 + TypeScript, passport-JWT, argon2, class-validator, Swagger, helmet, throttler, SSE live events |
 | Database | Azure SQL Database / SQL Server via `mssql`/`tedious`. Core rules are in the stored procedures `sp_TriageCourse` and `sp_RecordDecision`; schema changes are numbered, idempotent SQL scripts in `database/` |
-| AI | Anthropic Claude (direct API), Azure OpenAI, custom OpenAI-compatible providers, Azure Document Intelligence, plus a built-in zero-token rules engine used when no key is set |
+| AI | Azure OpenAI via Azure AI Foundry (in use today) and Anthropic Claude, both configured. More providers can be added when required: any OpenAI-compatible service, plus Azure Document Intelligence for reading. A built-in zero-token rules engine takes over when no provider is active or the budget is spent |
 | Cloud | Azure App Service (one Node app serves the API and the SPA), Azure Blob Storage, Resend email, GitHub Actions CI/CD |
 
 ## Roles
@@ -123,7 +123,7 @@ These work after `npm run seed:users`.
 
 These go in `src/api/.env` locally, or in App Service application settings.
 
-- `ANTHROPIC_API_KEY`: AI matching and document reading. Without it, the built-in rules engine does every AI step. Other providers are configured in **AI Controls → Providers**.
+- **AI providers:** configured in **AI Controls → Providers**. The deployed site uses Azure OpenAI (Azure AI Foundry), and Anthropic is also set up; `ANTHROPIC_API_KEY` is the env-var alternative for Anthropic. With no provider active, the built-in rules engine does every AI step.
 - `AZURE_STORAGE_CONNECTION_STRING`: document storage in Azure Blob. Without it, files go to local disk.
 - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `APP_BASE_URL`: email.
 

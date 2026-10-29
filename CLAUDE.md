@@ -537,7 +537,8 @@ change plan + confirmed decisions in `13_registration_and_process_changes.md`.
 ## Parked / pending items (as of 2026-10-26)
 - **Migration 014 + seeds: APPLIED** to the live DB (user ran `apply:all` via the db-mcp-server).
 - **Migration 015 + seed 010: APPLIED** to the live DB (2026-10-26). User is testing the new 6-step registration and will report back.
-- **`ANTHROPIC_API_KEY`: not obtained yet.** AI stays paused (AI Controls switch off or
+- **AI providers (user, 2026-10-29):** live AI runs on **Azure OpenAI via Azure AI Foundry**; Anthropic is also configured. Providers are configurable when required (AI Controls > Providers). Do not describe AI as "waiting for a key" in docs/decks. The 96.8% top-3 backtest figure is the rules engine; no AI accuracy figure is published yet.
+- *(older note)* **`ANTHROPIC_API_KEY`: not obtained yet.** AI stays paused (AI Controls switch off or
   `AI_DISABLED=true`; without a key the pipeline skips quietly). Revisit when the key exists:
   set it, remove `AI_DISABLED`, switch AI back on, then try an auto-approve stage.
 - **Decisions (user, 2026-10-26):** CI/CD stays on **GitHub Actions** (the Azure DevOps option is

@@ -95,13 +95,14 @@ IDs follow [`understanding/03_business_rules.md`](understanding/03_business_rule
 - **Evaluation:** triage lanes (`sp_TriageCourse`), the policy engine, programme rules, exam-credit rules, AI or rules course matching with top-3 candidates, side-by-side comparison, decisions saved back as equivalencies with effective dates.
 - **Workflow:** a per-university workflow designer with stages, approver groups, SLAs, auto-approve, bypass, notes, reminders and insights.
 - **Data:** Universities → Programs → Courses → Topics (shared across universities), equivalencies, a partner API and portal, student intake by claim link, and demo data sets.
+- **AI providers:** Live AI currently runs on Azure OpenAI through Azure AI Foundry. Anthropic Claude is also set up, and further providers can be configured when required in AI Controls → Providers without a code change.
 - **Platform:** a roles and permissions matrix with custom roles, AI Controls (providers, settings, playbook skills, usage and spend, benchmark, learning), dashboards per role, branded emails, and Swagger.
 
 ### Out of scope
 
 - Integration with real student information systems (MyBU / SIS). A connector seam (`SourceConnector`) exists for it.
 - OCR of scanned images without Azure Document Intelligence.
-- Live verification of the Anthropic and Azure OpenAI paths: no key was provided during the hackathon. The rules fallback ran every AI step instead.
+- Accuracy figures for the live AI matcher. Live AI runs on Azure OpenAI through Azure AI Foundry, and Anthropic Claude is also configured. Providers can be switched or added when required. The backtest number below is for the built-in rules engine; the same harness and the AI Controls benchmark can score each provider.
 
 ### Measurable outcome
 
