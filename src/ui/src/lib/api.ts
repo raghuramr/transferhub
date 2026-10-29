@@ -95,6 +95,8 @@ export const authApi = {
   me: () => api.get<AuthTokens['user']>('/auth/me'),
   /** Public (no auth) — student self-registration; response auto-logs in like login(). */
   register: (data: unknown) => api.post<AuthTokens>('/auth/register', data),
+  /** Public (no auth) — "is this email already registered?" check for step 1 of the registration wizard. */
+  checkEmail: (email: string) => api.get<{ available: boolean }>('/auth/check-email', { params: { email } }),
   /** Public (no auth) — registration-page dropdown data. */
   publicRegistrationForm: () =>
     api.get<{ id: number; title: string; description: string | null; fields: import('../types').FormField[] } | ''>('/auth/registration-form'),

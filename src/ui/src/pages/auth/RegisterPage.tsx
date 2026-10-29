@@ -126,6 +126,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState(0);
   const [stepError, setStepError] = useState<string | null>(null);
   const [showPass, setShowPass] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
   const [serverError, setServerError] = useState('');
   const [extra, setExtra] = useState<Record<string, FormFieldValue>>({});
   const [extraErrors, setExtraErrors] = useState<Record<string, string>>({});
@@ -210,6 +211,23 @@ export default function RegisterPage() {
       ok = false;
     }
     if (cur.kind === 'extra' && !validateExtra(cur.section!)) ok = false;
+    // Catch a duplicate email right here, on step 1, rather than at final submit after 7 steps.
+    if (ok && cur.kind === 'account') {
+      setCheckingEmail(true);
+      try {
+        const email = getValues('email');
+        const res = await authApi.checkEmail(email);
+        if (!res.data.available) {
+          setError('email', { message: 'An account with this email already exists. Sign in instead, or use a different email.' });
+          ok = false;
+        }
+      } catch {
+        // The check itself failing (offline, rate-limited) should never block registration - the
+        // server still enforces uniqueness for real at final submit.
+      } finally {
+        setCheckingEmail(false);
+      }
+    }
     if (ok) setStep((s) => Math.min(s + 1, STEPS.length - 1));
     else setStepError('Please fix the highlighted fields before continuing.');
   };
@@ -609,7 +627,9 @@ export default function RegisterPage() {
                 <button type="button" onClick={() => { setStepError(null); setStep(step - 1); }} className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900"><ArrowLeft size={16} /> Back</button>
               ) : <span />}
               {step < STEPS.length - 1 ? (
-                <Button type="button" onClick={() => void next()} icon={<ArrowRight size={16} />}>Continue</Button>
+                <Button type="button" onClick={() => void next()} disabled={checkingEmail} icon={!checkingEmail ? <ArrowRight size={16} /> : undefined}>
+                  {checkingEmail ? 'Checking…' : 'Continue'}
+                </Button>
               ) : (
                 <Button type="submit" disabled={isSubmitting} icon={!isSubmitting ? <ArrowRight size={16} /> : undefined}>{isSubmitting ? 'Creating account…' : 'Create account'}</Button>
               )}
