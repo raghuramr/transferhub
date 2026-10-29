@@ -855,11 +855,11 @@ export class WorkflowEngineService {
 
   async buildBrief(transcriptId: string) {
     const rows = await this.db.query<{
-      TcId: string; EvalId: string | null; CourseCode: string; CourseTitle: string; Grade: string; Lane: string; OriginalCredits: number; NormalisedCredits: number | null;
+      TcId: string; EvalId: string | null; CourseCode: string; CourseTitle: string; Grade: string; Lane: string; Term: string | null; OriginalCredits: number; NormalisedCredits: number | null;
       EvalStatus: string | null; Outcome: string | null; AwardedCredits: number | null; AIConfidence: number | null;
       SugCode: string | null; SugTitle: string | null; DecCode: string | null; DecTitle: string | null;
     }>(
-      `SELECT tc.Id AS TcId, e.Id AS EvalId, tc.CourseCode, tc.CourseTitle, tc.Grade, tc.Lane, tc.OriginalCredits, tc.NormalisedCredits,
+      `SELECT tc.Id AS TcId, e.Id AS EvalId, tc.CourseCode, tc.CourseTitle, tc.Grade, tc.Lane, tc.Term, tc.OriginalCredits, tc.NormalisedCredits,
               e.Status AS EvalStatus, e.Outcome, e.AwardedCredits, e.AIConfidence,
               sc.Code AS SugCode, sc.Title AS SugTitle, dc.Code AS DecCode, dc.Title AS DecTitle
        FROM TranscriptCourses tc
@@ -970,8 +970,11 @@ export class WorkflowEngineService {
         code: c.CourseCode,
         title: c.CourseTitle,
         grade: c.Grade,
+        term: c.Term ?? null,
         lane: c.Lane,
         credits: credit(c),
+        originalCredits: c.OriginalCredits == null ? null : Number(c.OriginalCredits),
+        normalisedCredits: c.NormalisedCredits == null ? null : Number(c.NormalisedCredits),
         suggested: c.SugCode ? { code: c.SugCode, title: c.SugTitle, confidence: c.AIConfidence == null ? null : Number(c.AIConfidence) } : null,
         decided: c.DecCode ? { code: (multiMapped.get(String(c.TcId).toLowerCase())?.length ?? 0) > 1 ? multiMapped.get(String(c.TcId).toLowerCase())!.map((m) => `${m.code}${m.credits != null ? ` (${m.credits} cr)` : ''}`).join(' + ') : c.DecCode, title: c.DecTitle, outcome: c.Outcome, awardedCredits: c.AwardedCredits } : c.Outcome ? { code: null, title: null, outcome: c.Outcome, awardedCredits: c.AwardedCredits } : null,
       })),

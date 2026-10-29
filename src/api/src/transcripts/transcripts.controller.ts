@@ -8,7 +8,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UploadsService } from '../uploads/uploads.service';
-import { ScopeService } from '../policy/scope.service';
+import { ScopeService, isScopedStaffRole } from '../policy/scope.service';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 
 @Controller('transcripts')
@@ -40,7 +40,7 @@ export class TranscriptsController {
     if (role === 'student' && transcript.studentEmail !== email) {
       throw new ForbiddenException();
     }
-    if (role === 'admin' && !(await this.transcriptsService.adminCanSee(id, req.user))) throw new ForbiddenException();
+    if (isScopedStaffRole(role) && !(await this.transcriptsService.adminCanSee(id, req.user))) throw new ForbiddenException();
     return transcript;
   }
 
@@ -69,7 +69,7 @@ export class TranscriptsController {
     if (role === 'student' && doc.studentEmail !== email) {
       throw new ForbiddenException();
     }
-    if (role === 'admin' && !(await this.transcriptsService.adminCanSee(id, req.user))) throw new ForbiddenException();
+    if (isScopedStaffRole(role) && !(await this.transcriptsService.adminCanSee(id, req.user))) throw new ForbiddenException();
     const file = await this.uploadsService.getByStoredPath(doc.path);
     const stream = await this.uploadsService.openStream(file);
     if (!stream) throw new NotFoundException('File not found in storage');

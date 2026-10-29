@@ -181,12 +181,16 @@ export class DashboardService {
     const stageList = stageIds.length
       ? stageIds.map((id, i) => { stageInputs.push({ name: `st${i}`, type: sql.Int, value: id }); return `@st${i}`; }).join(',')
       : 'NULL';
+    // A faculty member assigned to universities only counts work for those universities: stage
+    // membership and university scope narrow together. No scope rows = every university.
+    const facultyScope = await this.scope.universityScope(viewer).catch(() => null);
+    const stageScopeSql = facultyScope ? ` AND ${this.scope.transcriptInScope(facultyScope, 't', stageInputs)}` : '';
 
     const waiting = await this.safe('faculty waiting', async () => {
       const r = await this.rows(
         `SELECT COUNT(*) AS total, SUM(CASE WHEN ts.DueAt < SYSUTCDATETIME() THEN 1 ELSE 0 END) AS overdue
          FROM TranscriptStages ts JOIN Transcripts t ON t.Id = ts.TranscriptId
-         WHERE ts.Status = 'active' AND ts.StageType <> 'system' AND t.WorkflowStatus = 'active' AND ts.WorkflowStageId IN (${stageList})`,
+         WHERE ts.Status = 'active' AND ts.StageType <> 'system' AND t.WorkflowStatus = 'active' AND ts.WorkflowStageId IN (${stageList})${stageScopeSql}`,
         stageInputs,
       );
       return r[0] ?? {};
@@ -206,7 +210,11 @@ export class DashboardService {
       return Number(r[0]?.n ?? 0);
     }, 0);
     const appeals = await this.safe('faculty appeals', async () => {
-      const r = await this.rows(`SELECT COUNT(*) AS n FROM CourseAppeals WHERE Status = 'submitted'`);
+      const inputs: QueryInput[] = [];
+      const sc = facultyScope
+        ? ` AND EXISTS (SELECT 1 FROM Transcripts t WHERE t.Id = a.TranscriptId AND ${this.scope.transcriptVisibleInScope(facultyScope, 't', inputs)})`
+        : '';
+      const r = await this.rows(`SELECT COUNT(*) AS n FROM CourseAppeals a WHERE a.Status = 'submitted'${sc}`, inputs);
       return Number(r[0]?.n ?? 0);
     }, 0);
 
@@ -233,7 +241,7 @@ export class DashboardService {
 
     const backlog = await this.safe('faculty backlog', () =>
       this.rows(`SELECT ts.StageName AS name, COUNT(*) AS value FROM TranscriptStages ts JOIN Transcripts t ON t.Id = ts.TranscriptId
-                 WHERE ts.Status = 'active' AND ts.StageType <> 'system' AND t.WorkflowStatus = 'active' AND ts.WorkflowStageId IN (${stageList})
+                 WHERE ts.Status = 'active' AND ts.StageType <> 'system' AND t.WorkflowStatus = 'active' AND ts.WorkflowStageId IN (${stageList})${stageScopeSql}
                  GROUP BY ts.StageName`, stageInputs), []);
     if (backlog.length) charts.push({ key: 'backlog', title: 'Approvals waiting, by stage', type: 'hbar', data: this.pairs(backlog) });
 

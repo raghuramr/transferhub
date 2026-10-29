@@ -7,7 +7,7 @@ import { CreditDeadlineService } from '../policy/credit-deadline.service';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { UploadsService } from '../uploads/uploads.service';
-import { ScopeService } from '../policy/scope.service';
+import { ScopeService, isScopedStaffRole } from '../policy/scope.service';
 import { EmailService } from '../common/email.service';
 import { templates } from '../common/email-templates';
 import { AiUsageService } from '../ai/ai-usage.service';
@@ -70,7 +70,7 @@ export class RequestsService {
 
   // ── access ──────────────────────────────────────────────────
 
-  /** Students/agencies see only their own request; staff can open any. */
+  /** Students/agencies see only their own request; staff can open any in their university scope. */
   async assertCanView(transcriptId: string, viewer: Viewer) {
     const r = await this.db.query<{ StudentUserId: string; SubmittedById: string }>(
       `SELECT StudentUserId, SubmittedById FROM Transcripts WHERE Id = @t`,
@@ -81,7 +81,7 @@ export class RequestsService {
     const same = (a: string) => String(a).toLowerCase() === viewer.id.toLowerCase();
     if (viewer.role === 'student' && !same(row.StudentUserId)) throw new ForbiddenException();
     if (viewer.role === 'agency' && !same(row.SubmittedById)) throw new ForbiddenException();
-    if (viewer.role === 'admin') {
+    if (isScopedStaffRole(viewer.role)) {
       const ids = await this.scopeSvc.universityScope(viewer);
       if (ids) {
         const inputs: QueryInput[] = [{ name: 'tid', type: sql.UniqueIdentifier, value: transcriptId }];
@@ -94,7 +94,7 @@ export class RequestsService {
     return row;
   }
 
-  /** assertCanView + "may decide stages": a scoped admin of the SOURCE university only reads / uploads / reminds. */
+  /** assertCanView + "may decide stages": scoped staff of the SOURCE university only read / upload / remind. */
   async assertCanWork(transcriptId: string, viewer: Viewer) {
     const row = await this.assertCanView(transcriptId, viewer);
     if (!(await this.scopeSvc.canWorkRequest(viewer, transcriptId))) {
@@ -151,7 +151,7 @@ export class RequestsService {
   async getTimeline(transcriptId: string, viewer: Viewer) {
     await this.assertCanView(transcriptId, viewer);
     const staff = !isOwnerRole(viewer.role);
-    // A scoped admin of the SOURCE university only reads: no approving, no internal notes or AI brief of the receiving university.
+    // Scoped staff (admin or faculty) of the SOURCE university only read: no approving, no internal notes or AI brief of the receiving university.
     const readOnly = staff && !(await this.scopeSvc.canWorkRequest(viewer, transcriptId));
     const mine = await this.myStageIds(viewer);
     const actsOn = (wsId: number | null) => (mine === null ? true : wsId != null && mine.has(wsId));
@@ -306,7 +306,10 @@ export class RequestsService {
         canSkip: admin && workflowActive && s.Status === 'active' && s.StageType !== 'system' && s.CanBypass !== false,
         requiresComment: !!s.RequiresComment,
         aiRecommendation: staff && !readOnly ? s.AiRecommendation : null,
-        aiBrief: staff && !readOnly && s.Status === 'active' ? parseBrief(s.AiBrief) : null,
+        // Every staff reviewer keeps the per-course detail of a stage they have reached, not just the
+        // one that happens to be active right now - a faculty reviewer whose stage has moved on (or
+        // who is waiting for an earlier one) still needs the full course list.
+        aiBrief: staff && !readOnly ? parseBrief(s.AiBrief) : null,
         notes: visibleNotes
           .filter((n) => n.TranscriptStageId === s.Id)
           .map((n) => ({

@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { EventBus } from '../events/event-bus.service';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import * as sql from 'mssql';
 import { DecideEvaluationDto, AssignEvaluationDto } from './dto/create-evaluation.dto';
 import { CourseMappingsService } from '../policy/course-mappings.service';
+import { ScopeService } from '../policy/scope.service';
 
 interface EvaluationListRow {
   Id: string;
@@ -41,7 +42,24 @@ interface AiCandidateRow {
 
 @Injectable()
 export class EvaluationsService {
-  constructor(private db: DatabaseService, private mappings: CourseMappingsService, @Optional() private bus?: EventBus) {}
+  constructor(
+    private db: DatabaseService,
+    private mappings: CourseMappingsService,
+    private scope: ScopeService,
+    @Optional() private bus?: EventBus,
+  ) {}
+
+  /**
+   * The transcript an evaluation belongs to, so university scope can be applied. Returns null when the
+   * evaluation does not exist (the caller then raises its own NotFound).
+   */
+  private async transcriptOf(evaluationId: string): Promise<string | null> {
+    const r = await this.db.query<{ TranscriptId: string }>(
+      `SELECT tc.TranscriptId FROM Evaluations e JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId WHERE e.Id = @id`,
+      [{ name: 'id', type: sql.UniqueIdentifier, value: evaluationId }],
+    );
+    return r.recordset[0]?.TranscriptId ?? null;
+  }
 
   /** Live-tracker event for an evaluation change. Best-effort: never throws, never delays the response. */
   private emitEvaluation(evaluationId: string, type: 'evaluation_decided' | 'evaluation_posted', text: string) {
@@ -65,9 +83,15 @@ export class EvaluationsService {
    * to a specific Department, so any faculty can pick up an unassigned
    * item rather than nobody ever seeing it).
    */
-  async list(filters: { statusList?: string[]; assignedToMe?: boolean; userId?: string } = {}) {
+  async list(filters: { statusList?: string[]; assignedToMe?: boolean; userId?: string; viewer?: { id: string; role: string } } = {}) {
     let where = '1=1';
     const inputs: QueryInput[] = [];
+
+    // Staff assigned to universities (admin or faculty) only queue work for those universities.
+    if (filters.viewer) {
+      const ids = await this.scope.universityScope(filters.viewer);
+      if (ids) where += ` AND ${this.scope.transcriptVisibleInScope(ids, 't', inputs)}`;
+    }
 
     if (filters.statusList?.length) {
       const names = filters.statusList.map((_, i) => `@s${i}`);
@@ -107,7 +131,13 @@ export class EvaluationsService {
     }));
   }
 
-  async findById(id: string) {
+  async findById(id: string, viewer?: { id: string; role: string }) {
+    if (viewer) {
+      const tid = await this.transcriptOf(id);
+      if (tid && !(await this.scope.canViewTranscript(viewer, tid))) {
+        throw new ForbiddenException('This course belongs to a university outside your assignment.');
+      }
+    }
     const res = await this.db.query<EvaluationDetailRow>(
       `SELECT e.Id, e.Status, e.AIConfidence, e.AIRationale,
               tc.CourseCode, tc.CourseTitle, tc.OriginalCredits, tc.Grade,
@@ -153,11 +183,18 @@ export class EvaluationsService {
     };
   }
 
-  async decide(id: string, dto: DecideEvaluationDto, decidedBy: string) {
+  async decide(id: string, dto: DecideEvaluationDto, decidedBy: string, viewer?: { id: string; role: string }) {
     const exists = await this.db.query<{ Id: string }>(`SELECT Id FROM Evaluations WHERE Id = @id`, [
       { name: 'id', type: sql.UniqueIdentifier, value: id },
     ]);
     if (!exists.recordset[0]) throw new NotFoundException('Evaluation not found');
+    if (viewer) {
+      // Scoped staff of the SOURCE university may read this course but not decide it.
+      const tid = await this.transcriptOf(id);
+      if (tid && !(await this.scope.canWorkRequest(viewer, tid))) {
+        throw new ForbiddenException('This request is being decided at another university.');
+      }
+    }
 
     // OUT-06: one external course counting as several BU courses.
     const multi = dto.mappings?.length ? dto.mappings : dto.buCourseIds?.map((buCourseId) => ({ buCourseId }));

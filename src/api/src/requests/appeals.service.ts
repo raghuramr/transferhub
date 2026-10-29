@@ -1,11 +1,12 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as sql from 'mssql';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
 import { EmailService } from '../common/email.service';
 import { templates } from '../common/email-templates';
 import { UploadsService } from '../uploads/uploads.service';
 import { WorkflowsService } from '../workflows/workflows.service';
 import { SchemaService } from '../policy/schema.service';
+import { ScopeService } from '../policy/scope.service';
 import { WorkflowEngineService } from './workflow-engine.service';
 import { RequestsService, type Viewer } from './requests.service';
 import type { CreateAppealDto, DecideAppealDto } from './dto/appeals.dto';
@@ -31,6 +32,7 @@ export class AppealsService {
     private schema: SchemaService,
     private engine: WorkflowEngineService,
     private requests: RequestsService,
+    private scope: ScopeService,
   ) {}
 
   private async ready() {
@@ -139,7 +141,13 @@ export class AppealsService {
     if (!STAFF.includes(viewer.role)) throw new ForbiddenException();
     if (!(await this.schema.policyReady())) return [];
     const where = status === 'decided' ? `WHERE a.Status = 'decided'` : status === 'all' ? '' : `WHERE a.Status = 'submitted'`;
-    const r = await this.db.query(`${this.SELECT} ${where} ORDER BY a.CreatedAt DESC`);
+    // Staff assigned to universities only see appeals on requests of those universities.
+    const inputs: QueryInput[] = [];
+    const ids = await this.scope.universityScope(viewer);
+    const sc = ids
+      ? `${where ? ' AND' : 'WHERE'} EXISTS (SELECT 1 FROM Transcripts ts_sc WHERE ts_sc.Id = a.TranscriptId AND ${this.scope.transcriptVisibleInScope(ids, 'ts_sc', inputs)})`
+      : '';
+    const r = await this.db.query(`${this.SELECT} ${where}${sc} ORDER BY a.CreatedAt DESC`, inputs);
     return r.recordset;
   }
 
@@ -164,6 +172,10 @@ export class AppealsService {
     );
     const a = r.recordset[0];
     if (!a) throw new NotFoundException('Appeal not found');
+    // Scoped staff of the SOURCE university may read the appeal but not decide it.
+    if (!(await this.scope.canWorkRequest(viewer, a.TranscriptId))) {
+      throw new ForbiddenException('This request is incoming at another university, so you cannot decide its appeals.');
+    }
     if (a.Status !== 'submitted') throw new BadRequestException('This appeal has already been decided.');
     if (dto.outcome === 'equivalent' && !dto.buCourseId) throw new BadRequestException('Choose the BU course equivalent.');
     if (dto.outcome === 'denied' && !dto.denialReason?.trim()) throw new BadRequestException('Give the reason for denying the appeal.');

@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import { BlobStorageService, type StorageProvider } from './blob-storage.service';
 import { SchemaService } from '../policy/schema.service';
-import { ScopeService } from '../policy/scope.service';
+import { ScopeService, isScopedStaffRole } from '../policy/scope.service';
 import { compressImage } from '../common/image-compress';
 
 const STAFF_ROLES = ['admin', 'super_admin', 'faculty'];
@@ -212,8 +212,10 @@ export class UploadsService {
     const isOwner = same(row.OwnerUserId);
     const isStaff = STAFF_ROLES.includes(requester.role);
     if (row.TranscriptId) {
-      let ok = isOwner || same(row.StudentUserId) || requester.role === 'super_admin' || requester.role === 'faculty';
-      if (!ok && requester.role === 'admin') ok = await this.scope.canViewTranscript(requester, row.TranscriptId);
+      let ok = isOwner || same(row.StudentUserId) || requester.role === 'super_admin';
+      // Scoped staff (admin or faculty) must belong to one of the two universities on that transfer;
+      // an unscoped one still passes, because canViewTranscript answers true for them.
+      if (!ok && isScopedStaffRole(requester.role)) ok = await this.scope.canViewTranscript(requester, row.TranscriptId);
       if (!ok && requester.role === 'agency') {
         const r = await this.db.query<{ N: number }>(
           `SELECT COUNT(*) AS N FROM Transcripts WHERE Id = @t AND SubmittedById = @u`,

@@ -233,7 +233,9 @@ const settle = () => new Promise((r) => setTimeout(r, 5));
   await test('EventAccessService: owner/submitter/scope rules with a stubbed DB', async () => {
     let queries = 0;
     const db = { query: async () => { queries++; return { recordset: [{ StudentUserId: STUDENT_A.toUpperCase(), SubmittedById: 'AGENCY-1' }] }; } };
-    const scope = { canViewTranscript: async (v: { id: string }) => v.id === ADMIN_IN };
+    // Faculty are now narrowed by their university assignment exactly like admins: only the two
+    // staff ids that belong to this transfer's universities pass canViewTranscript.
+    const scope = { canViewTranscript: async (v: { id: string }) => v.id === ADMIN_IN || v.id === FACULTY };
     const svc = new EventAccessService(db as never, scope as never);
     assert.equal(await svc.canSee({ id: STUDENT_A, role: 'student' }, T1, 'all'), true);
     assert.equal(await svc.canSee({ id: STUDENT_B, role: 'student' }, T1, 'all'), false);
@@ -244,6 +246,8 @@ const settle = () => new Promise((r) => setTimeout(r, 5));
     assert.equal(await svc.canSee({ id: ADMIN_IN, role: 'admin' }, T1, 'all'), true);
     assert.equal(await svc.canSee({ id: ADMIN_OUT, role: 'admin' }, T1, 'staff'), false);
     assert.equal(await svc.canSee({ id: FACULTY, role: 'faculty' }, T1, 'staff'), true);
+    assert.equal(await svc.canSee({ id: ADMIN_OUT, role: 'faculty' }, T1, 'staff'), false, 'a faculty member of another university gets nothing');
+    assert.equal(await svc.canSee({ id: 'x', role: 'super_admin' }, T1, 'staff'), true, 'super admins are never narrowed');
     assert.equal(await svc.canSee({ id: 'x', role: 'unknown' }, T1, 'all'), false);
   });
 
