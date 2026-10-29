@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TransferHub by Clopay CodeCrafters</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Project overview of TransferHub, Clopay CodeCrafters' entry for Evoke FDE AI Hackathon 5.0, Problem 1: Smarter Transfer Credit Evaluation (Boston University).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a registrar's ledger. Single 1120px column; each section is a numbered folio with a mono label rail,
+   course-code chips and credit figures set in mono, maroon as the one accent (the TransferHub mark). */
+:root {
+  --bg: #fbf9f9;
+  --surface: #ffffff;
+  --sunk: #f3eeef;
+  --ink: #1e1517;
+  --ink-2: #5a4c4f;
+  --line: #e5dbdd;
+  --accent: #8c1d2f;
+  --accent-ink: #ffffff;
+  --accent-soft: #f6e4e7;
+  --ok: #1f7a4d;   --ok-soft: #e1f2e9;
+  --warn: #9a5a00; --warn-soft: #fbefd9;
+  --info: #2a5d8f; --info-soft: #e2ecf6;
+  --mute: #6b6164; --mute-soft: #efebec;
+  --plate: #ffffff;
+  --shadow: 0 1px 2px rgb(60 20 28 / .06), 0 8px 24px rgb(60 20 28 / .06);
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  --s-xs: .78rem; --s-sm: .875rem; --s-base: 1rem; --s-md: 1.2rem; --s-lg: 1.6rem; --s-xl: 2.3rem; --s-hero: clamp(2.3rem, 5.2vw, 4rem);
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151012; --surface: #1d1619; --sunk: #241b1e; --ink: #f3eced; --ink-2: #bcaeb1; --line: #3a2e31;
+    --accent: #e0697b; --accent-ink: #1a0d10; --accent-soft: #3a1c22;
+    --ok: #5fcf95; --ok-soft: #173326; --warn: #f0b456; --warn-soft: #3a2b12; --info: #82b4e6; --info-soft: #1a2a3b;
+    --mute: #a99ea1; --mute-soft: #2a2225; --plate: #f7f3f4;
+    --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px rgb(0 0 0 / .3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151012; --surface: #1d1619; --sunk: #241b1e; --ink: #f3eced; --ink-2: #bcaeb1; --line: #3a2e31;
+  --accent: #e0697b; --accent-ink: #1a0d10; --accent-soft: #3a1c22;
+  --ok: #5fcf95; --ok-soft: #173326; --warn: #f0b456; --warn-soft: #3a2b12; --info: #82b4e6; --info-soft: #1a2a3b;
+  --mute: #a99ea1; --mute-soft: #2a2225; --plate: #f7f3f4;
+  --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px rgb(0 0 0 / .3);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 var(--s-base)/1.6 var(--f-body); }
+img { max-width: 100%; display: block; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.15; letter-spacing: -.01em; }
+h2 { font-size: var(--s-xl); font-weight: 800; }
+h3 { font-size: var(--s-md); font-weight: 700; }
+p { margin: 0; }
+code, .mono { font-family: var(--f-mono); font-size: .9em; }
+.num { font-variant-numeric: tabular-nums; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* top bar */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 21; background: var(--bg); }
+.topbar .wrap { display: flex; align-items: center; gap: 16px; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 var(--s-sm)/1 var(--f-display); color: var(--ink); text-decoration: none; white-space: nowrap; }
+.brand img { height: 30px; width: auto; object-fit: contain; background: var(--plate); border-radius: 6px; padding: 3px 5px; }
+.topnav { display: flex; gap: 4px 18px; margin-left: auto; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.topnav a { color: var(--ink-2); text-decoration: none; font-size: var(--s-sm); white-space: nowrap; padding-block: 4px; }
+.topnav a:hover { color: var(--accent); }
+@media (max-width: 760px) { .topnav { display: none; } }
+
+/* hero */
+.hero { padding-block: 56px 48px; border-bottom: 1px solid var(--line); }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+.eyebrow { font: 500 var(--s-xs)/1.4 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.hero h1 { font-size: var(--s-hero); font-weight: 800; margin-top: 14px; }
+.hero h1 .sub { display: block; color: var(--ink-2); font-weight: 500; font-size: .5em; margin-top: 12px; letter-spacing: 0; }
+.hero .lede { margin-top: 20px; font-size: var(--s-md); color: var(--ink-2); max-width: 58ch; line-height: 1.55; }
+.team-line { margin-top: 18px; font-size: var(--s-sm); color: var(--ink-2); }
+.team-line strong { color: var(--ink); }
+.ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.btn { display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: 8px; font: 600 var(--s-sm)/1.2 var(--f-body); text-decoration: none; border: 1px solid var(--accent); }
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-ghost { color: var(--accent); background: transparent; }
+.btn-ghost:hover { background: var(--accent-soft); }
+.btn small { display: block; font: 400 var(--s-xs)/1.2 var(--f-mono); opacity: .8; margin-top: 2px; }
+.logos { display: grid; gap: 14px; }
+.plate { background: var(--plate); border-radius: 14px; padding: 18px; box-shadow: var(--shadow); display: grid; place-items: center; }
+.plate img { max-height: 210px; width: auto; }
+.plate.th img { max-height: 120px; }
+.plate-cap { font: 500 var(--s-xs)/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: #6b6164; margin-top: 10px; }
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-top: 44px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.fact { padding: 16px 18px; border-left: 1px solid var(--line); min-width: 0; }
+.fact:first-child { border-left: 0; }
+.fact b { display: block; font: 800 var(--s-lg)/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.fact span { font-size: var(--s-sm); color: var(--ink-2); }
+
+/* sections */
+section.block { padding-block: 64px; border-bottom: 1px solid var(--line); scroll-margin-top: 56px; }
+.head { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 24px; margin-bottom: 32px; }
+.folio { font: 500 var(--s-xs)/1.4 var(--f-mono); color: var(--ink-2); letter-spacing: .06em; text-transform: uppercase; padding-top: 10px; border-top: 2px solid var(--accent); align-self: start; }
+.head p { margin-top: 12px; color: var(--ink-2); max-width: 68ch; font-size: var(--s-md); line-height: 1.55; }
+.body { margin-left: 174px; }
+.body.team { margin-left: 0; }
+.demo-grid { align-items: start; }
+@media (max-width: 860px) {
+  .head { grid-template-columns: 1fr; gap: 10px; }
+  .folio { justify-self: start; padding-right: 20px; }
+  .body { margin-left: 0; }
+}
+
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; min-width: 0; }
+.card p, .card li { color: var(--ink-2); font-size: var(--s-sm); }
+.card h3 + p { margin-top: 8px; }
+
+/* problem */
+.pains { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.pains li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; align-items: baseline; }
+.pains b { font: 800 var(--s-lg)/1 var(--f-display); color: var(--accent); font-variant-numeric: tabular-nums; }
+.pains span { color: var(--ink-2); }
+.constraint { margin-top: 22px; padding: 16px 18px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 var(--radius) var(--radius) 0; font-size: var(--s-sm); }
+.personas { display: grid; gap: 10px; }
+.persona { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 700 var(--s-sm)/1 var(--f-display); background: var(--sunk); color: var(--accent); }
+.persona b { font-size: var(--s-sm); }
+.persona .role { font: 500 .72rem/1 var(--f-mono); color: var(--accent); background: var(--accent-soft); padding: 3px 6px; border-radius: 4px; margin-left: 6px; }
+.persona p { font-size: var(--s-sm); color: var(--ink-2); margin-top: 2px; }
+
+/* flow diagram */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 30px 26px; counter-reset: step; }
+.flow li { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; counter-increment: step; min-width: 0; }
+.flow li::before { content: counter(step, decimal-leading-zero); display: block; font: 500 var(--s-xs)/1 var(--f-mono); color: var(--accent); margin-bottom: 8px; }
+.flow li::after { content: ""; position: absolute; top: 50%; right: -22px; width: 18px; height: 2px; background: var(--accent); }
+.flow li:nth-child(4n)::after, .flow li:last-child::after { display: none; }
+.flow li .who { display: inline-block; margin-top: 10px; font: 500 .7rem/1 var(--f-mono); padding: 3px 6px; border-radius: 4px; background: var(--sunk); color: var(--ink-2); }
+.flow h3 { font-size: var(--s-base); }
+.flow p { font-size: var(--s-sm); color: var(--ink-2); margin-top: 6px; }
+.flow li.key { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+@media (max-width: 980px) {
+  .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flow li::after { display: block !important; }
+  .flow li:nth-child(2n)::after { display: none !important; }
+}
+@media (max-width: 560px) {
+  .flow { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .flow li::after { display: block !important; top: auto; bottom: -16px; right: auto; left: 28px; width: 2px; height: 12px; }
+  .flow li:last-child::after { display: none !important; }
+}
+.loop { margin-top: 18px; display: flex; gap: 12px; align-items: center; font-size: var(--s-sm); color: var(--ink-2); }
+.loop svg { flex: none; width: 28px; height: 28px; color: var(--accent); }
+
+.lanes-title { margin-top: 40px; font: 500 var(--s-xs)/1 var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.lanes { margin-top: 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.lane { border-radius: var(--radius); padding: 14px; min-width: 0; border: 1px solid var(--line); background: var(--surface); }
+.lane .pill { display: inline-block; font: 600 .72rem/1 var(--f-mono); padding: 4px 8px; border-radius: 999px; }
+.lane p { margin-top: 10px; font-size: var(--s-sm); color: var(--ink-2); }
+td .pill { display: inline-block; font: 600 .7rem/1 var(--f-mono); padding: 3px 6px; border-radius: 999px; margin-right: 4px; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.info { background: var(--info-soft); color: var(--info); }
+.pill.mute { background: var(--mute-soft); color: var(--mute); }
+@media (max-width: 860px) { .lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* capabilities */
+.caps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.cap { padding: 20px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface); min-width: 0; }
+.cap svg { width: 24px; height: 24px; color: var(--accent); }
+.cap h3 { font-size: var(--s-base); margin-top: 12px; }
+.cap p { font-size: var(--s-sm); color: var(--ink-2); margin-top: 6px; }
+.cap code { color: var(--ink); }
+@media (max-width: 900px) { .caps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .caps { grid-template-columns: minmax(0, 1fr); } }
+
+/* outcome */
+.outcome { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.chart { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+.chart-title { font: 600 var(--s-sm)/1.3 var(--f-body); }
+.chart-sub { font-size: var(--s-xs); color: var(--ink-2); margin-top: 2px; font-family: var(--f-mono); }
+.bars { margin-top: 18px; display: grid; gap: 16px; }
+.bar-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) 64px; gap: 12px; align-items: center; }
+.bar-row .lbl { font: 500 var(--s-sm)/1 var(--f-mono); color: var(--ink-2); }
+.track { position: relative; height: 26px; background: var(--sunk); border-radius: 4px; overflow: hidden;
+  background-image: linear-gradient(to right, var(--line) 1px, transparent 1px); background-size: 25% 100%; }
+.fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 4px; }
+.fill.light { background: color-mix(in srgb, var(--accent) 55%, var(--sunk)); }
+.bar-row .val { font: 800 var(--s-md)/1 var(--f-display); font-variant-numeric: tabular-nums; text-align: right; }
+.axis { display: grid; grid-template-columns: 56px minmax(0, 1fr) 64px; gap: 12px; margin-top: 6px; }
+.axis div { display: flex; justify-content: space-between; font: 400 .7rem/1 var(--f-mono); color: var(--ink-2); }
+.honest { margin-top: 18px; font-size: var(--s-sm); color: var(--ink-2); padding-top: 14px; border-top: 1px dashed var(--line); }
+.honest b { color: var(--ink); }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: var(--s-sm); }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 500 var(--s-xs)/1.3 var(--f-mono); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-2); background: var(--sunk); }
+tr:last-child td { border-bottom: 0; }
+.outcome td:first-child { white-space: nowrap; }
+td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.caption { font-size: var(--s-xs); color: var(--ink-2); margin-top: 10px; }
+
+/* stack */
+.stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.stack .card h3 { display: flex; align-items: center; gap: 10px; }
+.stack .card h3 svg { width: 20px; height: 20px; color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chip { font: 400 var(--s-xs)/1.2 var(--f-mono); padding: 5px 8px; border-radius: 5px; background: var(--sunk); color: var(--ink); border: 1px solid var(--line); }
+.chip em { font-style: normal; color: var(--ink-2); }
+.stack .card p { margin-top: 12px; }
+.stack .wide { grid-column: 1 / -1; }
+
+/* roles */
+.roles td:first-child { white-space: nowrap; }
+.roles .rk { font: 600 var(--s-sm)/1.2 var(--f-display); display: block; }
+.roles .rk-code { font: 400 .72rem/1 var(--f-mono); color: var(--accent); }
+.roles ul { margin: 0; padding-left: 18px; }
+.roles li { margin: 2px 0; }
+.custom-role { margin-top: 16px; }
+
+/* demo */
+.demo { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-left: 2px solid var(--line); }
+.demo li { position: relative; padding: 0 0 22px 28px; }
+.demo li::before { content: attr(data-n); position: absolute; left: -15px; top: -2px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font: 600 var(--s-xs)/1 var(--f-mono); }
+.demo h3 { font-size: var(--s-base); }
+.demo .as { font: 500 .72rem/1 var(--f-mono); color: var(--ink-2); margin-left: 6px; }
+.demo p { font-size: var(--s-sm); color: var(--ink-2); margin-top: 4px; max-width: 70ch; }
+.deliv { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.deliv li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; font-size: var(--s-sm); color: var(--ink-2); }
+.deliv li svg { width: 18px; height: 18px; color: var(--ok); margin-top: 2px; }
+.deliv b { color: var(--ink); }
+
+/* team */
+.team { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; }
+.member { min-width: 0; }
+.member img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius); background: var(--sunk); }
+.member h3 { font-size: var(--s-base); margin-top: 12px; }
+.member .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.member .tag { font: 500 .7rem/1 var(--f-mono); padding: 4px 6px; border-radius: 4px; background: var(--sunk); color: var(--ink-2); }
+.member .tag.p { background: var(--accent-soft); color: var(--accent); }
+.member a { display: block; margin-top: 8px; font-size: .7rem; overflow-wrap: anywhere; }
+@media (max-width: 980px) { .team { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .team { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } }
+
+footer { padding-block: 36px 48px; font-size: var(--s-sm); color: var(--ink-2); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; }
+
+@media (max-width: 860px) {
+  .hero-grid, .two, .outcome, .stack { grid-template-columns: minmax(0, 1fr); }
+  .stack .wide { grid-column: auto; }
+  .logos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plate img { max-height: 150px; }
+  .plate.th img { max-height: 80px; }
+  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fact:nth-child(3) { border-left: 0; }
+  .fact:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .hero { padding-block: 32px; }
+  section.block { padding-block: 44px; }
+}
+@media (max-width: 480px) {
+  .plate { padding: 12px; }
+  .plate img { max-height: 110px; }
+  .plate.th img { max-height: 60px; }
+  .pains li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .btn { width: 100%; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fill { animation: grow 1.1s cubic-bezier(.2,.7,.2,1) both; transform-origin: left; }
+  @keyframes grow { from { transform: scaleX(.02); } to { transform: scaleX(1); } }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-git" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.8 3.9 6 3.9 9.5s-1.3 6.7-3.9 9.5c-2.6-2.8-3.9-6-3.9-9.5S9.4 5.3 12 2.5Z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9.5 18 20 6"/></symbol>
+    <symbol id="i-flow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="6" height="5" rx="1"/><rect x="15.5" y="4" width="6" height="5" rx="1"/><rect x="9" y="15" width="6" height="5" rx="1"/><path d="M8.5 6.5h7M5.5 9v3.5h6.5V15M18.5 9v3.5H12"/></symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M4 7h16M4 7l-2.5 6a3 3 0 0 0 5 0L4 7Zm16 0-2.5 6a3 3 0 0 0 5 0L20 7Z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3ZM18.5 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1Z"/></symbol>
+    <symbol id="i-rules" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0V7ZM12 17v5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L12 5.6M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-4-4M20 16H6l4 4"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M6 17v-5M11 17V7M16 17v-8M21 17V4"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2" width="11" height="20" rx="2.5"/><path d="M10.5 18.5h3"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-8 6 16 3-8h4"/></symbol>
+    <symbol id="i-ui" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M2.5 9h19M8 9v11"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="7" rx="1.5"/><rect x="3" y="14" width="18" height="7" rx="1.5"/><path d="M7 6.5h.01M7 17.5h.01"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19h10.5a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.6 1.5A3.8 3.8 0 0 0 7 19Z"/></symbol>
+    <symbol id="i-loop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 0 1-14.3 4.9M4 12A8 8 0 0 1 18.3 7.1M18.5 3v4.5H14M5.5 21v-4.5H10"/></symbol>
+  </defs>
+</svg>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="team/web/transferhub-logo.webp" alt="" width="60" height="30">TransferHub</a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="#problem">Problem</a>
+      <a href="#solution">Solution</a>
+      <a href="#capabilities">Capabilities</a>
+      <a href="#outcome">Outcome</a>
+      <a href="#stack">Tech stack</a>
+      <a href="#roles">Roles</a>
+      <a href="#demo">Demo</a>
+      <a href="#team">Team</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Evoke FDE AI Hackathon 5.0 &middot; Problem 1 &middot; Boston University</div>
+        <h1>TransferHub<span class="sub">Smarter Transfer Credit Evaluation</span></h1>
+        <p class="lede">Transfer students see which credits are secure from the moment they upload. Department evaluators get every course pre-read, triaged and ranked against BU's catalogue, and the department still makes every final call.</p>
+        <p class="team-line">Built by <strong>Clopay CodeCrafters</strong>, five engineers from the Microsoft and UI practices at Evoke Technologies.</p>
+        <div class="ctas">
+          <a class="btn btn-primary" href="https://transferhub.wcubeprojects.in/" target="_blank" rel="noopener">
+            <svg aria-hidden="true"><use href="#i-globe"/></svg>
+            <span>Open the live site<small>transferhub.wcubeprojects.in</small></span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/Evoke-Hackathon-2026/Clopay-CodeCrafters.git" target="_blank" rel="noopener">
+            <svg aria-hidden="true"><use href="#i-git"/></svg>
+            <span>Source on GitHub<small>Evoke-Hackathon-2026/Clopay-CodeCrafters</small></span>
+          </a>
+        </div>
+      </div>
+      <div class="logos">
+        <figure class="plate" style="margin:0">
+          <img src="team/web/clopay-codecrafters-logo.webp" alt="Clopay CodeCrafters team logo" width="600" height="420">
+          <figcaption class="plate-cap">Team</figcaption>
+        </figure>
+        <figure class="plate th" style="margin:0">
+          <img src="team/web/transferhub-logo.webp" alt="TransferHub product logo" width="600" height="300">
+          <figcaption class="plate-cap">Product</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <div class="facts">
+      <div class="fact"><b>800+</b><span>BU transfer students a year</span></div>
+      <div class="fact"><b>96.8%</b><span>top-3 hit rate on 63 past decisions</span></div>
+      <div class="fact"><b>5</b><span>roles, plus custom roles</span></div>
+      <div class="fact"><b>33</b><span>idempotent SQL migrations</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section class="block" id="problem">
+  <div class="wrap">
+    <div class="head">
+      <div class="folio">01 &middot; Problem</div>
+      <div>
+        <h2>Every "maybe" course waits on a person, and the student sees 0 units</h2>
+        <p>Boston University matches every course on every incoming transcript to a BU course. Known equivalencies apply directly. Everything else is read by hand, one course at a time, and the same external course is compared again for every new student.</p>
+      </div>
+    </div>
+    <div class="body two">
+      <div>
+        <ul class="pains">
+          <li><b class="num">800+</b><span>transfer students a year, each with a transcript of courses to match.</span></li>
+          <li><b>maybe</b><span>Any course not in the equivalency database needs a syllabus and a department evaluator comparing descriptions, outcomes and credit hours by hand.</span></li>
+          <li><b class="num">0&nbsp;units</b><span>is what an undecided course shows. Students cannot see how much of their degree is secure or plan registration.</span></li>
+          <li><b class="num">1&nbsp;year</b><span>All transfer credit must be settled within one year of starting at BU (rule PRG-02).</span></li>
+        </ul>
+        <div class="constraint"><strong>Hard constraint:</strong> the academic department makes the final decision. TransferHub ranks, pre-fills, explains and routes. It never rejects on its own, and it only posts a review course when a department has turned on auto-approval for that stage.</div>
+      </div>
+      <div class="personas" aria-label="Personas">
+        <div class="persona"><div class="av">MR</div><div><b>Maya, transfer student</b><span class="role">student</span><p>Wants to know which credits are secure, what to do next and by when. Today she chases old syllabi and sees 0 units.</p></div></div>
+        <div class="persona"><div class="av">DL</div><div><b>Dr. Lee, department evaluator</b><span class="role">faculty</span><p>Needs all the evidence in one place and consistency with what colleagues decided before.</p></div></div>
+        <div class="persona"><div class="av">DN</div><div><b>Dan, Credit Evaluation staff</b><span class="role">admin</span><p>Needs a clean queue, fast lookups, and less chasing of syllabi and deadlines.</p></div></div>
+        <div class="persona"><div class="av">PA</div><div><b>Partner agency or college</b><span class="role">agency</span><p>Submits students and catalogue data in bulk and wants status back instead of email and spreadsheets.</p></div></div>
+        <div class="persona"><div class="av">PO</div><div><b>Platform owner</b><span class="role">super_admin</span><p>Configures universities, workflows, AI and roles; watches backlog, turnaround and AI spend.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUTION -->
+<section class="block" id="solution">
+  <div class="wrap">
+    <div class="head">
+      <div class="folio">02 &middot; Solution</div>
+      <div>
+        <h2>From registration to posted credit in one tracked request</h2>
+        <p>Agents do the reading and matching. People approve. Each decision is saved as an equivalency, so the next student with the same course is applied automatically.</p>
+      </div>
+    </div>
+    <div class="body">
+      <ol class="flow" aria-label="End-to-end flow">
+        <li><h3>Register</h3><p>Six-step form: account, target university and program, contact, every prior college plus AP/IB/A-level, language and outside-US check.</p><span class="who">student</span></li>
+        <li><h3>Smart Upload reads documents</h3><p>Transcripts, IDs, English tests and syllabi are classified and their fields extracted. Blanks in the profile are filled in.</p><span class="who">AI or rules reader</span></li>
+        <li><h3>Courses captured automatically</h3><p>Courses read from the transcript prefill the transfer request. No retyping; the student checks and edits.</p><span class="who">student</span></li>
+        <li><h3>Submit</h3><p>Request goes to the chosen university and program. That university's workflow starts.</p><span class="who">student or agency</span></li>
+        <li class="key"><h3>Triage + top-3 suggestions</h3><p><code>sp_TriageCourse</code> sorts each course into a lane, the policy engine tightens it, and the matcher ranks three BU candidates.</p><span class="who">system</span></li>
+        <li class="key"><h3>Faculty and admin approval</h3><p>Side-by-side comparison with overlapping topics highlighted and credit math shown. One click to decide.</p><span class="who">faculty &middot; admin</span></li>
+        <li><h3>Equivalency saved, skills learned</h3><p><code>sp_RecordDecision</code> writes the mapping with effective dates. Repeated overrides become suggested playbook rules.</p><span class="who">system</span></li>
+        <li><h3>Posted</h3><p>Credit is posted, degree progress updates, and the sending college can be notified.</p><span class="who">system</span></li>
+      </ol>
+      <div class="loop"><svg aria-hidden="true"><use href="#i-loop"/></svg><span>Throughout, the student follows a <strong>live tracker</strong> (server-sent events) showing each stage, notes meant for them and an estimated time. The saved equivalency feeds back into step 5 for the next student.</span></div>
+
+      <div class="lanes-title">Triage lanes after step 5</div>
+      <div class="lanes">
+        <div class="lane"><span class="pill ok">applied</span><p>Known equivalency. Credit secure at upload, no review.</p></div>
+        <div class="lane"><span class="pill warn">review</span><p>The "maybe" lane. Syllabus asked for only these courses; evaluator sees top-3 candidates.</p></div>
+        <div class="lane"><span class="pill info">elective_only</span><p>Counts as elective credit, or must be taken at BU (PRG-03).</p></div>
+        <div class="lane"><span class="pill mute">not eligible</span><p>Grade below C, internship, unaccredited, or outside-US (routed to International Admissions).</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CAPABILITIES -->
+<section class="block" id="capabilities">
+  <div class="wrap">
+    <div class="head">
+      <div class="folio">03 &middot; Capabilities</div>
+      <div>
+        <h2>What is built</h2>
+        <p>Everything below runs on the live site. Each item maps to a requirement in the traceability matrix.</p>
+      </div>
+    </div>
+    <div class="body caps">
+      <div class="cap"><svg aria-hidden="true"><use href="#i-flow"/></svg><h3>Workflow designer</h3><p>Per-university stages (system, review, approval), approver groups, SLAs with escalation, auto-approve above a confidence threshold, stage and whole-request bypass, internal vs student notes, insights.</p></div>
+      <div class="cap"><svg aria-hidden="true"><use href="#i-scale"/></svg><h3>Policy engine</h3><p>BU rules as data: C-or-better, P/F to review, course age, accreditation, 68/60/80 external-credit cap, quarter &times; 2/3, one-year deadline, 12 programme rules, AP/IB/CLEP thresholds. It only tightens lanes.</p></div>
+      <div class="cap"><svg aria-hidden="true"><use href="#i-spark"/></svg><h3>AI controls and spend</h3><p>Anthropic, Azure OpenAI or any OpenAI-compatible provider. Budgets, cheap model with escalation, match cache, prompt caching, editable playbook skills, per-request token and dollar log, benchmark.</p></div>
+      <div class="cap"><svg aria-hidden="true"><use href="#i-rules"/></svg><h3>Rules fallback, no key needed</h3><p>A zero-token matcher and document reader run every AI step today. Confidence is capped at 0.7, so rules never auto-approve at default thresholds.</p></div>
+      <div class="cap"><svg aria-hidden="true"><use href="#i-plug"/></svg><h3>Partner API and portal</h3><p>Hashed <code>th_live_</code> API keys scoped to one university. Partners push universities, programs, courses, topics and students into a review queue, then get a per-row report by email.</p></div>
+      <div class="cap"><svg aria-hidden="true"><use href="#i-link"/></svg><h3>Intake by claim link</h3><p>A student enters an ID and email, receives a 48-hour link, confirms the record held by the source system, and only then is an account created.</p></div>
+      <div class="cap"><svg aria-hidden="true"><use href="#i-swap"/></svg><h3>Exchange between universities</h3><p>The sending and receiving universities both see the request, request documents from each other and send reminders. The sending side is read-only.</p></div>
+      <div class="cap"><svg aria-hidden="true"><use href="#i-lock"/></svg><h3>Roles and permissions matrix</h3><p>Role &times; module &times; operation grants, enforced live on every request. Custom roles, and staff scoped to their own universities.</p></div>
+      <div class="cap"><svg aria-hidden="true"><use href="#i-chart"/></svg><h3>Dashboards per role</h3><p>KPIs and charts for student, faculty, admin and super admin, plus degree progress (secure, likely, pending, not counted) and workflow turnaround.</p></div>
+      <div class="cap"><svg aria-hidden="true"><use href="#i-phone"/></svg><h3>Mobile ready</h3><p>Responsive layout, card tables on phones, a student tab bar, camera capture of multi-page documents, installable PWA manifest.</p></div>
+      <div class="cap"><svg aria-hidden="true"><use href="#i-doc"/></svg><h3>Appeals and cancellation</h3><p>BU's Transfer Credit Appeal form as a flow, decided by the department. Students can cancel an open request and keep a progress snapshot.</p></div>
+      <div class="cap"><svg aria-hidden="true"><use href="#i-pulse"/></svg><h3>Branded email and audit</h3><p>Resend templates editable by the super admin, a full audit log, Swagger at <code>/api/docs</code>, and a repeatable demo scenario page.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- OUTCOME -->
+<section class="block" id="outcome">
+  <div class="wrap">
+    <div class="head">
+      <div class="folio">04 &middot; Outcome</div>
+      <div>
+        <h2>The right BU course is in the top three 96.8% of the time</h2>
+        <p>The measurable outcome is the matcher's hit rate on held-out past decisions: hide a decision, ask the matcher, check where the real answer ranks. It runs from AI Controls &rsaquo; Usage.</p>
+      </div>
+    </div>
+    <div class="body outcome">
+      <div class="chart">
+        <div class="chart-title">Built-in rules matcher, backtest</div>
+        <div class="chart-sub">63 held-out equivalency decisions &middot; share where the decided BU course was ranked</div>
+        <div class="bars">
+          <div class="bar-row"><span class="lbl">top-1</span><div class="track" role="img" aria-label="Top-1 88.9 percent"><div class="fill light" style="width:88.9%"></div></div><span class="val">88.9%</span></div>
+          <div class="bar-row"><span class="lbl">top-3</span><div class="track" role="img" aria-label="Top-3 96.8 percent"><div class="fill" style="width:96.8%"></div></div><span class="val">96.8%</span></div>
+        </div>
+        <div class="axis"><span></span><div><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div><span></span></div>
+        <p class="honest"><b>What this number is.</b> It comes from the zero-token rules engine. No Anthropic key was issued during the hackathon, so the live AI path has not been measured yet; the rules engine runs every AI step meanwhile. The AI matcher plugs into the same backtest harness and benchmark once the key arrives. No before/after timing is claimed because BU supplied no baseline turnaround.</p>
+      </div>
+      <div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Maya's course</th><th>Case</th><th>Result</th></tr></thead>
+            <tbody>
+              <tr><td>BSCC CSC 110</td><td>Known</td><td><span class="pill ok">applied</span> CAS CS 111 &middot; <span class="mono">4 cr</span></td></tr>
+              <tr><td>BSCC MAT 210</td><td>Known</td><td><span class="pill ok">applied</span> CAS MA 123 &middot; <span class="mono">4 cr</span></td></tr>
+              <tr><td>BSCC ECO 101</td><td>Known</td><td><span class="pill ok">applied</span> CAS EC 101 &middot; <span class="mono">3 cr</span></td></tr>
+              <tr><td>BSCC CSC 220</td><td>Maybe</td><td><span class="pill warn">review</span> CS 112 ranked first, 62%</td></tr>
+              <tr><td>BSCC CSC 240</td><td>Maybe</td><td><span class="pill warn">review</span> CS 131 58%, MA 293 55%</td></tr>
+              <tr><td>PVTC CIS 150</td><td>Quarter</td><td><span class="mono">4 &times; 2/3 = 2.66</span> semester cr vs MA 242 (4)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="caption">The brief's six-course demo transcript. <strong class="num">11</strong> credits are secure at upload (4 + 4 + 3), before anyone opens the request. Quarter credits are truncated, not rounded.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section class="block" id="stack">
+  <div class="wrap">
+    <div class="head">
+      <div class="folio">05 &middot; Tech stack</div>
+      <div>
+        <h2>TypeScript end to end, on Azure</h2>
+        <p>One Node app on Azure App Service serves both the API and the built React app. Versions are taken from the repository's package files.</p>
+      </div>
+    </div>
+    <div class="body stack">
+      <div class="card">
+        <h3><svg aria-hidden="true"><use href="#i-ui"/></svg>Frontend</h3>
+        <div class="chips">
+          <span class="chip">React <em>19.3</em></span><span class="chip">Vite <em>8.3</em></span><span class="chip">Tailwind CSS <em>v4.3</em></span>
+          <span class="chip">TanStack Query <em>5</em></span><span class="chip">React Router <em>7.18</em></span><span class="chip">framer-motion <em>12</em></span>
+          <span class="chip">recharts <em>2.15</em></span><span class="chip">zustand <em>5</em></span><span class="chip">react-hook-form <em>7</em> + zod <em>4</em></span>
+          <span class="chip">pdfjs-dist <em>4.10</em></span><span class="chip">pdf-lib <em>1.17</em></span><span class="chip">TypeScript <em>5.9</em></span>
+        </div>
+      </div>
+      <div class="card">
+        <h3><svg aria-hidden="true"><use href="#i-server"/></svg>Backend</h3>
+        <div class="chips">
+          <span class="chip">NestJS <em>10.4</em></span><span class="chip">TypeScript <em>5.8</em></span><span class="chip">passport-jwt</span>
+          <span class="chip">argon2id</span><span class="chip">class-validator</span><span class="chip">Swagger</span>
+          <span class="chip">helmet <em>8</em></span><span class="chip">throttler <em>6.4</em></span><span class="chip">SSE live events</span>
+          <span class="chip">Resend email</span><span class="chip">pdfkit</span><span class="chip">sharp</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3><svg aria-hidden="true"><use href="#i-db"/></svg>Database</h3>
+        <div class="chips">
+          <span class="chip">Azure SQL Database</span><span class="chip">mssql <em>11</em> / tedious <em>18</em></span>
+          <span class="chip">sp_TriageCourse</span><span class="chip">sp_RecordDecision</span><span class="chip">33 migrations + seeds</span>
+          <span class="chip">DB script runner GUI</span><span class="chip">DB MCP server</span>
+        </div>
+        <p>No ORM. Core decisions live in stored procedures. Every migration is numbered and idempotent, and both runner tools share one applied-scripts ledger.</p>
+      </div>
+      <div class="card">
+        <h3><svg aria-hidden="true"><use href="#i-spark"/></svg>AI</h3>
+        <div class="chips">
+          <span class="chip">Anthropic Claude <em>direct API</em></span><span class="chip">Azure OpenAI</span>
+          <span class="chip">custom OpenAI-compatible</span><span class="chip">Azure Document Intelligence</span><span class="chip">built-in rules engine <em>0 tokens</em></span>
+        </div>
+        <p>Keys stay server-side. The provider is chosen in AI Controls; the rules engine takes over whenever no provider is ready.</p>
+      </div>
+      <div class="card wide">
+        <h3><svg aria-hidden="true"><use href="#i-cloud"/></svg>Cloud and DevOps</h3>
+        <div class="chips">
+          <span class="chip">Azure App Service <em>Node 20, API + SPA</em></span><span class="chip">Azure Blob Storage <em>private documents, public logos</em></span>
+          <span class="chip">GitHub Actions CI/CD <em>every push to main deploys</em></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROLES -->
+<section class="block" id="roles">
+  <div class="wrap">
+    <div class="head">
+      <div class="folio">06 &middot; Roles</div>
+      <div>
+        <h2>Five built-in roles, each with its own workspace</h2>
+        <p>Permissions come from a role &times; module &times; operation matrix the super admin edits on screen. Changes take effect on the next request.</p>
+      </div>
+    </div>
+    <div class="body">
+      <div class="tbl-wrap">
+        <table class="roles">
+          <thead><tr><th>Role</th><th>Who</th><th>What they can do</th></tr></thead>
+          <tbody>
+            <tr><td><span class="rk">Student</span><span class="rk-code">student</span></td><td>Transfer applicant or current BU student</td><td><ul><li>Register, Smart Upload documents, submit transcripts to a target university and program</li><li>Follow the live tracker, see degree progress and the one-year deadline</li><li>Explore and compare up to three universities; appeal or cancel a request</li></ul></td></tr>
+            <tr><td><span class="rk">Faculty</span><span class="rk-code">faculty</span></td><td>Department evaluator</td><td><ul><li>Review courses at their workflow stage with side-by-side comparison and top-3 candidates</li><li>Decide equivalent / elective / no credit; decide appeals</li><li>Raise a catalogue course for verification; narrowed to their universities when scoped</li></ul></td></tr>
+            <tr><td><span class="rk">Admin</span><span class="rk-code">admin</span></td><td>Credit Evaluation staff</td><td><ul><li>Work the approval queue, bulk approve, bypass stages, mark applicants admitted</li><li>Scoped to their universities: full access to incoming requests, read-only on outgoing</li><li>Manage students, equivalencies, workflows, AI controls and student intake for their universities</li></ul></td></tr>
+            <tr><td><span class="rk">Agency</span><span class="rk-code">agency</span></td><td>Partner agency submitting for students</td><td><ul><li>Submit transcripts on behalf of students and track their outcomes</li><li>Branded workspace with the agency's logo and banner</li><li>Bulk data goes through the partner API and portal with an API key</li></ul></td></tr>
+            <tr><td><span class="rk">Super Admin</span><span class="rk-code">super_admin</span></td><td>Platform owner</td><td><ul><li>Master data: universities, schools, programs, courses, topics, agencies; permanent delete with impact preview</li><li>Workflows, transfer and programme rules, AI controls, providers, spend and benchmark</li><li>Roles &amp; permissions matrix, email templates, data import, demo scenario and demo documents</li></ul></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card custom-role"><h3>Custom roles</h3><p>The super admin can create roles such as "Registrar reviewer". Each is built on a base role (student, faculty, admin or agency, never super admin) that sets its screens, and it has its own grants in the permissions matrix, starting as a copy of the base role's grants.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO -->
+<section class="block" id="demo">
+  <div class="wrap">
+    <div class="head">
+      <div class="folio">07 &middot; Demo</div>
+      <div>
+        <h2>Maya Rivera's six courses, about eight minutes</h2>
+        <p>All data is synthetic. The super admin's Demo scenario page resets Maya to upload state, so the walkthrough can be repeated.</p>
+      </div>
+    </div>
+    <div class="body two demo-grid">
+      <ol class="demo">
+        <li data-n="1"><h3>Configure the workflow<span class="as">super admin</span></h3><p>Workflow designer: stages from AI match to faculty review, finance, first and final approver; approver groups, SLA, auto-approve threshold, bypass.</p></li>
+        <li data-n="2"><h3>Register and Smart Upload<span class="as">student</span></h3><p>Maya registers for BU CAS Computer Science and drops her transcripts. The reader classifies them and extracts the courses.</p></li>
+        <li data-n="3"><h3>Submit and see instant status<span class="as">student</span></h3><p>Courses prefill the request. Three are applied at once: 11 credits secure, two waiting on the department, CIS 150 converted to 2.66.</p></li>
+        <li data-n="4"><h3>Evaluator workbench<span class="as">faculty</span></h3><p>CSC 220 side by side with CAS CS 112: overlapping topics highlighted, credit math shown. Decide CS 112, 4 cr. Decide CSC 240 and the quarter course.</p></li>
+        <li data-n="5"><h3>Approve and post<span class="as">admin</span></h3><p>Finance, first and final approver stages. All six courses post; Maya's live tracker and degree progress update. Both universities see the transfer.</p></li>
+        <li data-n="6"><h3>Learning loop<span class="as">super admin</span></h3><p>Add a second student, Noah Chen, also with BSCC CSC 220. It is applied to CS 112 automatically, with no review.</p></li>
+        <li data-n="7"><h3>AI stats<span class="as">super admin</span></h3><p>AI Controls: usage and spend per request, tokens avoided by cache and shortlist, the backtest card, engine benchmark and learned-skill suggestions.</p></li>
+      </ol>
+      <div class="card">
+        <h3>Submission deliverables</h3>
+        <ul class="deliv" style="margin-top:14px">
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg><span><b>README</b>: setup, how to run, tech stack, roles and tests.</span></li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg><span><b>Discovery document</b>: problem, users, requirements and scope (<code>_designs/DISCOVERY.md</code>), with the requirements traceability matrix and gap analysis.</span></li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg><span><b>Agent instruction files</b> in <code>.claude/agents</code> and <code>.github/agents</code>.</span></li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg><span><b>Demo video</b> on SharePoint.</span></li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg><span><b>Presentation</b>: full deck and demo deck (PPT).</span></li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg><span><b>Live site and source</b>: <a href="https://transferhub.wcubeprojects.in/" target="_blank" rel="noopener">transferhub.wcubeprojects.in</a> and the GitHub repository.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TEAM -->
+<section class="block" id="team">
+  <div class="wrap">
+    <div class="head">
+      <div class="folio">08 &middot; Team</div>
+      <div>
+        <h2>Clopay CodeCrafters</h2>
+        <p>Five engineers from Evoke Technologies' Microsoft and UI practices.</p>
+      </div>
+    </div>
+    <div class="body team">
+      <div class="member"><img src="team/web/raghuram-raichooti.jpg" alt="Raghuram Raichooti" width="480" height="480"><h3>Raghuram Raichooti</h3><div class="meta"><span class="tag">EMP 3869</span><span class="tag p">Microsoft</span></div><a href="mailto:rraichooti@evoketechnologies.com">rraichooti@<wbr>evoketechnologies.com</a></div>
+      <div class="member"><img src="team/web/sankara-varaprasad.jpg" alt="Sankara Varaprasad" width="480" height="480"><h3>Sankara Varaprasad</h3><div class="meta"><span class="tag">EMP 801</span><span class="tag p">UI</span></div><a href="mailto:skvenkobarao@evoketechnologies.com">skvenkobarao@<wbr>evoketechnologies.com</a></div>
+      <div class="member"><img src="team/web/swetha-katkkoori.jpg" alt="Swetha Katkkoori" width="480" height="480"><h3>Swetha Katkkoori</h3><div class="meta"><span class="tag">EMP 4126</span><span class="tag p">Microsoft</span></div><a href="mailto:skatkkoori@evoketechnologies.com">skatkkoori@<wbr>evoketechnologies.com</a></div>
+      <div class="member"><img src="team/web/harshil-shah-parimal.jpg" alt="Harshil Shah Parimal" width="480" height="480"><h3>Harshil Shah Parimal</h3><div class="meta"><span class="tag">EMP 2458</span><span class="tag p">UI</span></div><a href="mailto:hparimal@evoketechnologies.com">hparimal@<wbr>evoketechnologies.com</a></div>
+      <div class="member"><img src="team/web/shravani-bollu.jpg" alt="Shravani Bollu" width="480" height="480"><h3>Shravani Bollu</h3><div class="meta"><span class="tag">EMP 2473</span><span class="tag p">UI</span></div><a href="mailto:sbollu@evoketechnologies.com">sbollu@<wbr>evoketechnologies.com</a></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>TransferHub &middot; Clopay CodeCrafters &middot; Evoke FDE AI Hackathon 5.0, Problem 1</span>
+    <span><a href="https://transferhub.wcubeprojects.in/" target="_blank" rel="noopener">Live site</a> &middot; <a href="https://github.com/Evoke-Hackathon-2026/Clopay-CodeCrafters.git" target="_blank" rel="noopener">GitHub</a></span>
+  </div>
+</footer>
+</body>
+</html>
