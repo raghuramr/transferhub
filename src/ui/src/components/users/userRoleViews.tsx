@@ -32,6 +32,9 @@ export interface UserRow {
   highestEducationLevel?: string;
   fieldOfStudy?: string;
   graduationYear?: number;
+  // Admin/faculty: the universities they are assigned to (UserScopeUniversities). Empty/undefined
+  // means unrestricted - they see every university.
+  scopedUniversities?: string;
 }
 
 export function NameCell({ r }: { r: Pick<UserRow, 'id' | 'firstName' | 'lastName'> & { hasAvatar?: boolean } }) {
@@ -100,9 +103,15 @@ const studentColumns: DataTableColumn<UserRow>[] = [
   { key: 'isActive', header: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
 ];
 
+function UniversityCell({ r }: { r: Pick<UserRow, 'scopedUniversities'> }) {
+  if (!r.scopedUniversities) return <span className="text-xs text-gray-400">All universities</span>;
+  return <span>{r.scopedUniversities}</span>;
+}
+
 const facultyColumns: DataTableColumn<UserRow>[] = [
   { key: 'firstName', header: 'Name', render: (r) => <NameCell r={r} /> },
   { key: 'email', header: 'Email' },
+  { key: 'scopedUniversities', header: 'University', render: (r) => <UniversityCell r={r} /> },
   { key: 'departmentName', header: 'Department', render: (r) => r.departmentName ?? '—' },
   { key: 'mobile', header: 'Mobile', render: (r) => r.mobile ?? '—' },
   { key: 'isActive', header: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
@@ -119,6 +128,7 @@ const agencyColumns: DataTableColumn<UserRow>[] = [
 const adminColumns: DataTableColumn<UserRow>[] = [
   { key: 'firstName', header: 'Name', render: (r) => <NameCell r={r} /> },
   { key: 'email', header: 'Email' },
+  { key: 'scopedUniversities', header: 'University', render: (r) => <UniversityCell r={r} /> },
   { key: 'mobile', header: 'Mobile', render: (r) => r.mobile ?? '—' },
   { key: 'isActive', header: 'Status', render: (r) => <StatusBadge isActive={r.isActive} /> },
   { key: 'isLocked', header: 'Locked', render: (r) => r.isLocked ? <span className="text-red-600 text-xs font-medium">Locked</span> : '—' },
