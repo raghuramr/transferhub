@@ -247,15 +247,42 @@ export class WorkflowsService {
       ],
     );
     const newId = created.recordset[0].Id;
+    const createdGroups: { id: number; name: string }[] = [];
     if (sourceId) {
       const src = await this.getStages(sourceId);
+      // A university gets its OWN approver groups: every group on the copied stages is cloned for this university
+      // (same purpose, no members yet), so the university's staff are added to its own groups and never to another's.
+      const uni = (await this.db.query<{ Code: string }>(`SELECT Code FROM Institutions WHERE Id = @i`, [{ name: 'i', type: sql.Int, value: dto.institutionId }])).recordset[0];
+      const groupMap = new Map<number, number>();
+      const groupFor = async (groupId: number): Promise<number> => {
+        if (groupMap.has(groupId)) return groupMap.get(groupId)!;
+        const g = (await this.db.query<{ Name: string; Description: string | null; InstitutionId: number | null }>(
+          `SELECT Name, Description, InstitutionId FROM ApproverGroups WHERE Id = @g`, [{ name: 'g', type: sql.Int, value: groupId }])).recordset[0];
+        if (!g || g.InstitutionId === dto.institutionId) { groupMap.set(groupId, groupId); return groupId; }
+        const base = g.Name.replace(/^[A-Z0-9]{2,20} - /, '');
+        const name = `${uni?.Code ?? 'UNI'} - ${base}`.slice(0, 150);
+        const existing = (await this.db.query<{ Id: number }>(`SELECT Id FROM ApproverGroups WHERE Name = @n`, [{ name: 'n', type: sql.NVarChar(150), value: name }])).recordset[0];
+        let id = existing?.Id;
+        if (!id) {
+          id = (await this.db.query<{ Id: number }>(
+            `INSERT INTO ApproverGroups (Name, Description, InstitutionId, IsActive) OUTPUT inserted.Id VALUES (@n, @d, @i, 1)`,
+            [{ name: 'n', type: sql.NVarChar(150), value: name }, { name: 'd', type: sql.NVarChar(500), value: g.Description }, { name: 'i', type: sql.Int, value: dto.institutionId }],
+          )).recordset[0].Id;
+          createdGroups.push({ id, name });
+        }
+        groupMap.set(groupId, id);
+        return id;
+      };
       for (const s of src) {
         const st = await this.db.query<{ Id: number }>(
           `INSERT INTO WorkflowStages (WorkflowId, StageOrder, StageKey, Name, Description, StageType, AgentTask, SlaDays, IsEnabled, CanBypass, RequiresComment)
            OUTPUT inserted.Id VALUES (@w, @o, @k, @n, @d, @t, @a, @sla, @en, @cb, @rc)`,
           this.stageInputs(newId, s.stageOrder, s.stageKey, s),
         );
-        for (const a of s.approvers) await this.insertApprover(st.recordset[0].Id, a);
+        for (const a of s.approvers) {
+          const groupId = a.approverType === 'group' && a.groupId ? await groupFor(a.groupId) : a.groupId;
+          await this.insertApprover(st.recordset[0].Id, { ...a, groupId });
+        }
         if (s.autoApprove) await this.saveAutomation(st.recordset[0].Id, s);
       }
       await this.db.query(
@@ -267,7 +294,7 @@ export class WorkflowsService {
         ],
       );
     }
-    return this.get(newId);
+    return { ...(await this.get(newId)), createdGroups };
   }
 
   private stageInputs(

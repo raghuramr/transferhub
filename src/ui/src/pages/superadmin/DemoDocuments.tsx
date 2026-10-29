@@ -77,9 +77,10 @@ export default function DemoDocuments() {
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email or student ID" className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm" />
             </div>
-            <Button variant="outline" onClick={() => setSelected((s) => { const n = new Set(s); list.forEach((x) => (allShown ? n.delete(x.id) : n.add(x.id))); return n; })}>{allShown ? 'Clear shown' : 'Select shown'}</Button>
+            <Button variant="outline" onClick={() => setSelected((s) => { const n = new Set(s); if (allShown) list.forEach((x) => n.delete(x.id)); else for (const x of list) { if (n.size >= 25) break; n.add(x.id); } return n; })}>{allShown ? 'Clear shown' : 'Select first 25'}</Button>
             {selected.size ? <Button variant="outline" onClick={() => setSelected(new Set())}>Clear all ({selected.size})</Button> : null}
           </div>
+          <p className="text-xs text-gray-500">{list.length} student{list.length === 1 ? '' : 's'}{q ? ' match' : ' (all active students)'} · {selected.size} selected (up to 25 per download)</p>
           <div className="max-h-[28rem] overflow-y-auto divide-y border rounded-lg">
             {students.isLoading ? <div className="p-4 text-sm text-gray-500">Loading...</div> : null}
             {students.error ? <div className="p-4 text-sm text-red-700">Could not load students. {errText(students.error)}</div> : null}

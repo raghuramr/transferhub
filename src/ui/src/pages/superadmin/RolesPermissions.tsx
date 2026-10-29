@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { permissionsApi } from '../../lib/api';
 import { ShieldCheck, Save, Check } from 'lucide-react';
+import { RolesManager } from '../../components/roles/RolesManager';
 
 interface Role {
   id: number;
@@ -132,9 +133,10 @@ export default function RolesPermissions() {
         </div>
       </div>
       <p className="text-gray-500 mb-6">
-        Choose which Role may perform which Operation on each Module. This is master-data
-        configuration — it is not yet wired into live access checks (see project notes).
+        Create roles, then choose which Role may perform which Operation on each Module. Changes apply on the next request.
       </p>
+
+      <RolesManager />
 
       <div className="flex flex-col md:flex-row gap-4 md:gap-6">
         <div className="md:w-56 md:shrink-0 bg-white rounded-xl border border-gray-200 p-2">

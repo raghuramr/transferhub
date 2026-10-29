@@ -7,6 +7,8 @@ export interface AuthenticatedUser {
   firstName: string;
   lastName: string;
   role: string;
+  /** The role's own name when it differs from the built-in role it behaves like (custom roles). Used for the permission matrix. */
+  roleKey?: string;
   departmentId: number | null;
 }
 

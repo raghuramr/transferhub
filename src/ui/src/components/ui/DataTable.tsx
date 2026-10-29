@@ -326,7 +326,7 @@ export function DataTable<T extends { id: string | number }>({
                 </tr>
                 {renderExpanded && expanded.has(row.id) && (
                   <tr className="bg-gray-50/70">
-                    <td colSpan={columns.length + (bulkActions.length > 0 ? 1 : 0) + 1} className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                    <td colSpan={columns.length + (bulkActions.length > 0 ? 1 : 0) + 1} className="px-3 py-4 sm:px-4" onClick={(e) => e.stopPropagation()}>
                       {renderExpanded(row)}
                     </td>
                   </tr>

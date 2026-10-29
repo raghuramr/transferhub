@@ -30,6 +30,7 @@ interface UserAuthRow {
   FailedLogins: number | null;
   DepartmentId: number | null;
   Role: string;
+  RoleKey?: string;
 }
 
 interface RefreshTokenRow {
@@ -42,6 +43,7 @@ interface RefreshTokenRow {
   IsActive: boolean;
   DepartmentId: number | null;
   Role: string;
+  RoleKey?: string;
 }
 
 export interface MeRow {
@@ -84,11 +86,16 @@ export class AuthService {
     private schema: SchemaService,
   ) {}
 
+  /** The built-in role a user behaves like: a custom role's BaseRole, else the role itself (BaseRole exists after migration 032). */
+  private async roleExpr(): Promise<string> {
+    return (await this.schema.has('Roles', 'BaseRole')) ? 'ISNULL(r.BaseRole, r.Name)' : 'r.Name';
+  }
+
   async validateUser(email: string, password: string, ip: string, userAgent: string): Promise<AuthenticatedUser> {
     const result = await this.db.query<UserAuthRow>(
       `SELECT u.Id, u.Email, u.PasswordHash, u.FirstName, u.LastName,
               u.IsActive, u.IsLocked, u.LockedUntil, u.FailedLogins,
-              u.DepartmentId, r.Name AS Role
+              u.DepartmentId, ${await this.roleExpr()} AS Role, r.Name AS RoleKey
        FROM Users u JOIN Roles r ON r.Id = u.RoleId
        WHERE u.Email = @email`,
       [{ name: 'email', type: sql.NVarChar(254), value: email }],
@@ -156,6 +163,7 @@ export class AuthService {
       firstName: user.FirstName,
       lastName: user.LastName,
       role: user.Role,
+      roleKey: user.RoleKey,
       departmentId: user.DepartmentId,
     };
   }
@@ -472,16 +480,16 @@ export class AuthService {
    */
   async demoLoginAs(userId: string, ip: string, userAgent: string) {
     const r = await this.db.query<{
-      Id: string; Email: string; FirstName: string; LastName: string; IsActive: boolean; DepartmentId: number | null; Role: string;
+      Id: string; Email: string; FirstName: string; LastName: string; IsActive: boolean; DepartmentId: number | null; Role: string; RoleKey: string;
     }>(
-      `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.IsActive, u.DepartmentId, r.Name AS Role
+      `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.IsActive, u.DepartmentId, ${await this.roleExpr()} AS Role, r.Name AS RoleKey
        FROM Users u JOIN Roles r ON r.Id = u.RoleId WHERE u.Id = @id`,
       [{ name: 'id', type: sql.UniqueIdentifier, value: userId }],
     );
     const row = r.recordset[0];
     if (!row || !row.IsActive) throw new UnauthorizedException('Demo account is not available.');
     const user: AuthenticatedUser = {
-      id: row.Id, email: row.Email, firstName: row.FirstName, lastName: row.LastName, role: row.Role, departmentId: row.DepartmentId,
+      id: row.Id, email: row.Email, firstName: row.FirstName, lastName: row.LastName, role: row.Role, roleKey: row.RoleKey, departmentId: row.DepartmentId,
     };
     return this.login(user, ip, userAgent);
   }
@@ -490,7 +498,7 @@ export class AuthService {
     const hash = crypto.createHash('sha256').update(token).digest('hex');
     const result = await this.db.query<RefreshTokenRow>(
       `SELECT rt.UserId, rt.ExpiresAt, rt.IsRevoked,
-              u.Email, u.FirstName, u.LastName, u.IsActive, u.DepartmentId, r.Name AS Role
+              u.Email, u.FirstName, u.LastName, u.IsActive, u.DepartmentId, ${await this.roleExpr()} AS Role, r.Name AS RoleKey
        FROM RefreshTokens rt
        JOIN Users u ON u.Id = rt.UserId
        JOIN Roles r ON r.Id = u.RoleId
@@ -510,6 +518,7 @@ export class AuthService {
       firstName: row.FirstName,
       lastName: row.LastName,
       role: row.Role,
+      roleKey: row.RoleKey,
       departmentId: row.DepartmentId,
     };
 
@@ -534,7 +543,7 @@ export class AuthService {
               u.Mobile, u.AddressLine1, u.AddressLine2, u.City, u.State, u.PostalCode,
               u.Country, u.CountryOfOrigin,
               u.IsActive, u.MustChangePass, u.LastLoginAt, u.DepartmentId,
-              r.Name AS Role, r.DisplayName AS RoleDisplay,
+              ${await this.roleExpr()} AS Role, r.DisplayName AS RoleDisplay,
               d.Name AS DepartmentName
        FROM Users u
        JOIN Roles r ON r.Id = u.RoleId
