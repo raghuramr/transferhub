@@ -237,6 +237,27 @@ export const uploadsApi = {
   list: (params?: { userId?: string; entityType?: string }) => api.get('/uploads', { params }),
 };
 
+// ── Gallery (super admin): public files with a URL usable anywhere ──
+export interface GalleryItem {
+  id: string; name: string; category: string | null; mimeType: string | null; sizeBytes: number;
+  createdAt: string; uploadedBy?: string | null; url: string; direct: boolean;
+}
+const multipart = (file: File, extra?: Record<string, string>) => {
+  const form = new FormData();
+  form.append('file', file);
+  Object.entries(extra ?? {}).forEach(([k, v]) => form.append(k, v));
+  return form;
+};
+export const galleryApi = {
+  list: () => api.get<GalleryItem[]>('/gallery'),
+  upload: (file: File, category?: string) =>
+    api.post<GalleryItem>('/gallery', multipart(file, category ? { category } : undefined), { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id: string, data: { name?: string; category?: string | null }) => api.patch<GalleryItem>(`/gallery/${id}`, data),
+  replace: (id: string, file: File) =>
+    api.put<GalleryItem>(`/gallery/${id}/file`, multipart(file), { headers: { 'Content-Type': 'multipart/form-data' } }),
+  remove: (id: string) => api.delete(`/gallery/${id}`),
+};
+
 // ── Course Topics endpoints (reference-link detail per course) ────
 export const courseTopicsApi = {
   list: (courseId: number, institutionId?: number) =>

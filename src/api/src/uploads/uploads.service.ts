@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import * as sql from 'mssql';
 import * as path from 'path';
@@ -304,5 +304,105 @@ export class UploadsService {
       /* the row is gone; an orphaned blob is harmless */
     }
     return true;
+  }
+
+  // ── Gallery (super admin): public files with a stable public URL for use anywhere ──
+  // Stored like any public upload (public container, EntityType 'gallery'); EntityId holds an optional category label.
+
+  /** Public URL of a public upload: straight from Azure Storage when the container allows it, else the API route. */
+  private async publicHref(row: UploadRow): Promise<{ url: string; direct: boolean }> {
+    if (row.StorageProvider === 'blob') {
+      const direct = await this.storage.publicUrl(row.StoredPath).catch(() => null);
+      if (direct) return { url: direct, direct: true };
+    }
+    return { url: `/uploads/public/${row.Id}`, direct: false };
+  }
+
+  async listGallery() {
+    const extra = (await this.schema.has('Uploads', 'StorageProvider')) ? ', StorageProvider, ContainerName, DocumentType' : '';
+    const res = await this.db.query<UploadRow & { UploadedBy: string | null }>(
+      `SELECT u.Id, u.OwnerUserId, u.Role, u.EntityType, u.EntityId, u.OriginalFileName, u.StoredPath, u.MimeType, u.SizeBytes, u.IsPublic, u.CreatedAt${extra.replace(/, /g, ', u.')},
+              usr.FirstName + ' ' + usr.LastName AS UploadedBy
+       FROM Uploads u LEFT JOIN Users usr ON usr.Id = u.OwnerUserId
+       WHERE u.IsPublic = 1 AND u.EntityType = 'gallery'
+       ORDER BY u.CreatedAt DESC`,
+    );
+    return Promise.all(
+      res.recordset.map(async (r) => ({
+        id: r.Id,
+        name: r.OriginalFileName,
+        category: r.EntityId || null,
+        mimeType: r.MimeType,
+        sizeBytes: Number(r.SizeBytes ?? 0),
+        createdAt: r.CreatedAt,
+        uploadedBy: r.UploadedBy,
+        ...(await this.publicHref(r)),
+      })),
+    );
+  }
+
+  async saveGallery(file: UploadedFileLike, ownerUserId: string, role: string, category?: string) {
+    const label = category?.trim().slice(0, 100) || undefined;
+    const saved = await this.save(file, { ownerUserId, role, entityType: 'gallery', entityId: label, isPublic: true });
+    return this.galleryItem(saved.id);
+  }
+
+  private async galleryRow(id: string) {
+    const row = await this.findById(id);
+    if (!row.IsPublic || row.EntityType !== 'gallery') throw new NotFoundException('Gallery file not found');
+    return row;
+  }
+
+  /** Rename and/or re-categorise. The display name only; the stored blob name (and so the URL) does not change. */
+  async updateGallery(id: string, dto: { name?: string; category?: string | null }) {
+    await this.galleryRow(id);
+    const sets: string[] = [];
+    const inputs = [{ name: 'id', type: sql.UniqueIdentifier, value: id }] as { name: string; type: unknown; value: unknown }[];
+    if (dto.name !== undefined) {
+      const name = safeFileName(dto.name.trim());
+      if (!name) throw new BadRequestException('Name cannot be empty');
+      sets.push('OriginalFileName = @name');
+      inputs.push({ name: 'name', type: sql.NVarChar(300), value: name.slice(0, 300) });
+    }
+    if (dto.category !== undefined) {
+      sets.push('EntityId = @category');
+      inputs.push({ name: 'category', type: sql.NVarChar(100), value: dto.category?.trim().slice(0, 100) || null });
+    }
+    if (sets.length) await this.db.query(`UPDATE Uploads SET ${sets.join(', ')} WHERE Id = @id`, inputs as never);
+    return this.galleryItem(id);
+  }
+
+  /** Swap the file's contents in place: same blob name, so the public URL keeps working everywhere it is used. */
+  async replaceGallery(id: string, file: UploadedFileLike) {
+    const row = await this.galleryRow(id);
+    file = await compressImage(file, 1920, 80, 'webp');
+    const r = this.resolve(row);
+    await this.storage.put(r.container, r.blobName, file.buffer, file.mimetype);
+    await this.db.query(`UPDATE Uploads SET MimeType = @mime, SizeBytes = @size WHERE Id = @id`, [
+      { name: 'id', type: sql.UniqueIdentifier, value: id },
+      { name: 'mime', type: sql.NVarChar(100), value: file.mimetype ?? null },
+      { name: 'size', type: sql.BigInt, value: file.size ?? file.buffer.length },
+    ]);
+    return this.galleryItem(id);
+  }
+
+  private async galleryItem(id: string) {
+    const row = await this.galleryRow(id);
+    return {
+      id: row.Id, name: row.OriginalFileName, category: row.EntityId || null, mimeType: row.MimeType,
+      sizeBytes: Number(row.SizeBytes ?? 0), createdAt: row.CreatedAt, ...(await this.publicHref(row)),
+    };
+  }
+
+  /** Removes a gallery file and its blob. Anything that still links to its URL will break - the UI warns first. */
+  async deleteGallery(id: string) {
+    const r = this.resolve(await this.galleryRow(id));
+    await this.db.query(`DELETE FROM Uploads WHERE Id = @id`, [{ name: 'id', type: sql.UniqueIdentifier, value: id }]);
+    try {
+      await this.storage.remove(r.provider, r.container, r.blobName);
+    } catch {
+      /* the row is gone; an orphaned blob is harmless */
+    }
+    return { deleted: true };
   }
 }

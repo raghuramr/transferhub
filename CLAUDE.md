@@ -1283,3 +1283,11 @@ Four areas the user found while rehearsing the demo. One branch, three lines of 
   lists, dated bar or multi-series bar -> columns, area/line -> LineTrend. KPIs render as a hairline "ledger" of stat tiles.
 - KPI payload gained optional `unit`, `num`, `spark` (12 buckets), `delta` (vs previous equal period), `deltaLabel`, `good` - built by
   `bucketize()`/`relDelta()` in `dashboard.service.ts` (test `scripts/test-dashboard-trend.ts`). AI KPIs now carry `num` + `unit:'usd'` too.
+
+## Session 2026-10-29 (i): public Custom Pages + Gallery (no migrations)
+- `/pages/:slug` is public: anonymous visitors get `PublicPageShell` (logo + Log in), signed-in users the app layout (`PageLayout` in App.tsx). API `GET /pages/by-slug` was already public (published only).
+- **Gallery** (super admin only, nav Master Data > Gallery, `/superadmin/gallery`, `pages/superadmin/Gallery.tsx`; API `uploads/gallery.controller.ts` `@Roles('super_admin')`):
+  `GET/POST /gallery`, `PATCH /gallery/:id {name?, category?}`, `PUT /gallery/:id/file` (replace contents, SAME blob name so the public URL never changes), `DELETE /gallery/:id`.
+  Files are ordinary public `Uploads` rows with `EntityType='gallery'`; `EntityId` holds the optional category label. URL = direct Azure Storage blob URL when the public container is
+  anonymously readable, else `/uploads/public/:id` (UI makes it absolute). Images are compressed to <=1920px WebP like other public uploads. Purpose: stable public URLs for team photos/logos
+  used by `_designs/ClopayCodeCrafters.html` and elsewhere.

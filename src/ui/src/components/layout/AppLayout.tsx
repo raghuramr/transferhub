@@ -14,7 +14,7 @@ import { StudentTranscriptsNav } from './StudentTranscriptsNav';
 import {
   GraduationCap, LayoutDashboard, FileText, BookOpen, FileEdit,
   Users, ClipboardList, Settings, ScrollText, LogOut, Upload, FileQuestion, ListChecks,
-  Building2, School, Handshake, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ScanText, ShieldQuestion, ScanLine, ArrowRightLeft,
+  Building2, School, Handshake, Images, ShieldCheck, Menu, X, UserCircle, Inbox, GitBranch, Bot, Gavel, ArrowLeftRight, ScanText, ShieldQuestion, ScanLine, ArrowRightLeft,
   Presentation, Compass, PanelLeftClose, PanelLeftOpen, ChevronDown,
 } from 'lucide-react';
 import type { Role, CmsPage } from '../../types';
@@ -86,6 +86,7 @@ const navItems: Record<Role, NavEntry[]> = {
     { to: '/superadmin/institutions', label: 'Institutions', icon: <School size={18} /> },
     { to: '/superadmin/programs', label: 'Programs', icon: <GraduationCap size={18} /> },
     { to: '/superadmin/agencies', label: 'Agencies', icon: <Handshake size={18} /> },
+    { to: '/superadmin/gallery', label: 'Gallery', icon: <Images size={18} /> },
     // Settings
     { to: '/superadmin/settings', label: 'Settings', icon: <Settings size={18} />, group: 'Settings' },
     { to: '/superadmin/settings/roles-permissions', label: 'Roles & Permissions', icon: <ShieldCheck size={18} /> },

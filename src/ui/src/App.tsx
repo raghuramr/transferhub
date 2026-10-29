@@ -53,6 +53,7 @@ import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import ProgramsManagement from './pages/superadmin/ProgramsManagement';
 import EquivalenciesManagement from './pages/admin/EquivalenciesManagement';
 import AgenciesManagement from './pages/superadmin/AgenciesManagement';
+import Gallery from './pages/superadmin/Gallery';
 import RolesPermissions from './pages/superadmin/RolesPermissions';
 import DataImport from './pages/superadmin/DataImport';
 import UsersManagement from './pages/superadmin/UsersManagement';
@@ -190,6 +191,7 @@ export default function App() {
           <Route path="institutions" element={<InstitutionsManagement />} />
           <Route path="programs" element={<ProgramsManagement />} />
           <Route path="agencies" element={<AgenciesManagement />} />
+          <Route path="gallery" element={<Gallery />} />
           <Route path="settings/roles-permissions" element={<RolesPermissions />} />
           <Route path="settings/import" element={<DataImport />} />
           <Route path="settings/workflows" element={<WorkflowDesigner />} />
