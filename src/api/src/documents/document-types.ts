@@ -322,3 +322,27 @@ export function toPrefill(e: ExtractedData, uploadId: string): TranscriptPrefill
     ...(typeof inst.isOutsideUS === 'boolean' ? { isOutsideUS: inst.isOutsideUS } : {}),
   };
 }
+
+/**
+ * Do two written-out college names mean the same place? Students and documents disagree on
+ * punctuation, "University of X" vs "X University", and the "(synthetic)" suffixes the demo data
+ * carries, so compare on normalised word sets rather than exact text. Deliberately generous: a false
+ * "they match" only costs us a warning we did not show, a false mismatch nags the student for nothing.
+ */
+export function sameInstitution(a: string, b: string): boolean {
+  const NOISE = new Set(['the', 'of', 'at', 'and', 'synthetic', 'university', 'college', 'institute', 'school', 'campus', 'community', 'technical', 'state']);
+  const words = (v: string) =>
+    v.toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+  const wa = words(a);
+  const wb = words(b);
+  if (!wa.length || !wb.length) return false;
+  if (wa.join(' ') === wb.join(' ')) return true;
+  const key = (w: string[]) => w.filter((x) => !NOISE.has(x));
+  const ka = key(wa);
+  const kb = key(wb);
+  // Nothing distinctive left on either side (e.g. "The University" vs "University") - treat as a match.
+  if (!ka.length || !kb.length) return true;
+  const sa = new Set(ka);
+  const shared = kb.filter((w) => sa.has(w)).length;
+  return shared >= Math.min(ka.length, kb.length);
+}

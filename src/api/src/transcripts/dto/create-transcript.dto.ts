@@ -42,6 +42,8 @@ export class SubmitTranscriptDto {
   @IsIn(['semester', 'quarter', 'trimester']) calendar: string;
   /** Where the student wants these credits applied (the receiving university). Falls back to their profile target, else BU. */
   @IsOptional() @IsInt() targetInstitutionId?: number;
+  /** The program the student wants to join at the receiving university (migration 033). */
+  @IsOptional() @IsInt() targetProgramId?: number;
   @IsOptional() @IsString() studentName?: string;
   @IsOptional() @IsString() studentId?: string;
   @IsOptional() @IsString() notes?: string;

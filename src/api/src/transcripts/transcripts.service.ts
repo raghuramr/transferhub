@@ -211,6 +211,13 @@ export class TranscriptsService {
         { name: 'id', type: sql.UniqueIdentifier, value: transcriptId },
       ]).catch(() => {});
     }
+    // ... and which program they want to join there (migration 033).
+    if (dto.targetProgramId && (await this.schema.has('Transcripts', 'TargetProgramId'))) {
+      await this.db.query(`UPDATE Transcripts SET TargetProgramId = @tp WHERE Id = @id`, [
+        { name: 'tp', type: sql.Int, value: dto.targetProgramId },
+        { name: 'id', type: sql.UniqueIdentifier, value: transcriptId },
+      ]).catch(() => {});
+    }
 
     // Preview (not yet admitted), official, or pre-approval (current BU student) - BU never evaluates before admission.
     const policyReady = await this.schema.policyReady();
@@ -654,12 +661,19 @@ export class TranscriptsService {
     // From -> To summary: the receiving university's name, credits submitted (from) and credits
     // accepted/awarded on this request (to). Target column is guarded for pre-migration-013 DBs.
     let targetInstitutionName: string | null = null;
+    let targetProgramName: string | null = null;
     if (await this.schema.has('Transcripts', 'TargetInstitutionId')) {
-      const tn = await this.db.query<{ Name: string | null }>(
-        `SELECT ti.Name FROM Transcripts t LEFT JOIN Institutions ti ON ti.Id = t.TargetInstitutionId WHERE t.Id = @id`,
+      const hasProgram = await this.schema.has('Transcripts', 'TargetProgramId');
+      const tn = await this.db.query<{ Name: string | null; ProgramName: string | null }>(
+        `SELECT ti.Name, ${hasProgram ? "tp.Name + ISNULL(' (' + tp.Degree + ')', '')" : 'CAST(NULL AS NVARCHAR(200))'} AS ProgramName
+         FROM Transcripts t
+         LEFT JOIN Institutions ti ON ti.Id = t.TargetInstitutionId
+         ${hasProgram ? 'LEFT JOIN Programs tp ON tp.Id = t.TargetProgramId' : ''}
+         WHERE t.Id = @id`,
         [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
-      ).catch(() => ({ recordset: [] as { Name: string | null }[] }));
+      ).catch(() => ({ recordset: [] as { Name: string | null; ProgramName: string | null }[] }));
       targetInstitutionName = tn.recordset[0]?.Name ?? null;
+      targetProgramName = tn.recordset[0]?.ProgramName ?? null;
     }
     const totals = await this.db.query<{ FromCredits: number | null; ToCredits: number | null }>(
       `SELECT SUM(tc.OriginalCredits) AS FromCredits,
@@ -723,6 +737,7 @@ export class TranscriptsService {
         calendar: t.Calendar,
       },
       targetInstitutionName,
+      targetProgramName,
       fromCredits: Number(totals.recordset[0]?.FromCredits ?? 0),
       toCredits: Number(totals.recordset[0]?.ToCredits ?? 0),
       courses: courses.recordset.map((r) => ({

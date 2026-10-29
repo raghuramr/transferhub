@@ -198,6 +198,13 @@ export default function ProfilePage() {
     </div>
   );
 
+  const APPLICANT_TYPES: Record<string, string> = {
+    transfer_applicant: 'Transfer applicant',
+    admitted_transfer: 'Admitted transfer student',
+    current_student: 'Current student',
+    dual_enrollment: 'Dual enrolment',
+  };
+
   const readonlyField = (label: string, value: string | number | undefined | null) => (
     <div>
       <label className="block text-sm font-medium text-gray-500 mb-1">{label}</label>
@@ -424,7 +431,59 @@ export default function ProfilePage() {
             {readonlyField('Field of Study', profileData?.fieldOfStudy as string)}
             {readonlyField('GPA', profileData?.gpa as number)}
             {readonlyField('Graduation Year', profileData?.graduationYear as number)}
+            {readonlyField('Credits completed', profileData?.creditsCompleted as number)}
+            {readonlyField('High school', profileData?.highSchoolName as string)}
+            {readonlyField('High school graduation year', profileData?.highSchoolGradYear as number)}
           </div>
+
+          {/* What the applicant told us when they registered — held until now, never shown back. */}
+          <div className="pt-4 border-t border-gray-100">
+            <p className="text-sm font-semibold text-gray-900 mb-3">Your application</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {readonlyField('Applicant type', APPLICANT_TYPES[(profileData?.applicantType as string) ?? ''] ?? (profileData?.applicantType as string))}
+              {readonlyField('Admission status', profileData?.admissionStatus === 'admitted' ? 'Admitted' : profileData?.admissionStatus ? 'Applicant' : undefined)}
+              {readonlyField('Entry term', [profileData?.entryTerm, profileData?.entryYear].filter(Boolean).join(' ') || undefined)}
+              {readonlyField('School / college', profileData?.intendedAcademicUnitName as string)}
+              {readonlyField('English is my first language', profileData?.isNativeEnglish == null ? undefined : profileData.isNativeEnglish ? 'Yes' : 'No')}
+              {readonlyField('English test', [profileData?.englishTestType, profileData?.englishTestScore].filter(Boolean).join(' · ') || undefined)}
+              {readonlyField('Coursework taken outside the US', profileData?.hasIntlCoursework == null ? undefined : profileData.hasIntlCoursework ? 'Yes' : 'No')}
+            </div>
+          </div>
+
+          {(overview?.education?.length ?? 0) > 0 && (
+            <div className="pt-4 border-t border-gray-100">
+              <p className="text-sm font-semibold text-gray-900 mb-3">Colleges you have attended</p>
+              <ul className="divide-y divide-gray-100 rounded-lg border border-gray-100">
+                {overview!.education!.map((e, i) => (
+                  <li key={i} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-3 py-2 text-sm">
+                    <span className="font-medium text-gray-900">{e.institutionName}</span>
+                    <span className="text-xs text-gray-500">
+                      {[e.city, e.country].filter(Boolean).join(', ')}
+                      {e.fromYear || e.toYear ? ` · ${e.fromYear ?? '?'}–${e.toYear ?? 'present'}` : ''}
+                      {e.isOutsideUS ? ' · outside the US' : ''}
+                    </span>
+                    {e.creditsEarned != null && <span className="ml-auto text-sm tabular-nums text-gray-700">{e.creditsEarned} credits</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {(overview?.examCredits?.length ?? 0) > 0 && (
+            <div className="pt-4 border-t border-gray-100">
+              <p className="text-sm font-semibold text-gray-900 mb-3">Exam credits</p>
+              <ul className="divide-y divide-gray-100 rounded-lg border border-gray-100">
+                {overview!.examCredits!.map((x, i) => (
+                  <li key={i} className="flex flex-wrap items-baseline gap-x-3 px-3 py-2 text-sm">
+                    <span className="font-medium text-gray-900">{x.examType}</span>
+                    <span className="min-w-0 flex-1 text-gray-600">{x.subject}</span>
+                    {x.score && <span className="text-gray-700">Score {x.score}</span>}
+                    {x.year && <span className="text-xs text-gray-400">{x.year}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="pt-4 border-t border-gray-100">
             <div className="flex items-center gap-2 mb-3">

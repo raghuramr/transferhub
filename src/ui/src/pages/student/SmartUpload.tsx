@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, ChevronDown, Eye, EyeOff, FileText, Info, Link2, Lock, Pause, RefreshCw, Trash2, UploadCloud } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, Eye, EyeOff, FileText, Info, Link2, Lock, Pause, RefreshCw, Trash2, UploadCloud } from 'lucide-react';
 import { documentsApi, getErrorMessage, transcriptsApi, type ExtractedDocument, type IntakeItem } from '../../lib/api';
 import { DocumentEditor } from '../../components/documents/DocumentEditor';
 import { ConfidenceBar, StatusChip } from '../../components/documents/StatusChip';
@@ -177,6 +177,18 @@ function DocumentCard({ item, docTypes, aiEnabled, rules }: { item: IntakeItem; 
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t border-gray-100">
             <div className="space-y-4 p-4">
               {detail.isLoading && <p className="text-sm text-gray-400">Loading details…</p>}
+              {detail.data?.profileCheck && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" data-testid="profile-check">
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                  <span>
+                    <span className="block font-semibold">This college does not match your profile</span>
+                    <span className="block">{detail.data.profileCheck.message}</span>
+                    <span className="mt-1 block text-xs text-amber-800">
+                      On the document: <strong>{detail.data.profileCheck.documentValue}</strong> · On your profile: <strong>{detail.data.profileCheck.profileValue}</strong>
+                    </span>
+                  </span>
+                </div>
+              )}
               {detail.data && (
                 <div>
                   <button type="button" onClick={() => setScanOpen((o) => !o)} className="mb-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-gray-300 px-3 text-sm text-gray-700 hover:bg-gray-50 sm:min-h-0 sm:py-1.5">
