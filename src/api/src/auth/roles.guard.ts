@@ -32,13 +32,13 @@ export class RolesGuard implements CanActivate {
     // a super_admin toggling a grant off actually restricts that role too.
     if (requiredPermission) {
       const allowed = await this.permissionsCache.isAllowed(
-        user.role,
+        user.roleKey ?? user.role,
         requiredPermission.moduleKey,
         requiredPermission.operationKey,
       );
       if (!allowed) {
         throw new ForbiddenException(
-          `Role '${user.role}' is not permitted to '${requiredPermission.operationKey}' on '${requiredPermission.moduleKey}'`,
+          `Role '${user.roleKey ?? user.role}' is not permitted to '${requiredPermission.operationKey}' on '${requiredPermission.moduleKey}'`,
         );
       }
       return true;

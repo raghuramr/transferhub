@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseService } from '../database/database.service';
 import { RolePermissionsCacheService } from '../auth/role-permissions-cache.service';
+import { SchemaService } from '../policy/schema.service';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import type { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 
 interface ModuleRow {
   Id: number;
@@ -60,6 +63,7 @@ export class PermissionsService {
   constructor(
     private db: DatabaseService,
     private permissionsCache: RolePermissionsCacheService,
+    private schema: SchemaService,
   ) {}
 
   async findModules() {
@@ -166,5 +170,101 @@ export class PermissionsService {
     }
     this.permissionsCache.invalidate();
     return { updated: updates.length };
+  }
+
+  // ── custom roles (migration 032) ───────────────────────────
+
+  private async ready(): Promise<void> {
+    if (!(await this.schema.has('Roles', 'BaseRole'))) throw new BadRequestException('Custom roles are not available yet (migration 032 has not been applied).');
+  }
+
+  /** Every role with its type, base role and how many users hold it. Works before migration 032 (all built-in). */
+  async listRoles() {
+    const ext = await this.schema.has('Roles', 'BaseRole');
+    const r = await this.db.query<{ Id: number; Name: string; DisplayName: string; Description: string | null; BaseRole: string | null; IsSystem: boolean; IsActive: boolean; Users: number }>(
+      `SELECT r.Id, r.Name, r.DisplayName, r.Description,
+              ${ext ? 'r.BaseRole, r.IsSystem, r.IsActive' : "CAST(NULL AS VARCHAR(20)) AS BaseRole, CAST(1 AS BIT) AS IsSystem, CAST(1 AS BIT) AS IsActive"},
+              (SELECT COUNT(*) FROM Users u WHERE u.RoleId = r.Id) AS Users
+       FROM Roles r ORDER BY r.Id`,
+    );
+    return r.recordset.map((x) => ({
+      id: x.Id, name: x.Name, displayName: x.DisplayName, description: x.Description, baseRole: x.BaseRole ?? (x.Name === 'super_admin' ? null : x.Name),
+      isSystem: !!x.IsSystem, isActive: !!x.IsActive, users: Number(x.Users),
+    }));
+  }
+
+  async assignableRoles(includeSuperAdmin: boolean) {
+    const all = await this.listRoles();
+    return all.filter((r) => r.isActive && (includeSuperAdmin || r.name !== 'super_admin')).map((r) => ({ name: r.name, displayName: r.displayName, baseRole: r.baseRole, isSystem: r.isSystem }));
+  }
+
+  async createRole(dto: CreateRoleDto, by: { id: string; email: string; role: string }) {
+    await this.ready();
+    if (['student', 'faculty', 'admin', 'agency', 'super_admin'].includes(dto.name)) throw new ConflictException('That key is reserved for a built-in role.');
+    const dup = await this.db.query(`SELECT 1 AS x FROM Roles WHERE Name = @n`, [{ name: 'n', type: sql.VarChar(20), value: dto.name }]);
+    if (dup.recordset.length) throw new ConflictException('A role with that key already exists.');
+    const created = await this.db.query<{ Id: number }>(
+      `INSERT INTO Roles (Name, DisplayName, Description, BaseRole, IsSystem, IsActive) OUTPUT inserted.Id VALUES (@n, @d, @desc, @b, 0, 1)`,
+      [
+        { name: 'n', type: sql.VarChar(20), value: dto.name },
+        { name: 'd', type: sql.NVarChar(100), value: dto.displayName },
+        { name: 'desc', type: sql.NVarChar(500), value: dto.description ?? null },
+        { name: 'b', type: sql.VarChar(20), value: dto.baseRole },
+      ],
+    );
+    const id = created.recordset[0].Id;
+    // Start from the grants of the chosen role (default: the base role) so the new role works straight away; the matrix then adjusts it.
+    const src = dto.copyFromRoleId
+      ? dto.copyFromRoleId
+      : (await this.db.query<{ Id: number }>(`SELECT Id FROM Roles WHERE Name = @b`, [{ name: 'b', type: sql.VarChar(20), value: dto.baseRole }])).recordset[0]?.Id;
+    if (src) {
+      await this.db.query(
+        `INSERT INTO RolePermissions (RoleId, ModuleId, OperationId, IsAllowed)
+         SELECT @new, ModuleId, OperationId, IsAllowed FROM RolePermissions WHERE RoleId = @src`,
+        [{ name: 'new', type: sql.Int, value: id }, { name: 'src', type: sql.Int, value: src }],
+      );
+    }
+    this.permissionsCache.invalidate();
+    await this.auditRole(by, 'ROLE_CREATED', id, { name: dto.name, baseRole: dto.baseRole });
+    return (await this.listRoles()).find((r) => r.id === id);
+  }
+
+  async updateRole(id: number, dto: UpdateRoleDto) {
+    await this.ready();
+    const cur = await this.db.query<{ IsSystem: boolean }>(`SELECT IsSystem FROM Roles WHERE Id = @id`, [{ name: 'id', type: sql.Int, value: id }]);
+    if (!cur.recordset[0]) throw new NotFoundException('Role not found');
+    if (cur.recordset[0].IsSystem && dto.isActive === false) throw new BadRequestException('Built-in roles cannot be deactivated.');
+    const sets: string[] = [];
+    const inputs: { name: string; type: sql.ISqlTypeFactoryWithNoParams | sql.ISqlType; value: unknown }[] = [{ name: 'id', type: sql.Int, value: id }];
+    if (dto.displayName !== undefined) { sets.push('DisplayName = @d'); inputs.push({ name: 'd', type: sql.NVarChar(100), value: dto.displayName }); }
+    if (dto.description !== undefined) { sets.push('Description = @desc'); inputs.push({ name: 'desc', type: sql.NVarChar(500), value: dto.description }); }
+    if (dto.isActive !== undefined) { sets.push('IsActive = @a'); inputs.push({ name: 'a', type: sql.Bit, value: dto.isActive ? 1 : 0 }); }
+    if (sets.length) await this.db.query(`UPDATE Roles SET ${sets.join(', ')} WHERE Id = @id`, inputs as never);
+    return (await this.listRoles()).find((r) => r.id === id);
+  }
+
+  async deleteRole(id: number, by: { id: string; email: string; role: string }) {
+    await this.ready();
+    const r = (await this.listRoles()).find((x) => x.id === id);
+    if (!r) throw new NotFoundException('Role not found');
+    if (r.isSystem) throw new BadRequestException('Built-in roles cannot be deleted.');
+    if (r.users) throw new ConflictException(`${r.users} user(s) still have this role. Move them to another role first.`);
+    await this.db.query(`DELETE FROM Roles WHERE Id = @id`, [{ name: 'id', type: sql.Int, value: id }]); // RolePermissions cascade
+    this.permissionsCache.invalidate();
+    await this.auditRole(by, 'ROLE_DELETED', id, { name: r.name });
+    return { ok: true };
+  }
+
+  private async auditRole(by: { id: string; email: string; role: string }, action: string, id: number, detail: unknown) {
+    try {
+      await this.db.query(
+        `INSERT INTO AuditLog (UserId, UserEmail, UserRole, Action, EntityType, EntityId, NewValue) VALUES (@u, @e, @r, @a, 'Role', @id, @n)`,
+        [
+          { name: 'u', type: sql.UniqueIdentifier, value: by.id }, { name: 'e', type: sql.NVarChar(254), value: by.email },
+          { name: 'r', type: sql.VarChar(20), value: by.role }, { name: 'a', type: sql.VarChar(50), value: action },
+          { name: 'id', type: sql.NVarChar(100), value: String(id) }, { name: 'n', type: sql.NVarChar(sql.MAX), value: JSON.stringify(detail) },
+        ],
+      );
+    } catch { /* auditing never blocks */ }
   }
 }

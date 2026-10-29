@@ -186,13 +186,15 @@ function StageCard({ stage, index, total, onChange, onMove, onRemove, groups, st
   );
 }
 
-function GroupsTab({ groups, staff, canEdit }: { groups: ApproverGroup[]; staff: StaffUser[]; canEdit: boolean }) {
+function GroupsTab({ groups, staff, canEdit, unis }: { groups: ApproverGroup[]; staff: StaffUser[]; canEdit: boolean; unis: { id: number; name: string; code?: string }[] }) {
   const qc = useQueryClient();
+  const uniName = (id: number | null) => (id == null ? 'Any university' : unis.find((u) => u.id === id)?.name ?? `University ${id}`);
+  const [uniFilter, setUniFilter] = useState<string>('all');
   const [editing, setEditing] = useState<ApproverGroup | null>(null);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const save = useMutation({
-    mutationFn: (g: ApproverGroup) => workflowsApi.saveGroup(g.id || null, { name: g.name, description: g.description ?? undefined, isActive: g.isActive, memberUserIds: g.members.map((m) => m.userId) }),
+    mutationFn: (g: ApproverGroup) => workflowsApi.saveGroup(g.id || null, { name: g.name, description: g.description ?? undefined, institutionId: g.institutionId ?? null, isActive: g.isActive, memberUserIds: g.members.map((m) => m.userId) }),
     onSuccess: () => { setEditing(null); setError(''); void qc.invalidateQueries({ queryKey: ['workflow-lookups'] }); },
     onError: (e) => setError(errMsg(e, 'Could not save the group.')),
   });
@@ -213,12 +215,18 @@ function GroupsTab({ groups, staff, canEdit }: { groups: ApproverGroup[]; staff:
           <button type="button" onClick={() => setEditing({ id: 0, name: '', description: '', institutionId: null, isActive: true, members: [] })}
             className="inline-flex items-center gap-1.5 rounded-lg bg-brand-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-900"><Plus size={15} /> New group</button>
         )}
-        {groups.map((g) => (
+        <select value={uniFilter} onChange={(e) => setUniFilter(e.target.value)} aria-label="Filter groups by university" className="ml-2 rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
+          <option value="all">All universities</option>
+          <option value="none">Shared (any university)</option>
+          {unis.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+        {groups.filter((g) => uniFilter === 'all' || (uniFilter === 'none' ? g.institutionId == null : g.institutionId === Number(uniFilter))).map((g) => (
           <div key={g.id} className={cn('rounded-xl border bg-white p-4', editing?.id === g.id ? 'border-brand-400' : 'border-gray-200', !g.isActive && 'opacity-60')}>
             <div className="flex items-start justify-between gap-2">
               <div>
                 <div className="font-semibold text-gray-900">{g.name}{!g.isActive && <span className="ml-2 text-xs font-normal text-gray-400">inactive</span>}</div>
-                {g.description && <div className="text-xs text-gray-500">{g.description}</div>}
+                <div className="mt-0.5"><span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', g.institutionId == null ? 'bg-gray-100 text-gray-600' : 'bg-brand-50 text-brand-800')}>{uniName(g.institutionId)}</span></div>
+                {g.description && <div className="mt-1 text-xs text-gray-500">{g.description}</div>}
               </div>
               {canEdit && (
                 <div className="flex gap-2 text-xs">
@@ -241,6 +249,14 @@ function GroupsTab({ groups, staff, canEdit }: { groups: ApproverGroup[]; staff:
           <div className="space-y-3">
             <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="Group name" maxLength={150} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
             <input value={editing.description ?? ''} onChange={(e) => setEditing({ ...editing, description: e.target.value })} placeholder="What this group does" maxLength={500} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-500">University this group belongs to</label>
+              <select value={editing.institutionId ?? ''} onChange={(e) => setEditing({ ...editing, institutionId: e.target.value ? Number(e.target.value) : null })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                <option value="">Shared: usable by any university's workflow</option>
+                {unis.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+              <p className="mt-1 text-xs text-gray-400">A university's own workflow offers its own groups plus the shared ones.</p>
+            </div>
             <Toggle checked={editing.isActive} onChange={(v) => setEditing({ ...editing, isActive: v })} label="Active" />
             <div>
               <div className="mb-1 text-xs font-medium text-gray-500">Members ({editing.members.length})</div>
@@ -367,6 +383,7 @@ export default function WorkflowDesigner() {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [newUni, setNewUni] = useState('');
+  const [createdNote, setCreatedNote] = useState('');
 
   const list = useQuery({ queryKey: ['workflows'], queryFn: () => workflowsApi.list() });
   const lookups = useQuery({ queryKey: ['workflow-lookups'], queryFn: () => workflowsApi.lookups() });
@@ -421,7 +438,11 @@ export default function WorkflowDesigner() {
   });
   const create = useMutation({
     mutationFn: () => workflowsApi.create({ institutionId: Number(newUni), name: `${unis.find((u) => u.id === Number(newUni))?.name ?? 'University'} workflow` }),
-    onSuccess: (res) => { setNewUni(''); void qc.invalidateQueries({ queryKey: ['workflows'] }); setSelectedId(res.data.id); },
+    onSuccess: (res) => {
+      setNewUni(''); void qc.invalidateQueries({ queryKey: ['workflows'] }); void qc.invalidateQueries({ queryKey: ['workflow-lookups'] }); setSelectedId(res.data.id);
+      const made = res.data.createdGroups ?? [];
+      setCreatedNote(made.length ? `Created ${made.length} approver group${made.length === 1 ? '' : 's'} for this university (${made.map((g) => g.name).join(', ')}). They have no members yet: add this university's staff under the Approver groups tab.` : '');
+    },
     onError: (e) => setError(errMsg(e, 'Could not create the workflow.')),
   });
   const remove = useMutation({
@@ -455,7 +476,7 @@ export default function WorkflowDesigner() {
       ) : tab === 'programme' ? (
         <ProgrammeRulesTab />
       ) : tab === 'groups' ? (
-        <GroupsTab groups={groups} staff={staff} canEdit={canEdit} />
+        <GroupsTab groups={groups} staff={staff} canEdit={canEdit} unis={unis} />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[16rem_1fr]">
           <aside className="space-y-2">
@@ -469,6 +490,7 @@ export default function WorkflowDesigner() {
             {canCreate && (
               <div className="rounded-xl border border-dashed border-gray-300 p-3">
                 <div className="mb-1.5 text-xs font-medium text-gray-500">Add a university workflow</div>
+                <p className="mb-2 text-[11px] text-gray-400">Copies the default stages and creates that university's own approver groups.</p>
                 <select value={newUni} onChange={(e) => setNewUni(e.target.value)} className="mb-2 w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm">
                   <option value="">Choose a university…</option>
                   {unis.filter((u) => !usedUniIds.has(u.id)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -501,7 +523,7 @@ export default function WorkflowDesigner() {
 
                 <div className="space-y-3">
                   {draft.stages.map((s, i) => (
-                    <StageCard key={s.id ?? `new-${i}`} stage={s} index={i} total={draft.stages.length} groups={groups} staff={staff} disabled={!canEdit}
+                    <StageCard key={s.id ?? `new-${i}`} stage={s} index={i} total={draft.stages.length} groups={groups.filter((g) => draft.institutionId == null || g.institutionId == null || g.institutionId === draft.institutionId)} staff={staff} disabled={!canEdit}
                       onChange={(ns) => setStage(i, ns)} onMove={(d) => move(i, d)}
                       onRemove={() => window.confirm(`Remove "${s.name}"? Requests already past it keep their history.`) && change({ stages: draft.stages.filter((_, j) => j !== i) })} />
                   ))}
@@ -526,6 +548,7 @@ export default function WorkflowDesigner() {
                 </div>
 
                 {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+                {createdNote && <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{createdNote}</p>}
                 {canEdit && (
                   <div className="sticky bottom-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur">
                     <div className="text-sm text-gray-500">{saved ? 'Saved.' : dirty ? 'You have unsaved changes.' : 'No changes.'}</div>

@@ -329,7 +329,15 @@ export const permissionsApi = {
     api.put('/permissions/matrix', { entries }),
   /** The logged-in user's own effective grants: { [moduleKey]: { [operationKey]: boolean } }. */
   my: () => api.get<Record<string, Record<string, boolean>>>('/permissions/my'),
+  /** Custom roles (migration 032). */
+  roles: () => api.get<ManagedRole[]>('/permissions/roles'),
+  createRole: (data: { name: string; displayName: string; description?: string; baseRole: string; copyFromRoleId?: number }) => api.post<ManagedRole>('/permissions/roles', data),
+  updateRole: (id: number, data: { displayName?: string; description?: string; isActive?: boolean }) => api.patch<ManagedRole>(`/permissions/roles/${id}`, data),
+  deleteRole: (id: number) => api.delete(`/permissions/roles/${id}`),
+  assignableRoles: () => api.get<{ name: string; displayName: string; baseRole: string | null; isSystem: boolean }[]>('/permissions/assignable-roles'),
 };
+
+export interface ManagedRole { id: number; name: string; displayName: string; description: string | null; baseRole: string | null; isSystem: boolean; isActive: boolean; users: number }
 
 
 // ── Data Import endpoints (super_admin only) ──────────────────
@@ -476,10 +484,10 @@ export const workflowsApi = {
   get: (id: number) => api.get<WorkflowDetail>(`/workflows/${id}`),
   lookups: () =>
     api.get<{ staff: StaffUser[]; groups: ApproverGroup[]; documentTypes: { docTypeKey: string; label: string }[] }>('/workflows/lookups'),
-  create: (data: { institutionId: number; name: string; copyFromWorkflowId?: number }) => api.post<WorkflowDetail>('/workflows', data),
+  create: (data: { institutionId: number; name: string; copyFromWorkflowId?: number }) => api.post<WorkflowDetail & { createdGroups?: { id: number; name: string }[] }>('/workflows', data),
   save: (id: number, data: SaveWorkflowPayload) => api.put<WorkflowDetail>(`/workflows/${id}`, data),
   remove: (id: number) => api.delete<{ message: string }>(`/workflows/${id}`),
-  saveGroup: (id: number | null, data: { name: string; description?: string; isActive: boolean; memberUserIds: string[] }) =>
+  saveGroup: (id: number | null, data: { name: string; description?: string; institutionId?: number | null; isActive: boolean; memberUserIds: string[] }) =>
     id ? api.put<ApproverGroup>(`/approver-groups/${id}`, data) : api.post<ApproverGroup>('/approver-groups', data),
   removeGroup: (id: number) => api.delete<{ message: string }>(`/approver-groups/${id}`),
 };

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { usersApi, api, accountApi } from '../../lib/api';
+import { usersApi, api, accountApi, permissionsApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
 import { Users, UserPlus, Lock, Unlock, MapPin, Upload, Download, Camera, Trash2 } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
@@ -12,10 +12,12 @@ import { roleColors, roleTabs, getColumnsForRole, NameCell, type UserRow } from 
 
 const ALL_ROLES = ['student', 'faculty', 'admin', 'agency', 'super_admin'];
 
-/** Plain admins neither see nor can hand out the super admin role. */
+/** Roles the signed-in user may hand out: built-in ones plus any custom roles (the server leaves super_admin out for plain admins). */
 function useAssignableRoles() {
+  const q = useQuery({ queryKey: ['assignable-roles'], queryFn: async () => (await permissionsApi.assignableRoles()).data, staleTime: 60_000 });
   const isSuper = useAuthStore((st) => st.user?.role === 'super_admin');
-  return isSuper ? ALL_ROLES : ALL_ROLES.filter((r) => r !== 'super_admin');
+  const names = q.data?.map((r) => r.name) ?? (isSuper ? ALL_ROLES : ALL_ROLES.filter((r) => r !== 'super_admin'));
+  return names;
 }
 
 interface UserScope {
