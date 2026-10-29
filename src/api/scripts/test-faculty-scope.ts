@@ -188,3 +188,18 @@ const view = (id: string, role: string) => ({ id, role });
 
   console.log('faculty university scope OK');
 })();
+
+// ── "from and to" also covers the student record, not only the request ──
+// Staff of the SENDING university must be able to open the student behind an outgoing request.
+(async () => {
+  const assert2 = (await import('node:assert/strict')).default;
+  const { ScopeService } = await import('../src/policy/scope.service');
+  const svc = new ScopeService({ query: async () => ({ recordset: [] }) } as never);
+  const inputs: { name: string; value: unknown }[] = [];
+  const pred = svc.studentInScope([7, 9], 'u', inputs as never);
+  assert2.ok(/sp_s\.TargetInstitutionId IN/.test(pred), 'matches a registered target');
+  assert2.ok(/t_s\.TargetInstitutionId IN/.test(pred), 'matches an incoming request');
+  assert2.ok(/t_s\.InstitutionId IN/.test(pred), 'matches an outgoing request (the from side)');
+  assert2.deepEqual(inputs.map((i) => i.value), [7, 9]);
+  console.log('student scope covers from and to OK');
+})();

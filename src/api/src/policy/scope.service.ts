@@ -59,11 +59,17 @@ export class ScopeService {
       .join(', ');
   }
 
-  /** SQL predicate on a Users alias: "this student belongs to one of the universities". */
+  /**
+   * SQL predicate on a Users alias: "this student belongs to one of the universities" — either because
+   * they are heading TO one of them (their registered target, or a request aimed at it) or because they
+   * are coming FROM one of them (a request whose source institution is ours). Staff of the sending
+   * university need the student record behind the requests they can already see, not just the request.
+   */
   studentInScope(ids: number[], userAlias: string, inputs: QueryInput[], prefix = 'sc'): string {
     const p = this.list(ids, prefix, inputs);
     return `(EXISTS (SELECT 1 FROM StudentProfiles sp_s WHERE sp_s.UserId = ${userAlias}.Id AND sp_s.TargetInstitutionId IN (${p}))
-       OR EXISTS (SELECT 1 FROM Transcripts t_s WHERE t_s.StudentUserId = ${userAlias}.Id AND t_s.TargetInstitutionId IN (${p})))`;
+       OR EXISTS (SELECT 1 FROM Transcripts t_s WHERE t_s.StudentUserId = ${userAlias}.Id
+                    AND (t_s.TargetInstitutionId IN (${p}) OR t_s.InstitutionId IN (${p}))))`;
   }
 
   /** SQL predicate on a Transcripts alias: the request targets (or its student registered for) a scoped university. */

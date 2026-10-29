@@ -11,7 +11,7 @@ import * as sql from 'mssql';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { SchemaService } from '../policy/schema.service';
-import { ScopeService } from '../policy/scope.service';
+import { isScopedStaffRole, ScopeService } from '../policy/scope.service';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import { AnthropicDocumentReader, DocumentReader, PAUSED_REASON, PausedDocumentReader } from './document-reader';
 import { RulesDocumentReader, RULES_REASON } from './rules-document-reader';
@@ -162,7 +162,7 @@ export class DocumentsService {
   private async assertCanView(row: IntakeRow, viewer: Viewer) {
     if (String(row.UserId) === String(viewer.id)) return;
     if (!STAFF_ROLES.includes(viewer.role)) throw new ForbiddenException('You do not have access to this document');
-    if (viewer.role === 'admin' && !(await this.scope.canManageUser(viewer, row.UserId))) {
+    if (isScopedStaffRole(viewer.role) && !(await this.scope.canManageUser(viewer, row.UserId))) {
       throw new ForbiddenException('You do not have access to this document');
     }
   }
@@ -280,7 +280,7 @@ export class DocumentsService {
     const target = userId && userId !== viewer.id ? userId : viewer.id;
     if (target !== viewer.id) {
       if (!STAFF_ROLES.includes(viewer.role)) throw new ForbiddenException('You do not have access to these documents');
-      if (viewer.role === 'admin' && !(await this.scope.canManageUser(viewer, target))) {
+      if (isScopedStaffRole(viewer.role) && !(await this.scope.canManageUser(viewer, target))) {
         throw new ForbiddenException('You do not have access to these documents');
       }
     }
