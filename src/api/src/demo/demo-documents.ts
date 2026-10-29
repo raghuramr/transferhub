@@ -13,8 +13,8 @@ import PDFDocument = require('pdfkit');
 export type DemoDocKind = 'transcript' | 'id_document' | 'english_test' | 'syllabus' | 'enrollment_letter';
 export const DEMO_DOC_KINDS: { kind: DemoDocKind; label: string }[] = [
   { kind: 'transcript', label: 'Transcript (one per previous college)' },
-  { kind: 'id_document', label: 'ID / passport copy' },
-  { kind: 'english_test', label: 'English test report (international students)' },
+  { kind: 'id_document', label: 'ID documents (passport page + ID card)' },
+  { kind: 'english_test', label: 'English test report (TOEFL or IELTS)' },
   { kind: 'syllabus', label: 'Course syllabi (one per course)' },
   { kind: 'enrollment_letter', label: 'Enrolment verification letter' },
 ];
@@ -29,13 +29,19 @@ export interface DocStudent {
   city?: string;
   state?: string;
   idType: 'passport' | 'student_id' | 'national_id' | 'other';
+  /** Passport number when it differs from the student id (domestic students still get a passport page). */
+  passportNumber?: string;
+  /** Programme the student is studying at the sending college (shown on the transcript and the letter). */
+  program?: string;
   expectedGraduation?: number;
   targetUniversity?: string;
   targetProgram?: string;
-  /** TOEFL or IELTS details, only for non-native speakers. */
-  english?: { type: 'TOEFL' | 'IELTS'; total: string; r: string; l: string; s: string; w: string };
+  /** TOEFL or IELTS details. Left out, a deterministic sample report is derived from the name. */
+  english?: EnglishScores;
 }
-export interface DocInstitution { name: string; code: string; calendar?: string }
+export type EnglishScores = { type: 'TOEFL' | 'IELTS'; total: string; r: string; l: string; s: string; w: string };
+/** `school` is the school / college (AcademicUnit) inside the university, when one is known. */
+export interface DocInstitution { name: string; code: string; calendar?: string; school?: string }
 export interface DocCourse { code: string; title: string; credits: number; grade: string; term: string; description?: string; outcomes?: string; topics?: string[] }
 
 // ── shared drawing helpers ──────────────────────────────────
@@ -98,8 +104,9 @@ function crest(d: Doc, cx: number, cy: number, r: number, inst: DocInstitution, 
 }
 
 /** Coloured letterhead band across the top of page 1. Returns the y where content can start. */
-function letterhead(d: Doc, inst: DocInstitution, office: string): number {
+function letterhead(d: Doc, inst: DocInstitution, officeText: string): number {
   const b = brand(inst);
+  const office = inst.school ? `${officeText}  ·  ${inst.school}` : officeText;
   d.rect(0, 0, PAGE_W, 92).fill(b.primary);
   d.rect(0, 92, PAGE_W, 3).fill('#c9a24a');
   crest(d, M + 24, 46, 24, inst);
@@ -167,10 +174,13 @@ export function transcriptPdf(s: DocStudent, inst: DocInstitution, courses: DocC
   return pdf(`${inst.name} transcript`, inst.name, (d) => {
     let y = letterhead(d, inst, 'Office of the Registrar  ·  Official Academic Transcript');
     d.font('Helvetica-Bold').fontSize(8).fillColor(MUTED).text(`Document no. ${docNo(inst, s, 'TR')}`, M, y - 6, { width: CONTENT_W, align: 'right', lineBreak: false });
-    y = infoBox(d, inst, [
+    const info: [string, string][] = [
       ['Student', `${s.firstName} ${s.lastName}`], ['Student ID', s.studentId], ['Date of birth', s.dateOfBirth],
       ['Calendar', inst.calendar === 'quarter' ? 'Quarter' : 'Semester'], ['Level', 'Undergraduate'], ['Issued', fmtDate('2026-10-01')],
-    ], y + 4);
+    ];
+    if (s.program) info.splice(3, 0, ['Program', s.program]);
+    if (inst.school) info.push(['School', inst.school]);
+    y = infoBox(d, inst, info, y + 4);
 
     const cols = { code: M + 6, title: M + 86, cr: M + 330, gr: M + 380, pts: M + 430 };
     const head = (yy: number) => {
@@ -249,20 +259,30 @@ const yymmdd = (iso: string) => iso.slice(2, 4) + iso.slice(5, 7) + iso.slice(8,
 const mz = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]+/g, '<');
 
 /** Two valid TD3 machine-readable lines for the passport. */
+/** Passport number: what the admin typed, else the student id, else derived from the name. */
+export const passportNoOf = (s: DocStudent) =>
+  s.passportNumber || (s.idType === 'passport' && s.studentId ? s.studentId : `P${String(hashOf(`${s.firstName}${s.lastName}passport`) % 90000000 + 10000000)}`);
+
 export function mrzLines(s: DocStudent, expiryIso: string): [string, string] {
   const c3 = country3(s.country);
   const l1 = (`P<${c3}${mz(s.lastName)}<<${mz(s.firstName)}`).padEnd(44, '<').slice(0, 44);
-  const no = mz(s.studentId).padEnd(9, '<').slice(0, 9);
+  const no = mz(passportNoOf(s)).padEnd(9, '<').slice(0, 9);
   const dob = yymmdd(s.dateOfBirth), exp = yymmdd(expiryIso);
   const body = `${no}${mrzCheck(no)}${c3}${dob}${mrzCheck(dob)}<${exp}${mrzCheck(exp)}${'<'.repeat(14)}0`;
   const comp = mrzCheck(body.slice(0, 10) + body.slice(13, 20) + body.slice(21, 43));
   return [l1, (body + comp).slice(0, 44)];
 }
 
-export function idPdf(s: DocStudent, inst?: DocInstitution): Promise<Buffer> {
+/**
+ * `variant` picks the page: 'passport' draws the passport data page (with a valid MRZ), 'card' draws a plastic card
+ * (student ID, or a national identity card when `idType` is national_id). Defaults to the student's own id type.
+ */
+export function idPdf(s: DocStudent, inst?: DocInstitution, variant?: 'passport' | 'card'): Promise<Buffer> {
   const i = inst ?? { name: 'University', code: 'UNI' };
   const b = brand(i);
-  if (s.idType === 'passport') {
+  const kind = variant ?? (s.idType === 'passport' ? 'passport' : 'card');
+  if (kind === 'passport') {
+    const passportNo = passportNoOf(s);
     return pdf('Passport copy', s.country, (d) => {
       d.font('Helvetica-Bold').fontSize(13).fillColor(INK).text('Passport - photocopy of identity page', M, 50, { lineBreak: false });
       const x = M, y = 84, w = CONTENT_W, h = 330;
@@ -275,7 +295,7 @@ export function idPdf(s: DocStudent, inst?: DocInstitution): Promise<Buffer> {
       avatar(d, x + 18, y + 64, 112, 140, '#aab4c2');
       const fields: [string, string][] = [
         ['Surname', s.lastName.toUpperCase()], ['Given names', s.firstName.toUpperCase()], ['Nationality', s.country], ['Date of birth', s.dateOfBirth],
-        ['Passport No', s.studentId], ['Date of issue', '2021-07-01'], ['Date of expiry', '2031-06-30'], ['Issuing authority', `${s.country} - Passport Office`],
+        ['Passport No', passportNo], ['Date of issue', '2021-07-01'], ['Date of expiry', '2031-06-30'], ['Issuing authority', `${s.country} - Passport Office`],
       ];
       fields.forEach(([k, v], idx) => {
         const col = idx % 2, row = Math.floor(idx / 2);
@@ -292,13 +312,13 @@ export function idPdf(s: DocStudent, inst?: DocInstitution): Promise<Buffer> {
   }
   const title = s.idType === 'national_id' ? 'National identity card' : `${i.name} student ID`;
   return pdf(title, i.name, (d) => {
-    d.font('Helvetica-Bold').fontSize(13).fillColor(INK).text(s.idType === 'national_id' ? 'National identity card - copy' : 'Student identification card - copy', M, 50, { lineBreak: false });
+    d.font('Helvetica-Bold').fontSize(13).fillColor(INK).text(s.idType === 'national_id' ? 'National identity card - copy' : 'Student identity card - copy', M, 50, { lineBreak: false });
     const x = M + 30, y = 96, w = 420, h = 262;
     d.roundedRect(x, y, w, h, 12).fillAndStroke('#ffffff', '#b8bec7');
     d.save(); d.roundedRect(x, y, w, h, 12).clip(); d.rect(x, y, w, 62).fill(b.primary); d.rect(x, y + 62, w, 3).fill('#c9a24a'); d.restore();
     crest(d, x + 34, y + 31, 20, i);
     d.fillColor('#ffffff').font('Times-Bold').fontSize(15).text(s.idType === 'national_id' ? `${s.country} - National ID` : i.name, x + 64, y + 16, { width: w - 80, lineBreak: false });
-    d.font('Helvetica').fontSize(8.5).fillColor('#f1e3e6').text(s.idType === 'national_id' ? 'Identity card' : 'Student identification card', x + 64, y + 38, { lineBreak: false });
+    d.font('Helvetica').fontSize(8.5).fillColor('#f1e3e6').text(s.idType === 'national_id' ? 'Identity card' : 'Student identity card', x + 64, y + 38, { lineBreak: false });
     avatar(d, x + 18, y + 82, 96, 120, '#aab4c2');
     const rows: [string, string][] = [
       ['Surname', s.lastName.toUpperCase()], ['Given names', s.firstName], [s.idType === 'national_id' ? 'ID number' : 'ID number', s.studentId],
@@ -325,8 +345,25 @@ function bar(d: Doc, x: number, y: number, w: number, frac: number, color: strin
   d.rect(x, y, Math.max(2, w * Math.min(1, frac)), 9).fill(color);
 }
 
+/**
+ * A plausible score report for a student whose record has no test on file: deterministic from the name, so the same
+ * person always gets the same scores. TOEFL unless the record says IELTS.
+ */
+export function defaultEnglish(s: DocStudent, type: 'TOEFL' | 'IELTS' = 'TOEFL'): EnglishScores {
+  const h = hashOf(`${s.firstName}${s.lastName}${s.studentId}english`);
+  if (type === 'IELTS') {
+    const band = (k: number) => (6 + ((h >>> k) % 5) * 0.5).toFixed(1);
+    const parts = [band(1), band(4), band(7), band(10)].map(Number);
+    const overall = (Math.round((parts.reduce((a, c) => a + c, 0) / 4) * 2) / 2).toFixed(1);
+    return { type, total: overall, r: parts[0].toFixed(1), l: parts[1].toFixed(1), s: parts[2].toFixed(1), w: parts[3].toFixed(1) };
+  }
+  const sec = (k: number) => 21 + ((h >>> k) % 9);
+  const parts = [sec(1), sec(4), sec(7), sec(10)];
+  return { type, total: String(parts.reduce((a, c) => a + c, 0)), r: String(parts[0]), l: String(parts[1]), s: String(parts[2]), w: String(parts[3]) };
+}
+
 export function englishPdf(s: DocStudent): Promise<Buffer> {
-  const e = s.english ?? { type: 'TOEFL' as const, total: '96', r: '25', l: '25', s: '23', w: '23' };
+  const e = s.english ?? defaultEnglish(s);
   const ielts = e.type === 'IELTS';
   const color = ielts ? '#b3122e' : '#0b4f8a';
   return pdf(`${e.type} score report`, e.type, (d) => {
@@ -433,6 +470,7 @@ export function enrollmentLetterPdf(s: DocStudent, inst: DocInstitution): Promis
     y = d.y + 14;
     const body = [
       `This letter certifies that ${s.firstName} ${s.lastName} (Student ID ${s.studentId}, date of birth ${s.dateOfBirth}) is currently enrolled as a full-time student at ${inst.name} and is in good standing.`,
+      s.program ? `The student is enrolled in the ${s.program} program${inst.school ? ` within the ${inst.school}` : ''}.` : '',
       s.targetUniversity ? `The student has told us that they intend to transfer to ${s.targetUniversity}${s.targetProgram ? `, ${s.targetProgram}` : ''}, and has asked us to confirm their enrollment for that purpose.` : '',
       s.expectedGraduation ? `Expected graduation: ${s.expectedGraduation}.` : '',
       'This letter is issued at the request of the student and may be shared with other institutions for credit evaluation. Official transcripts are available from the Office of the Registrar on request.',
@@ -448,6 +486,106 @@ export function enrollmentLetterPdf(s: DocStudent, inst: DocInstitution): Promis
 export interface DocCollegeRecord { institution: DocInstitution; courses: DocCourse[] }
 export interface GeneratedDoc { fileName: string; docType: DemoDocKind; bytes: Buffer }
 
+// ── synthetic coursework (so a student with nothing on file still gets a full set of documents) ──
+
+interface PoolCourse { code: string; title: string; credits: number; topics: string }
+const CORE: PoolCourse[] = [
+  { code: 'ENG 101', title: 'English Composition I', credits: 3, topics: 'The writing process|Argument and evidence|Research and citation|Revision and style' },
+  { code: 'MAT 121', title: 'College Algebra', credits: 3, topics: 'Linear and quadratic equations|Functions and graphs|Exponentials and logarithms|Systems of equations' },
+  { code: 'HIS 110', title: 'World Civilizations', credits: 3, topics: 'Early civilizations|Empires and trade|Revolutions and industry|The modern world' },
+  { code: 'COM 101', title: 'Public Speaking', credits: 3, topics: 'Audience analysis|Structuring a talk|Delivery and visual aids|Persuasive speaking' },
+];
+const POOLS: { match: RegExp; courses: PoolCourse[] }[] = [
+  {
+    match: /comput|software|information|data|cyber|\bit\b/i,
+    courses: [
+      { code: 'CSC 110', title: 'Introduction to Programming', credits: 4, topics: 'Variables and expressions|Control flow|Functions and modules|Files and testing' },
+      { code: 'CSC 210', title: 'Data Structures', credits: 4, topics: 'Lists, stacks and queues|Trees and hashing|Sorting and searching|Complexity analysis' },
+      { code: 'MAT 210', title: 'Discrete Mathematics', credits: 3, topics: 'Logic and proof|Sets and relations|Counting and recursion|Graphs and trees' },
+      { code: 'CSC 230', title: 'Computer Organization', credits: 3, topics: 'Number representation|Assembly language|Memory hierarchy|Input and output' },
+    ],
+  },
+  {
+    match: /business|management|account|financ|economic|market/i,
+    courses: [
+      { code: 'BUS 101', title: 'Principles of Management', credits: 3, topics: 'Planning and organising|Leading teams|Control and metrics|Ethics in business' },
+      { code: 'ACC 110', title: 'Financial Accounting', credits: 3, topics: 'The accounting cycle|Financial statements|Receivables and inventory|Analysis of accounts' },
+      { code: 'ECO 201', title: 'Principles of Microeconomics', credits: 3, topics: 'Supply and demand|Elasticity|Costs of production|Market structures' },
+      { code: 'BUS 220', title: 'Business Statistics', credits: 3, topics: 'Descriptive statistics|Probability|Sampling and estimation|Regression' },
+    ],
+  },
+  {
+    match: /nurs|health|biolog|medic|pharm|dental/i,
+    courses: [
+      { code: 'BIO 120', title: 'Human Anatomy and Physiology I', credits: 4, topics: 'Cells and tissues|Skeletal system|Muscular system|Nervous system' },
+      { code: 'CHE 101', title: 'General Chemistry I', credits: 4, topics: 'Atomic structure|Chemical bonding|Stoichiometry|Gases and solutions' },
+      { code: 'HLT 150', title: 'Introduction to Health Professions', credits: 3, topics: 'The health care system|Professional ethics|Patient communication|Safety and infection control' },
+      { code: 'BIO 220', title: 'Microbiology', credits: 4, topics: 'Microbial cell structure|Growth and control|Immunity|Infectious disease' },
+    ],
+  },
+  {
+    match: /engineer|mechanic|electric|civil|robot|manufact/i,
+    courses: [
+      { code: 'PHY 151', title: 'Physics I: Mechanics', credits: 4, topics: 'Kinematics|Newton laws|Work and energy|Rotation and momentum' },
+      { code: 'MAT 251', title: 'Calculus II', credits: 4, topics: 'Techniques of integration|Applications of the integral|Sequences and series|Parametric and polar curves' },
+      { code: 'EGR 110', title: 'Engineering Graphics', credits: 3, topics: 'Orthographic projection|Dimensioning|Computer aided design|Assembly drawings' },
+      { code: 'EGR 210', title: 'Statics', credits: 3, topics: 'Force systems|Equilibrium|Trusses and frames|Friction and centroids' },
+    ],
+  },
+  {
+    match: /psych|social|educat|human|art|language|law|polit/i,
+    courses: [
+      { code: 'PSY 101', title: 'Introduction to Psychology', credits: 3, topics: 'Research methods|Learning and memory|Development|Personality and disorders' },
+      { code: 'SOC 101', title: 'Introduction to Sociology', credits: 3, topics: 'Culture and socialisation|Social institutions|Inequality|Social change' },
+      { code: 'PSY 230', title: 'Developmental Psychology', credits: 3, topics: 'Infancy|Childhood|Adolescence|Adulthood and ageing' },
+      { code: 'STA 201', title: 'Statistics for the Social Sciences', credits: 3, topics: 'Describing data|Probability|Hypothesis testing|Correlation and regression' },
+    ],
+  },
+];
+const GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+'];
+const SYNTHETIC_TERMS = ['Fall 2024', 'Spring 2025', 'Fall 2025'];
+const COLLEGE_NAMES = ['Riverside Community College', 'Lakeside Community College', 'Northgate Community College', 'Harbor View College', 'Valley Crest College'];
+
+/**
+ * A plausible, deterministic set of completed courses for someone with no coursework on file: a couple of general
+ * education courses plus courses from the pool that best matches their field of study. Same seed, same courses.
+ */
+export function syntheticCourses(seed: string, opts: { field?: string; count?: number } = {}): DocCourse[] {
+  const h = hashOf(seed || 'student');
+  const pool = POOLS.find((p) => opts.field && p.match.test(opts.field))?.courses ?? POOLS[h % POOLS.length].courses;
+  const picked = [CORE[h % CORE.length], CORE[(h >>> 5) % CORE.length], ...pool].filter((c, i, a) => a.findIndex((x) => x.code === c.code) === i);
+  return picked.slice(0, Math.max(1, Math.min(opts.count ?? 5, picked.length))).map((c, i) => {
+    const topics = c.topics.split('|');
+    return {
+      code: c.code, title: c.title, credits: c.credits, grade: GRADES[(h >>> (i * 3)) % GRADES.length],
+      term: SYNTHETIC_TERMS[Math.floor(i / 2) % SYNTHETIC_TERMS.length],
+      description: `${c.title} is a college-level course covering ${topics[0].toLowerCase()}, ${topics[1].toLowerCase()} and ${topics[2].toLowerCase()}. Students complete weekly assignments, a midterm and a final assessment.`,
+      outcomes: `Explain the core ideas of ${c.title}; apply them to practical problems; communicate results clearly`,
+      topics,
+    };
+  });
+}
+
+/** A deterministic sending college for a student with no transcript on file. */
+export function syntheticCollege(s: DocStudent, name?: string, opts: { field?: string; school?: string } = {}): DocCollegeRecord {
+  const seed = `${s.firstName} ${s.lastName} ${s.studentId}`;
+  const instName = name?.trim() || COLLEGE_NAMES[hashOf(seed) % COLLEGE_NAMES.length];
+  return {
+    institution: { name: instName, code: initials(instName).slice(0, 4), calendar: 'semester', school: opts.school },
+    courses: syntheticCourses(seed + instName, { field: opts.field ?? s.program ?? s.targetProgram }),
+  };
+}
+
+/** Fills in the gaps so every requested kind can be produced: a sending college, and coursework for it. */
+export function completeColleges(s: DocStudent, colleges: DocCollegeRecord[]): DocCollegeRecord[] {
+  const recs = colleges.filter((c) => c?.institution?.name);
+  if (!recs.length) return [syntheticCollege(s)];
+  // Only invent coursework when there is none at all: a caller that deliberately passes a narrowed course list
+  // (one syllabus, say) keeps exactly what it passed.
+  if (recs.some((c) => c.courses.length)) return recs;
+  return recs.map((c) => ({ ...c, courses: syntheticCourses(`${s.firstName}${s.lastName}${s.studentId}${c.institution.code}`, { field: s.program ?? s.targetProgram }) }));
+}
+
 /**
  * Builds the requested documents for one student. `colleges` = every college the student has coursework from.
  * File names read like "Maya Rivera - Transcript (BSCC).pdf" and still contain the keywords Smart Upload uses to guess a type.
@@ -455,14 +593,23 @@ export interface GeneratedDoc { fileName: string; docType: DemoDocKind; bytes: B
 export async function buildStudentDocuments(s: DocStudent, colleges: DocCollegeRecord[], kinds: DemoDocKind[]): Promise<GeneratedDoc[]> {
   const out: GeneratedDoc[] = [];
   const who = safeName(`${s.firstName} ${s.lastName}`);
-  const home = colleges[0]?.institution;
-  const multi = colleges.length > 1;
+  // Nothing is skipped for want of data: a missing college / coursework / test score is filled in deterministically.
+  const recs = completeColleges(s, colleges);
+  const home = recs[0].institution;
+  const multi = recs.length > 1;
   for (const k of kinds) {
-    if (k === 'transcript') for (const c of colleges) out.push({ docType: k, fileName: `${who} - Transcript (${safeName(c.institution.code)}).pdf`, bytes: await transcriptPdf(s, c.institution, c.courses) });
-    if (k === 'id_document') out.push({ docType: k, fileName: `${who} - ${s.idType === 'passport' ? 'Passport' : s.idType === 'national_id' ? 'National ID' : 'Student ID'}.pdf`, bytes: await idPdf(s, home) });
-    if (k === 'english_test' && s.english) out.push({ docType: k, fileName: `${who} - ${s.english.type} English Test Score Report.pdf`, bytes: await englishPdf(s) });
-    if (k === 'enrollment_letter' && home) out.push({ docType: k, fileName: `${who} - Enrollment Letter (${safeName(home.code)}).pdf`, bytes: await enrollmentLetterPdf(s, home) });
-    if (k === 'syllabus') for (const c of colleges) for (const course of c.courses) out.push({ docType: k, fileName: `${who} - Syllabus ${safeName(course.code)}${multi ? ` (${safeName(c.institution.code)})` : ''}.pdf`, bytes: await syllabusPdf(c.institution, course) });
+    if (k === 'transcript') for (const c of recs) out.push({ docType: k, fileName: `${who} - Transcript (${safeName(c.institution.code)}).pdf`, bytes: await transcriptPdf(s, c.institution, c.courses) });
+    if (k === 'id_document') {
+      // Both the travel document and the card: the passport page carries a valid MRZ, the card is the campus ID.
+      out.push({ docType: k, fileName: `${who} - Passport.pdf`, bytes: await idPdf(s, home, 'passport') });
+      out.push({ docType: k, fileName: `${who} - ${s.idType === 'national_id' ? 'National ID Card' : 'Student ID Card'}.pdf`, bytes: await idPdf(s, home, 'card') });
+    }
+    if (k === 'english_test') {
+      const e = s.english ?? defaultEnglish(s);
+      out.push({ docType: k, fileName: `${who} - ${e.type} English Test Score Report.pdf`, bytes: await englishPdf({ ...s, english: e }) });
+    }
+    if (k === 'enrollment_letter') out.push({ docType: k, fileName: `${who} - Enrollment Letter (${safeName(home.code)}).pdf`, bytes: await enrollmentLetterPdf(s, home) });
+    if (k === 'syllabus') for (const c of recs) for (const course of c.courses) out.push({ docType: k, fileName: `${who} - Syllabus ${safeName(course.code)}${multi ? ` (${safeName(c.institution.code)})` : ''}.pdf`, bytes: await syllabusPdf(c.institution, course) });
   }
   return out;
 }
