@@ -21,6 +21,8 @@ function mapProgram(r: ProgramRow) {
     matchStrength: r.MatchStrength,
     notes: r.Notes,
     isActive: !!r.IsActive,
+    courseCount: r.CourseCount == null ? undefined : Number(r.CourseCount),
+    totalCredits: r.TotalCredits == null ? undefined : Number(r.TotalCredits),
   };
 }
 
@@ -59,6 +61,9 @@ interface ProgramRow {
   IsActive: boolean;
   InstitutionCode?: string;
   InstitutionName?: string;
+  /** Only on the list query: how big this program is, so pickers can show its credits. */
+  CourseCount?: number;
+  TotalCredits?: number | null;
 }
 
 interface InstitutionRow {
@@ -253,9 +258,16 @@ export class CoursesService {
     }
     const res = await this.db.query<ProgramRow>(
       `SELECT p.Id, p.InstitutionId, p.Area, p.Name, p.Degree, p.School, p.KeyRules, p.Source, p.MatchStrength, p.Notes, p.IsActive,
-              i.Code AS InstitutionCode, i.Name AS InstitutionName
+              i.Code AS InstitutionCode, i.Name AS InstitutionName,
+              ISNULL(cc.Courses, 0) AS CourseCount, cc.Credits AS TotalCredits
        FROM Programs p
        LEFT JOIN Institutions i ON i.Id = p.InstitutionId
+       OUTER APPLY (
+         SELECT COUNT(*) AS Courses, SUM(CAST(x.Credits AS DECIMAL(10,2))) AS Credits
+         FROM Courses x
+         WHERE x.IsActive = 1
+           AND (x.ProgramId = p.Id OR EXISTS (SELECT 1 FROM ProgramCourses pc WHERE pc.ProgramId = p.Id AND pc.CourseId = x.Id))
+       ) cc
        WHERE ${where} ORDER BY i.Name, p.Area, p.Name`,
       inputs,
     );

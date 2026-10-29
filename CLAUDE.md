@@ -1219,3 +1219,51 @@ No migrations were added this session. Still to apply by the user: seed 020 (and
 - **Custom roles** (migration 032: `Roles.BaseRole/IsSystem/IsActive`): super admin creates roles on Roles & Permissions (`RolesManager`, `/permissions/roles` CRUD, audit `ROLE_CREATED/DELETED`). A custom role has its own grants in the matrix (starts as a copy of its base role's grants) and a **BaseRole** (student/faculty/admin/agency, never super_admin). Mechanism: `JwtStrategy`/`AuthService` return `role` = BaseRole (so every `@Roles()` check, route guard and UI shell treats the user as that built-in role) plus `roleKey` = the real role name; `RolesGuard` and `GET /permissions/my` use `roleKey` for the `@Permission()` matrix. Users forms take roles from `GET /permissions/assignable-roles` (plain admins never get super_admin). Delete blocked while users hold the role; built-ins cannot be deleted/deactivated. Code degrades before 032 (`SchemaService.has('Roles','BaseRole')`). Limit: only `@Permission()`-gated endpoints follow the custom role's own grants; everything else follows its base role. Test: `scripts/test-custom-roles.ts`.
 - **Per-university approver groups**: creating a university workflow ("Copy from default") now clones every approver group on the copied stages as `<CODE> - <name>` with `InstitutionId` = that university (no members; reused if it exists) and points the new stages at them; the response carries `createdGroups` and the designer says so. Approver groups tab: university picker per group (it was never sent before), filter, university label; a university workflow's stage picker offers its own + shared groups only.
 - **University panel**: left details pane can be hidden ("Hide details for more room") so Institutions/Programs/Courses/Topics use the full width; nested program editor split is 1:2 (sharing area gets the room); expanded table cell padding reduced.
+
+## Session 2026-10-29 (g): faculty university scope (branch `claude/faculty-university-scope`, NOT merged; no migrations)
+- **Root cause**: `ScopeService.universityScope()` began `if (viewer.role !== 'admin') return null`, so *only* admins were ever
+  narrowed. A faculty user with `UserScopeUniversities` rows saw every university's requests, queues and evaluations.
+- **Fix**: `isScopedStaffRole(role)` (= admin | faculty, exported from `policy/scope.service.ts`) now gates `universityScope`,
+  `canViewTranscript`, `canWorkRequest` and `canManageUser`; `staffUniversityScope()` is just an alias now. Unchanged rules:
+  super admins are never narrowed, **no scope rows = unrestricted**, students/agencies keep their ownership checks.
+- **Faculty narrowing is additive**: workflow-stage membership (`myStageIds`) AND university scope both apply.
+- Scoped staff on an **outgoing** request (their university is the source) are read-only everywhere now, not just admins:
+  `requests` stage actions, `evaluations.decide`, `appeals.decide`, `transcripts.updateStatus`.
+- Call sites touched: `requests.service` (assertCanView, timeline readOnly, queue, bulk-approve), `transcripts.service.findAll`
+  (faculty used to be narrowed by SOURCE institution only; super admins were wrongly narrowed by the legacy branch - fixed) +
+  `adminCanSee` via `transcripts.controller`, **`evaluations.service` list/findById/decide (was completely unscoped - this is the
+  faculty queue)**, `appeals.service` listForStaff/decide (was unscoped), `dashboard.service` faculty waiting/backlog/appeals,
+  `uploads.service`, `events/event-access.service`, and everything already routed through `universityScope` (users, bento,
+  network, comparison, progress, student-journey, transfers).
+- **Course-detail gap (the "faculty is not displayed with all the course details" report)**: the per-course table comes from
+  `TranscriptStages.AiBrief`, and `getTimeline` only returned it `WHERE s.Status = 'active'` - so a faculty reviewer lost the whole
+  course list as soon as their stage was approved, or before it activated. It is now returned for every stage a staff viewer can
+  see, and `RequestReview.tsx` falls back to the most recent stage that carries one. The brief also gained `term`,
+  `originalCredits`/`normalisedCredits` (shown as "X taken -> Y converted") and the lane is now its own "Status" column.
+  Nothing was role-gated away from faculty in that table - `canAct` only hides the action buttons.
+- Test: `scripts/test-faculty-scope.ts` (stubbed DB). `test-events.ts` was updated: faculty now go through `canViewTranscript`.
+- **Not changed / known gaps**: `documents.service` smart-upload access still checks `role === 'admin'` only, because
+  `canManageUser` matches students by TARGET university and would lock source-side faculty out of their own students' documents;
+  `studentInScope` is still target-only for the same reason; the bento faculty widgets are all "my own work" so they needed no
+  scope. Nothing was verified against a live database.
+
+## Session 2026-10-29 (g): demo dry-run gaps (branch `claude/student-journey-gaps`; apply migration 033)
+Four areas the user found while rehearsing the demo. One branch, three lines of work (two built by agents, merged in).
+
+**1. Student journey (registration -> smart upload -> submit)**
+- **University mismatch is now flagged.** `DocumentsService.profileCheck()` (returned on `GET /documents/intakes/:id`) compares the college on a transcript against the student's `PriorInstitutionName`, their past requests and their education rows; Smart Upload shows an amber "this does not match your profile" panel. Name comparison is `sameInstitution()` in `document-types.ts` (word-set match, ignores "University/College/(synthetic)" noise) - test `scripts/test-document-profile-match.ts`.
+- **Documents fill the profile.** `fillProfileFromDocument()` runs on confirm and writes ONLY into blanks: prior institution, GPA, credits completed (also onto the matching `StudentEducation` row), student id, country of origin (from an ID), institution from an enrolment letter. Each write is isolated so a missing column never loses the rest.
+- **Courses are no longer retyped.** Submit Transcript lists the transcripts Smart Upload already read (`documentsApi.list()` filtered to docType transcript, status read/needs_review/confirmed) with "Use these courses", which routes through the existing `?intake=<id>` prefill.
+- **Target university + program.** Migration 033 adds `Transcripts.TargetProgramId`; the submit form asks "Program you want to join" (prefilled from the profile, options from the chosen university, each showing credits + course count) and sends `targetProgramId`. Root cause of "we are asked again": a profile target missing from `GET /account/targets` (that list is `Type='university'` and active only) left the select blank - the student's own target is now injected as an option so it stays chosen.
+- **Credits everywhere a thing is picked**: `GET /account/targets`, `GET /courses/programs` and public `GET /auth/programs` now return `credits`/`courses` per program (sum over `ProgramCourses` + `Courses.ProgramId`); course pickers put the credits in the option label itself, not only the sublabel.
+- **Student transcript notes** now sit beside the step they belong to (`ProgressTracker showNotes`); the collapsible block below is only for notes tied to no step, and is hidden when empty. The From->To card shows the target program.
+- **MyProfile** shows the rest of what registration captured: applicant type, admission status, entry term, school/college, English (native + test), outside-US coursework, high school, credits completed, the full education history and exam credits (`GET /account/student-overview` gained `education` + `examCredits`; `users.findById` gained the migration-015 columns, guarded by `SchemaService`).
+
+**2. Explore** step 1 shows the same credit picture as the dashboard: per-course converted + as-taken credits, the secure/likely/pending/not-counted chip, and an as-taken total.
+
+**3. Demo documents** (agent): every applicable kind is now generated rather than skipped - synthetic coursework/college/English scores are derived deterministically from the name when the student has none, and ID produces both a passport page and a card. New **"Type the details"** tab + `POST /demo/documents/{generate-manual,check-manual}` builds documents from typed data with no student record. Only real failures remain in the ZIP's skip list.
+
+**4. Faculty scoping** (agent): `universityScope()` only ever narrowed `admin`, so faculty with `UserScopeUniversities` rows saw everything. Now `isScopedStaffRole()` (`admin|faculty`) gates `universityScope`/`canViewTranscript`/`canWorkRequest`/`canManageUser`/`partiesFor`, and `staffUniversityScope()` is an alias so the two cannot drift. Scoped faculty see incoming OR outgoing only, across the queue, transcripts, **evaluations and appeals (both were completely unscoped for every role)**, dashboard counts, request documents and SSE events; outgoing stays read-only (no deciding). Super admins and anyone with no scope rows are unchanged. Also fixed: a super admin WITH scope rows used to be narrowed by a legacy source-only branch in `transcripts.findAll`.
+  - **Course details gap, real cause**: `getTimeline` returned `aiBrief` only for the *active* stage, so the per-course table vanished for a reviewer once their stage passed. Now returned for every stage a staff viewer may see, the page falls back to the latest stage carrying one, and the table gained Term + Status columns and "4 taken -> 3 converted" credits.
+  - **"from and to" for student records**: `studentInScope` matched the target university only, so sending-side staff could see the request but not the student. It now also matches a request's source institution; Smart Upload documents follow the same rule for faculty.
+- Not verified: nothing was run against the live database (the sandbox cannot reach Azure SQL), and none of the new UI was opened in a browser.

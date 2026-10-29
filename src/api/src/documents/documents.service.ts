@@ -8,17 +8,17 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import * as sql from 'mssql';
-import { DatabaseService } from '../database/database.service';
+import { DatabaseService, QueryInput } from '../database/database.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { SchemaService } from '../policy/schema.service';
-import { ScopeService } from '../policy/scope.service';
+import { isScopedStaffRole, ScopeService } from '../policy/scope.service';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import { AnthropicDocumentReader, DocumentReader, PAUSED_REASON, PausedDocumentReader } from './document-reader';
 import { RulesDocumentReader, RULES_REASON } from './rules-document-reader';
 import { AzureDocumentIntelligenceReader } from './azure-document-reader';
 import { RequestsService } from '../requests/requests.service';
 import { AiSettingsService } from '../ai/ai-settings.service';
-import { DOC_TYPES, DOC_TYPE_KEYS, ExtractedData, needsReview, normalizeExtraction, toPrefill } from './document-types';
+import { DOC_TYPES, DOC_TYPE_KEYS, ExtractedData, needsReview, normalizeExtraction, sameInstitution, toPrefill } from './document-types';
 
 interface Viewer {
   id: string;
@@ -162,7 +162,7 @@ export class DocumentsService {
   private async assertCanView(row: IntakeRow, viewer: Viewer) {
     if (String(row.UserId) === String(viewer.id)) return;
     if (!STAFF_ROLES.includes(viewer.role)) throw new ForbiddenException('You do not have access to this document');
-    if (viewer.role === 'admin' && !(await this.scope.canManageUser(viewer, row.UserId))) {
+    if (isScopedStaffRole(viewer.role) && !(await this.scope.canManageUser(viewer, row.UserId))) {
       throw new ForbiddenException('You do not have access to this document');
     }
   }
@@ -280,7 +280,7 @@ export class DocumentsService {
     const target = userId && userId !== viewer.id ? userId : viewer.id;
     if (target !== viewer.id) {
       if (!STAFF_ROLES.includes(viewer.role)) throw new ForbiddenException('You do not have access to these documents');
-      if (viewer.role === 'admin' && !(await this.scope.canManageUser(viewer, target))) {
+      if (isScopedStaffRole(viewer.role) && !(await this.scope.canManageUser(viewer, target))) {
         throw new ForbiddenException('You do not have access to these documents');
       }
     }
@@ -299,7 +299,55 @@ export class DocumentsService {
   async get(id: string, viewer: Viewer) {
     const row = await this.load(id);
     await this.assertCanView(row, viewer);
-    return this.map(row);
+    return { ...this.map(row), profileCheck: await this.profileCheck(row) };
+  }
+
+  /**
+   * Does what the document says line up with what the student told us? Today this compares the
+   * college on a transcript with the one on their profile / education history, because a student
+   * who registered as "New York University" and then uploads a Miami Dade transcript needs to be
+   * told, not silently believed. Returns null when there is nothing to compare or they agree.
+   */
+  private async profileCheck(row: IntakeRow): Promise<{ field: string; documentValue: string; profileValue: string; message: string } | null> {
+    const e = parseJson(row.ExtractedJson);
+    if (!e || e.docType !== 'transcript') return null;
+    const inst = (e.fields.institution ?? {}) as Record<string, unknown>;
+    const docName = typeof inst.name === 'string' ? inst.name.trim() : '';
+    if (!docName || /^unknown institution$/i.test(docName)) return null;
+
+    const known: string[] = [];
+    try {
+      const p = await this.db.query<{ Name: string | null }>(
+        `SELECT PriorInstitutionName AS Name FROM StudentProfiles WHERE UserId = @u`,
+        [{ name: 'u', type: sql.UniqueIdentifier, value: row.UserId }],
+      );
+      if (p.recordset[0]?.Name) known.push(p.recordset[0].Name);
+    } catch { /* profile column missing */ }
+    try {
+      const t = await this.db.query<{ Name: string }>(
+        `SELECT DISTINCT i.Name FROM Transcripts t JOIN Institutions i ON i.Id = t.InstitutionId WHERE t.StudentUserId = @u`,
+        [{ name: 'u', type: sql.UniqueIdentifier, value: row.UserId }],
+      );
+      for (const r of t.recordset) known.push(r.Name);
+    } catch { /* ignore */ }
+    if (await this.schema.has('StudentEducation')) {
+      try {
+        const ed = await this.db.query<{ InstitutionName: string }>(
+          `SELECT InstitutionName FROM StudentEducation WHERE UserId = @u`,
+          [{ name: 'u', type: sql.UniqueIdentifier, value: row.UserId }],
+        );
+        for (const r of ed.recordset) known.push(r.InstitutionName);
+      } catch { /* ignore */ }
+    }
+    const names = known.map((n) => n.trim()).filter(Boolean);
+    if (!names.length) return null;
+    if (names.some((n) => sameInstitution(n, docName))) return null;
+    return {
+      field: 'institution',
+      documentValue: docName,
+      profileValue: names[0],
+      message: `This document is from ${docName}, but your profile says ${names[0]}. Correct whichever is wrong before you confirm — the college on the document is what we will use.`,
+    };
   }
 
   // ── student edits ───────────────────────────────────────
@@ -516,6 +564,9 @@ export class DocumentsService {
       }
     }
 
+    // Everything else the document told us about the student, into the blanks on their profile.
+    applied.push(...(await this.fillProfileFromDocument(e, viewer.id)));
+
     await this.db.query(`UPDATE DocumentIntakes SET Status = 'confirmed', ConfirmedAt = SYSUTCDATETIME() WHERE Id = @id`, [
       { name: 'id', type: sql.UniqueIdentifier, value: id },
     ]);
@@ -524,6 +575,98 @@ export class DocumentsService {
       applied,
       prefill: e.docType === 'transcript' ? toPrefill(e, row.UploadId) : null,
     };
+  }
+
+  /**
+   * Copies what a confirmed document says into the student's profile, but only where the profile is
+   * blank - a value the student typed themselves is never overwritten. Each piece is attempted on its
+   * own so one missing column (an unapplied migration) never loses the rest.
+   */
+  private async fillProfileFromDocument(e: ExtractedData, userId: string): Promise<string[]> {
+    const done: string[] = [];
+    const u = { name: 'u', type: sql.UniqueIdentifier, value: userId };
+    const set = async (sql_: string, inputs: QueryInput[], label: string) => {
+      try {
+        const r = await this.db.query(sql_, [u, ...inputs]);
+        if (r.rowsAffected?.[0]) done.push(label);
+      } catch { /* column not there yet */ }
+    };
+
+    if (e.docType === 'transcript') {
+      const inst = (e.fields.institution ?? {}) as Record<string, unknown>;
+      const student = (e.fields.student ?? {}) as Record<string, unknown>;
+      const courses = Array.isArray(e.fields.courses) ? (e.fields.courses as { credits?: number | null }[]) : [];
+      const name = typeof inst.name === 'string' && !/^unknown institution$/i.test(inst.name.trim()) ? inst.name.trim().slice(0, 200) : null;
+      const gpa = typeof e.fields.gpa === 'number' ? e.fields.gpa : null;
+      const credits = courses.reduce((n, c) => n + (typeof c.credits === 'number' ? c.credits : 0), 0);
+
+      if (name) {
+        await set(
+          `UPDATE StudentProfiles SET PriorInstitutionName = @n, UpdatedAt = SYSUTCDATETIME()
+           WHERE UserId = @u AND NULLIF(PriorInstitutionName, '') IS NULL`,
+          [{ name: 'n', type: sql.NVarChar(200), value: name }],
+          'current college filled in',
+        );
+      }
+      if (gpa != null) {
+        await set(
+          `UPDATE StudentProfiles SET GPA = @g, UpdatedAt = SYSUTCDATETIME() WHERE UserId = @u AND GPA IS NULL`,
+          [{ name: 'g', type: sql.Decimal(3, 2), value: gpa }],
+          'GPA filled in',
+        );
+      }
+      if (credits > 0) {
+        await set(
+          `UPDATE StudentProfiles SET CreditsCompleted = @c, UpdatedAt = SYSUTCDATETIME() WHERE UserId = @u AND CreditsCompleted IS NULL`,
+          [{ name: 'c', type: sql.Decimal(6, 2), value: Math.round(credits * 100) / 100 }],
+          'credits completed filled in',
+        );
+        if (name && (await this.schema.has('StudentEducation'))) {
+          await set(
+            `UPDATE StudentEducation SET CreditsEarned = @c
+             WHERE UserId = @u AND CreditsEarned IS NULL AND LOWER(InstitutionName) = LOWER(@n)`,
+            [
+              { name: 'c', type: sql.Decimal(6, 2), value: Math.round(credits * 100) / 100 },
+              { name: 'n', type: sql.NVarChar(200), value: name },
+            ],
+            'credits added to your education history',
+          );
+        }
+      }
+      if (typeof student.id === 'string' && student.id.trim()) {
+        await set(
+          `UPDATE Users SET StudentId = @s, UpdatedAt = SYSUTCDATETIME() WHERE Id = @u AND NULLIF(StudentId, '') IS NULL`,
+          [{ name: 's', type: sql.NVarChar(50), value: student.id.trim().slice(0, 50) }],
+          'student id filled in',
+        );
+      }
+    }
+
+    if (e.docType === 'id_document') {
+      const country = typeof e.fields.country === 'string' ? e.fields.country.trim().slice(0, 100) : '';
+      if (country) {
+        await set(
+          `UPDATE Users SET CountryOfOrigin = @c, UpdatedAt = SYSUTCDATETIME() WHERE Id = @u AND NULLIF(CountryOfOrigin, '') IS NULL`,
+          [{ name: 'c', type: sql.NVarChar(100), value: country }],
+          'country of origin filled in',
+        );
+      }
+    }
+
+    if (e.docType === 'enrollment_letter') {
+      const f = e.fields as Record<string, unknown>;
+      const inst = typeof f.institution === 'string' ? f.institution.trim().slice(0, 200) : '';
+      if (inst) {
+        await set(
+          `UPDATE StudentProfiles SET PriorInstitutionName = @n, UpdatedAt = SYSUTCDATETIME()
+           WHERE UserId = @u AND NULLIF(PriorInstitutionName, '') IS NULL`,
+          [{ name: 'n', type: sql.NVarChar(200), value: inst }],
+          'current college filled in',
+        );
+      }
+    }
+
+    return done;
   }
 
   async prefill(id: string, viewer: Viewer) {

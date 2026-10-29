@@ -21,8 +21,15 @@ export interface BriefCourse {
   code: string;
   title: string;
   grade: string;
+  /** Term the course was taken in, as the student entered it ("Fall 2023"). */
+  term?: string | null;
   lane: string;
+  /** The credits that count: converted (normalised) when there is one, else as taken. */
   credits: number;
+  /** As taken at the sending college. */
+  originalCredits?: number | null;
+  /** After conversion to the receiving university's credit system; null = not converted. */
+  normalisedCredits?: number | null;
   suggested: { code: string; title: string | null; confidence: number | null } | null;
   decided: { code: string | null; title: string | null; outcome: string | null; awardedCredits: number | null } | null;
 }
@@ -113,6 +120,8 @@ export interface RequestTimeline {
     canNoteInternal: boolean;
     canNoteStudent: boolean;
     canSeeAiUsage: boolean;
+    /** Scoped staff of the SOURCE university: read, documents and reminders, but no decisions. */
+    readOnly?: boolean;
   };
   documents: { checklist: ChecklistItem[]; uploaded: UploadedDocument[] };
   reminders: {

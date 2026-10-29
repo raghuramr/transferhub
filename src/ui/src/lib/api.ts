@@ -100,7 +100,7 @@ export const authApi = {
     api.get<{ id: number; title: string; description: string | null; fields: import('../types').FormField[] } | ''>('/auth/registration-form'),
   publicUniversities: () => api.get<{ id: number; code: string; name: string }[]>('/auth/universities'),
   publicPrograms: (institutionId: number) =>
-    api.get<{ id: number; name: string; degree: string | null; area: string | null }[]>('/auth/programs', {
+    api.get<{ id: number; name: string; degree: string | null; area: string | null; courses?: number; credits?: number | null }[]>('/auth/programs', {
       params: { institutionId },
     }),
   /** Public (no auth) — a university's schools/colleges (transfer applicants must choose one). */
@@ -647,12 +647,14 @@ export const accountApi = {
 export interface UniversityBrand { id: number; code: string; name: string; logoUrl: string | null; heroImageUrl: string | null; kind?: 'university' | 'agency'; department?: string | null }
 export interface TargetUniversityOption {
   id: number; code: string; name: string;
-  programs: { id: number; name: string; degree: string | null }[];
+  programs: { id: number; name: string; degree: string | null; area?: string | null; courses?: number; credits?: number | null }[];
 }
 export interface StudentOverview {
   currentInstitution: string | null; currentProgram: string | null; highestEducationLevel: string | null;
   targetInstitutionId: number | null; targetInstitutionName: string | null; targetInstitutionCode: string | null;
   targetProgramId: number | null; targetProgramName: string | null; targetProgramDegree: string | null;
+  education?: { institutionName: string; city: string | null; country: string | null; fromYear: number | null; toYear: number | null; creditsEarned: number | null; isOutsideUS: boolean }[];
+  examCredits?: { examType: string; subject: string | null; score: string | null; year: number | null }[];
   creditsCompleted: number | null; submittedCourses: number; submittedCredits: number | null;
 }
 
@@ -760,6 +762,8 @@ export interface IntakeDetail extends IntakeItem {
   uploadId: string;
   mimeType: string;
   confirmedAt: string | null;
+  /** Set when the document disagrees with what the student told us (e.g. a different college). */
+  profileCheck?: { field: string; documentValue: string; profileValue: string; message: string } | null;
 }
 export interface TranscriptPrefill {
   institutionName: string;

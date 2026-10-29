@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bot, Check, Clock, FastForward, Minus, Timer, Undo2, Users, X } from 'lucide-react';
+import { Bot, Check, Clock, FastForward, MessageSquare, Minus, Timer, Undo2, Users, X } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import type { TimelineStage } from '../../types/workflow';
 import { agoLabel, approxDuration, estimateFinish, statusSentence, trackerStages } from '../../lib/tracker';
@@ -31,7 +31,7 @@ function StepIcon({ s }: { s: TimelineStage }) {
  * checked, the current one pulses with who it is waiting on and since when, and a step animates when a live
  * event changes it. The status sentence is an aria-live region so screen readers hear the changes.
  */
-export function ProgressTracker({ stages, workflowStatus }: { stages: TimelineStage[]; workflowStatus?: string | null }) {
+export function ProgressTracker({ stages, workflowStatus, showNotes = false }: { stages: TimelineStage[]; workflowStatus?: string | null; showNotes?: boolean }) {
   const steps = useMemo(() => trackerStages(stages), [stages]);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -107,6 +107,21 @@ export function ProgressTracker({ stages, workflowStatus }: { stages: TimelineSt
                     {s.activatedAt && <p className="text-gray-500">since {agoLabel(s.activatedAt, now)}</p>}
                     {s.overdue && <p className="font-medium text-red-600">Taking longer than planned</p>}
                   </motion.div>
+                )}
+                {/* What was said at this step, beside the step itself rather than in one list underneath. */}
+                {showNotes && s.notes.length > 0 && (
+                  <ul className="mt-2 space-y-1.5">
+                    {s.notes.map((n) => (
+                      <li key={n.id} className="rounded-lg border border-sky-200 bg-sky-50/60 px-2.5 py-1.5 text-xs">
+                        <span className="flex flex-wrap items-center gap-x-2 text-[11px] text-sky-900">
+                          <MessageSquare size={11} />
+                          <span className="font-medium">{n.author || 'TransferHub'}</span>
+                          <span className="text-sky-700/70">{new Date(n.createdAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>
+                        </span>
+                        <span className="mt-0.5 block whitespace-pre-wrap break-words text-gray-700">{n.body}</span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </li>

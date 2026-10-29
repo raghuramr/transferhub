@@ -57,6 +57,19 @@ interface UserRow {
   TargetProgramId?: number | null;
   TargetInstitutionName?: string | null;
   TargetProgramName?: string | null;
+  // findById only, and only once migration 015 is applied (the application details captured at registration).
+  ApplicantType?: string | null;
+  AdmissionStatus?: string | null;
+  EntryTerm?: string | null;
+  EntryYear?: number | null;
+  IntendedAcademicUnitName?: string | null;
+  IsNativeEnglish?: boolean | null;
+  EnglishTestType?: string | null;
+  EnglishTestScore?: string | null;
+  HasIntlCoursework?: boolean | null;
+  HighSchoolName?: string | null;
+  HighSchoolGradYear?: number | null;
+  CreditsCompleted?: number | null;
   EmailVerified?: boolean | null;
   AvatarUploadId?: string | null;
 }
@@ -118,6 +131,18 @@ function mapUser(row: UserRow) {
     targetProgramId: row.TargetProgramId ?? undefined,
     targetInstitutionName: row.TargetInstitutionName ?? undefined,
     targetProgramName: row.TargetProgramName ?? undefined,
+    applicantType: row.ApplicantType ?? undefined,
+    admissionStatus: row.AdmissionStatus ?? undefined,
+    entryTerm: row.EntryTerm ?? undefined,
+    entryYear: row.EntryYear ?? undefined,
+    intendedAcademicUnitName: row.IntendedAcademicUnitName ?? undefined,
+    isNativeEnglish: row.IsNativeEnglish == null ? undefined : !!row.IsNativeEnglish,
+    englishTestType: row.EnglishTestType ?? undefined,
+    englishTestScore: row.EnglishTestScore ?? undefined,
+    hasIntlCoursework: row.HasIntlCoursework == null ? undefined : !!row.HasIntlCoursework,
+    highSchoolName: row.HighSchoolName ?? undefined,
+    highSchoolGradYear: row.HighSchoolGradYear ?? undefined,
+    creditsCompleted: row.CreditsCompleted == null ? undefined : Number(row.CreditsCompleted),
   };
 }
 
@@ -149,6 +174,15 @@ export class UsersService {
 
   async findById(id: string) {
     const extra = (await this.schema.has('Users', 'EmailVerified')) ? ', u.EmailVerified, u.AvatarUploadId' : '';
+    // The application details live behind migration 015; read them only when the columns are there,
+    // so a deploy that runs ahead of the migration still returns a profile instead of a 500.
+    const application = (await this.schema.has('StudentProfiles', 'ApplicantType'))
+      ? `, sp.ApplicantType, sp.AdmissionStatus, sp.EntryTerm, sp.EntryYear,
+              sp.IsNativeEnglish, sp.EnglishTestType, sp.EnglishTestScore, sp.HasIntlCoursework,
+              sp.HighSchoolName, sp.HighSchoolGradYear, sp.CreditsCompleted,
+              au.Name AS IntendedAcademicUnitName`
+      : '';
+    const applicationJoin = application ? 'LEFT JOIN AcademicUnits au ON au.Id = sp.IntendedAcademicUnitId' : '';
     const res = await this.db.query<UserRow>(
       `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.StudentId, u.AgencyName,
               u.Mobile, u.AddressLine1, u.AddressLine2, u.City, u.State, u.PostalCode,
@@ -160,13 +194,14 @@ export class UsersService {
               sp.GPA, sp.GraduationYear, sp.EmergencyContactName, sp.EmergencyContactPhone,
               sp.TargetInstitutionId, sp.TargetProgramId,
               ti.Name AS TargetInstitutionName,
-              tp.Name AS TargetProgramName
+              tp.Name AS TargetProgramName${application}
        FROM Users u
        JOIN Roles r ON r.Id = u.RoleId
        LEFT JOIN Departments d ON d.Id = u.DepartmentId
        LEFT JOIN StudentProfiles sp ON sp.UserId = u.Id
        LEFT JOIN Institutions ti ON ti.Id = sp.TargetInstitutionId
        LEFT JOIN Programs tp ON tp.Id = sp.TargetProgramId
+       ${applicationJoin}
        WHERE u.Id = @id`,
       [{ name: 'id', type: sql.UniqueIdentifier, value: id }],
     );

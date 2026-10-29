@@ -456,15 +456,25 @@ export class AuthService {
    * up for every University that offers it.
    */
   async publicPrograms(institutionId: number) {
-    const res = await this.db.query<{ Id: number; Name: string; Degree: string | null; Area: string | null }>(
-      `SELECT p.Id, p.Name, p.Degree, p.Area
+    const res = await this.db.query<{ Id: number; Name: string; Degree: string | null; Area: string | null; Courses: number; Credits: number | null }>(
+      `SELECT p.Id, p.Name, p.Degree, p.Area, ISNULL(cc.Courses, 0) AS Courses, cc.Credits
        FROM ProgramUniversities pu
        JOIN Programs p ON p.Id = pu.ProgramId
+       OUTER APPLY (
+         SELECT COUNT(*) AS Courses, SUM(CAST(x.Credits AS DECIMAL(10,2))) AS Credits
+         FROM Courses x
+         WHERE x.IsActive = 1
+           AND (x.ProgramId = p.Id OR EXISTS (SELECT 1 FROM ProgramCourses pc WHERE pc.ProgramId = p.Id AND pc.CourseId = x.Id))
+       ) cc
        WHERE pu.InstitutionId = @institutionId AND p.IsActive = 1
        ORDER BY p.Name`,
       [{ name: 'institutionId', type: sql.Int, value: institutionId }],
     );
-    return res.recordset.map((r) => ({ id: r.Id, name: r.Name, degree: r.Degree, area: r.Area }));
+    return res.recordset.map((r) => ({
+      id: r.Id, name: r.Name, degree: r.Degree, area: r.Area,
+      courses: Number(r.Courses ?? 0),
+      credits: r.Credits == null ? null : Number(r.Credits),
+    }));
   }
 
   async login(user: AuthenticatedUser, ip: string, userAgent: string) {

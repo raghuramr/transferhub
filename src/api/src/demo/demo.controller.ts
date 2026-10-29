@@ -6,7 +6,7 @@ import { Roles } from '../auth/roles.decorator';
 import type { AuthenticatedRequest } from '../auth/authenticated-request.interface';
 import { BlobStorageService } from '../uploads/blob-storage.service';
 import { DemoService } from './demo.service';
-import { DemoDocumentsService } from './demo-documents.service';
+import { DemoDocumentsService, type ManualDocRequest } from './demo-documents.service';
 import type { DemoDocKind } from './demo-documents';
 
 /** Presenter tooling for the hackathon demo. Super admin only; every write is audit-logged. */
@@ -42,6 +42,26 @@ export class DemoController {
     res.setHeader('Content-Disposition', `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(out.fileName)}`);
     res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
     res.send(out.bytes);
+  }
+
+  /** Same renderers, but from details typed into the form: no student record needed. */
+  @Post('documents/generate-manual')
+  @HttpCode(200)
+  async generateManualDocs(@Body() body: ManualDocRequest, @Res() res: Response) {
+    const out = await this.docs.generateManual(body ?? {});
+    res.setHeader('Content-Type', out.mime);
+    const ascii = out.fileName.normalize('NFKD').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '');
+    res.setHeader('Content-Disposition', `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(out.fileName)}`);
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+    res.send(out.bytes);
+  }
+
+  /** Dry run of the same checks, so the form can say what is missing before the download. */
+  @Post('documents/check-manual')
+  @HttpCode(200)
+  checkManualDocs(@Body() body: ManualDocRequest) {
+    const { missing, kinds } = this.docs.validateManual(body ?? {});
+    return { ok: !missing.some((m) => !m.includes('will be left out')), missing, kinds };
   }
 
   @Get('status')

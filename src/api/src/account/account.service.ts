@@ -203,9 +203,19 @@ export class AccountService {
     const unis = await this.db.query<{ Id: number; Code: string; Name: string; Type: string; IsActive: boolean }>(
       `SELECT Id, Code, Name, Type, IsActive FROM Institutions WHERE IsActive = 1 AND Type = 'university' ORDER BY Name`,
     );
-    const progs = await this.db.query<{ InstitutionId: number; Id: number; Name: string; Degree: string | null }>(
-      `SELECT pu.InstitutionId, p.Id, p.Name, p.Degree
-       FROM ProgramUniversities pu JOIN Programs p ON p.Id = pu.ProgramId
+    // Credits + course count per program so every picker can show "what am I signing up for".
+    // Courses reach a program through ProgramCourses (many-to-many) or their own primary ProgramId.
+    const progs = await this.db.query<{ InstitutionId: number; Id: number; Name: string; Degree: string | null; Area: string | null; Courses: number; Credits: number | null }>(
+      `SELECT pu.InstitutionId, p.Id, p.Name, p.Degree, p.Area,
+              ISNULL(c.Courses, 0) AS Courses, c.Credits
+       FROM ProgramUniversities pu
+       JOIN Programs p ON p.Id = pu.ProgramId
+       OUTER APPLY (
+         SELECT COUNT(*) AS Courses, SUM(CAST(x.Credits AS DECIMAL(10,2))) AS Credits
+         FROM Courses x
+         WHERE x.IsActive = 1
+           AND (x.ProgramId = p.Id OR EXISTS (SELECT 1 FROM ProgramCourses pc WHERE pc.ProgramId = p.Id AND pc.CourseId = x.Id))
+       ) c
        WHERE p.IsActive = 1 ORDER BY p.Name`,
     );
     return unis.recordset
@@ -216,7 +226,11 @@ export class AccountService {
         name: u.Name,
         programs: progs.recordset
           .filter((p) => p.InstitutionId === u.Id)
-          .map((p) => ({ id: p.Id, name: p.Name, degree: p.Degree })),
+          .map((p) => ({
+            id: p.Id, name: p.Name, degree: p.Degree, area: p.Area,
+            courses: Number(p.Courses ?? 0),
+            credits: p.Credits == null ? null : Number(p.Credits),
+          })),
       }));
   }
 
@@ -421,7 +435,44 @@ export class AccountService {
       [{ name: 'u', type: sql.UniqueIdentifier, value: userId }],
     );
     const fromTranscripts = tc.recordset[0]?.Credits ?? null;
+
+    // Everything the student entered at registration, so the profile page can show it back to them
+    // rather than quietly holding it. Both tables arrived with migration 015, hence the guards.
+    let education: { institutionName: string; city: string | null; country: string | null; fromYear: number | null; toYear: number | null; creditsEarned: number | null; isOutsideUS: boolean }[] = [];
+    let examCredits: { examType: string; subject: string | null; score: string | null; year: number | null }[] = [];
+    if (await this.schema.has('StudentEducation')) {
+      try {
+        const e = await this.db.query<any>(
+          `SELECT InstitutionName, City, Country, FromYear, ToYear, CreditsEarned, IsOutsideUS
+           FROM StudentEducation WHERE UserId = @u ORDER BY SortOrder, Id`,
+          [{ name: 'u', type: sql.UniqueIdentifier, value: userId }],
+        );
+        education = e.recordset.map((r) => ({
+          institutionName: r.InstitutionName,
+          city: r.City ?? null,
+          country: r.Country ?? null,
+          fromYear: r.FromYear ?? null,
+          toYear: r.ToYear ?? null,
+          creditsEarned: r.CreditsEarned == null ? null : Number(r.CreditsEarned),
+          isOutsideUS: !!r.IsOutsideUS,
+        }));
+      } catch { /* columns not there yet */ }
+    }
+    if (await this.schema.has('StudentExamCredits')) {
+      try {
+        const x = await this.db.query<any>(
+          `SELECT ExamType, Subject, Score, ExamYear FROM StudentExamCredits WHERE UserId = @u ORDER BY Id`,
+          [{ name: 'u', type: sql.UniqueIdentifier, value: userId }],
+        );
+        examCredits = x.recordset.map((r) => ({
+          examType: r.ExamType, subject: r.Subject ?? null, score: r.Score == null ? null : String(r.Score), year: r.ExamYear ?? null,
+        }));
+      } catch { /* columns not there yet */ }
+    }
+
     return {
+      education,
+      examCredits,
       currentInstitution: row?.PriorInstitutionName ?? last.recordset[0]?.Name ?? null,
       currentProgram: row?.FieldOfStudy ?? row?.ProgramArea ?? null,
       highestEducationLevel: row?.HighestEducationLevel ?? null,

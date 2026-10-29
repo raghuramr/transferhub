@@ -36,6 +36,8 @@ interface RawProgram {
   name: string;
   degree?: string;
   area?: string;
+  courseCount?: number;
+  totalCredits?: number | null;
 }
 
 export interface RawExternalCourse {
@@ -340,7 +342,7 @@ export function useCourseCatalog(universityId: number | null, programId?: number
   const raw: RawExternalCourse[] = (coursesQuery.data?.data as RawExternalCourse[]) ?? [];
   const courses: MasterDataItem[] = raw
     .filter((c) => !programId || c.programId === programId)
-    .map((c) => ({ id: c.id, label: `${c.code} — ${c.title}`, sublabel: `${c.credits} credits` }));
+    .map((c) => ({ id: c.id, label: `${c.code} — ${c.title} (${c.credits} cr)`, sublabel: `${c.credits} credits` }));
   return { courses, raw, isLoading: coursesQuery.isLoading };
 }
 
@@ -435,7 +437,10 @@ export function MasterDataCascade({ value, onChange, includeTopic = true, throug
   const programs: MasterDataItem[] = ((programsQuery.data?.data as RawProgram[]) ?? []).map((p) => ({
     id: p.id,
     label: p.name,
-    sublabel: [p.degree, p.area].filter(Boolean).join(' · ') || undefined,
+    sublabel: [
+      [p.degree, p.area].filter(Boolean).join(' · ') || null,
+      p.totalCredits != null ? `${p.totalCredits} credits · ${p.courseCount ?? 0} courses` : null,
+    ].filter(Boolean).join(' — ') || undefined,
   }));
 
   // Courses are keyed by University code in this API (not id) — resolve it
@@ -450,7 +455,7 @@ export function MasterDataCascade({ value, onChange, includeTopic = true, throug
   });
   const courses: MasterDataItem[] = ((coursesQuery.data?.data as RawExternalCourse[]) ?? [])
     .filter((c) => !value.programId || c.programId === value.programId)
-    .map((c) => ({ id: c.id, label: `${c.code} — ${c.title}`, sublabel: `${c.credits} credits` }));
+    .map((c) => ({ id: c.id, label: `${c.code} — ${c.title} (${c.credits} cr)`, sublabel: `${c.credits} credits` }));
 
   const topicsQuery = useQuery({
     queryKey: ['md-topics', value.courseId],

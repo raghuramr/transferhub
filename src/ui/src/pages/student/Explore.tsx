@@ -185,6 +185,9 @@ function StepYourCourses({ loading, error, courses, totalCredits, institution }:
     );
   }
 
+  const originalTotal = courses.reduce((s, c) => s + (c.originalCredits ?? 0), 0);
+  const converted = Math.abs(originalTotal - totalCredits) > 0.01;
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 p-4">
@@ -194,23 +197,45 @@ function StepYourCourses({ loading, error, courses, totalCredits, institution }:
         </div>
         <div className="text-right">
           <p className="text-lg font-bold leading-none text-brand-800">{fmtCredits(totalCredits)}</p>
-          <p className="text-[11px] text-gray-500">{courses.length} course{courses.length === 1 ? '' : 's'}, total credits</p>
+          <p className="text-[11px] text-gray-500">
+            {courses.length} course{courses.length === 1 ? '' : 's'}, total credits
+            {converted && <span className="block">{fmtCredits(originalTotal)} as taken</span>}
+          </p>
         </div>
       </div>
       <ul className="divide-y divide-gray-100">
-        {courses.map((c) => (
-          <li key={c.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
-            <span className="w-20 shrink-0 font-medium text-gray-800">{c.code}</span>
-            <span className="min-w-0 flex-1 truncate text-gray-600">{c.title}</span>
-            {c.grade && <span className="shrink-0 text-xs text-gray-400">{c.grade}</span>}
-            <span className="shrink-0 tabular-nums text-gray-700">{fmtCredits(c.convertedCredits)} cr</span>
-          </li>
-        ))}
+        {courses.map((c) => {
+          const bucket = BUCKETS[c.bucket ?? ''] ?? null;
+          const shifted = Math.abs((c.originalCredits ?? 0) - c.convertedCredits) > 0.01;
+          return (
+            <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
+              <span className="w-20 shrink-0 font-medium text-gray-800">{c.code}</span>
+              <span className="min-w-0 flex-1 break-words text-gray-600">{c.title}</span>
+              {bucket && <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', bucket.cls)}>{bucket.label}</span>}
+              {c.grade && <span className="shrink-0 text-xs text-gray-400">Grade {c.grade}</span>}
+              <span className="shrink-0 tabular-nums text-right text-gray-700">
+                {fmtCredits(c.convertedCredits)} cr
+                {shifted && <span className="block text-[11px] text-gray-400">{fmtCredits(c.originalCredits)} as taken</span>}
+              </span>
+            </li>
+          );
+        })}
       </ul>
-      <p className="border-t border-gray-100 px-4 py-2 text-[11px] text-gray-400">These are copied into each application you submit. To change them, edit your transcript.</p>
+      <p className="border-t border-gray-100 px-4 py-2 text-[11px] text-gray-400">
+        These are copied into each application you submit. To change them, edit your transcript.
+        {converted && ' Quarter credits are shown converted to semester credits.'}
+      </p>
     </div>
   );
 }
+
+/** How far along each course is, in the same words the dashboard uses. */
+const BUCKETS: Record<string, { label: string; cls: string }> = {
+  secure: { label: 'Credit secure', cls: 'bg-emerald-50 text-emerald-700' },
+  likely: { label: 'Likely to count', cls: 'bg-blue-50 text-blue-700' },
+  pending: { label: 'Awaiting review', cls: 'bg-amber-50 text-amber-700' },
+  not_counted: { label: 'Not counted', cls: 'bg-gray-100 text-gray-500' },
+};
 
 // ── Step 2: documents (optional) ───────────────────────────────────────────
 

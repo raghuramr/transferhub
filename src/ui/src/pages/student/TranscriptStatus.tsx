@@ -127,6 +127,7 @@ export default function TranscriptStatus() {
         <div className="flex-1 sm:text-right">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Transferring to</p>
           <p className="mt-0.5 font-semibold text-gray-900">{transcript.targetInstitutionName ?? 'Receiving university'}</p>
+          {transcript.targetProgramName && <p className="text-sm text-gray-600">{transcript.targetProgramName}</p>}
           <p className="text-sm text-gray-500">
             {transcript.status === 'complete'
               ? `${transcript.toCredits ?? 0} credits accepted`
@@ -151,16 +152,17 @@ export default function TranscriptStatus() {
                 </span>
               )}
             </div>
-            <ProgressTracker stages={timeline.stages} workflowStatus={timeline.transcript.workflowStatus} />
-            <details className="group mt-6 rounded-lg border border-gray-100" data-testid="history-details">
+            <ProgressTracker stages={timeline.stages} workflowStatus={timeline.transcript.workflowStatus} showNotes />
+            {timeline.generalNotes.length > 0 && <details className="group mt-6 rounded-lg border border-gray-100" data-testid="history-details">
               <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900">
-                Notes and messages
-                <span className="ml-1 text-gray-400">({timeline.stages.reduce((n, s) => n + s.notes.length, 0) + timeline.generalNotes.length})</span>
+                Other messages
+                <span className="ml-1 text-gray-400">({timeline.generalNotes.length})</span>
               </summary>
               <div className="border-t border-gray-100 p-4">
-                <NotesByStage stages={timeline.stages} general={timeline.generalNotes} />
+                <p className="mb-3 text-xs text-gray-500">Messages about your request that are not tied to one step. Everything else is shown beside the step it belongs to.</p>
+                <NotesByStage stages={[]} general={timeline.generalNotes} />
               </div>
-            </details>
+            </details>}
           </>
         ) : (
           <TransferWorkflowStepper currentStatus={transcript.status} steps={TRANSCRIPT_STEPS} />

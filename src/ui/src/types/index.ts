@@ -135,6 +135,7 @@ export interface Transcript {
   studentName?: string;
   institution: { id: number; code: string; name: string; calendar: string };
   targetInstitutionName?: string | null;
+  targetProgramName?: string | null;
   fromCredits?: number;
   toCredits?: number;
   status: 'received' | 'processing' | 'complete' | 'cancelled';

@@ -113,16 +113,43 @@ export default function UploadTranscript() {
     enabled: isStudent,
     retry: false,
   });
-  const targetOptions = targetsQuery.data?.data ?? [];
+  const fetchedTargets = targetsQuery.data?.data ?? [];
+  // A target the student already chose must stay selectable even if it is no longer offered in the
+  // picker (deactivated, or a community college the list filters out) - otherwise the field renders
+  // blank and they are made to pick their university all over again.
+  const profileTarget = overviewQuery.data?.data;
+  const targetOptions = profileTarget?.targetInstitutionId != null
+    && !fetchedTargets.some((t) => t.id === profileTarget.targetInstitutionId)
+    ? [
+        {
+          id: profileTarget.targetInstitutionId,
+          code: profileTarget.targetInstitutionCode ?? '',
+          name: profileTarget.targetInstitutionName ?? 'Your current target',
+          programs: profileTarget.targetProgramId != null
+            ? [{ id: profileTarget.targetProgramId, name: profileTarget.targetProgramName ?? 'Your current program', degree: profileTarget.targetProgramDegree ?? null }]
+            : [],
+        },
+        ...fetchedTargets,
+      ]
+    : fetchedTargets;
   const [targetId, setTargetId] = useState<number | null>(null);
+  const [targetProgramId, setTargetProgramId] = useState<number | null>(null);
   const [targetPrefilled, setTargetPrefilled] = useState(false);
   useEffect(() => {
     if (targetPrefilled) return;
     const tgt = overviewQuery.data?.data?.targetInstitutionId ?? null;
     if (tgt == null) return;
     setTargetId(tgt);
+    setTargetProgramId(overviewQuery.data?.data?.targetProgramId ?? null);
     setTargetPrefilled(true);
   }, [overviewQuery.data, targetPrefilled]);
+  // Programs are offered per university, so the list follows the chosen target and a stale pick is dropped.
+  // (selectedProgram is used for the credit hint under the picker.)
+  const programOptions = targetOptions.find((t) => t.id === targetId)?.programs ?? [];
+  useEffect(() => {
+    if (targetProgramId != null && !programOptions.some((p) => p.id === targetProgramId)) setTargetProgramId(null);
+  }, [programOptions, targetProgramId]);
+  const selectedProgram = programOptions.find((p) => p.id === targetProgramId) ?? null;
   const [collegePrefilled, setCollegePrefilled] = useState(false);
   useEffect(() => {
     if (collegePrefilled || hasIntake) return;
@@ -153,6 +180,18 @@ export default function UploadTranscript() {
   // ── Prefill from a document the student uploaded on the Smart upload page (?intake=<id>) ──
   const [searchParams] = useSearchParams();
   const intakeId = searchParams.get('intake');
+
+  // Transcripts Smart Upload has already read for this student. Offered up front so the courses we
+  // extracted are one click away instead of being typed in again.
+  const readDocsQuery = useQuery({
+    queryKey: ['documents', 'read-transcripts'],
+    queryFn: async () => (await documentsApi.list()).data,
+    enabled: isStudent && !intakeId,
+    retry: false,
+  });
+  const readTranscripts = (readDocsQuery.data ?? []).filter(
+    (d) => d.docType === 'transcript' && ['read', 'needs_review', 'confirmed'].includes(d.status),
+  );
   const prefillQuery = useQuery({ queryKey: ['documents', 'prefill', intakeId], queryFn: async () => (await documentsApi.prefill(intakeId!)).data, enabled: !!intakeId, retry: false });
   const intakeDetail = useQuery({ queryKey: ['documents', 'intake-name', intakeId], queryFn: async () => (await documentsApi.get(intakeId!)).data, enabled: !!intakeId, retry: false });
   const prefill = prefillQuery.data;
@@ -271,6 +310,7 @@ export default function UploadTranscript() {
         institutionName,
         institutionCode,
         targetInstitutionId: targetId ?? undefined,
+        targetProgramId: targetProgramId ?? undefined,
         calendar: data.calendar,
         studentName: data.studentName,
         studentId: data.studentId,
@@ -310,8 +350,43 @@ export default function UploadTranscript() {
         </p>
       </div>
 
+      {/* Courses Smart Upload already read - use them instead of typing them again. */}
+      {!intakeId && readTranscripts.length > 0 && (
+        <div className="mb-6 rounded-xl border border-green-200 bg-green-50/70 p-4">
+          <p className="flex items-center gap-2 font-semibold text-green-900">
+            <Sparkles size={16} /> We already read {readTranscripts.length === 1 ? 'a transcript' : `${readTranscripts.length} transcripts`} you uploaded
+          </p>
+          <p className="mt-0.5 text-sm text-green-800/80">Use one to fill in the college, courses, credits and grades below — you can still change anything afterwards.</p>
+          <ul className="mt-3 space-y-2">
+            {readTranscripts.map((d) => {
+              const f = (d.extracted?.fields ?? {}) as { institution?: { name?: string }; courses?: unknown[] };
+              const courseCount = Array.isArray(f.courses) ? f.courses.length : 0;
+              return (
+                <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-green-200 bg-white px-3 py-2 text-sm">
+                  <FileText size={15} className="shrink-0 text-green-700" />
+                  <span className="min-w-0 flex-1 break-words">
+                    <span className="font-medium text-gray-900">{f.institution?.name ?? d.fileName}</span>
+                    <span className="block text-xs text-gray-500">
+                      {courseCount > 0 ? `${courseCount} course${courseCount === 1 ? '' : 's'}` : 'No courses read'} · {d.fileName}
+                      {d.status === 'needs_review' ? ' · needs a check' : ''}
+                    </span>
+                  </span>
+                  <Link
+                    to={`${basePath}/upload?intake=${d.id}`}
+                    className="shrink-0 rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-900"
+                  >
+                    Use these courses
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <Link to={`${basePath}/documents`} className="mt-3 inline-block text-xs font-medium text-brand-800 hover:underline">Upload another document instead</Link>
+        </div>
+      )}
+
       {/* Smart upload shortcut */}
-      {!intakeId && (
+      {!intakeId && readTranscripts.length === 0 && (
         <Link
           to={`${basePath}/documents`}
           className="mb-6 flex items-start gap-3 rounded-xl border border-brand-200 bg-gradient-to-r from-brand-50 to-white p-4 transition hover:border-brand-300 hover:shadow-sm"
@@ -382,6 +457,32 @@ export default function UploadTranscript() {
                 This is the university that will decide which of your credits count. It is a different list from the college above.{' '}
                 {overviewQuery.data?.data?.targetInstitutionName ? `Prefilled from your profile (${overviewQuery.data.data.targetInstitutionName}).` : 'You can set a default on your profile.'}
               </p>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Program you want to join</label>
+                <select
+                  value={targetProgramId ?? ''}
+                  onChange={(e) => setTargetProgramId(e.target.value ? Number(e.target.value) : null)}
+                  disabled={!targetId || programOptions.length === 0}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">{targetId ? 'Select a program (optional)…' : 'Choose a university first'}</option>
+                  {programOptions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}{p.degree ? ` (${p.degree})` : ''}
+                      {p.credits != null ? ` — ${p.credits} credits across ${p.courses ?? 0} courses` : ''}
+                    </option>
+                  ))}
+                </select>
+                {targetId && programOptions.length === 0 ? (
+                  <p className="mt-1 text-xs text-amber-700">This university has no programs listed yet, so you can leave this blank.</p>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-400">
+                    Tells the reviewers which degree your credits should count towards.
+                    {selectedProgram?.credits != null && ` ${selectedProgram.name} is ${selectedProgram.credits} credits across ${selectedProgram.courses ?? 0} courses.`}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
