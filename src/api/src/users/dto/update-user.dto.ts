@@ -5,7 +5,7 @@ export class UpdateUserDto {
   @IsOptional() @IsString() firstName?: string;
   @IsOptional() @IsString() lastName?: string;
   @IsOptional() @IsString() @MinLength(8) password?: string;
-  @IsOptional() @IsIn(['student', 'faculty', 'admin', 'agency', 'super_admin']) role?: string;
+  @IsOptional() @IsString() role?: string;
   @IsOptional() @IsInt() departmentId?: number;
   @IsOptional() @IsString() studentId?: string;
   @IsOptional() @IsString() agencyName?: string;

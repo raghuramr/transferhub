@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
 import { JwtPayload } from './jwt-payload.interface';
 import type { AuthenticatedUser } from './authenticated-request.interface';
+import { SchemaService } from '../policy/schema.service';
 import * as sql from 'mssql';
 
 interface JwtUserRow {
@@ -16,6 +17,7 @@ interface JwtUserRow {
   IsLocked: boolean;
   DepartmentId: number | null;
   Role: string;
+  RoleKey: string;
 }
 
 @Injectable()
@@ -23,6 +25,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private config: ConfigService,
     private db: DatabaseService,
+    private schema: SchemaService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -34,7 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
     const result = await this.db.query<JwtUserRow>(
       `SELECT u.Id, u.Email, u.FirstName, u.LastName, u.IsActive, u.IsLocked, u.DepartmentId,
-              r.Name AS Role
+              ${(await this.schema.has('Roles', 'BaseRole')) ? 'ISNULL(r.BaseRole, r.Name)' : 'r.Name'} AS Role, r.Name AS RoleKey
        FROM Users u JOIN Roles r ON r.Id = u.RoleId
        WHERE u.Id = @id`,
       [{ name: 'id', type: sql.UniqueIdentifier, value: payload.sub }],
@@ -50,6 +53,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       firstName: user.FirstName,
       lastName: user.LastName,
       role: user.Role,
+      roleKey: user.RoleKey,
       departmentId: user.DepartmentId,
     };
   }

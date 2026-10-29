@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
 import { SaveMatrixDto } from './dto/save-matrix.dto';
+import { CreateRoleDto, UpdateRoleDto } from './dto/role.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -25,7 +26,34 @@ export class PermissionsController {
   @Get('my')
   @Roles('student', 'faculty', 'admin', 'agency', 'super_admin')
   findMyPermissions(@Req() req: AuthenticatedRequest) {
-    return this.permissionsService.findMyPermissions(req.user.role);
+    return this.permissionsService.findMyPermissions(req.user.roleKey ?? req.user.role);
+  }
+
+  /** Roles that can be assigned to a user (custom roles included). Plain admins do not get super_admin. */
+  @Get('assignable-roles')
+  @Roles('admin', 'super_admin')
+  assignableRoles(@Req() req: AuthenticatedRequest) {
+    return this.permissionsService.assignableRoles(req.user.role === 'super_admin');
+  }
+
+  @Get('roles')
+  listRoles() {
+    return this.permissionsService.listRoles();
+  }
+
+  @Post('roles')
+  createRole(@Body() dto: CreateRoleDto, @Req() req: AuthenticatedRequest) {
+    return this.permissionsService.createRole(dto, req.user);
+  }
+
+  @Patch('roles/:id')
+  updateRole(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRoleDto) {
+    return this.permissionsService.updateRole(id, dto);
+  }
+
+  @Delete('roles/:id')
+  deleteRole(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
+    return this.permissionsService.deleteRole(id, req.user);
   }
 
   @Get('modules')

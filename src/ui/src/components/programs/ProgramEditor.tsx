@@ -154,7 +154,7 @@ export function ProgramEditForm({
 
   return (
     <div className="p-5 bg-gray-50 border-t border-gray-200">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6">
         <div>
           <ProgramFields form={form} onChange={setForm} universities={universities} />
           <div className="flex gap-3 mt-5">

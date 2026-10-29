@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { universitiesApi, institutionsApi, coursesApi } from '../../lib/api';
-import { Building2, Plus, Upload, Power, Globe2, School, GraduationCap, Trash2 } from 'lucide-react';
+import { Building2, Plus, Upload, Power, Globe2, School, GraduationCap, Trash2, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { ImageSourceField } from '../../components/shared/ImageSourceField';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -429,6 +429,8 @@ function UniversityEditForm({
   isSaving: boolean;
 }) {
   const [form, setForm] = useState<UniversityForm>(() => universityToForm(university));
+  // The university's own fields can be folded away so Institutions / Programs / Courses / Topics get the whole width.
+  const [detailsHidden, setDetailsHidden] = useState(false);
 
   const generatePageMutation = useMutation({
     mutationFn: () => universitiesApi.generatePage(university.id),
@@ -436,8 +438,13 @@ function UniversityEditForm({
 
   return (
     <div className="p-5 bg-gray-50 border-t border-gray-200">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div>
+      <div className="mb-3 hidden justify-end lg:flex">
+        <button type="button" onClick={() => setDetailsHidden((v) => !v)} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50">
+          {detailsHidden ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />} {detailsHidden ? 'Show university details' : 'Hide details for more room'}
+        </button>
+      </div>
+      <div className={detailsHidden ? 'grid grid-cols-1 gap-8' : 'grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-8'}>
+        <div className={detailsHidden ? 'lg:hidden' : ''}>
           <UniversityFields form={form} onChange={setForm} />
           <div className="flex gap-3 mt-5">
             <button
