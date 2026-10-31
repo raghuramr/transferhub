@@ -214,6 +214,7 @@ export class DemoService {
       uploadsTranscript: await this.schema.has('Uploads', 'TranscriptId'),
       effective: await this.schema.has('Equivalencies', 'EffectiveTo'),
       mappings: await this.schema.has('EvaluationCourseMappings'),
+      transcriptDocs: await this.schema.has('TranscriptDocuments'),
     };
 
     const result = await this.db.transaction(async (run) => {
@@ -266,6 +267,7 @@ export class DemoService {
       uploadsTranscript: await this.schema.has('Uploads', 'TranscriptId'),
       workflow: (await this.schema.has('TranscriptStages')) && (await this.schema.has('Transcripts', 'WorkflowId')),
       mappings: await this.schema.has('EvaluationCourseMappings'),
+      transcriptDocs: await this.schema.has('TranscriptDocuments'),
     };
 
     const result = await this.db.transaction(async (run) => {
@@ -388,7 +390,7 @@ export class DemoService {
   private async removeDemoRows(
     run: Run,
     studentId: string,
-    f: { notes: boolean; reminders: boolean; appeals: boolean; exchange: boolean; usage: boolean; uploadsTranscript: boolean; workflow: boolean; mappings: boolean },
+    f: { notes: boolean; reminders: boolean; appeals: boolean; exchange: boolean; usage: boolean; uploadsTranscript: boolean; workflow: boolean; mappings: boolean; transcriptDocs: boolean },
   ): Promise<{ transcriptsFound: number; transcriptsRemoved: number; equivalenciesRemoved: number }> {
     const demoIds = `SELECT Id FROM Transcripts WHERE StudentUserId = @s`;
     const n = [uid('s', studentId)];
@@ -406,6 +408,10 @@ export class DemoService {
     if (f.workflow) await run(`DELETE FROM TranscriptStages WHERE TranscriptId IN (${demoIds})`, n);
     if (f.usage) await run(`DELETE FROM AiUsageLog WHERE TranscriptId IN (${demoIds})`, n);
     if (f.uploadsTranscript) await run(`DELETE FROM Uploads WHERE TranscriptId IN (${demoIds})`, n);
+    // TranscriptDocuments.UploadId has no ON DELETE CASCADE, so the row referencing a document (attached by
+    // a scenario reset's own document-generation step) must go before the Uploads row below can be deleted -
+    // otherwise this throws the same FK violation (547) the EvaluationCourseMappings fix addressed.
+    if (f.transcriptDocs) await run(`DELETE FROM TranscriptDocuments WHERE TranscriptId IN (${demoIds})`, n);
     await run(`DELETE FROM Uploads WHERE EntityType IN ('transcript', 'transcript_document') AND EntityId IN (SELECT CAST(Id AS NVARCHAR(100)) FROM Transcripts WHERE StudentUserId = @s)`, n);
     // Student-level documents (ID/English test/enrollment letter from an earlier reset or a real smart upload)
     // also go, so the attach step below never piles duplicates on top of what a previous run left behind.
