@@ -187,6 +187,7 @@ export class DemoService {
       usage: await this.schema.has('AiUsageLog'),
       uploadsTranscript: await this.schema.has('Uploads', 'TranscriptId'),
       effective: await this.schema.has('Equivalencies', 'EffectiveTo'),
+      mappings: await this.schema.has('EvaluationCourseMappings'),
     };
 
     const result = await this.db.transaction(async (run) => {
@@ -238,6 +239,7 @@ export class DemoService {
       usage: await this.schema.has('AiUsageLog'),
       uploadsTranscript: await this.schema.has('Uploads', 'TranscriptId'),
       workflow: (await this.schema.has('TranscriptStages')) && (await this.schema.has('Transcripts', 'WorkflowId')),
+      mappings: await this.schema.has('EvaluationCourseMappings'),
     };
 
     const result = await this.db.transaction(async (run) => {
@@ -360,7 +362,7 @@ export class DemoService {
   private async removeDemoRows(
     run: Run,
     studentId: string,
-    f: { notes: boolean; reminders: boolean; appeals: boolean; exchange: boolean; usage: boolean; uploadsTranscript: boolean; workflow: boolean },
+    f: { notes: boolean; reminders: boolean; appeals: boolean; exchange: boolean; usage: boolean; uploadsTranscript: boolean; workflow: boolean; mappings: boolean },
   ): Promise<{ transcriptsFound: number; transcriptsRemoved: number; equivalenciesRemoved: number }> {
     const demoIds = `SELECT Id FROM Transcripts WHERE StudentUserId = @s`;
     const n = [uid('s', studentId)];
@@ -384,6 +386,15 @@ export class DemoService {
     await run(`DELETE FROM Uploads WHERE OwnerUserId = @s AND EntityType = 'smart_upload'`, n);
     if (await this.schema.has('DocumentIntakes')) await run(`DELETE FROM DocumentIntakes WHERE UserId = @s`, n);
 
+    // EvaluationCourseMappings (migration 026, one-to-many decisions) has no ON DELETE CASCADE from either
+    // TranscriptCourses or Evaluations - left in place, deleting Transcripts below fails with a FK violation
+    // (SQL error 547, surfaced as a 500) the moment Maya has even one multi-course decision on record.
+    if (f.mappings) {
+      await run(
+        `DELETE FROM EvaluationCourseMappings WHERE TranscriptCourseId IN (SELECT tc.Id FROM TranscriptCourses tc WHERE tc.TranscriptId IN (${demoIds}))`,
+        n,
+      );
+    }
     const evalIds = `SELECT e.Id FROM Evaluations e JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId WHERE tc.TranscriptId IN (${demoIds})`;
     await run(`DELETE FROM AIMatchCandidates WHERE EvaluationId IN (${evalIds})`, n);
     await run(`DELETE FROM Evaluations WHERE TranscriptCourseId IN (SELECT tc.Id FROM TranscriptCourses tc WHERE tc.TranscriptId IN (${demoIds}))`, n);
@@ -664,6 +675,8 @@ export class DemoService {
     await q(`DELETE FROM TranscriptStages WHERE TranscriptId = @t`, await this.schema.has('TranscriptStages'));
     await q(`DELETE FROM AiUsageLog WHERE TranscriptId = @t`, await this.schema.has('AiUsageLog'));
     await q(`DELETE FROM Uploads WHERE TranscriptId = @t`, await this.schema.has('Uploads', 'TranscriptId'));
+    // Same missing-cascade issue as removeDemoRows: EvaluationCourseMappings (migration 026) must go first.
+    await q(`DELETE FROM EvaluationCourseMappings WHERE TranscriptCourseId IN (SELECT Id FROM TranscriptCourses WHERE TranscriptId = @t)`, await this.schema.has('EvaluationCourseMappings'));
     await this.db.query(`DELETE FROM AIMatchCandidates WHERE EvaluationId IN (SELECT e.Id FROM Evaluations e JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId WHERE tc.TranscriptId = @t)`, n);
     await this.db.query(`DELETE FROM Evaluations WHERE TranscriptCourseId IN (SELECT Id FROM TranscriptCourses WHERE TranscriptId = @t)`, n);
     await this.db.query(`DELETE FROM Transcripts WHERE Id = @t`, n);
