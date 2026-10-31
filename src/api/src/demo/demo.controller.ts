@@ -82,4 +82,18 @@ export class DemoController {
   secondStudent(@Req() req: AuthenticatedRequest) {
     return this.demo.addSecondStudent({ id: req.user.id, email: req.user.email, role: req.user.role });
   }
+
+  /** Wipes every transcript/course/document Maya has - recreates nothing. For starting a live walkthrough from zero. */
+  @Post('maya/hard-reset')
+  @HttpCode(200)
+  hardReset(@Req() req: AuthenticatedRequest) {
+    return this.demo.hardReset({ id: req.user.id, email: req.user.email, role: req.user.role });
+  }
+
+  /** Submits a real transcript of catalogue courses with existing equivalencies, so it is secured at once. */
+  @Post('maya/build-baseline')
+  @HttpCode(200)
+  buildBaseline(@Body() body: { targetCredits?: number; institutionCode?: string }, @Req() req: AuthenticatedRequest) {
+    return this.demo.buildBaseline({ id: req.user.id, email: req.user.email, role: req.user.role }, body ?? {});
+  }
 }

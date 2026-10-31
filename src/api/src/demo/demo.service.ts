@@ -5,6 +5,7 @@ import { DatabaseService, QueryInput } from '../database/database.service';
 import { SchemaService } from '../policy/schema.service';
 import { TranscriptsService } from '../transcripts/transcripts.service';
 import { UploadsService } from '../uploads/uploads.service';
+import { ProgressService } from '../progress/progress.service';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import {
   DEMO_DECISION_COURSES, DEMO_NOTE_PREFIX, DEMO_SUGGESTIONS, DEMO_TRANSCRIPTS, KNOWN_EQUIVALENCIES,
@@ -18,6 +19,9 @@ export interface Actor { id: string; email: string; role: string }
 type Run = <R = any>(q: string, inputs?: QueryInput[]) => Promise<sql.IResult<R>>;
 
 const NOTE_LIKE = `${DEMO_NOTE_PREFIX}%`;
+/** Tags a `buildBaseline` transcript distinctly from the scripted scenario, so a normal `resetMaya` never touches it. */
+const BASELINE_NOTE_PREFIX = 'Demo baseline';
+const BASELINE_NOTE_LIKE = `${BASELINE_NOTE_PREFIX}%`;
 const uid = (name: string, value: string): QueryInput => ({ name, type: sql.UniqueIdentifier, value });
 const str = (name: string, value: string | null, len = 200): QueryInput => ({ name, type: sql.NVarChar(len), value });
 const int = (name: string, value: number | null): QueryInput => ({ name, type: sql.Int, value });
@@ -44,6 +48,7 @@ export class DemoService {
     private transcripts: TranscriptsService,
     private uploads: UploadsService,
     private demoDocuments: DemoDocumentsService,
+    private progress: ProgressService,
   ) {}
 
   // ── status ─────────────────────────────────────────────────
@@ -212,6 +217,135 @@ export class DemoService {
     };
   }
 
+  /**
+   * Wipes EVERY transcript/course/evaluation/document Maya has and recreates nothing - unlike `resetMaya`,
+   * which rebuilds the scripted six-course scenario. For when the live walkthrough itself will build her
+   * curriculum from scratch (via `buildBaseline` and/or Smart Upload), so nothing scripted is left to
+   * contradict whatever the presenter drops on stage. Her account/profile are untouched; the catalogue's
+   * baseline equivalencies are restored so an uploaded document can still auto-match during the demo.
+   */
+  async hardReset(actor: Actor) {
+    const maya = await this.userByEmail(MAYA_EMAIL);
+    if (!maya) throw new ConflictException('student@test.edu does not exist - run seeds 001-003 first.');
+    const bu = await this.idOf(`SELECT Id FROM Institutions WHERE Code = 'BU'`);
+    if (!bu) throw new ConflictException('Institution BU is missing - run seed 001 first.');
+
+    const flags = {
+      notes: await this.schema.has('TranscriptNotes'),
+      reminders: await this.schema.has('StatusReminders'),
+      appeals: await this.schema.has('CourseAppeals'),
+      exchange: await this.schema.exchangeReady(),
+      usage: await this.schema.has('AiUsageLog'),
+      uploadsTranscript: await this.schema.has('Uploads', 'TranscriptId'),
+      workflow: (await this.schema.has('TranscriptStages')) && (await this.schema.has('Transcripts', 'WorkflowId')),
+    };
+
+    const result = await this.db.transaction(async (run) => {
+      const removed = await this.removeDemoRows(run, maya.id, flags);
+      const restored = await this.restoreKnownEquivalencies(run, bu);
+      return { ...removed, knownEquivalenciesRestored: restored };
+    });
+
+    await this.audit(actor, 'DEMO_MAYA_HARD_RESET', 'Demo', result);
+    this.logger.log(`Maya hard reset by ${actor.email}: ${JSON.stringify(result)}`);
+    return {
+      message: `Everything wiped: ${result.transcriptsRemoved} request(s) and ${result.equivalenciesRemoved} decision-made equivalenc${result.equivalenciesRemoved === 1 ? 'y' : 'ies'} removed. Maya has no courses or documents left - build her curriculum from here (Build baseline, Demo documents, or Smart Upload live).`,
+      ...result,
+      status: await this.status(),
+    };
+  }
+
+  /**
+   * Gives Maya a real transcript, right away, built from REAL catalogue courses that already have an
+   * active equivalency to a BU course - so `sp_TriageCourse` auto-applies them on submission and they show
+   * as Secured immediately, with no reviewer needed. Meant to be run once before the demo (after `hardReset`)
+   * so the dashboard already shows a solid credit position; the live walkthrough then adds to it (Smart
+   * Upload / Submit transcript) on top. Never touches BSCC/PVTC (that is the scripted six-course scenario).
+   */
+  async buildBaseline(actor: Actor, opts: { targetCredits?: number; institutionCode?: string } = {}) {
+    const maya = await this.userByEmail(MAYA_EMAIL);
+    if (!maya) throw new ConflictException('student@test.edu does not exist - run seeds 001-003 first.');
+    const targetCredits = opts.targetCredits && opts.targetCredits > 0 ? opts.targetCredits : 30;
+
+    const instRes = await this.db.query<{ Id: number; Code: string; Name: string; Calendar: string | null }>(
+      opts.institutionCode
+        ? `SELECT TOP 1 Id, Code, Name, Calendar FROM Institutions WHERE Code = @c`
+        : `SELECT TOP 1 i.Id, i.Code, i.Name, i.Calendar
+           FROM Institutions i
+           WHERE i.Code NOT IN ('BU', 'BSCC', 'PVTC') AND i.IsActive = 1
+             AND EXISTS (SELECT 1 FROM Equivalencies eq JOIN Courses c ON c.Id = eq.ExternalCourseId WHERE c.InstitutionId = i.Id AND eq.IsActive = 1 AND eq.Outcome = 'equivalent')
+           ORDER BY (SELECT COUNT(*) FROM Equivalencies eq JOIN Courses c ON c.Id = eq.ExternalCourseId WHERE c.InstitutionId = i.Id AND eq.IsActive = 1 AND eq.Outcome = 'equivalent') DESC`,
+      opts.institutionCode ? [str('c', opts.institutionCode.toUpperCase(), 20)] : [],
+    );
+    const inst = instRes.recordset[0];
+    if (!inst) throw new ConflictException(opts.institutionCode ? `${opts.institutionCode} has no active equivalencies to build from.` : 'No institution with existing equivalencies was found to build a baseline from.');
+
+    const courseRes = await this.db.query<{ Code: string; Title: string; Credits: number; BuCredits: number | null }>(
+      `SELECT c.Code, c.Title, c.Credits, eq.BUCredits
+       FROM Courses c JOIN Equivalencies eq ON eq.ExternalCourseId = c.Id
+       WHERE c.InstitutionId = @inst AND eq.IsActive = 1 AND eq.Outcome = 'equivalent'
+         AND (eq.EffectiveTo IS NULL OR eq.EffectiveTo >= CAST(SYSUTCDATETIME() AS DATE))
+       ORDER BY ISNULL(eq.BUCredits, c.Credits) DESC`,
+      [int('inst', inst.Id)],
+    );
+    if (!courseRes.recordset.length) throw new ConflictException(`${inst.Code} has no usable equivalencies.`);
+
+    const picked: Array<{ Code: string; Title: string; Credits: number; BuCredits: number | null }> = [];
+    let sum = 0;
+    const seen = new Set<string>();
+    for (const r of courseRes.recordset) {
+      if (sum >= targetCredits) break;
+      if (seen.has(r.Code)) continue; // a course can have more than one equivalency row; take its first
+      seen.add(r.Code);
+      picked.push(r);
+      sum += Number(r.BuCredits ?? r.Credits);
+    }
+
+    // Repeatable: drop an earlier baseline at this same institution first, like the second-student flow does.
+    const old = await this.db.query<{ Id: string }>(
+      `SELECT Id FROM Transcripts WHERE StudentUserId = @s AND Notes LIKE @n AND InstitutionId = @inst`,
+      [uid('s', maya.id), str('n', BASELINE_NOTE_LIKE), int('inst', inst.Id)],
+    );
+    for (const t of old.recordset) await this.deleteTranscript(t.Id);
+
+    const submitted: any = await this.transcripts.submit(
+      {
+        institutionName: inst.Name,
+        institutionCode: inst.Code,
+        calendar: inst.Calendar === 'quarter' ? 'quarter' : 'semester',
+        notes: `${BASELINE_NOTE_PREFIX}: built before the demo from ${inst.Code}'s real catalogue + existing equivalencies, so it is secured on submission.`,
+        courses: picked.map((c) => ({
+          courseCode: c.Code, courseTitle: c.Title, originalCredits: Number(c.Credits),
+          grade: 'A-', term: 'Fall 2025', termSeason: 'fall', termYear: 2025,
+          gradingBasis: 'graded', deliveryMode: 'in_person', courseType: 'lecture', isOutsideUS: false,
+        })),
+      },
+      maya.id,
+      'student',
+    );
+
+    const appliedCount = Array.isArray(submitted?.courses) ? submitted.courses.filter((c: { lane?: string }) => c.lane === 'applied').length : 0;
+    const progress = await this.progress.build(maya.id).catch(() => null);
+    const securedNow = progress ? progress.totals.secure : null;
+
+    const result = {
+      institution: { code: inst.Code, name: inst.Name },
+      transcriptId: submitted?.id as string,
+      coursesSubmitted: picked.length,
+      coursesAutoApplied: appliedCount,
+      securedCreditsOverall: securedNow,
+    };
+    await this.audit(actor, 'DEMO_MAYA_BUILD_BASELINE', 'Demo', result);
+    this.logger.log(`Maya baseline built by ${actor.email}: ${JSON.stringify(result)}`);
+    return {
+      message: securedNow != null
+        ? `Submitted ${picked.length} ${inst.Code} course(s); ${appliedCount} matched an existing equivalency and applied at once. Maya now shows ${securedNow} secured credit(s) overall.`
+        : `Submitted ${picked.length} ${inst.Code} course(s); ${appliedCount} applied at once.`,
+      ...result,
+      status: await this.status(),
+    };
+  }
+
   private async idOf(query: string, inputs: QueryInput[] = []): Promise<number | null> {
     const r = await this.db.query<{ Id: number }>(query, inputs);
     return r.recordset[0]?.Id ?? null;
@@ -223,7 +357,11 @@ export class DemoService {
    * or uploaded something manually while rehearsing; "reset" means Maya goes back to a clean slate regardless
    * of how a stray request got there, not just that the scripted demo rows are put back.
    */
-  private async removeDemoRows(run: Run, studentId: string, f: { notes: boolean; reminders: boolean; appeals: boolean; exchange: boolean; usage: boolean; uploadsTranscript: boolean; workflow: boolean }) {
+  private async removeDemoRows(
+    run: Run,
+    studentId: string,
+    f: { notes: boolean; reminders: boolean; appeals: boolean; exchange: boolean; usage: boolean; uploadsTranscript: boolean; workflow: boolean },
+  ): Promise<{ transcriptsFound: number; transcriptsRemoved: number; equivalenciesRemoved: number }> {
     const demoIds = `SELECT Id FROM Transcripts WHERE StudentUserId = @s`;
     const n = [uid('s', studentId)];
     const cnt = async (q: string) => (await run(q, n)).rowsAffected.reduce((a, b) => a + b, 0);
@@ -266,7 +404,7 @@ export class DemoService {
       eqRemoved += r.rowsAffected.reduce((a, b) => a + b, 0);
     }
     out.equivalenciesRemoved = eqRemoved;
-    return out;
+    return out as { transcriptsFound: number; transcriptsRemoved: number; equivalenciesRemoved: number };
   }
 
   /** Re-adds the three "existing" equivalencies if someone deactivated/deleted them. Never touches others. */

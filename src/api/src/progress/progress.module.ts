@@ -8,5 +8,6 @@ import { ProgressService } from './progress.service';
   imports: [AuthModule, AiModule],
   providers: [ProgressService],
   controllers: [ProgressController],
+  exports: [ProgressService],
 })
 export class ProgressModule {}
