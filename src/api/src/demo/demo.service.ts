@@ -6,6 +6,7 @@ import { SchemaService } from '../policy/schema.service';
 import { TranscriptsService } from '../transcripts/transcripts.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { ProgressService } from '../progress/progress.service';
+import { SettingsService } from '../settings/settings.service';
 import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import {
   DEMO_DECISION_COURSES, DEMO_NOTE_PREFIX, DEMO_SUGGESTIONS, DEMO_TRANSCRIPTS, KNOWN_EQUIVALENCIES,
@@ -49,12 +50,13 @@ export class DemoService {
     private uploads: UploadsService,
     private demoDocuments: DemoDocumentsService,
     private progress: ProgressService,
+    private settings: SettingsService,
   ) {}
 
   // ── status ─────────────────────────────────────────────────
 
   async status() {
-    const maya = await this.userByEmail(MAYA_EMAIL);
+    const maya = await this.findMaya();
     const catalogue = await this.db.query<{ N: number }>(
       `SELECT COUNT(*) AS N FROM Courses c JOIN Institutions i ON i.Id = c.InstitutionId
        WHERE (i.Code = 'BSCC' AND c.Code IN ('CSC 110','MAT 210','ECO 101','CSC 220','CSC 240')) OR (i.Code = 'PVTC' AND c.Code = 'CIS 150')`);
@@ -117,7 +119,7 @@ export class DemoService {
       scenarioPresent: derived.present,
       catalogueReady,
       workflowReady,
-      student: maya ? { id: maya.id, name: `${maya.first} ${maya.last}`, email: MAYA_EMAIL } : null,
+      student: maya ? { id: maya.id, name: `${maya.first} ${maya.last}`, email: maya.email } : null,
       transcripts,
       courses,
       equivalencies,
@@ -129,10 +131,34 @@ export class DemoService {
   }
 
   private async userByEmail(email: string) {
-    const r = await this.db.query<{ Id: string; FirstName: string; LastName: string }>(
-      `SELECT Id, FirstName, LastName FROM Users WHERE Email = @e`, [str('e', email, 254)]);
+    const r = await this.db.query<{ Id: string; FirstName: string; LastName: string; Email: string }>(
+      `SELECT Id, FirstName, LastName, Email FROM Users WHERE Email = @e`, [str('e', email, 254)]);
     const u = r.recordset[0];
-    return u ? { id: u.Id, first: u.FirstName, last: u.LastName } : null;
+    return u ? { id: u.Id, first: u.FirstName, last: u.LastName, email: u.Email } : null;
+  }
+
+  private async userById(id: string) {
+    const r = await this.db.query<{ Id: string; FirstName: string; LastName: string; Email: string }>(
+      `SELECT Id, FirstName, LastName, Email FROM Users WHERE Id = @id AND IsActive = 1`, [uid('id', id)]);
+    const u = r.recordset[0];
+    return u ? { id: u.Id, first: u.FirstName, last: u.LastName, email: u.Email } : null;
+  }
+
+  /**
+   * Resolves "the demo student" - whichever account System Settings > Demo login has picked for the
+   * student role (`demo_login.users.student`, a user id, independent of email), so changing that
+   * account's login e-mail (e.g. to something that can actually receive mail) never breaks these
+   * tools. Falls back to the seed account `student@test.edu` when nothing is configured, migration
+   * 023 is not applied, or the configured user no longer exists.
+   */
+  private async findMaya() {
+    const configured = await this.settings.getDemoLogin().catch(() => null);
+    const pickedId = configured?.users?.['student'];
+    if (pickedId) {
+      const byId = await this.userById(pickedId);
+      if (byId) return byId;
+    }
+    return this.userByEmail(MAYA_EMAIL);
   }
 
   /** Equivalency (active, not expired) for an external demo course, or null. */
@@ -170,8 +196,8 @@ export class DemoService {
   // ── reset ──────────────────────────────────────────────────
 
   async resetMaya(actor: Actor) {
-    const maya = await this.userByEmail(MAYA_EMAIL);
-    if (!maya) throw new ConflictException('student@test.edu does not exist - run seeds 001-003 first.');
+    const maya = await this.findMaya();
+    if (!maya) throw new ConflictException('No demo student account was found - either run seeds 001-003 (student@test.edu), or check that System Settings > Demo login still points at a valid user.');
     const bu = await this.idOf(`SELECT Id FROM Institutions WHERE Code = 'BU'`);
     if (!bu) throw new ConflictException('Institution BU is missing - run seed 001 first.');
     const s = await this.status();
@@ -226,8 +252,8 @@ export class DemoService {
    * baseline equivalencies are restored so an uploaded document can still auto-match during the demo.
    */
   async hardReset(actor: Actor) {
-    const maya = await this.userByEmail(MAYA_EMAIL);
-    if (!maya) throw new ConflictException('student@test.edu does not exist - run seeds 001-003 first.');
+    const maya = await this.findMaya();
+    if (!maya) throw new ConflictException('No demo student account was found - either run seeds 001-003 (student@test.edu), or check that System Settings > Demo login still points at a valid user.');
     const bu = await this.idOf(`SELECT Id FROM Institutions WHERE Code = 'BU'`);
     if (!bu) throw new ConflictException('Institution BU is missing - run seed 001 first.');
 
@@ -265,8 +291,8 @@ export class DemoService {
    * Upload / Submit transcript) on top. Never touches BSCC/PVTC (that is the scripted six-course scenario).
    */
   async buildBaseline(actor: Actor, opts: { targetCredits?: number; institutionCode?: string } = {}) {
-    const maya = await this.userByEmail(MAYA_EMAIL);
-    if (!maya) throw new ConflictException('student@test.edu does not exist - run seeds 001-003 first.');
+    const maya = await this.findMaya();
+    if (!maya) throw new ConflictException('No demo student account was found - either run seeds 001-003 (student@test.edu), or check that System Settings > Demo login still points at a valid user.');
     const targetCredits = opts.targetCredits && opts.targetCredits > 0 ? opts.targetCredits : 30;
 
     const instRes = await this.db.query<{ Id: number; Code: string; Name: string; Calendar: string | null }>(
