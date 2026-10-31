@@ -54,7 +54,8 @@ export class DemoDocumentsService {
     }));
   }
 
-  private async load(userId: string): Promise<{ student: DocStudent; colleges: DocCollegeRecord[]; notes: string[] } | null> {
+  /** Not private: DemoService reuses this to build the same documents for the Maya reset's auto-attach step. */
+  async load(userId: string): Promise<{ student: DocStudent; colleges: DocCollegeRecord[]; notes: string[] } | null> {
     const u = (await this.db.query(
       `SELECT u.Id, u.FirstName, u.LastName, u.Email, u.StudentId, u.City, u.State, u.CountryOfOrigin, u.Country,
               sp.PriorInstitutionName, sp.FieldOfStudy, sp.IsNativeEnglish, sp.EnglishTestType, sp.EnglishTestScore, sp.GraduationYear, sp.TargetInstitutionId,

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, Circle, ExternalLink, Presentation, RotateCcw, UserPlus, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, ExternalLink, Flame, Layers, Presentation, RotateCcw, UserPlus, X } from 'lucide-react';
 import { api } from '../../lib/api';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -39,7 +39,8 @@ const fmt = (n: number | null) => (n == null ? '-' : Number.isInteger(n) ? Strin
 
 export default function DemoScenario() {
   const qc = useQueryClient();
-  const [confirm, setConfirm] = useState<null | 'reset' | 'second'>(null);
+  const [confirm, setConfirm] = useState<null | 'reset' | 'second' | 'hard' | 'baseline'>(null);
+  const [baselineCredits, setBaselineCredits] = useState('30');
   const [toast, setToast] = useState<null | { kind: 'ok' | 'err'; text: string }>(null);
 
   useEffect(() => {
@@ -62,7 +63,13 @@ export default function DemoScenario() {
   };
   const reset = useMutation({ mutationFn: async () => (await api.post('/demo/maya/reset')).data, onSuccess: (d) => onDone(d.message), onError: onFail });
   const second = useMutation({ mutationFn: async () => (await api.post('/demo/maya/second-student')).data, onSuccess: (d) => onDone(d.message), onError: onFail });
-  const busy = reset.isPending || second.isPending;
+  const hardReset = useMutation({ mutationFn: async () => (await api.post('/demo/maya/hard-reset')).data, onSuccess: (d) => onDone(d.message), onError: onFail });
+  const baseline = useMutation({
+    mutationFn: async () => (await api.post('/demo/maya/build-baseline', { targetCredits: Number(baselineCredits) || 30 })).data,
+    onSuccess: (d) => onDone(d.message),
+    onError: onFail,
+  });
+  const busy = reset.isPending || second.isPending || hardReset.isPending || baseline.isPending;
 
   const bscc = data?.transcripts.find((t) => t.institutionCode === 'BSCC');
   const pvtc = data?.transcripts.find((t) => t.institutionCode === 'PVTC');
@@ -98,10 +105,18 @@ export default function DemoScenario() {
             The Maya Rivera six-course walkthrough (synthetic data). Reset puts the demo back to upload state so it can be played again; it only touches the demo requests
             and the equivalencies created by the CSC 220, CSC 240 and CIS 150 decisions. Real data is never changed.
           </p>
+          <p className="text-xs text-gray-500 mt-1 max-w-2xl">
+            Starting a live walkthrough from zero: <strong>Hard reset</strong> wipes everything, then <strong>Build baseline</strong> gives Maya a solid
+            secured-credit position before you go on stage. Generate the matching paperwork on the{' '}
+            <Link to="/superadmin/settings/demo-documents" className="text-brand-800 underline">Demo documents</Link> page, then drop a document live
+            via Smart Upload during the demo itself to show the auto-populate step.
+          </p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" icon={<UserPlus size={16} />} disabled={busy || !data?.scenarioPresent} onClick={() => setConfirm('second')}>Add second student (learning loop)</Button>
           <Button icon={<RotateCcw size={16} />} disabled={busy} onClick={() => setConfirm('reset')}>Reset Maya scenario</Button>
+          <Button variant="outline" icon={<Layers size={16} />} disabled={busy} onClick={() => setConfirm('baseline')}>Build baseline (secured credits)</Button>
+          <Button variant="danger" icon={<Flame size={16} />} disabled={busy} onClick={() => setConfirm('hard')}>Hard reset (wipe everything)</Button>
         </div>
       </div>
 
@@ -213,18 +228,43 @@ export default function DemoScenario() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" role="dialog" aria-modal="true">
           <Card className="w-full max-w-md p-5 space-y-3">
             <div className="flex items-start justify-between gap-3">
-              <h3 className="font-semibold text-gray-900">{confirm === 'reset' ? 'Reset the Maya scenario?' : 'Add the second student?'}</h3>
+              <h3 className="font-semibold text-gray-900">
+                {confirm === 'reset' ? 'Reset the Maya scenario?' : confirm === 'second' ? 'Add the second student?' : confirm === 'hard' ? 'Hard reset Maya?' : 'Build a baseline transcript?'}
+              </h3>
               <button aria-label="Close" onClick={() => setConfirm(null)} className="text-gray-400 hover:text-gray-700"><X size={18} /></button>
             </div>
             <p className="text-sm text-gray-600">
               {confirm === 'reset'
                 ? 'This deletes the demo requests for Maya (and Noah), including every decision made on them, removes the equivalencies those decisions created for CSC 220, CSC 240 and CIS 150, and rebuilds the six courses at upload state. Nothing else is touched.'
-                : 'Noah Chen, from Bay State, submits a transcript with CSC 220 through the normal submission path. If CSC 220 already has an equivalency it is applied automatically. Any earlier second-student request is replaced.'}
+                : confirm === 'second'
+                ? 'Noah Chen, from Bay State, submits a transcript with CSC 220 through the normal submission path. If CSC 220 already has an equivalency it is applied automatically. Any earlier second-student request is replaced.'
+                : confirm === 'hard'
+                ? 'This deletes EVERY transcript, course, evaluation and document Maya has - not just the scripted scenario, but anything submitted or uploaded while rehearsing too - and creates nothing in its place. Her account and profile are untouched. Use "Build baseline" or Demo documents afterwards to give her a fresh curriculum.'
+                : 'Submits a real transcript for Maya from a real university\'s catalogue, picking enough courses that already have an active equivalency to a BU course to reach the target below - they apply automatically on submission. Run "Hard reset" first for a clean baseline. Afterwards, use the Demo documents page to generate matching paperwork for the same courses.'}
             </p>
+            {confirm === 'baseline' && (
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                Target secured credits
+                <input
+                  type="number" min={1} max={120} value={baselineCredits}
+                  onChange={(e) => setBaselineCredits(e.target.value)}
+                  className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-sm"
+                />
+              </label>
+            )}
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="ghost" onClick={() => setConfirm(null)} disabled={busy}>Cancel</Button>
-              <Button variant={confirm === 'reset' ? 'danger' : 'primary'} disabled={busy} onClick={() => (confirm === 'reset' ? reset.mutate() : second.mutate())}>
-                {busy ? 'Working...' : confirm === 'reset' ? 'Reset' : 'Add student'}
+              <Button
+                variant={confirm === 'reset' || confirm === 'hard' ? 'danger' : 'primary'}
+                disabled={busy}
+                onClick={() => {
+                  if (confirm === 'reset') reset.mutate();
+                  else if (confirm === 'second') second.mutate();
+                  else if (confirm === 'hard') hardReset.mutate();
+                  else baseline.mutate();
+                }}
+              >
+                {busy ? 'Working...' : confirm === 'reset' ? 'Reset' : confirm === 'second' ? 'Add student' : confirm === 'hard' ? 'Wipe everything' : 'Build baseline'}
               </Button>
             </div>
           </Card>

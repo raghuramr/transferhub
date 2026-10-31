@@ -4,16 +4,24 @@ import * as sql from 'mssql';
 import { DatabaseService, QueryInput } from '../database/database.service';
 import { SchemaService } from '../policy/schema.service';
 import { TranscriptsService } from '../transcripts/transcripts.service';
+import { UploadsService } from '../uploads/uploads.service';
+import { ProgressService } from '../progress/progress.service';
+import type { UploadedFileLike } from '../common/uploaded-file.interface';
 import {
   DEMO_DECISION_COURSES, DEMO_NOTE_PREFIX, DEMO_SUGGESTIONS, DEMO_TRANSCRIPTS, KNOWN_EQUIVALENCIES,
   MAYA_EMAIL, NOAH, NOAH_EMAIL, SEED_EQUIVALENCY_SOURCES,
 } from './demo-scenario.data';
 import { DemoCourseFact, deriveDemoState } from './demo-scenario.logic';
+import { DemoDocumentsService } from './demo-documents.service';
+import { buildStudentDocuments, type DemoDocKind, type DocCollegeRecord, type GeneratedDoc } from './demo-documents';
 
 export interface Actor { id: string; email: string; role: string }
 type Run = <R = any>(q: string, inputs?: QueryInput[]) => Promise<sql.IResult<R>>;
 
 const NOTE_LIKE = `${DEMO_NOTE_PREFIX}%`;
+/** Tags a `buildBaseline` transcript distinctly from the scripted scenario, so a normal `resetMaya` never touches it. */
+const BASELINE_NOTE_PREFIX = 'Demo baseline';
+const BASELINE_NOTE_LIKE = `${BASELINE_NOTE_PREFIX}%`;
 const uid = (name: string, value: string): QueryInput => ({ name, type: sql.UniqueIdentifier, value });
 const str = (name: string, value: string | null, len = 200): QueryInput => ({ name, type: sql.NVarChar(len), value });
 const int = (name: string, value: number | null): QueryInput => ({ name, type: sql.Int, value });
@@ -34,7 +42,14 @@ const dec = (name: string, value: number | null): QueryInput => ({ name, type: s
 export class DemoService {
   private readonly logger = new Logger(DemoService.name);
 
-  constructor(private db: DatabaseService, private schema: SchemaService, private transcripts: TranscriptsService) {}
+  constructor(
+    private db: DatabaseService,
+    private schema: SchemaService,
+    private transcripts: TranscriptsService,
+    private uploads: UploadsService,
+    private demoDocuments: DemoDocumentsService,
+    private progress: ProgressService,
+  ) {}
 
   // ── status ─────────────────────────────────────────────────
 
@@ -175,15 +190,160 @@ export class DemoService {
     };
 
     const result = await this.db.transaction(async (run) => {
-      const removed = await this.removeDemoRows(run, flags);
+      const removed = await this.removeDemoRows(run, maya.id, flags);
       const restored = await this.restoreKnownEquivalencies(run, bu);
       const created = await this.createScenario(run, maya.id, bu, flags);
       return { ...removed, knownEquivalenciesRestored: restored, transcripts: created };
     });
 
-    await this.audit(actor, 'DEMO_MAYA_RESET', 'Demo', result);
-    this.logger.log(`Maya demo scenario reset by ${actor.email}: ${JSON.stringify(result)}`);
-    return { message: 'Maya scenario reset. Six courses are back at upload state.', ...result, status: await this.status() };
+    // Documents are a presenter convenience, not the core reset: generate them in their own step, after
+    // the scenario is already committed, so a documents problem never rolls back (or blocks) the reset itself.
+    let documents: { message: string; transcriptDocsAttached: number; studentDocsAttached: number };
+    try {
+      documents = await this.attachRequiredDocuments(maya.id, result.transcripts);
+    } catch (err) {
+      const message = `Documents could not be generated/attached: ${(err as Error).message}`;
+      this.logger.warn(message);
+      documents = { message, transcriptDocsAttached: 0, studentDocsAttached: 0 };
+    }
+
+    await this.audit(actor, 'DEMO_MAYA_RESET', 'Demo', { ...result, documents });
+    this.logger.log(`Maya demo scenario reset by ${actor.email}: ${JSON.stringify({ ...result, documents })}`);
+    return {
+      message: `Maya scenario reset. Six courses are back at upload state. ${documents.message}`,
+      ...result,
+      documents,
+      status: await this.status(),
+    };
+  }
+
+  /**
+   * Wipes EVERY transcript/course/evaluation/document Maya has and recreates nothing - unlike `resetMaya`,
+   * which rebuilds the scripted six-course scenario. For when the live walkthrough itself will build her
+   * curriculum from scratch (via `buildBaseline` and/or Smart Upload), so nothing scripted is left to
+   * contradict whatever the presenter drops on stage. Her account/profile are untouched; the catalogue's
+   * baseline equivalencies are restored so an uploaded document can still auto-match during the demo.
+   */
+  async hardReset(actor: Actor) {
+    const maya = await this.userByEmail(MAYA_EMAIL);
+    if (!maya) throw new ConflictException('student@test.edu does not exist - run seeds 001-003 first.');
+    const bu = await this.idOf(`SELECT Id FROM Institutions WHERE Code = 'BU'`);
+    if (!bu) throw new ConflictException('Institution BU is missing - run seed 001 first.');
+
+    const flags = {
+      notes: await this.schema.has('TranscriptNotes'),
+      reminders: await this.schema.has('StatusReminders'),
+      appeals: await this.schema.has('CourseAppeals'),
+      exchange: await this.schema.exchangeReady(),
+      usage: await this.schema.has('AiUsageLog'),
+      uploadsTranscript: await this.schema.has('Uploads', 'TranscriptId'),
+      workflow: (await this.schema.has('TranscriptStages')) && (await this.schema.has('Transcripts', 'WorkflowId')),
+    };
+
+    const result = await this.db.transaction(async (run) => {
+      const removed = await this.removeDemoRows(run, maya.id, flags);
+      const restored = await this.restoreKnownEquivalencies(run, bu);
+      return { ...removed, knownEquivalenciesRestored: restored };
+    });
+
+    await this.audit(actor, 'DEMO_MAYA_HARD_RESET', 'Demo', result);
+    this.logger.log(`Maya hard reset by ${actor.email}: ${JSON.stringify(result)}`);
+    return {
+      message: `Everything wiped: ${result.transcriptsRemoved} request(s) and ${result.equivalenciesRemoved} decision-made equivalenc${result.equivalenciesRemoved === 1 ? 'y' : 'ies'} removed. Maya has no courses or documents left - build her curriculum from here (Build baseline, Demo documents, or Smart Upload live).`,
+      ...result,
+      status: await this.status(),
+    };
+  }
+
+  /**
+   * Gives Maya a real transcript, right away, built from REAL catalogue courses that already have an
+   * active equivalency to a BU course - so `sp_TriageCourse` auto-applies them on submission and they show
+   * as Secured immediately, with no reviewer needed. Meant to be run once before the demo (after `hardReset`)
+   * so the dashboard already shows a solid credit position; the live walkthrough then adds to it (Smart
+   * Upload / Submit transcript) on top. Never touches BSCC/PVTC (that is the scripted six-course scenario).
+   */
+  async buildBaseline(actor: Actor, opts: { targetCredits?: number; institutionCode?: string } = {}) {
+    const maya = await this.userByEmail(MAYA_EMAIL);
+    if (!maya) throw new ConflictException('student@test.edu does not exist - run seeds 001-003 first.');
+    const targetCredits = opts.targetCredits && opts.targetCredits > 0 ? opts.targetCredits : 30;
+
+    const instRes = await this.db.query<{ Id: number; Code: string; Name: string; Calendar: string | null }>(
+      opts.institutionCode
+        ? `SELECT TOP 1 Id, Code, Name, Calendar FROM Institutions WHERE Code = @c`
+        : `SELECT TOP 1 i.Id, i.Code, i.Name, i.Calendar
+           FROM Institutions i
+           WHERE i.Code NOT IN ('BU', 'BSCC', 'PVTC') AND i.IsActive = 1
+             AND EXISTS (SELECT 1 FROM Equivalencies eq JOIN Courses c ON c.Id = eq.ExternalCourseId WHERE c.InstitutionId = i.Id AND eq.IsActive = 1 AND eq.Outcome = 'equivalent')
+           ORDER BY (SELECT COUNT(*) FROM Equivalencies eq JOIN Courses c ON c.Id = eq.ExternalCourseId WHERE c.InstitutionId = i.Id AND eq.IsActive = 1 AND eq.Outcome = 'equivalent') DESC`,
+      opts.institutionCode ? [str('c', opts.institutionCode.toUpperCase(), 20)] : [],
+    );
+    const inst = instRes.recordset[0];
+    if (!inst) throw new ConflictException(opts.institutionCode ? `${opts.institutionCode} has no active equivalencies to build from.` : 'No institution with existing equivalencies was found to build a baseline from.');
+
+    const courseRes = await this.db.query<{ Code: string; Title: string; Credits: number; BuCredits: number | null }>(
+      `SELECT c.Code, c.Title, c.Credits, eq.BUCredits
+       FROM Courses c JOIN Equivalencies eq ON eq.ExternalCourseId = c.Id
+       WHERE c.InstitutionId = @inst AND eq.IsActive = 1 AND eq.Outcome = 'equivalent'
+         AND (eq.EffectiveTo IS NULL OR eq.EffectiveTo >= CAST(SYSUTCDATETIME() AS DATE))
+       ORDER BY ISNULL(eq.BUCredits, c.Credits) DESC`,
+      [int('inst', inst.Id)],
+    );
+    if (!courseRes.recordset.length) throw new ConflictException(`${inst.Code} has no usable equivalencies.`);
+
+    const picked: Array<{ Code: string; Title: string; Credits: number; BuCredits: number | null }> = [];
+    let sum = 0;
+    const seen = new Set<string>();
+    for (const r of courseRes.recordset) {
+      if (sum >= targetCredits) break;
+      if (seen.has(r.Code)) continue; // a course can have more than one equivalency row; take its first
+      seen.add(r.Code);
+      picked.push(r);
+      sum += Number(r.BuCredits ?? r.Credits);
+    }
+
+    // Repeatable: drop an earlier baseline at this same institution first, like the second-student flow does.
+    const old = await this.db.query<{ Id: string }>(
+      `SELECT Id FROM Transcripts WHERE StudentUserId = @s AND Notes LIKE @n AND InstitutionId = @inst`,
+      [uid('s', maya.id), str('n', BASELINE_NOTE_LIKE), int('inst', inst.Id)],
+    );
+    for (const t of old.recordset) await this.deleteTranscript(t.Id);
+
+    const submitted: any = await this.transcripts.submit(
+      {
+        institutionName: inst.Name,
+        institutionCode: inst.Code,
+        calendar: inst.Calendar === 'quarter' ? 'quarter' : 'semester',
+        notes: `${BASELINE_NOTE_PREFIX}: built before the demo from ${inst.Code}'s real catalogue + existing equivalencies, so it is secured on submission.`,
+        courses: picked.map((c) => ({
+          courseCode: c.Code, courseTitle: c.Title, originalCredits: Number(c.Credits),
+          grade: 'A-', term: 'Fall 2025', termSeason: 'fall', termYear: 2025,
+          gradingBasis: 'graded', deliveryMode: 'in_person', courseType: 'lecture', isOutsideUS: false,
+        })),
+      },
+      maya.id,
+      'student',
+    );
+
+    const appliedCount = Array.isArray(submitted?.courses) ? submitted.courses.filter((c: { lane?: string }) => c.lane === 'applied').length : 0;
+    const progress = await this.progress.build(maya.id).catch(() => null);
+    const securedNow = progress ? progress.totals.secure : null;
+
+    const result = {
+      institution: { code: inst.Code, name: inst.Name },
+      transcriptId: submitted?.id as string,
+      coursesSubmitted: picked.length,
+      coursesAutoApplied: appliedCount,
+      securedCreditsOverall: securedNow,
+    };
+    await this.audit(actor, 'DEMO_MAYA_BUILD_BASELINE', 'Demo', result);
+    this.logger.log(`Maya baseline built by ${actor.email}: ${JSON.stringify(result)}`);
+    return {
+      message: securedNow != null
+        ? `Submitted ${picked.length} ${inst.Code} course(s); ${appliedCount} matched an existing equivalency and applied at once. Maya now shows ${securedNow} secured credit(s) overall.`
+        : `Submitted ${picked.length} ${inst.Code} course(s); ${appliedCount} applied at once.`,
+      ...result,
+      status: await this.status(),
+    };
   }
 
   private async idOf(query: string, inputs: QueryInput[] = []): Promise<number | null> {
@@ -191,14 +351,23 @@ export class DemoService {
     return r.recordset[0]?.Id ?? null;
   }
 
-  /** Deletes demo transcripts (+ dependents) and the equivalencies the presenter's decisions created. */
-  private async removeDemoRows(run: Run, f: { notes: boolean; reminders: boolean; appeals: boolean; exchange: boolean; usage: boolean; uploadsTranscript: boolean; workflow: boolean }) {
-    const demoIds = `SELECT Id FROM Transcripts WHERE Notes LIKE @n`;
-    const n = [str('n', NOTE_LIKE)];
+  /**
+   * Deletes EVERY transcript/request Maya has - not just the ones the demo scenario itself created - plus
+   * their dependents, and the equivalencies the presenter's decisions wrote. The presenter may have submitted
+   * or uploaded something manually while rehearsing; "reset" means Maya goes back to a clean slate regardless
+   * of how a stray request got there, not just that the scripted demo rows are put back.
+   */
+  private async removeDemoRows(
+    run: Run,
+    studentId: string,
+    f: { notes: boolean; reminders: boolean; appeals: boolean; exchange: boolean; usage: boolean; uploadsTranscript: boolean; workflow: boolean },
+  ): Promise<{ transcriptsFound: number; transcriptsRemoved: number; equivalenciesRemoved: number }> {
+    const demoIds = `SELECT Id FROM Transcripts WHERE StudentUserId = @s`;
+    const n = [uid('s', studentId)];
     const cnt = async (q: string) => (await run(q, n)).rowsAffected.reduce((a, b) => a + b, 0);
     const out: Record<string, number> = {};
 
-    out.transcriptsFound = (await run<{ N: number }>(`SELECT COUNT(*) AS N FROM Transcripts WHERE Notes LIKE @n`, n)).recordset[0].N;
+    out.transcriptsFound = (await run<{ N: number }>(`SELECT COUNT(*) AS N FROM Transcripts WHERE StudentUserId = @s`, n)).recordset[0].N;
     if (f.appeals) await run(`DELETE FROM CourseAppeals WHERE TranscriptId IN (${demoIds})`, n);
     if (f.exchange) {
       await run(`DELETE FROM PartyReminders WHERE TranscriptId IN (${demoIds})`, n);
@@ -209,13 +378,17 @@ export class DemoService {
     if (f.workflow) await run(`DELETE FROM TranscriptStages WHERE TranscriptId IN (${demoIds})`, n);
     if (f.usage) await run(`DELETE FROM AiUsageLog WHERE TranscriptId IN (${demoIds})`, n);
     if (f.uploadsTranscript) await run(`DELETE FROM Uploads WHERE TranscriptId IN (${demoIds})`, n);
-    await run(`DELETE FROM Uploads WHERE EntityType = 'transcript' AND EntityId IN (SELECT CAST(Id AS NVARCHAR(100)) FROM Transcripts WHERE Notes LIKE @n)`, n);
+    await run(`DELETE FROM Uploads WHERE EntityType IN ('transcript', 'transcript_document') AND EntityId IN (SELECT CAST(Id AS NVARCHAR(100)) FROM Transcripts WHERE StudentUserId = @s)`, n);
+    // Student-level documents (ID/English test/enrollment letter from an earlier reset or a real smart upload)
+    // also go, so the attach step below never piles duplicates on top of what a previous run left behind.
+    await run(`DELETE FROM Uploads WHERE OwnerUserId = @s AND EntityType = 'smart_upload'`, n);
+    if (await this.schema.has('DocumentIntakes')) await run(`DELETE FROM DocumentIntakes WHERE UserId = @s`, n);
 
     const evalIds = `SELECT e.Id FROM Evaluations e JOIN TranscriptCourses tc ON tc.Id = e.TranscriptCourseId WHERE tc.TranscriptId IN (${demoIds})`;
     await run(`DELETE FROM AIMatchCandidates WHERE EvaluationId IN (${evalIds})`, n);
     await run(`DELETE FROM Evaluations WHERE TranscriptCourseId IN (SELECT tc.Id FROM TranscriptCourses tc WHERE tc.TranscriptId IN (${demoIds}))`, n);
     // TranscriptCourses / Syllabi / TranscriptDocuments cascade from Transcripts.
-    out.transcriptsRemoved = await cnt(`DELETE FROM Transcripts WHERE Notes LIKE @n`);
+    out.transcriptsRemoved = await cnt(`DELETE FROM Transcripts WHERE StudentUserId = @s`);
 
     // Equivalencies created by decisions on the three demo courses only; seed-written ones (synthetic/workbook) stay.
     let eqRemoved = 0;
@@ -231,7 +404,7 @@ export class DemoService {
       eqRemoved += r.rowsAffected.reduce((a, b) => a + b, 0);
     }
     out.equivalenciesRemoved = eqRemoved;
-    return out;
+    return out as { transcriptsFound: number; transcriptsRemoved: number; equivalenciesRemoved: number };
   }
 
   /** Re-adds the three "existing" equivalencies if someone deactivated/deleted them. Never touches others. */
@@ -339,6 +512,106 @@ export class DemoService {
       created.push({ id: tid, institution: t.institutionCode, courses: t.courses.length });
     }
     return created;
+  }
+
+  // ── required documents (so the presenter never has to upload anything live) ────────
+
+  /**
+   * Generates and attaches the documents Maya's fresh requests would actually need, using the same
+   * synthetic-but-deterministic renderers as the "Demo documents" tool (`DemoDocumentsService`/
+   * `demo-documents.ts`), built FROM the scenario just created (so course codes/titles/terms on the
+   * paperwork match what's on screen):
+   *  - A transcript PDF per source college, attached to that college's own request (`TranscriptDocuments`,
+   *    docTypeKey 'transcript') - always needed, whatever the applicant type.
+   *  - A syllabus PDF for each course the scenario put in a review lane (CSC 220, CSC 240, CIS 150 -
+   *    see `DEMO_TRANSCRIPTS`), attached to that course (`TranscriptDocuments`, docTypeKey 'syllabus',
+   *    TranscriptCourseId set) - exactly the courses whose checklist actually asks for one.
+   *  - Maya's own ID and an enrolment letter, plus an English test report only if her profile says she
+   *    is not a native speaker, saved as already-`confirmed` Smart Upload documents (`DocumentIntakes`)
+   *    so they show up under My Documents with nothing left to review.
+   * Runs AFTER the reset transaction commits (uploads write to blob storage, not the DB transaction), so
+   * a failure here is reported but never undoes the scenario reset itself - see resetMaya's try/catch.
+   */
+  private async attachRequiredDocuments(studentId: string, created: Array<{ id: string; institution: string; courses: number }>) {
+    const hasTranscriptDocs = await this.schema.has('TranscriptDocuments');
+    const hasIntakes = await this.schema.has('DocumentIntakes');
+    if (!hasTranscriptDocs && !hasIntakes) {
+      return { message: 'No documents were attached (the document tables are not migrated yet).', transcriptDocsAttached: 0, studentDocsAttached: 0 };
+    }
+
+    const loaded = await this.demoDocuments.load(studentId);
+    if (!loaded) return { message: 'No documents were attached (student not found).', transcriptDocsAttached: 0, studentDocsAttached: 0 };
+    const { student } = loaded;
+
+    const toFile = (d: GeneratedDoc): UploadedFileLike => ({ originalname: d.fileName, buffer: d.bytes, mimetype: 'application/pdf', size: d.bytes.length });
+    const attachToTranscript = async (doc: GeneratedDoc, transcriptId: string, transcriptCourseId: string | null) => {
+      const saved = await this.uploads.save(toFile(doc), {
+        ownerUserId: studentId, role: 'student', entityType: 'transcript_document', entityId: transcriptId, isPublic: false, documentType: doc.docType,
+      });
+      await this.db.query(
+        `INSERT INTO TranscriptDocuments (TranscriptId, TranscriptCourseId, DocTypeKey, UploadId, FileName, Notes, CreatedBy)
+         VALUES (@t, @c, @k, @u, @f, @n, @by)`,
+        [
+          uid('t', transcriptId), { name: 'c', type: sql.UniqueIdentifier, value: transcriptCourseId }, str('k', doc.docType, 40),
+          uid('u', saved.id), str('f', doc.fileName, 300), str('n', 'Generated by Reset Maya scenario (Demo documents).', 500), uid('by', studentId),
+        ],
+      );
+    };
+
+    let transcriptDocsAttached = 0;
+    if (hasTranscriptDocs) {
+      // 1. One transcript document per source college.
+      for (const college of loaded.colleges) {
+        const transcriptId = created.find((c) => c.institution === college.institution.code)?.id;
+        if (!transcriptId) continue;
+        const [doc] = await buildStudentDocuments(student, [college], ['transcript']);
+        if (doc) { await attachToTranscript(doc, transcriptId, null); transcriptDocsAttached++; }
+      }
+
+      // 2. A syllabus for each course the scenario itself put in a review lane.
+      for (const t of DEMO_TRANSCRIPTS) {
+        const transcriptId = created.find((c) => c.institution === t.institutionCode)?.id;
+        const college = loaded.colleges.find((c) => c.institution.code === t.institutionCode);
+        if (!transcriptId || !college) continue;
+        for (const c of t.courses) {
+          if (c.lane !== 'needs_syllabus') continue;
+          const course = college.courses.find((x) => x.code === c.code);
+          if (!course) continue;
+          const tc = await this.db.query<{ Id: string }>(
+            `SELECT TOP 1 Id FROM TranscriptCourses WHERE TranscriptId = @t AND CourseCode = @c`,
+            [uid('t', transcriptId), str('c', c.code, 50)],
+          );
+          const tcId = tc.recordset[0]?.Id;
+          if (!tcId) continue;
+          const [doc] = await buildStudentDocuments(student, [{ institution: college.institution, courses: [course] }], ['syllabus']);
+          if (doc) { await attachToTranscript(doc, transcriptId, tcId); transcriptDocsAttached++; }
+        }
+      }
+    }
+
+    let studentDocsAttached = 0;
+    if (hasIntakes) {
+      const kinds: DemoDocKind[] = ['id_document', 'enrollment_letter', ...(student.english ? (['english_test'] as const) : [])];
+      const docs = await buildStudentDocuments(student, loaded.colleges as DocCollegeRecord[], kinds);
+      for (const doc of docs) {
+        const saved = await this.uploads.save(toFile(doc), {
+          ownerUserId: studentId, role: 'student', entityType: 'smart_upload', isPublic: false, documentType: doc.docType,
+        });
+        await this.db.query(
+          `INSERT INTO DocumentIntakes (UserId, UploadId, OriginalFileName, MimeType, Status, DocType, Summary, ReadAt, ConfirmedAt)
+           VALUES (@u, @up, @n, 'application/pdf', 'confirmed', @dt, @s, SYSUTCDATETIME(), SYSUTCDATETIME())`,
+          [
+            uid('u', studentId), uid('up', saved.id), str('n', doc.fileName, 300), str('dt', doc.docType, 40),
+            str('s', 'Generated and pre-confirmed by Reset Maya scenario (Demo documents).', 500),
+          ],
+        );
+        studentDocsAttached++;
+      }
+    }
+
+    const parts = [transcriptDocsAttached ? `${transcriptDocsAttached} request document(s)` : null, studentDocsAttached ? `${studentDocsAttached} personal document(s)` : null];
+    const message = parts.some(Boolean) ? `Attached ${parts.filter(Boolean).join(' and ')}.` : 'No documents were attached (nothing applied to this student).';
+    return { message, transcriptDocsAttached, studentDocsAttached };
   }
 
   // ── second student (learning loop) ─────────────────────────
